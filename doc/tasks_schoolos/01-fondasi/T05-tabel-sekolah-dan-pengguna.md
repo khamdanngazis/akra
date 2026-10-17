@@ -24,11 +24,11 @@ Tabel dasar untuk sekolah, pengguna, dan peran tersedia, dengan `school_id` seba
 - `db/migrations/000002_schools_users_roles.down.sql`
 
 ## Kriteria selesai
-- [ ] Migrasi naik dan turun tanpa error
-- [ ] Dua pengguna dengan email sama di sekolah berbeda diizinkan
-- [ ] Dua pengguna dengan email sama di sekolah yang sama ditolak database
-- [ ] Tabel `roles` berisi lima baris
-- [ ] Semua kolom `school_id` tidak boleh NULL
+- [x] Migrasi naik dan turun tanpa error
+- [x] Dua pengguna dengan email sama di sekolah berbeda diizinkan
+- [x] Dua pengguna dengan email sama di sekolah yang sama ditolak database
+- [x] Tabel `roles` berisi lima baris
+- [x] Semua kolom `school_id` tidak boleh NULL
 
 ## Catatan
 - Kolom `email` disimpan dalam huruf kecil. Normalisasi dilakukan di aplikasi (T06).
