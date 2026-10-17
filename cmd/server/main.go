@@ -19,6 +19,7 @@ import (
 	"akra/internal/platform/httpserver"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
+	"akra/internal/school"
 	"akra/web"
 )
 
@@ -47,7 +48,7 @@ func run(logger *slog.Logger) error {
 	if cfg.WebDir != "" {
 		logger.Info("serving templates and static files from disk", "web_dir", cfg.WebDir)
 	}
-	rd, err := render.New(templates, logger)
+	rd, err := render.New(templates, static, logger)
 	if err != nil {
 		return err
 	}
@@ -94,6 +95,7 @@ func run(logger *slog.Logger) error {
 			auth.NewResetService(auth.NewRepository(pool), hasher, mailer,
 				auth.NewSessionRevoker(sessions), cfg.BaseURL, logger),
 			sessions, rd, logger),
+		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(pool), sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, httpserver.ClientIP(cfg.ClientIPHeader)(r))

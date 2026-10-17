@@ -1,0 +1,58 @@
+{{define "title"}}Tahun Ajaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Tahun Ajaran</h1>
+<p class="muted">Hanya satu tahun ajaran yang aktif. Absensi dan tagihan memakai tahun ajaran aktif.</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-primary" href="/pengaturan/tahun-ajaran/baru">Tambah tahun ajaran</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+{{if .Years}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Nama</th><th>Mulai</th><th>Selesai</th><th>Status</th>{{if $.CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr>
+</thead>
+<tbody>
+{{range .Years}}
+<tr>
+<td><strong>{{.Name}}</strong></td>
+<td>{{.StartDate}}</td>
+<td>{{.EndDate}}</td>
+<td>{{if .IsActive}}<span class="badge badge-success">Aktif</span>{{else}}<span class="badge">Nonaktif</span>{{end}}</td>
+{{if $.CanEdit}}
+<td class="actions" x-data="{ confirming: false }">
+<div class="action-row" x-show="!confirming">
+<a class="btn btn-ghost btn-sm" href="/pengaturan/tahun-ajaran/{{.ID}}/ubah">Ubah</a>
+{{if not .IsActive}}<button type="button" class="btn btn-ghost btn-sm" @click="confirming = true">Aktifkan</button>{{end}}
+</div>
+{{if not .IsActive}}
+<form method="post" action="/pengaturan/tahun-ajaran/{{.ID}}/aktifkan" class="confirm-box" x-show="confirming" x-cloak>
+{{ csrfField }}
+<p>Jadikan <strong>{{.Name}}</strong> tahun ajaran aktif? Perubahan berlaku untuk seluruh sekolah.</p>
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Ya, aktifkan</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="confirming = false">Batal</button>
+</div>
+</form>
+{{end}}
+</td>
+{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada tahun ajaran.</p>
+{{if .CanEdit}}<p><a class="btn btn-primary" href="/pengaturan/tahun-ajaran/baru">Tambah tahun ajaran pertama</a></p>{{end}}
+</section>
+{{end}}
+{{end}}

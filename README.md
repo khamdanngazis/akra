@@ -175,7 +175,7 @@ web/static/
 ```
 
 - Halaman baru: buat `web/templates/<nama>.html` yang mendefinisikan blok `title` dan `content`, lalu panggil `rd.Render(w, r, http.StatusOK, "<nama>", data)`.
-- `/static/` dilayani dengan `Cache-Control: public, max-age=86400`. Nama file belum berhash, jadi perubahan CSS/JS bisa baru terlihat di browser pengguna setelah sampai 1 hari.
+- `/static/` dilayani dengan `Cache-Control: public, max-age=86400`. Di template, rujuk aset dengan `{{ asset "css/app.css" }}`, yang menghasilkan `/static/css/app.css?v=<hash isi file>`. URL berubah setiap isi file berubah, jadi browser tidak menahan versi lama. Pengecualian: font, karena URL-nya juga dipakai `url()` di CSS.
 - Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
@@ -187,6 +187,9 @@ Tabel `academic_years` (migrasi 000008), fungsi di [internal/school/academic_yea
 - Tepat satu tahun ajaran aktif per sekolah, dijaga unique partial index `academic_years_one_active`. Tahun ajaran baru selalu nonaktif.
 - `end_date` harus setelah `start_date`, dan nama unik per sekolah (database menolak keduanya).
 - Ganti tahun aktif hanya lewat `school.SetActive(ctx, tx, schoolID, yearID)` di dalam transaksi. Fungsi ini mengunci semua tahun ajaran sekolah dulu agar dua aktivasi bersamaan tidak bertabrakan.
+- Halaman `/pengaturan/tahun-ajaran`: daftar untuk `admin_tu` dan `kepala_sekolah` (hanya baca); tambah, ubah, dan aktifkan hanya `admin_tu`. Mengaktifkan memakai konfirmasi (Alpine). Tidak ada tombol hapus.
+- Setiap create, update, dan activate dicatat di `audit_logs` (`academic_year.create`, `.update`, `.activate`) dalam transaksi yang sama.
+- ID di URL divalidasi formatnya (`database.IsUUID`) sebelum query; ID milik sekolah lain atau tidak valid menghasilkan `404`.
 - Semua fungsi repository menerima `school_id` dan memperlakukan data sekolah lain sebagai tidak ada (`school.ErrNotFound`). Fungsi repository menerima `database.DBTX` (pool atau transaksi), sehingga perubahan data dan `audit.Record` bisa berada di satu transaksi.
 
 ## Audit

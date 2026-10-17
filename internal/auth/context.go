@@ -24,6 +24,13 @@ func withIdentity(ctx context.Context, id Identity) context.Context {
 	return context.WithValue(ctx, identityKey{}, id)
 }
 
+// ContextWithIdentity menyimpan id ke ctx seperti yang dilakukan
+// RequireLogin. Hanya untuk uji di paket lain; kode aplikasi selalu
+// mendapat Identity dari RequireLogin.
+func ContextWithIdentity(ctx context.Context, id Identity) context.Context {
+	return withIdentity(ctx, id)
+}
+
 // CurrentUser mengembalikan Identity yang disimpan RequireLogin di ctx.
 // ok bernilai false jika request tidak melewati RequireLogin.
 func CurrentUser(ctx context.Context) (Identity, bool) {

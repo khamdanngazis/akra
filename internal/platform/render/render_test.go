@@ -23,7 +23,7 @@ func goodFS() fstest.MapFS {
 }
 
 func TestNew_ParsesPages(t *testing.T) {
-	rd, err := New(goodFS(), discard)
+	rd, err := New(goodFS(), nil, discard)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -36,7 +36,7 @@ func TestNew_ParseErrorNamesFile(t *testing.T) {
 	fsys := goodFS()
 	fsys["broken.html"] = &fstest.MapFile{Data: []byte(`{{define "content"}}{{if}}{{end}}`)}
 
-	_, err := New(fsys, discard)
+	_, err := New(fsys, nil, discard)
 	if err == nil {
 		t.Fatal("New() error = nil, want parse error")
 	}
@@ -48,13 +48,13 @@ func TestNew_ParseErrorNamesFile(t *testing.T) {
 func TestNew_MissingLayout(t *testing.T) {
 	fsys := goodFS()
 	delete(fsys, "layout.html")
-	if _, err := New(fsys, discard); err == nil {
+	if _, err := New(fsys, nil, discard); err == nil {
 		t.Error("New() without layout.html: error = nil")
 	}
 }
 
 func TestRender(t *testing.T) {
-	rd, err := New(goodFS(), discard)
+	rd, err := New(goodFS(), nil, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestRender(t *testing.T) {
 func TestRender_ExecErrorReturns500(t *testing.T) {
 	fsys := goodFS()
 	fsys["bad.html"] = &fstest.MapFile{Data: []byte(`{{define "content"}}{{.Missing.Field}}{{end}}`)}
-	rd, err := New(fsys, discard)
+	rd, err := New(fsys, nil, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +92,43 @@ func TestRender_ExecErrorReturns500(t *testing.T) {
 }
 
 func TestRender_UnknownPage(t *testing.T) {
-	rd, _ := New(goodFS(), discard)
+	rd, _ := New(goodFS(), nil, discard)
 	rec := httptest.NewRecorder()
 	rd.Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "nope", nil)
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestAsset(t *testing.T) {
+	fsys := goodFS()
+	fsys["home.html"] = &fstest.MapFile{Data: []byte(`{{define "content"}}{{asset "css/app.css"}}{{end}}`)}
+	static := fstest.MapFS{"css/app.css": {Data: []byte("body{}")}}
+
+	rd, err := New(fsys, static, discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	rd.Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "home", nil)
+	first := rec.Body.String()
+	if !strings.Contains(first, "/static/css/app.css?v=") {
+		t.Fatalf("body = %q, want versioned asset URL", first)
+	}
+
+	static["css/app.css"] = &fstest.MapFile{Data: []byte("body{color:red}")}
+	rd, _ = New(fsys, static, discard)
+	rec = httptest.NewRecorder()
+	rd.Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "home", nil)
+	if rec.Body.String() == first {
+		t.Error("asset URL did not change after the file content changed")
+	}
+
+	fsys["home.html"] = &fstest.MapFile{Data: []byte(`{{define "content"}}{{asset "css/salah.css"}}{{end}}`)}
+	rd, _ = New(fsys, static, discard)
+	rec = httptest.NewRecorder()
+	rd.Render(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "home", nil)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("unknown asset: status = %d, want 500", rec.Code)
 	}
 }

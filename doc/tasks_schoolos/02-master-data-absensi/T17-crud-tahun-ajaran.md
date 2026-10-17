@@ -29,12 +29,12 @@ Admin/TU bisa membuat, melihat, dan mengubah tahun ajaran dari antarmuka. Peran 
 - `web/templates/school/academic_year_form.html`
 
 ## Kriteria selesai
-- [ ] Admin/TU bisa membuat, mengubah, dan mengaktifkan tahun ajaran
-- [ ] Guru yang membuka `/pengaturan/tahun-ajaran` mendapat `403`
-- [ ] Orang tua yang membuka halaman yang sama mendapat `403`
-- [ ] ID tahun ajaran milik sekolah lain menghasilkan `404`, bukan data
-- [ ] Setiap create, update, dan activate tercatat di `audit_logs`
-- [ ] Form tanpa token CSRF ditolak (dari T09)
+- [x] Admin/TU bisa membuat, mengubah, dan mengaktifkan tahun ajaran
+- [x] Guru yang membuka `/pengaturan/tahun-ajaran` mendapat `403`
+- [x] Orang tua yang membuka halaman yang sama mendapat `403`
+- [x] ID tahun ajaran milik sekolah lain menghasilkan `404`, bukan data
+- [x] Setiap create, update, dan activate tercatat di `audit_logs`
+- [x] Form tanpa token CSRF ditolak (dari T09)
 
 ## Catatan
 - Tahun ajaran yang sudah punya data absensi tidak boleh dihapus. Di task ini cukup tidak menyediakan tombol hapus.
