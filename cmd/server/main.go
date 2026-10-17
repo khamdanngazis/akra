@@ -13,15 +13,11 @@ import (
 	"github.com/alexedwards/scs/pgxstore"
 
 	"akra/internal/auth"
-	"akra/internal/classes"
 	"akra/internal/platform/config"
-	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
-	"akra/internal/school"
-	"akra/internal/students"
 	"akra/web"
 )
 
@@ -67,11 +63,6 @@ func run(logger *slog.Logger) error {
 		Iterations:  cfg.Argon2Iterations,
 		Parallelism: cfg.Argon2Parallelism,
 	})
-	authSvc, err := auth.NewService(auth.NewRepository(pool), hasher)
-	if err != nil {
-		return err
-	}
-
 	sessionStore := pgxstore.NewWithCleanupInterval(pool, auth.SessionCleanupInterval)
 	defer sessionStore.StopCleanup()
 	secure := cfg.AppEnv != config.EnvDevelopment
@@ -86,21 +77,13 @@ func run(logger *slog.Logger) error {
 		logger.Info("client IP read from proxy header", "header", cfg.ClientIPHeader)
 	}
 
-	r := newRouter(routerDeps{
-		pool:        pool,
-		csrf:        csrf.Middleware(secure, logger),
-		sessions:    sessions,
-		render:      rd,
-		static:      static,
-		authHandler: auth.NewHandler(authSvc, sessions, rd, logger),
-		resetHandler: auth.NewResetHandler(
-			auth.NewResetService(auth.NewRepository(pool), hasher, mailer,
-				auth.NewSessionRevoker(sessions), cfg.BaseURL, logger),
-			sessions, rd, logger),
-		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(pool), sessions, rd, logger),
-		classes:      classes.NewHandler(classes.NewService(pool), pool, sessions, rd, logger),
-		students:     students.NewHandler(students.NewService(pool), sessions, rd, logger),
+	r, err := newApp(appDeps{
+		db: pool, pinger: pool, sessions: sessions, render: rd, static: static,
+		mailer: mailer, hasher: hasher, secure: secure, baseURL: cfg.BaseURL, logger: logger,
 	})
+	if err != nil {
+		return err
+	}
 
 	srv := httpserver.New(cfg, httpserver.ClientIP(cfg.ClientIPHeader)(r))
 

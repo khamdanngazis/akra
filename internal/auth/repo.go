@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+
+	"akra/internal/platform/database"
 )
 
 // PostgresRepository mengimplementasikan Repository dengan PostgreSQL.
 type PostgresRepository struct {
-	db *pgxpool.Pool
+	db database.DB
 }
 
 // NewRepository mengembalikan PostgresRepository yang memakai db.
-func NewRepository(db *pgxpool.Pool) *PostgresRepository {
+func NewRepository(db database.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 

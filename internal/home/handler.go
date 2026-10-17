@@ -27,6 +27,11 @@ type page struct {
 func Handler(rd Renderer, sessions *scs.SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, _ := auth.CurrentUser(r.Context())
+		// Akun orang tua hanya memakai portal.
+		if id.HasRole(auth.RoleOrangTua) {
+			http.Redirect(w, r, auth.PortalPath, http.StatusSeeOther)
+			return
+		}
 		rd.Render(w, r, http.StatusOK, "home", page{User: id, Flash: auth.PopFlash(r.Context(), sessions)})
 	}
 }

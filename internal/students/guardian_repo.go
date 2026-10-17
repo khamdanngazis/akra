@@ -60,6 +60,9 @@ type StudentGuardian struct {
 	Guardian
 	Relationship string
 	IsPrimary    bool
+	// AccountStatus adalah status akun portal wali (AccountNone,
+	// AccountPending, AccountActive, atau AccountDisabled).
+	AccountStatus string
 }
 
 // GuardianChild adalah siswa yang diasuh seorang wali.
@@ -174,9 +177,14 @@ func ListByStudent(ctx context.Context, q database.DBTX, schoolID, studentID str
 		return nil, nil
 	}
 	rows, err := q.Query(ctx, `
-		SELECT `+guardianColumns+`, sg.relationship, sg.is_primary
+		SELECT `+guardianColumns+`, sg.relationship, sg.is_primary,
+		       CASE WHEN u.id IS NULL THEN ''
+		            WHEN u.is_active THEN 'active'
+		            WHEN u.password_hash = '' THEN 'pending'
+		            ELSE 'disabled' END
 		FROM student_guardians sg
 		JOIN guardians g ON g.id = sg.guardian_id AND g.school_id = sg.school_id
+		LEFT JOIN users u ON u.guardian_id = g.id AND u.school_id = g.school_id
 		WHERE sg.school_id = $1 AND sg.student_id = $2
 		ORDER BY sg.is_primary DESC, lower(g.full_name)`, schoolID, studentID)
 	if err != nil {
@@ -186,7 +194,7 @@ func ListByStudent(ctx context.Context, q database.DBTX, schoolID, studentID str
 		var sg StudentGuardian
 		g := &sg.Guardian
 		err := row.Scan(&g.ID, &g.SchoolID, &g.FullName, &g.Phone, &g.Email, &g.Address, &g.CreatedAt, &g.UpdatedAt,
-			&sg.Relationship, &sg.IsPrimary)
+			&sg.Relationship, &sg.IsPrimary, &sg.AccountStatus)
 		return sg, err
 	})
 	if err != nil {

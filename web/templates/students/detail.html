@@ -24,6 +24,37 @@
 </section>
 
 <section class="card">
+<h2>Orang tua/wali</h2>
+{{if .Guardians}}
+<ul class="guardian-list">
+{{range .Guardians}}
+<li>
+<div><strong>{{.FullName}}</strong> <span class="muted">· {{.Relationship}}</span>{{if .IsPrimary}} <span class="badge badge-info">Utama</span>{{end}}</div>
+<div class="muted small">{{with .Phone}}{{.}}{{end}}{{if and .Phone .Email}} · {{end}}{{with .Email}}{{.}}{{end}}</div>
+<div class="guardian-account">
+{{if eq .AccountStatus "active"}}<span class="badge badge-success">Akun portal aktif</span>
+{{else if eq .AccountStatus "pending"}}<span class="badge">Menunggu aktivasi</span>
+{{else if eq .AccountStatus "disabled"}}<span class="badge">Akun nonaktif</span>
+{{else}}<span class="muted small">Belum punya akun portal</span>{{end}}
+{{if $.CanEdit}}
+{{if and (eq .AccountStatus "") .Email}}
+<form method="post" action="/siswa/{{$.Student.ID}}/wali/{{.ID}}/akun">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Buat akun portal</button></form>
+{{else if eq .AccountStatus "pending"}}
+<form method="post" action="/siswa/{{$.Student.ID}}/wali/{{.ID}}/akun/kirim-ulang">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Kirim ulang aktivasi</button></form>
+{{else if and (eq .AccountStatus "") (not .Email)}}
+<span class="hint">Tambahkan email untuk membuat akun.</span>
+{{end}}
+{{end}}
+</div>
+</li>
+{{end}}
+</ul>
+{{else}}
+<p class="muted">Belum ada data orang tua/wali.</p>
+{{end}}
+</section>
+
+<section class="card">
 <h2>Riwayat kelas</h2>
 {{if .History}}
 <ul class="timeline">

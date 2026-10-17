@@ -3,7 +3,7 @@
 <header class="app-header">
 <a class="brand" href="/">{{template "logo"}}<span class="brand-name">AKRA</span></a>
 <nav class="app-nav" aria-label="Menu utama">
-<a href="/">Beranda</a>
+{{if .HasRole "orang_tua"}}<a href="/portal">Portal</a>{{else}}<a href="/">Beranda</a>{{end}}
 {{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/siswa">Siswa</a>
 <a href="/kelas">Kelas</a>
 <a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a>{{end}}

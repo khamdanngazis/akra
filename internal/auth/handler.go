@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -61,8 +63,8 @@ func (h *Handler) Routes(r chi.Router) {
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
 	next := SafeNext(r.URL.Query().Get("next"))
 	// Pengguna yang sudah login tidak perlu melihat form lagi.
-	if _, ok := identityFromSession(r, h.sessions); ok {
-		http.Redirect(w, r, next, http.StatusSeeOther)
+	if id, ok := identityFromSession(r, h.sessions); ok {
+		http.Redirect(w, r, LandingPath(id.Roles, next), http.StatusSeeOther)
 		return
 	}
 	h.render.Render(w, r, http.StatusOK, loginPageName, loginPage{Next: next, Flash: PopFlash(r.Context(), h.sessions)})
@@ -91,7 +93,7 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 			h.render.Render(w, r, http.StatusInternalServerError, loginPageName, page)
 			return
 		}
-		http.Redirect(w, r, page.Next, http.StatusSeeOther)
+		http.Redirect(w, r, LandingPath(user.Roles, page.Next), http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
 		h.render.Render(w, r, http.StatusUnauthorized, loginPageName, page)
@@ -134,4 +136,16 @@ func clientIP(r *http.Request) netip.Addr {
 		return netip.Addr{}
 	}
 	return ip.Unmap()
+}
+
+// PortalPath adalah halaman awal portal orang tua.
+const PortalPath = "/portal"
+
+// LandingPath menentukan tujuan setelah login. Akun orang tua hanya boleh
+// ke portal, jadi next di luar /portal diganti PortalPath.
+func LandingPath(roles []string, next string) string {
+	if slices.Contains(roles, RoleOrangTua) && next != PortalPath && !strings.HasPrefix(next, PortalPath+"/") {
+		return PortalPath
+	}
+	return next
 }

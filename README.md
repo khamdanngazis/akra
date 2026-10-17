@@ -121,7 +121,7 @@ Sesi dikelola [`scs`](https://github.com/alexedwards/scs) dan disimpan di tabel 
 
 ### Route yang wajib login
 
-Middleware `auth.RequireLogin` mengalihkan request tanpa sesi ke `/login?next=<path>`. Parameter `next` hanya menerima path lokal (diawali `/`, bukan `//` atau URL absolut), selain itu diganti `/`. Route publik hanya `/healthz`, `/healthz/db`, `/login`, `/logout`, dan `/static/`. Semua route baru dipasang di grup `RequireLogin` di [cmd/server/routes.go](cmd/server/routes.go).
+Middleware `auth.RequireLogin` mengalihkan request tanpa sesi ke `/login?next=<path>`. Parameter `next` hanya menerima path lokal (diawali `/`, bukan `//` atau URL absolut), selain itu diganti `/`. Route publik hanya `/healthz`, `/healthz/db`, `/login`, `/logout`, `/lupa-password`, `/reset-password`, `/aktivasi`, dan `/static/`. Semua route baru dipasang di grup `RequireLogin` di [cmd/server/routes.go](cmd/server/routes.go).
 
 ### CSRF
 
@@ -242,6 +242,17 @@ Tabel `guardians` dan `student_guardians` (migrasi 000012), fungsi di [internal/
 - `student_guardians` menyimpan `school_id`; foreign key komposit menjamin siswa dan wali dari sekolah yang sama.
 - Telepon dinormalisasi ke satu format `+62…` (`students.NormalizePhone`): `0812-3456-7890`, `+62 812 3456 7890`, dan `81234567890` semuanya menjadi `+6281234567890`. Email disimpan huruf kecil.
 - Audit: `guardian.create`, `guardian.link`, `guardian.unlink`.
+
+### Akun portal orang tua
+
+Migrasi 000013 menambah `users.guardian_id` (unik, foreign key komposit ke `guardians`) dan tabel `activation_tokens`.
+
+- Di detail siswa, bagian **Orang tua/wali** menampilkan status akun tiap wali. `admin_tu` bisa **Buat akun portal** (hanya wali yang punya email) atau **Kirim ulang aktivasi** untuk akun yang belum aktif ([guardian_account.go](internal/students/guardian_account.go)).
+- Akun dibuat **nonaktif tanpa password** dengan peran `orang_tua`; `school_id` diambil dari wali. Satu wali satu akun. Email yang sudah dipakai akun lain di sekolah yang sama ditolak.
+- Email aktivasi (lewat `MAIL_DRIVER`) berisi tautan `/aktivasi?token=…` yang berlaku **7 hari**, sekali pakai, dan memuat **kode sekolah** untuk login. Token disimpan sebagai SHA-256. Kirim ulang membatalkan tautan lama.
+- Orang tua membuat password sendiri di `/aktivasi` ([activation.go](internal/auth/activation.go)). Sebelum aktivasi, login selalu gagal dengan pesan yang sama seperti kredensial salah.
+- Setelah login, orang tua diarahkan ke `/portal` (parameter `next` ke halaman admin diabaikan). `/portal` hanya untuk peran `orang_tua`; semua halaman admin menolak orang tua dengan `403`, dan `/` mengalihkan orang tua ke `/portal`. Isi portal dikerjakan di T43–T46.
+- Audit: `guardian_account.create`, `guardian_account.resend_activation`, `guardian_account.activate`.
 
 ## Audit
 

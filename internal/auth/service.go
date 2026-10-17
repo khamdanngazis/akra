@@ -154,9 +154,18 @@ func (s *Service) checkCredentials(ctx context.Context, schoolCode, email, passw
 		return User{}, false, fmt.Errorf("auth: find user: %w", err)
 	}
 
-	match, err := VerifyPassword(password, creds.PasswordHash)
+	// Akun yang belum diaktivasi (akun orang tua) belum punya password.
+	// Hash dummy tetap diverifikasi agar waktu respons sama.
+	hash := creds.PasswordHash
+	if hash == "" {
+		hash = s.dummyHash
+	}
+	match, err := VerifyPassword(password, hash)
 	if err != nil {
 		return User{}, false, err
+	}
+	if creds.PasswordHash == "" {
+		match = false
 	}
 	if !match || !creds.IsActive {
 		return User{}, false, nil
