@@ -29,12 +29,12 @@ Aplikasi berjalan di Railway dengan database Postgres. Halaman login bisa dibuka
 - `README.md` (bagian deploy)
 
 ## Kriteria selesai
-- [ ] `docker build .` berhasil di mesin lokal
-- [ ] Deploy Railway sukses dan status service hijau
-- [ ] `https://<url-railway>/healthz` mengembalikan `200`
-- [ ] `https://<url-railway>/healthz/db` mengembalikan `200`
-- [ ] Halaman login bisa dibuka dari browser
-- [ ] Tidak ada rahasia di repositori (dicek dengan `git log -p` secara sederhana)
+- [x] `docker build .` berhasil di mesin lokal
+- [x] Deploy Railway sukses dan status service hijau
+- [x] `https://<url-railway>/healthz` mengembalikan `200`
+- [x] `https://<url-railway>/healthz/db` mengembalikan `200`
+- [x] Halaman login bisa dibuka dari browser
+- [x] Tidak ada rahasia di repositori (dicek dengan `git log -p` secara sederhana)
 
 ## Catatan
 - Gunakan lingkungan `staging` dulu. `production` dibuat setelah uji internal.

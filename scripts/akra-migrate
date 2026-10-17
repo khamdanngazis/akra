@@ -1,0 +1,7 @@
+#!/bin/sh
+# Menjalankan golang-migrate terhadap $DATABASE_URL dengan migrasi di image.
+# Contoh: akra-migrate up | akra-migrate down 1 | akra-migrate version
+set -eu
+: "${DATABASE_URL:?DATABASE_URL is not set}"
+[ "$#" -gt 0 ] || set -- up
+exec migrate -path "${MIGRATIONS_DIR:-/app/db/migrations}" -database "$DATABASE_URL" "$@"

@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+bin/
+tmp/
+*.log
+*.test
+*.out
+doc/
+README.md
+docker-compose.yml
+/akra
+/server
