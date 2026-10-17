@@ -32,10 +32,10 @@ Satu fungsi murni menentukan status tagihan dari total dan pembayaran aktif. Sem
 - `internal/billing/status_test.go`
 
 ## Kriteria selesai
-- [ ] Semua kasus uji di atas lulus
-- [ ] Tidak ada import `database` atau `context` di file `status.go`
-- [ ] `IsOverdue` mengembalikan `false` untuk tagihan lunas, walaupun jatuh tempo sudah lewat
-- [ ] `IsOverdue` dengan `today` sama dengan `due_date` mengembalikan `false` (jatuh tempo hari ini belum terlambat)
+- [x] Semua kasus uji di atas lulus
+- [x] Tidak ada import `database` atau `context` di file `status.go`
+- [x] `IsOverdue` mengembalikan `false` untuk tagihan lunas, walaupun jatuh tempo sudah lewat
+- [x] `IsOverdue` dengan `today` sama dengan `due_date` mengembalikan `false` (jatuh tempo hari ini belum terlambat)
 
 ## Catatan
 - Fungsi ini sengaja sederhana. Pembulatan atau selisih transfer ditangani di T35 sebagai aturan terpisah, bukan di sini.

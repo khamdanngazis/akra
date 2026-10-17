@@ -293,7 +293,11 @@ Tabel `invoices` dan `invoice_items` (migrasi 000016), fungsi di [invoice_servic
 - Satu jenis tagihan per enrollment per periode (`UNIQUE (enrollment_id, fee_type_id, period)` di item): SPP September tidak bisa tertagih dua kali. Item menyimpan salinan `enrollment_id` dan `period` yang dijaga foreign key komposit ke tagihannya.
 - Nominal item diambil dari default jenis tagihan, tetapi bisa diisi lain per siswa (`ItemRequest.Amount`). Nominal tersimpan di item, jadi mengubah default jenis tagihan tidak mengubah tagihan yang sudah ada. Hanya jenis tagihan aktif yang bisa dipakai.
 - Jatuh tempo default: tanggal jatuh tempo jenis tagihan pada bulan periode.
-- Status tersimpan hanya `belum_bayar`, `sebagian`, `lunas`. **"Terlambat" tidak disimpan**; dihitung saat ditampilkan (T31). Tagihan bertotal 0 langsung `lunas`.
+- Status tersimpan hanya `belum_bayar`, `sebagian`, `lunas`. **"Terlambat" tidak disimpan**; dihitung saat ditampilkan. Tagihan bertotal 0 langsung `lunas`.
+- **Status selalu dari [status.go](internal/billing/status.go)**, fungsi murni tanpa database, context, atau jam sistem:
+  - `ComputeStatus(total, paid)`: 0 → `belum_bayar`; kurang dari total → `sebagian`; sama dengan total → `lunas` (0/0 juga lunas); lebih → `ErrOverpayment`; negatif → `ErrNegativeAmount`. `paid` adalah jumlah pembayaran **aktif** (belum dibatalkan).
+  - `IsOverdue(status, dueDate, today)`: belum lunas dan `today` setelah jatuh tempo (hari jatuh tempo belum terlambat). `today` dari `clock.Today()` (Asia/Jakarta).
+  - Pembayaran (T35), pembatalan (T39), tunggakan (T42), dan portal (T45) wajib memakai fungsi ini.
 - Audit: `invoice.create`.
 
 ## Audit
