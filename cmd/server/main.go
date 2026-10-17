@@ -14,6 +14,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/config"
+	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
 )
@@ -54,10 +55,12 @@ func run(logger *slog.Logger) error {
 
 	sessionStore := pgxstore.NewWithCleanupInterval(pool, auth.SessionCleanupInterval)
 	defer sessionStore.StopCleanup()
-	sessions := auth.NewSessionManager(sessionStore, cfg.AppEnv != config.EnvDevelopment, logger)
+	secure := cfg.AppEnv != config.EnvDevelopment
+	sessions := auth.NewSessionManager(sessionStore, secure, logger)
 
 	r := newRouter(routerDeps{
 		pool:        pool,
+		csrf:        csrf.Middleware(secure, logger),
 		sessions:    sessions,
 		authHandler: auth.NewHandler(authSvc, sessions, logger),
 	})

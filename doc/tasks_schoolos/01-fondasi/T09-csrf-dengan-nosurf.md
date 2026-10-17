@@ -26,11 +26,11 @@ Semua request yang mengubah data (POST, PUT, PATCH, DELETE) wajib membawa token 
 - `cmd/server/main.go` atau `routes.go`
 
 ## Kriteria selesai
-- [ ] POST ke `/login` tanpa token mengembalikan `403`
-- [ ] POST dengan token valid diproses
-- [ ] POST dengan token dari sesi lain ditolak
-- [ ] `GET /healthz` tetap `200`
-- [ ] Cookie CSRF memiliki atribut `HttpOnly` dan `SameSite=Lax`
+- [x] POST ke `/login` tanpa token mengembalikan `403`
+- [x] POST dengan token valid diproses
+- [x] POST dengan token dari sesi lain ditolak
+- [x] `GET /healthz` tetap `200`
+- [x] Cookie CSRF memiliki atribut `HttpOnly` dan `SameSite=Lax`
 
 ## Catatan
 - Token harus diperiksa di setiap route yang mengubah data. Tambahkan uji otomatis yang memeriksa ini (ikut dikerjakan di T58 dan T59 nanti).
