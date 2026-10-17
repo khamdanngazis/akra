@@ -24,7 +24,8 @@ type routerDeps struct {
 // newRouter menyusun semua route aplikasi.
 //
 // Route publik: /healthz, /healthz/db, /login, /logout, dan nanti /static/.
-// Semua route lain wajib berada di grup RequireLogin.
+// Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
+// menyebut peran yang diizinkan di komentar di atas handler-nya.
 func newRouter(d routerDeps) http.Handler {
 	r := chi.NewRouter()
 
@@ -44,6 +45,7 @@ func newRouter(d routerDeps) http.Handler {
 		// Wajib login.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireLogin(d.sessions))
+			// Semua peran.
 			r.Get("/", homePlaceholder)
 		})
 	})

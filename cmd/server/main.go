@@ -23,6 +23,7 @@ const shutdownTimeout = 10 * time.Second
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
 	if err := run(logger); err != nil {
 		logger.Error("server exited with error", "error", err)

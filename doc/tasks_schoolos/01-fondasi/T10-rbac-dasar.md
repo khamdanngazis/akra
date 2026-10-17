@@ -28,10 +28,10 @@ Akses route dibatasi berdasarkan peran. Peran yang tidak sesuai mendapat `403`.
 - `README.md`
 
 ## Kriteria selesai
-- [ ] Uji unit: `RequireRole("bendahara")` menolak `guru` dengan `403`
-- [ ] Uji unit: `RequireRole("bendahara")` mengizinkan `bendahara`
-- [ ] Uji unit: pengguna dengan dua peran (misalnya `guru` dan `bendahara`) diizinkan jika salah satu cocok
-- [ ] Route debug sudah dihapus sebelum merge ke `main`
+- [x] Uji unit: `RequireRole("bendahara")` menolak `guru` dengan `403`
+- [x] Uji unit: `RequireRole("bendahara")` mengizinkan `bendahara`
+- [x] Uji unit: pengguna dengan dua peran (misalnya `guru` dan `bendahara`) diizinkan jika salah satu cocok
+- [x] Route debug sudah dihapus sebelum merge ke `main`
 
 ## Catatan
 - Pembatasan per sekolah (`school_id`) bukan tanggung jawab RBAC ini. Itu diuji di T58 dan dipakai di setiap modul.
