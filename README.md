@@ -320,6 +320,20 @@ Halaman `/keuangan/tagihan-massal` (hanya `bendahara`), fungsi di [bulk_service.
 - Tagihan menyimpan `bulk_run_id`. Audit: satu baris `billing.bulk_create` berisi ringkasan, tidak ada `invoice.create` per tagihan.
 - Worker ada di [bulk_job.go](internal/billing/bulk_job.go) (bukan subpaket `jobs/`) karena memakai fungsi internal paket `billing`.
 
+### Pembayaran
+
+Tabel `payments` (migrasi 000020), paket [internal/payments](internal/payments/service.go). Form pencatatan menyusul di T35.
+
+- **Append-only:** trigger `payments_append_only` menolak `UPDATE`, `DELETE`, dan `TRUNCATE` untuk semua user database, termasuk pemilik tabel (pola yang sama dengan `audit_logs`). Repository hanya punya insert dan `ListByInvoice`. Pembatalan (T38) dicatat di tabel terpisah tanpa mengubah baris pembayaran.
+- Database menolak nominal ≤ 0, metode selain `tunai`/`transfer`, transfer tanpa rekening tujuan, serta tagihan atau pencatat dari sekolah lain (foreign key komposit).
+- `RecordPayment(ctx, tx, actor, req)` berjalan di dalam transaksi pemanggil, sehingga beberapa tagihan dalam satu form batal semua jika satu gagal:
+  - tagihan dikunci (`SELECT … FOR UPDATE`) agar dua pembayaran bersamaan tidak sama-sama lolos pemeriksaan sisa;
+  - nominal melebihi sisa (total − pembayaran aktif) ditolak dengan `billing.ErrOverpayment`; tagihan yang dibatalkan ditolak;
+  - tanggal bayar wajib dan tidak boleh setelah hari ini (Asia/Jakarta);
+  - status tagihan diperbarui dengan `billing.ComputeStatus` dalam transaksi yang sama;
+  - audit `payment.create` (tanpa catatan, karena bisa berisi data pribadi).
+- Rekening dan nomor referensi hanya disimpan untuk transfer. `receipt_number` masih kosong sampai T41.
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).
