@@ -33,11 +33,11 @@ Pengguna bisa login dengan email dan password. Password disimpan dengan `argon2i
 - `db/migrations/000003_login_attempts.up.sql` dan `.down.sql`
 
 ## Kriteria selesai
-- [ ] Login dengan password benar berhasil (validasi di service)
-- [ ] Email salah dan password salah menghasilkan error yang sama persis
-- [ ] Hash di database berformat argon2id (`$argon2id$...`), bukan plaintext
-- [ ] Setelah 5 kegagalan dalam 15 menit, percobaan ke-6 ditolak meski password benar
-- [ ] Uji unit: hash lalu verify berhasil, verify dengan password salah gagal, email dengan huruf besar tetap cocok
+- [x] Login dengan password benar berhasil (validasi di service)
+- [x] Email salah dan password salah menghasilkan error yang sama persis
+- [x] Hash di database berformat argon2id (`$argon2id$...`), bukan plaintext
+- [x] Setelah 5 kegagalan dalam 15 menit, percobaan ke-6 ditolak meski password benar
+- [x] Uji unit: hash lalu verify berhasil, verify dengan password salah gagal, email dengan huruf besar tetap cocok
 
 ## Catatan
 - Jangan pernah mencatat password, bahkan dalam log error.

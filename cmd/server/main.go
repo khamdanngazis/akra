@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/auth"
 	"akra/internal/platform/config"
 	"akra/internal/platform/database"
 	"akra/internal/platform/health"
@@ -42,9 +43,20 @@ func run(logger *slog.Logger) error {
 	defer pool.Close()
 	logger.Info("connected to database", "max_conns", cfg.DBMaxConns)
 
+	hasher := auth.NewHasher(auth.PasswordParams{
+		MemoryKiB:   cfg.Argon2MemoryKiB,
+		Iterations:  cfg.Argon2Iterations,
+		Parallelism: cfg.Argon2Parallelism,
+	})
+	authSvc, err := auth.NewService(auth.NewRepository(pool), hasher)
+	if err != nil {
+		return err
+	}
+
 	r := chi.NewRouter()
 	r.Get("/healthz", health.Handler)
 	r.Get("/healthz/db", health.DBHandler(pool))
+	auth.NewHandler(authSvc, logger).Routes(r)
 
 	srv := httpserver.New(cfg, r)
 

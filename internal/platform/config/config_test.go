@@ -10,12 +10,18 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "20")
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("ARGON2_MEMORY_KIB", "65536")
+	t.Setenv("ARGON2_ITERATIONS", "3")
+	t.Setenv("ARGON2_PARALLELISM", "4")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	want := Config{Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction}
+	want := Config{
+		Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction,
+		Argon2MemoryKiB: 65536, Argon2Iterations: 3, Argon2Parallelism: 4,
+	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
 	}
@@ -36,6 +42,9 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Setenv("ARGON2_MEMORY_KIB", "")
+	t.Setenv("ARGON2_ITERATIONS", "")
+	t.Setenv("ARGON2_PARALLELISM", "")
 	t.Setenv("PORT", "")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "")
@@ -50,6 +59,10 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.DBMaxConns != 10 {
 		t.Errorf("DBMaxConns = %d, want 10", cfg.DBMaxConns)
+	}
+	if cfg.Argon2MemoryKiB != 19456 || cfg.Argon2Iterations != 2 || cfg.Argon2Parallelism != 1 {
+		t.Errorf("argon2 params = (%d, %d, %d), want (19456, 2, 1)",
+			cfg.Argon2MemoryKiB, cfg.Argon2Iterations, cfg.Argon2Parallelism)
 	}
 	if cfg.AppEnv != EnvDevelopment {
 		t.Errorf("AppEnv = %q, want %q", cfg.AppEnv, EnvDevelopment)

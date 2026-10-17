@@ -61,8 +61,21 @@ go build -o bin/server ./cmd/server
 | `DB_MAX_CONNS` | tidak | `10` | Batas koneksi pool (`MinConns` = 2) |
 | `PORT` | tidak | `8080` | Port HTTP |
 | `APP_ENV` | tidak | `development` | `development`, `staging`, atau `production` |
+| `ARGON2_MEMORY_KIB` | tidak | `19456` | Memori argon2id per hash (KiB) |
+| `ARGON2_ITERATIONS` | tidak | `2` | Iterasi argon2id |
+| `ARGON2_PARALLELISM` | tidak | `1` | Paralelisme argon2id |
+
+Default argon2id mengikuti batas minimum OWASP (19 MiB, t=2, p=1). Mengubah parameter hanya berlaku untuk hash baru; hash lama tetap bisa diverifikasi karena parameternya tersimpan di dalam hash.
 
 Server tidak akan start jika database tidak bisa dijangkau dalam 5 detik.
+
+## Login
+
+Login memakai **kode sekolah**, email, dan password. Email unik per sekolah, jadi kode sekolah (`schools.code`, mis. `sd-harapan`) menentukan tenant.
+
+- Semua kegagalan kredensial (sekolah tidak ada, email tidak terdaftar, password salah, akun nonaktif) menampilkan pesan yang sama.
+- Percobaan dicatat di `login_attempts`. Login dikunci selama 15 menit setelah 5 kegagalan untuk pasangan kode sekolah + email (dihitung sejak login sukses terakhir), atau 20 kegagalan dari satu IP. Batas IP lebih longgar karena banyak pengguna satu sekolah berbagi satu IP.
+- Selama belum ada halaman admin, pengguna dibuat langsung lewat SQL dengan hash dari `auth.Hasher`.
 
 ## Migrasi Database
 
