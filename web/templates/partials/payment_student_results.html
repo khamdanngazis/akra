@@ -1,0 +1,16 @@
+{{/* payment_student_results menampilkan hasil pencarian siswa di form pembayaran. Argumen: payments.searchView. */}}
+{{define "payment_student_results" -}}
+{{if .Searched}}
+{{if .Results}}
+<ul class="result-list" aria-label="Hasil pencarian">
+{{range .Results}}
+<li><a href="/keuangan/pembayaran/baru?siswa={{.ID}}"><span><strong>{{.Name}}</strong><span class="muted"> · NIS {{.NIS}}</span></span>{{template "student_status" .Status}}</a></li>
+{{end}}
+</ul>
+{{else}}
+<p class="muted">Tidak ada siswa yang cocok dengan “{{.Query}}”.</p>
+{{end}}
+{{else if .Query}}
+<p class="hint">Ketik minimal 2 huruf.</p>
+{{end}}
+{{- end}}

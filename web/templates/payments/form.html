@@ -1,0 +1,108 @@
+{{define "title"}}Catat Pembayaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if not .Student}}
+<h1>Catat Pembayaran</h1>
+<p class="muted">Cari siswa berdasarkan nama atau NIS.</p>
+{{template "flash" .}}
+<section class="card" x-data="{
+  load(q) {
+    fetch('/keuangan/pembayaran/cari?q=' + encodeURIComponent(q), { headers: { 'Accept': 'text/html' } })
+      .then(r => { if (r.redirected || !r.ok) { location.reload(); return null } return r.text() })
+      .then(html => { if (html !== null) $refs.results.innerHTML = html })
+  }
+}">
+<form method="get" action="/keuangan/pembayaran/baru" role="search" class="search-row">
+<label for="q" class="visually-hidden">Nama atau NIS siswa</label>
+<input id="q" type="search" name="q" value="{{.Search.Query}}" placeholder="mis. Budi atau 2026001" autocomplete="off" autofocus
+  @input.debounce.300ms="load($el.value)">
+<button type="submit" class="btn btn-ghost">Cari</button>
+</form>
+<div x-ref="results" aria-live="polite">{{template "payment_student_results" .Search}}</div>
+</section>
+{{else}}
+<p class="breadcrumb"><a href="/keuangan/pembayaran/baru">← Cari siswa lain</a></p>
+<h1>Catat Pembayaran</h1>
+<p class="muted"><strong>{{.Student.Name}}</strong> · NIS {{.Student.NIS}} {{template "student_status" .Student.Status}}</p>
+{{template "flash" .}}
+{{if and .Errors (not .Error)}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+{{if not .Invoices}}
+<section class="card empty-state"><p>Tidak ada tagihan yang belum lunas untuk siswa ini.</p></section>
+{{else}}
+<form method="post" action="/keuangan/pembayaran" class="stack" novalidate data-method="{{.Form.Method}}"
+  x-data="{ submitting: false, method: $el.dataset.method || 'tunai', tick: 0,
+    total() { this.tick; let t = 0; $el.querySelectorAll('[data-invoice]').forEach(row => {
+      if (row.querySelector('input[type=checkbox]').checked) t += Number(row.querySelector('[data-amount]').value.replace(/[^0-9]/g, '')) || 0 }); return 'Rp' + t.toLocaleString('id-ID') } }"
+  @input="tick++" @change="tick++" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="student_id" value="{{.Student.ID}}">
+
+<fieldset class="stack">
+<legend class="section-title">Tagihan belum lunas</legend>
+<div class="pay-list">
+{{range .Invoices}}
+<div class="pay-item{{if .Error}} has-error{{end}}" data-invoice>
+<label class="pay-item-head">
+<input type="checkbox" name="invoice_id" value="{{.ID}}"{{if .Checked}} checked{{end}}>
+<span>
+<strong>{{.Label}}</strong> · {{.Period}}
+{{if .Overdue}}<span class="badge badge-danger">Terlambat</span>{{else if .Partial}}<span class="badge badge-warning">Sebagian</span>{{end}}
+<span class="pay-item-meta">{{.ClassName}} · jatuh tempo {{.DueDate}}</span>
+<span class="pay-item-meta">Total {{.Total}}{{if .Partial}} · terbayar {{.Paid}}{{end}} · <strong>sisa {{.Remaining}}</strong></span>
+</span>
+</label>
+<div class="field">
+<label for="amount_{{.ID}}">Nominal dibayar (Rp)</label>
+<input id="amount_{{.ID}}" name="amount_{{.ID}}" value="{{.Amount}}" inputmode="numeric" autocomplete="off" data-amount
+  @blur="const d = $el.value.replace(/[^0-9]/g, ''); if (d && !/[,-]/.test($el.value.replace(/^Rp\s*/i, ''))) $el.value = Number(d).toLocaleString('id-ID')"{{if .Error}} aria-invalid="true" aria-describedby="amount_{{.ID}}-error"{{end}}>
+{{if .Error}}<p class="field-error" id="amount_{{.ID}}-error">{{.Error}}</p>{{else}}<p class="hint">Default: sisa tagihan. Boleh kurang (bayar sebagian).</p>{{end}}
+</div>
+</div>
+{{end}}
+</div>
+</fieldset>
+
+<fieldset class="field{{if .Errors.method}} has-error{{end}}">
+<legend>Metode</legend>
+<div class="status-group choice-group">
+<label class="status-option choice-option"><input type="radio" name="method" value="tunai" x-model="method"{{if ne .Form.Method "transfer"}} checked{{end}}><span>Tunai</span></label>
+<label class="status-option choice-option"><input type="radio" name="method" value="transfer" x-model="method"{{if eq .Form.Method "transfer"}} checked{{end}}><span>Transfer</span></label>
+</div>
+{{with .Errors.method}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+
+<div class="field-grid" x-show="method === 'transfer'"{{if ne .Form.Method "transfer"}} x-cloak{{end}}>
+<div class="field{{if .Errors.bank_account}} has-error{{end}}">
+<label for="bank_account">Rekening tujuan</label>
+<input id="bank_account" name="bank_account" value="{{.Form.BankAccount}}" maxlength="100" list="bank-accounts" placeholder="mis. BCA 1234567890" autocomplete="off"{{if .Errors.bank_account}} aria-invalid="true" aria-describedby="bank-error"{{end}}>
+{{with .BankAccounts}}<datalist id="bank-accounts">{{range .}}<option value="{{.}}">{{end}}</datalist>{{end}}
+{{with .Errors.bank_account}}<p class="field-error" id="bank-error">{{.}}</p>{{else}}<p class="hint">Rekening sekolah yang menerima transfer.</p>{{end}}
+</div>
+<div class="field{{if .Errors.reference}} has-error{{end}}">
+<label for="reference">No. referensi <span class="muted">(opsional)</span></label>
+<input id="reference" name="reference" value="{{.Form.Reference}}" maxlength="100" autocomplete="off">
+{{with .Errors.reference}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+
+<div class="field{{if .Errors.paid_on}} has-error{{end}}">
+<label for="paid_on">Tanggal bayar</label>
+<input id="paid_on" type="date" name="paid_on" value="{{.Form.PaidOn}}" max="{{.Today}}" required{{if .Errors.paid_on}} aria-invalid="true" aria-describedby="paid-on-error"{{end}}>
+{{with .Errors.paid_on}}<p class="field-error" id="paid-on-error">{{.}}</p>{{end}}
+</div>
+
+<div class="field{{if .Errors.note}} has-error{{end}}">
+<label for="note">Catatan <span class="muted">(opsional)</span></label>
+<textarea id="note" name="note" rows="2" maxlength="500">{{.Form.Note}}</textarea>
+{{with .Errors.note}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+
+<div class="action-row pay-submit">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pembayaran <span x-text="total()"></span></button>
+<a class="btn btn-ghost" href="/keuangan/pembayaran/baru">Batal</a>
+</div>
+</form>
+{{end}}
+{{end}}
+{{end}}

@@ -334,6 +334,13 @@ Tabel `payments` (migrasi 000020), paket [internal/payments](internal/payments/s
   - audit `payment.create` (tanpa catatan, karena bisa berisi data pribadi).
 - Rekening dan nomor referensi hanya disimpan untuk transfer. `receipt_number` masih kosong sampai T41.
 
+Halaman (hanya `bendahara`, kecuali detail tagihan):
+
+- `/keuangan/pembayaran/baru`: cari siswa (nama atau awalan NIS, minimal 2 huruf). Alpine.js memuat hasil dari `/keuangan/pembayaran/cari?q=` (potongan HTML) saat mengetik; tanpa JavaScript tombol **Cari** tetap berfungsi. Pencarian hanya di sekolah sendiri.
+- `/keuangan/pembayaran/baru?siswa={id}`: tagihan siswa yang belum lunas (semua tahun ajaran, urut jatuh tempo) dengan sisa dan tanda terlambat. Nominal default sisa tagihan dan boleh kurang (bayar sebagian). Metode tunai/transfer; rekening tujuan wajib untuk transfer, berupa teks bebas dengan saran rekening yang pernah dipakai (pengaturan rekening sekolah belum ada). Tanggal bayar default hari ini (Asia/Jakarta).
+- `POST /keuangan/pembayaran`: semua tagihan yang dicentang diproses dalam **satu transaksi**; jika satu gagal (mis. melebihi sisa), tidak ada yang tersimpan dan form tampil lagi dengan pesan di tagihan tersebut. Tagihan harus milik siswa di form (selain itu `404`). Satu tagihan → redirect ke detail tagihan; beberapa → kembali ke form siswa dengan ringkasan.
+- `/keuangan/tagihan/{id}`: detail tagihan (rincian, terbayar, sisa, daftar pembayaran) untuk `bendahara`, `admin_tu`, dan `kepala_sekolah` (hanya baca). Tautan "Cetak kuitansi" menyusul di T41.
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).

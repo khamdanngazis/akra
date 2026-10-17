@@ -11,6 +11,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/health"
@@ -71,5 +72,6 @@ func newApp(d appDeps) (http.Handler, error) {
 		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
+		payments:    payments.NewHandler(payments.NewService(d.db), d.sessions, d.render, d.logger),
 	}), nil
 }
