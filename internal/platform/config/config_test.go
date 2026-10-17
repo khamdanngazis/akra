@@ -15,6 +15,11 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("MAIL_DRIVER", "resend")
 	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
 	t.Setenv("RESEND_API_KEY", "re_test")
+	t.Setenv("STORAGE_DRIVER", "r2")
+	t.Setenv("R2_ACCOUNT_ID", "acc")
+	t.Setenv("R2_BUCKET", "akra-private")
+	t.Setenv("R2_ACCESS_KEY_ID", "key")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "secret")
 	t.Setenv("ARGON2_MEMORY_KIB", "65536")
 	t.Setenv("ARGON2_ITERATIONS", "3")
 	t.Setenv("ARGON2_PARALLELISM", "4")
@@ -28,6 +33,7 @@ func TestLoad_AllSet(t *testing.T) {
 		Argon2MemoryKiB: 65536, Argon2Iterations: 3, Argon2Parallelism: 4,
 		BaseURL: "https://app.akra.id", RiverWorkers: 8,
 		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
+		StorageDriver: "r2", R2AccountID: "acc", R2Bucket: "akra-private", R2AccessKeyID: "key", R2SecretAccessKey: "secret",
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -131,6 +137,7 @@ func TestLoad_WebDirOnlyInDevelopment(t *testing.T) {
 	t.Setenv("MAIL_DRIVER", "resend")
 	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
 	t.Setenv("RESEND_API_KEY", "re_test")
+	setR2(t)
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "WEB_DIR") {
 		t.Errorf("production with WEB_DIR: error = %v, want error mentioning WEB_DIR", err)
 	}
@@ -175,6 +182,7 @@ func TestLoad_Mail(t *testing.T) {
 			t.Setenv("MAIL_DRIVER", tc.driver)
 			t.Setenv("MAIL_FROM", tc.from)
 			t.Setenv("RESEND_API_KEY", tc.key)
+			setR2(t)
 
 			_, err := Load()
 			if tc.wantInErr == "" {
@@ -204,4 +212,47 @@ func TestLoad_RiverWorkers(t *testing.T) {
 	if cfg, err := Load(); err != nil || cfg.RiverWorkers != 2 {
 		t.Errorf("RIVER_WORKERS=2: %+v, %v", cfg.RiverWorkers, err)
 	}
+}
+
+func TestLoad_Storage(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("WEB_DIR", "")
+	t.Setenv("STORAGE_DRIVER", "")
+	t.Setenv("STORAGE_LOCAL_DIR", "")
+	if cfg, err := Load(); err != nil || cfg.StorageDriver != "local" || cfg.StorageLocalDir != "data/storage" {
+		t.Errorf("default storage = (%q, %q), %v", cfg.StorageDriver, cfg.StorageLocalDir, err)
+	}
+	t.Setenv("STORAGE_DRIVER", "s3")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STORAGE_DRIVER") {
+		t.Errorf("unknown driver: error = %v", err)
+	}
+	t.Setenv("STORAGE_DRIVER", "r2")
+	t.Setenv("R2_ACCOUNT_ID", "acc")
+	t.Setenv("R2_BUCKET", "b")
+	t.Setenv("R2_ACCESS_KEY_ID", "k")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "R2_SECRET_ACCESS_KEY") {
+		t.Errorf("missing secret: error = %v", err)
+	}
+
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
+	t.Setenv("MAIL_DRIVER", "resend")
+	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
+	t.Setenv("RESEND_API_KEY", "re_test")
+	t.Setenv("STORAGE_DRIVER", "local")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STORAGE_DRIVER=local") {
+		t.Errorf("local in production: error = %v", err)
+	}
+}
+
+// setR2 mengisi konfigurasi R2 yang wajib di production.
+func setR2(t *testing.T) {
+	t.Helper()
+	t.Setenv("STORAGE_DRIVER", "r2")
+	t.Setenv("R2_ACCOUNT_ID", "acc")
+	t.Setenv("R2_BUCKET", "akra-private")
+	t.Setenv("R2_ACCESS_KEY_ID", "key")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "secret")
 }

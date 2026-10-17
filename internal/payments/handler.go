@@ -36,6 +36,7 @@ type Renderer interface {
 // Handler melayani form catat pembayaran dan halaman detail tagihan.
 type Handler struct {
 	svc      *Service
+	proofs   *ProofService
 	sessions *scs.SessionManager
 	render   Renderer
 	logger   *slog.Logger
@@ -43,8 +44,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(svc *Service, sessions *scs.SessionManager, render Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
+func NewHandler(svc *Service, proofs *ProofService, sessions *scs.SessionManager, render Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, proofs: proofs, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route pembayaran dan detail tagihan.
@@ -57,6 +58,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/cari", h.search)
 		// Peran: bendahara.
 		r.Post("/", h.create)
+		// Peran: bendahara. Unggah bukti transfer (multipart).
+		r.Post("/{id}/bukti", h.uploadProof)
 	})
 	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
 	r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)).
@@ -94,7 +97,13 @@ type formView struct {
 }
 
 type paymentRow struct {
-	PaidOn, Method, BankAccount, Reference, Note, Amount, Receipt string
+	ID, PaidOn, Method, BankAccount, Reference, Note, Amount, Receipt string
+	IsTransfer                                                        bool
+	Proofs                                                            []proofRow
+}
+
+type proofRow struct {
+	Kind, Size, UploadedAt string
 }
 
 type invoiceView struct {
@@ -110,8 +119,11 @@ type invoiceView struct {
 	Paid      string
 	Remaining string
 	CanPay    bool
-	Error     string
-	Flash     string
+	CanUpload bool
+	// MaxProofSize dipakai Alpine.js untuk menolak file besar sebelum diunggah.
+	MaxProofSize int
+	Error        string
+	Flash        string
 }
 
 type itemRow struct {
@@ -258,7 +270,13 @@ var methodLabels = map[Method]string{MethodCash: "Tunai", MethodTransfer: "Trans
 
 func (h *Handler) invoice(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	d, list, err := h.svc.InvoiceDetail(r.Context(), id.SchoolID, chi.URLParam(r, "id"))
+	h.renderInvoice(w, r, id, chi.URLParam(r, "id"), http.StatusOK, "")
+}
+
+// renderInvoice merender detail tagihan; errMsg ditampilkan sebagai pesan
+// error (mis. unggahan bukti ditolak).
+func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.Identity, invoiceID string, status int, errMsg string) {
+	d, list, err := h.svc.InvoiceDetail(r.Context(), id.SchoolID, invoiceID)
 	if errors.Is(err, billing.ErrInvoiceNotFound) {
 		page.NotFound(h.render, w, r, id, "Tagihan tidak ditemukan.")
 		return
@@ -272,18 +290,33 @@ func (h *Handler) invoice(w http.ResponseWriter, r *http.Request) {
 		Status: statusLabels[d.Status], Overdue: d.VoidedAt == nil && billing.IsOverdue(d.Status, d.DueDate, clock.Today()),
 		Total: money.FormatRupiah(d.TotalAmount), Paid: money.FormatRupiah(d.Paid), Remaining: money.FormatRupiah(d.Remaining()),
 		CanPay: id.HasRole(auth.RoleBendahara) && d.VoidedAt == nil && d.Status != billing.StatusPaid,
-		Flash:  auth.PopFlash(r.Context(), h.sessions),
+		Flash:  auth.PopFlash(r.Context(), h.sessions), Error: errMsg,
+		CanUpload: id.HasRole(auth.RoleBendahara), MaxProofSize: MaxProofSize,
+	}
+	proofs, err := ListProofsByInvoice(r.Context(), h.svc.db, id.SchoolID, d.ID)
+	if err != nil {
+		h.serverError(w, r, "list proofs", err)
+		return
 	}
 	for _, it := range d.Items {
 		view.Items = append(view.Items, itemRow{Name: it.FeeTypeName, Description: it.Description, Amount: money.FormatRupiah(it.Amount)})
 	}
 	for _, p := range list {
-		view.Payments = append(view.Payments, paymentRow{
-			PaidOn: clock.FormatDateID(p.PaidOn), Method: methodLabels[p.Method], BankAccount: p.BankAccount,
+		row := paymentRow{
+			ID: p.ID, PaidOn: clock.FormatDateID(p.PaidOn), Method: methodLabels[p.Method], BankAccount: p.BankAccount,
 			Reference: p.Reference, Note: p.Note, Amount: money.FormatRupiah(p.Amount), Receipt: p.ReceiptNumber,
-		})
+			IsTransfer: p.Method == MethodTransfer,
+		}
+		for _, pr := range proofs[p.ID] {
+			row.Proofs = append(row.Proofs, proofRow{Kind: proofKinds[pr.ContentType], Size: formatSize(pr.SizeBytes), UploadedAt: clock.FormatDateID(clock.DateOf(pr.UploadedAt))})
+		}
+		view.Payments = append(view.Payments, row)
 	}
-	h.render.Render(w, r, http.StatusOK, pageInvoice, view)
+	h.render.Render(w, r, status, pageInvoice, view)
+}
+
+func (h *Handler) renderNotFound(w http.ResponseWriter, r *http.Request, id auth.Identity, msg string) {
+	page.NotFound(h.render, w, r, id, msg)
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, op string, err error) {

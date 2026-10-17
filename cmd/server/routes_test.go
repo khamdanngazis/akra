@@ -86,7 +86,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		attendance:  attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(nil, nil), sessions, rd, logger),
-		payments:    payments.NewHandler(payments.NewService(nil), sessions, rd, logger),
+		payments:    payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), sessions, rd, logger),
 	})
 }
 

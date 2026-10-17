@@ -20,6 +20,7 @@ import (
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
+	"akra/internal/platform/storage"
 	"akra/web"
 )
 
@@ -83,6 +84,12 @@ func run(logger *slog.Logger) error {
 		logger.Info("client IP read from proxy header", "header", cfg.ClientIPHeader)
 	}
 
+	store, err := storage.New(cfg)
+	if err != nil {
+		return err
+	}
+	logger.Info("storage driver configured", "driver", cfg.StorageDriver)
+
 	// Antrean job (River) di Postgres yang sama. Worker didaftarkan sebelum
 	// client dibuat; client berhenti setelah server HTTP berhenti dan sebelum
 	// pool ditutup (urutan defer).
@@ -101,7 +108,7 @@ func run(logger *slog.Logger) error {
 	r, err := newApp(appDeps{
 		db: pool, pinger: pool, sessions: sessions, render: rd, static: static,
 		mailer: mailer, hasher: hasher, secure: secure, baseURL: cfg.BaseURL, logger: logger,
-		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment,
+		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment, store: store,
 	})
 	if err != nil {
 		return err

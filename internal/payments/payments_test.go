@@ -165,7 +165,7 @@ func TestPayments_AppendOnly(t *testing.T) {
 		`UPDATE payments SET amount = 1 WHERE id = $1`,
 		`UPDATE payments SET note = 'ubah' WHERE id = $1`,
 		`DELETE FROM payments WHERE id = $1`,
-		`TRUNCATE payments`,
+		`TRUNCATE payments CASCADE`,
 	} {
 		err := f.sp(t, func(q pgx.Tx) error {
 			args := []any{p.ID}

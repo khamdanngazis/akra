@@ -341,6 +341,22 @@ Halaman (hanya `bendahara`, kecuali detail tagihan):
 - `POST /keuangan/pembayaran`: semua tagihan yang dicentang diproses dalam **satu transaksi**; jika satu gagal (mis. melebihi sisa), tidak ada yang tersimpan dan form tampil lagi dengan pesan di tagihan tersebut. Tagihan harus milik siswa di form (selain itu `404`). Satu tagihan → redirect ke detail tagihan; beberapa → kembali ke form siswa dengan ringkasan.
 - `/keuangan/tagihan/{id}`: detail tagihan (rincian, terbayar, sisa, daftar pembayaran) untuk `bendahara`, `admin_tu`, dan `kepala_sekolah` (hanya baca). Tautan "Cetak kuitansi" menyusul di T41.
 
+### Bukti transfer
+
+Tabel `payment_proofs` (migrasi 000021), [proof_service.go](internal/payments/proof_service.go), storage di [internal/platform/storage](internal/platform/storage/storage.go).
+
+- Di detail tagihan, setiap pembayaran **transfer** punya form unggah (hanya `bendahara`): `POST /keuangan/pembayaran/{id}/bukti` (multipart, field `file`). Satu pembayaran boleh punya beberapa bukti.
+- Maksimal **2 MB** (dicek di browser, handler, service, dan constraint database). Tipe dideteksi dari **isi file** (`http.DetectContentType`), bukan ekstensi: hanya JPEG, PNG, PDF. File `.exe` yang diganti nama menjadi `.jpg` ditolak.
+- SHA-256 dihitung saat membaca. File yang sama tidak bisa dipakai dua kali **di sekolah yang sama** (`UNIQUE (school_id, sha256)`); unik per sekolah agar sekolah lain tidak bisa mengetahui keberadaan file.
+- Kunci storage: `schools/{school_id}/proofs/{uuid}.{jpg|png|pdf}` (dijaga constraint). File disimpan dulu, lalu baris dan audit `payment.proof_upload` dalam satu transaksi; jika transaksi gagal, objek dihapus lagi.
+- Body request dibatasi 8 MB untuk semua route (`httpserver.LimitBody`, sebelum CSRF), karena nosurf mem-parse seluruh form multipart sebelum handler.
+- Kompresi gambar belum dikerjakan (ditunda).
+
+Storage (`STORAGE_DRIVER`):
+
+- `r2` (wajib di production): bucket Cloudflare R2 **privat** lewat AWS SDK for Go v2 (`service/s3` v1.88.4, versi terakhir untuk Go 1.22). Akses hanya lewat presigned URL (`Presign`, dipakai T37). Variabel: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+- `local` (default di luar production): disk `STORAGE_LOCAL_DIR` (default `data/storage`, di-ignore git). Presign menghasilkan URL `/storage/...` bertanda tangan HMAC (kunci acak per proses) yang kedaluwarsa, meniru R2.
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).
@@ -413,6 +429,7 @@ docker run --rm --network host -e DATABASE_URL=postgres://... akra
 | `APP_BASE_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
 | `MAIL_DRIVER` | `log` (staging; tautan reset ada di log Railway) |
 | `CLIENT_IP_HEADER` | `X-Real-IP` |
+| `STORAGE_DRIVER` | belum diisi → `local` (disk container, **hilang saat redeploy**); ganti ke `r2` setelah bucket R2 dibuat |
 
 `PORT` diisi Railway otomatis; target port domain `8080`.
 
