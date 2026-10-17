@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"bytes"
 	"errors"
-	"html/template"
 	"log/slog"
 	"net"
 	"net/http"
@@ -11,8 +9,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
-
-	"akra/internal/platform/csrf"
 )
 
 const maxLoginFormBytes = 16 << 10
@@ -22,53 +18,36 @@ const (
 	msgInvalidCredentials = "Kode sekolah, email, atau password salah."
 	msgTooManyAttempts    = "Terlalu banyak percobaan masuk. Coba lagi beberapa menit lagi."
 	msgInternalError      = "Terjadi kesalahan pada server. Silakan coba lagi."
+	msgLoggedOut          = "Anda telah keluar."
 )
 
-// TODO(T11): ganti dengan web/templates/auth/login.html yang dirender lewat
-// internal/platform/render.
-var loginTmpl = template.Must(template.New("login").Funcs(csrf.PlaceholderFuncs).Parse(`<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="csrf-token" content="{{ csrfToken }}">
-<title>Masuk · AKRA</title>
-</head>
-<body>
-<main>
-<h1>Masuk ke AKRA</h1>
-{{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
-<form method="post" action="/login">
-{{ csrfField }}
-<input type="hidden" name="next" value="{{.Next}}">
-<p><label>Kode sekolah<br><input name="school_code" value="{{.SchoolCode}}" autocomplete="organization" required></label></p>
-<p><label>Email<br><input type="email" name="email" value="{{.Email}}" autocomplete="username" required></label></p>
-<p><label>Password<br><input type="password" name="password" autocomplete="current-password" required></label></p>
-<p><button type="submit">Masuk</button></p>
-</form>
-</main>
-</body>
-</html>
-`))
+// Renderer merender halaman dari web/templates.
+type Renderer interface {
+	Render(w http.ResponseWriter, r *http.Request, status int, name string, data any)
+}
+
+const loginPageName = "auth/login"
 
 type loginPage struct {
 	SchoolCode string
 	Email      string
 	Next       string
 	Error      string
+	Flash      string
 }
 
 // Handler melayani halaman login dan logout.
 type Handler struct {
 	svc      *Service
 	sessions *scs.SessionManager
+	render   Renderer
 	logger   *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus dibungkus
 // sessions.LoadAndSave.
-func NewHandler(svc *Service, sessions *scs.SessionManager, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, sessions: sessions, logger: logger}
+func NewHandler(svc *Service, sessions *scs.SessionManager, render Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route login dan logout ke r.
@@ -86,7 +65,7 @@ func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, next, http.StatusSeeOther)
 		return
 	}
-	h.render(w, r, http.StatusOK, loginPage{Next: next})
+	h.render.Render(w, r, http.StatusOK, loginPageName, loginPage{Next: next, Flash: PopFlash(r.Context(), h.sessions)})
 }
 
 func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
@@ -109,22 +88,22 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 		if err := startSession(r.Context(), h.sessions, user); err != nil {
 			h.logger.Error("start session", "error", err)
 			page.Error = msgInternalError
-			h.render(w, r, http.StatusInternalServerError, page)
+			h.render.Render(w, r, http.StatusInternalServerError, loginPageName, page)
 			return
 		}
 		http.Redirect(w, r, page.Next, http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
-		h.render(w, r, http.StatusUnauthorized, page)
+		h.render.Render(w, r, http.StatusUnauthorized, loginPageName, page)
 	case errors.Is(err, ErrTooManyAttempts):
 		h.logger.Warn("login locked out", "school_code", NormalizeSchoolCode(page.SchoolCode), "ip", ip.String())
 		page.Error = msgTooManyAttempts
-		h.render(w, r, http.StatusTooManyRequests, page)
+		h.render.Render(w, r, http.StatusTooManyRequests, loginPageName, page)
 	default:
 		// err tidak pernah berisi password.
 		h.logger.Error("login failed", "error", err)
 		page.Error = msgInternalError
-		h.render(w, r, http.StatusInternalServerError, page)
+		h.render.Render(w, r, http.StatusInternalServerError, loginPageName, page)
 	}
 }
 
@@ -134,22 +113,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	// Sesi baru yang hanya berisi pesan flash, tanpa identitas.
+	SetFlash(r.Context(), h.sessions, msgLoggedOut)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-func (h *Handler) render(w http.ResponseWriter, r *http.Request, status int, page loginPage) {
-	tmpl, err := loginTmpl.Clone()
-	if err == nil {
-		var buf bytes.Buffer
-		if err = tmpl.Funcs(csrf.FuncMap(r)).Execute(&buf, page); err == nil {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(status)
-			_, _ = buf.WriteTo(w)
-			return
-		}
-	}
-	h.logger.Error("render login page", "error", err)
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
 // clientIP mengembalikan alamat peer dari koneksi.

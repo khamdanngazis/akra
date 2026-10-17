@@ -12,6 +12,10 @@ type Identity struct {
 	UserID   string
 	SchoolID string
 	Roles    []string
+
+	// Hanya untuk tampilan; jangan dipakai untuk otorisasi.
+	FullName   string
+	SchoolName string
 }
 
 type identityKey struct{}

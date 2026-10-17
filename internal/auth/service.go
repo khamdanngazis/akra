@@ -35,11 +35,12 @@ var (
 
 // User adalah pengguna yang sudah terautentikasi. Tidak pernah membawa hash password.
 type User struct {
-	ID       string
-	SchoolID string
-	Email    string
-	FullName string
-	Roles    []string
+	ID         string
+	SchoolID   string
+	SchoolName string
+	Email      string
+	FullName   string
+	Roles      []string
 }
 
 // UserCredentials adalah data pengguna yang dibutuhkan untuk login.

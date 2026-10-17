@@ -1,0 +1,9 @@
+{{define "title"}}Beranda{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "flash" .}}
+<section class="card">
+<h1>Halo, {{.User.FullName}}</h1>
+<p class="muted">Anda masuk di <strong>{{.User.SchoolName}}</strong>.</p>
+</section>
+{{end}}

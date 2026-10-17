@@ -1,0 +1,5 @@
+{{/* flash menampilkan pesan error atau sukses. Argumen: map dengan Error dan Flash. */}}
+{{define "flash" -}}
+{{if .Error}}<div class="alert alert-error" role="alert">{{.Error}}</div>{{end}}
+{{if .Flash}}<div class="alert alert-success" role="status">{{.Flash}}</div>{{end}}
+{{- end}}

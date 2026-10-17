@@ -25,6 +25,11 @@ const (
 	sessionKeyUserID   = "user_id"
 	sessionKeySchoolID = "school_id"
 	sessionKeyRoles    = "roles"
+	// Nama untuk tampilan. Bisa usang jika diubah setelah login; diperbarui
+	// saat login berikutnya.
+	sessionKeyFullName   = "full_name"
+	sessionKeySchoolName = "school_name"
+	sessionKeyFlash      = "flash"
 )
 
 // NewSessionManager mengembalikan scs.SessionManager dengan store yang
@@ -56,5 +61,17 @@ func startSession(ctx context.Context, sm *scs.SessionManager, u User) error {
 	sm.Put(ctx, sessionKeyUserID, u.ID)
 	sm.Put(ctx, sessionKeySchoolID, u.SchoolID)
 	sm.Put(ctx, sessionKeyRoles, u.Roles)
+	sm.Put(ctx, sessionKeyFullName, u.FullName)
+	sm.Put(ctx, sessionKeySchoolName, u.SchoolName)
 	return nil
+}
+
+// SetFlash menyimpan pesan satu kali tampil untuk request berikutnya.
+func SetFlash(ctx context.Context, sm *scs.SessionManager, msg string) {
+	sm.Put(ctx, sessionKeyFlash, msg)
+}
+
+// PopFlash mengambil lalu menghapus pesan flash, atau "" jika tidak ada.
+func PopFlash(ctx context.Context, sm *scs.SessionManager) string {
+	return sm.PopString(ctx, sessionKeyFlash)
 }

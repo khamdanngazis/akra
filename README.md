@@ -128,6 +128,28 @@ r.With(auth.RequireRole(auth.RoleBendahara)).Post("/tagihan", billingHandler.cre
 
 Untuk logika di dalam handler atau service, gunakan `auth.HasAnyRole(id, ...)` atau `id.HasRole(...)`. RBAC tidak membatasi sekolah; isolasi `school_id` tetap wajib di setiap query (T58).
 
+## Tampilan (SSR)
+
+Halaman dirender di server dengan `html/template` lewat [internal/platform/render](internal/platform/render/render.go). Semua template di-parse saat start; template yang rusak membuat server gagal start dengan nama file-nya.
+
+```
+web/templates/
+├── layout.html          kerangka halaman: define "layout", memanggil blok "title" dan "content"
+├── partials/            template bersama (logo, flash, app_header)
+├── auth/login.html      halaman "auth/login"
+└── home.html            halaman "home"
+web/static/
+├── css/app.css          CSS variables di :root (warna brand, jarak, font), tanpa Tailwind
+├── js/alpine.min.js     Alpine.js 3.17.4 (dist/cdn.min.js dari npm alpinejs@3.17.4)
+├── fonts/               Plus Jakarta Sans variable, subset latin (@fontsource-variable/plus-jakarta-sans@5.3.0, lisensi OFL)
+└── img/favicon.svg
+```
+
+- Halaman baru: buat `web/templates/<nama>.html` yang mendefinisikan blok `title` dan `content`, lalu panggil `rd.Render(w, r, http.StatusOK, "<nama>", data)`.
+- Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
+- Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
+- Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
+
 ## Aturan Code Review
 
 - `school_id` untuk data sekolah **selalu** diambil dari `auth.CurrentUser(ctx)`. Handler tidak boleh membaca `school_id` dari `r.URL.Query()`, `chi.URLParam`, atau form.

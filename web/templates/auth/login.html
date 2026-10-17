@@ -1,0 +1,43 @@
+{{define "title"}}Masuk{{end}}
+{{define "bodyClass"}}page-auth{{end}}
+{{define "content"}}
+<section class="card auth-card">
+<div class="auth-brand">
+{{template "logo"}}
+<div>
+<h1 class="brand-name">AKRA</h1>
+<p class="muted">Satu Sistem, Banyak Cerita.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<form method="post" action="/login" class="stack" x-data="{ showPassword: false, submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="next" value="{{.Next}}">
+
+<div class="field">
+<label for="school_code">Kode sekolah</label>
+<input id="school_code" name="school_code" value="{{.SchoolCode}}" autocomplete="organization" autocapitalize="none" spellcheck="false" required>
+</div>
+
+<div class="field">
+<label for="email">Email</label>
+<input id="email" type="email" name="email" value="{{.Email}}" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+</div>
+
+<div class="field">
+<label for="password">Password</label>
+<div class="input-group">
+<input id="password" :type="showPassword ? 'text' : 'password'" type="password" name="password" autocomplete="current-password" required>
+<button type="button" class="btn btn-ghost btn-sm" @click="showPassword = !showPassword" x-text="showPassword ? 'Sembunyikan' : 'Tampilkan'" :aria-pressed="showPassword">Tampilkan</button>
+</div>
+</div>
+
+<button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
+<span x-show="!submitting">Masuk</span>
+<span x-show="submitting" x-cloak>Memproses…</span>
+</button>
+</form>
+</section>
+{{end}}
