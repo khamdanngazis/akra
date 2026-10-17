@@ -80,6 +80,10 @@ func run(logger *slog.Logger) error {
 		render:      rd,
 		static:      static,
 		authHandler: auth.NewHandler(authSvc, sessions, rd, logger),
+		resetHandler: auth.NewResetHandler(
+			auth.NewResetService(auth.NewRepository(pool), hasher, auth.NewMailer(cfg.AppEnv, logger),
+				auth.NewSessionRevoker(sessions), cfg.BaseURL, logger),
+			sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, r)

@@ -10,6 +10,7 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "20")
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id/")
 	t.Setenv("ARGON2_MEMORY_KIB", "65536")
 	t.Setenv("ARGON2_ITERATIONS", "3")
 	t.Setenv("ARGON2_PARALLELISM", "4")
@@ -21,6 +22,7 @@ func TestLoad_AllSet(t *testing.T) {
 	want := Config{
 		Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction,
 		Argon2MemoryKiB: 65536, Argon2Iterations: 3, Argon2Parallelism: 4,
+		BaseURL: "https://app.akra.id",
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -42,6 +44,7 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Setenv("APP_BASE_URL", "")
 	t.Setenv("ARGON2_MEMORY_KIB", "")
 	t.Setenv("ARGON2_ITERATIONS", "")
 	t.Setenv("ARGON2_PARALLELISM", "")
@@ -56,6 +59,9 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
+	}
+	if cfg.BaseURL != "http://localhost:8080" {
+		t.Errorf("BaseURL = %q, want http://localhost:8080", cfg.BaseURL)
 	}
 	if cfg.DBMaxConns != 10 {
 		t.Errorf("DBMaxConns = %d, want 10", cfg.DBMaxConns)
@@ -107,7 +113,26 @@ func TestLoad_WebDirOnlyInDevelopment(t *testing.T) {
 	}
 
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "WEB_DIR") {
 		t.Errorf("production with WEB_DIR: error = %v, want error mentioning WEB_DIR", err)
+	}
+}
+
+func TestLoad_BaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "")
+
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv("APP_BASE_URL", "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "APP_BASE_URL") {
+		t.Errorf("staging without APP_BASE_URL: error = %v, want error", err)
+	}
+
+	for _, bad := range []string{"app.akra.id", "ftp://app.akra.id", "https://app.akra.id/sub", "https://"} {
+		t.Setenv("APP_BASE_URL", bad)
+		if _, err := Load(); err == nil {
+			t.Errorf("APP_BASE_URL=%q: error = nil, want error", bad)
+		}
 	}
 }

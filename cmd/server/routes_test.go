@@ -34,12 +34,24 @@ func (emptyRepo) CountRecentFailures(context.Context, string, string, netip.Addr
 	return 0, 0, nil
 }
 func (emptyRepo) RecordLoginAttempt(context.Context, auth.LoginAttempt) error { return nil }
+func (emptyRepo) FindActiveUserForReset(context.Context, string, string) (auth.User, error) {
+	return auth.User{}, auth.ErrNotFound
+}
+func (emptyRepo) CountRecentResetTokens(context.Context, string, time.Duration) (int, error) {
+	return 0, nil
+}
+func (emptyRepo) CreateResetToken(context.Context, string, []byte, time.Duration) error { return nil }
+func (emptyRepo) CheckResetToken(context.Context, []byte) error                         { return auth.ErrInvalidResetToken }
+func (emptyRepo) ResetPassword(context.Context, []byte, string) (string, error) {
+	return "", auth.ErrInvalidResetToken
+}
 
 func newTestRouter(t *testing.T) http.Handler {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	sessions := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
-	svc, err := auth.NewService(emptyRepo{}, auth.NewHasher(auth.PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1}))
+	hasher := auth.NewHasher(auth.PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1})
+	svc, err := auth.NewService(emptyRepo{}, hasher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +65,9 @@ func newTestRouter(t *testing.T) http.Handler {
 		render:      rd,
 		static:      mustSub(t, "static"),
 		authHandler: auth.NewHandler(svc, sessions, rd, logger),
+		resetHandler: auth.NewResetHandler(
+			auth.NewResetService(emptyRepo{}, hasher, auth.NewMailer("development", logger), auth.NewSessionRevoker(sessions), "http://localhost:8080", logger),
+			sessions, rd, logger),
 	})
 }
 
@@ -111,7 +126,7 @@ func loginForm(token string) url.Values {
 
 func TestRouter_PublicRoutesDoNotRedirect(t *testing.T) {
 	h := newTestRouter(t)
-	for _, path := range []string{"/healthz", "/login"} {
+	for _, path := range []string{"/healthz", "/login", "/lupa-password"} {
 		if rec := serve(h, httptest.NewRequest(http.MethodGet, path, nil)); rec.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want 200", path, rec.Code)
 		}

@@ -3,8 +3,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Nilai yang valid untuk APP_ENV.
@@ -20,6 +22,11 @@ type Config struct {
 	DatabaseURL string
 	DBMaxConns  int32
 	AppEnv      string
+
+	// BaseURL adalah URL publik aplikasi tanpa garis miring di akhir, mis.
+	// "https://app.akra.id". Dipakai untuk tautan di email; tidak pernah
+	// diambil dari header Host request.
+	BaseURL string
 
 	// WebDir, jika diisi, membuat template dan aset dibaca dari disk (mis.
 	// "web") alih-alih dari binary. Hanya untuk development.
@@ -75,6 +82,17 @@ func Load() (Config, error) {
 	case EnvDevelopment, EnvStaging, EnvProduction:
 	default:
 		return Config{}, fmt.Errorf("config: invalid APP_ENV %q (allowed: development, staging, production)", cfg.AppEnv)
+	}
+
+	cfg.BaseURL = strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+	if cfg.BaseURL == "" {
+		if cfg.AppEnv != EnvDevelopment {
+			return Config{}, fmt.Errorf("config: environment variable APP_BASE_URL is required when APP_ENV=%s", cfg.AppEnv)
+		}
+		cfg.BaseURL = "http://localhost:" + cfg.Port
+	}
+	if u, err := url.Parse(cfg.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" {
+		return Config{}, fmt.Errorf("config: APP_BASE_URL must be an absolute http(s) URL without a path, got %q", cfg.BaseURL)
 	}
 
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {
