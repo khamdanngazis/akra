@@ -192,6 +192,15 @@ Tabel `academic_years` (migrasi 000008), fungsi di [internal/school/academic_yea
 - ID di URL divalidasi formatnya (`database.IsUUID`) sebelum query; ID milik sekolah lain atau tidak valid menghasilkan `404`.
 - Semua fungsi repository menerima `school_id` dan memperlakukan data sekolah lain sebagai tidak ada (`school.ErrNotFound`). Fungsi repository menerima `database.DBTX` (pool atau transaksi), sehingga perubahan data dan `audit.Record` bisa berada di satu transaksi.
 
+## Kelas
+
+Tabel `classes` (migrasi 000009), fungsi di [internal/classes/repo.go](internal/classes/repo.go): `Create`, `GetByID`, `ListByYear`.
+
+- Kelas terikat ke satu tahun ajaran. Nama unik per tahun ajaran tanpa membedakan huruf besar/kecil (`1A` = `1a`); nama sama di tahun ajaran lain diizinkan.
+- `grade_level` 1–12 dijaga `CHECK` di database.
+- Tahun ajaran dan wali kelas wajib dari sekolah yang sama. Dijaga dua lapis: repository memeriksa `WHERE school_id = $1 AND id = $2` (pesan error jelas), dan **foreign key komposit** `(school_id, academic_year_id)` serta `(school_id, homeroom_teacher_id)` menolak data lintas sekolah walau repository dilewati.
+- Pola foreign key komposit ini dipakai untuk tabel berikutnya yang merujuk data milik sekolah.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:

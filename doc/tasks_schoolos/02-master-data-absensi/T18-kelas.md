@@ -24,11 +24,11 @@ Kelas dibuat per tahun ajaran dengan nama, tingkat, dan wali kelas. Setiap kelas
 - `internal/classes/model.go`
 
 ## Kriteria selesai
-- [ ] Dua kelas dengan nama sama dalam tahun ajaran yang sama ditolak
-- [ ] Dua kelas dengan nama sama di tahun ajaran berbeda diizinkan
-- [ ] `grade_level` 0 atau 13 ditolak database
-- [ ] Membuat kelas dengan `academic_year_id` milik sekolah lain ditolak di repository
-- [ ] `ListByYear` hanya mengembalikan kelas dari sekolah pemanggil
+- [x] Dua kelas dengan nama sama dalam tahun ajaran yang sama ditolak
+- [x] Dua kelas dengan nama sama di tahun ajaran berbeda diizinkan
+- [x] `grade_level` 0 atau 13 ditolak database
+- [x] Membuat kelas dengan `academic_year_id` milik sekolah lain ditolak di repository
+- [x] `ListByYear` hanya mengembalikan kelas dari sekolah pemanggil
 
 ## Catatan
 - `homeroom_teacher_id` merujuk ke `users`. Validasi bahwa pengguna tersebut memang berperan guru dilakukan di T19.
