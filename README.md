@@ -75,6 +75,7 @@ Ukuran binary (Go 1.22.2, linux/amd64, 17 Oktober 2026):
 | `MAIL_FROM` | ya untuk `resend` | `AKRA <no-reply@akra.local>` | Alamat pengirim; domainnya harus sudah diverifikasi di Resend |
 | `RESEND_API_KEY` | ya untuk `resend` | | API key Resend (`re_...`). Simpan di variabel Railway, jangan di repo |
 | `CLIENT_IP_HEADER` | tidak | (kosong) | Header berisi IP klien dari proxy. Railway: `X-Real-IP` (sudah diuji tidak bisa dipalsukan klien). Kosong = alamat koneksi |
+| `RIVER_WORKERS` | tidak | `4` | Jumlah job latar belakang yang berjalan bersamaan (River) |
 | `WEB_DIR` | tidak | (kosong) | Baca template dan aset dari folder ini (mis. `web`) alih-alih dari binary. Hanya boleh saat `APP_ENV=development` |
 | `ARGON2_MEMORY_KIB` | tidak | `19456` | Memori argon2id per hash (KiB) |
 | `ARGON2_ITERATIONS` | tidak | `2` | Iterasi argon2id |
@@ -299,6 +300,17 @@ Tabel `invoices` dan `invoice_items` (migrasi 000016), fungsi di [invoice_servic
   - `IsOverdue(status, dueDate, today)`: belum lunas dan `today` setelah jatuh tempo (hari jatuh tempo belum terlambat). `today` dari `clock.Today()` (Asia/Jakarta).
   - Pembayaran (T35), pembatalan (T39), tunggakan (T42), dan portal (T45) wajib memakai fungsi ini.
 - Audit: `invoice.create`.
+
+## Job Latar Belakang (River)
+
+Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).
+
+- Versi River dikunci di v0.18.0 karena versi yang lebih baru membutuhkan Go 1.23 ke atas.
+- Skema River ada di migrasi `000017_river` dan `000018_river`, **dibuat dari library River** (`rivermigrate.AllVersions`), bukan ditulis manual. Dipecah dua karena `golang-migrate` menjalankan satu file dalam satu transaksi, sedangkan nilai enum `pending` (River 004) tidak boleh dipakai di transaksi yang sama dengan pembuatannya (River 006). Uji `TestRiverMigrationsMatchLibrary` memvalidasi skema dengan `rivermigrate.Validate`. Untuk upgrade River, buat migrasi baru dari versi berikutnya dengan cara yang sama.
+- Worker didaftarkan di [cmd/server/workers.go](cmd/server/workers.go). Jumlah worker dari `RIVER_WORKERS`; batas lama satu job 10 menit.
+- Shutdown (`SIGTERM`): server HTTP berhenti dulu, lalu River menunggu job berjalan sampai 20 detik. Job yang belum selesai dibatalkan, errornya dicatat, dan dicoba ulang otomatis.
+- River memakai koneksi dari pool aplikasi ditambah satu koneksi LISTEN/NOTIFY: pastikan `DB_MAX_CONNS` cukup untuk request HTTP dan `RIVER_WORKERS`.
+- Development: `curl -X POST 'localhost:8080/dev/jobs/ping?message=halo'` memasukkan `PingJob`, lalu `curl localhost:8080/dev/jobs/<id>` menampilkan statusnya. Route `/dev` hanya terpasang saat `APP_ENV=development`.
 
 ## Audit
 

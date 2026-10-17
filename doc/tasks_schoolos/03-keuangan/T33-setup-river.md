@@ -25,10 +25,10 @@ Antrean pekerjaan latar belakang berjalan di Postgres yang sama, tanpa Redis. Di
 - `cmd/server/main.go`
 
 ## Kriteria selesai
-- [ ] `PingJob` yang dimasukkan selesai dan tercatat di tabel River
-- [ ] Shutdown tidak membiarkan job setengah jalan tanpa tanda (job yang dibatalkan dicoba ulang)
-- [ ] Migrasi River bisa naik dan turun
-- [ ] Jumlah worker mengikuti `RIVER_WORKERS`
+- [x] `PingJob` yang dimasukkan selesai dan tercatat di tabel River
+- [x] Shutdown tidak membiarkan job setengah jalan tanpa tanda (job yang dibatalkan dicoba ulang)
+- [x] Migrasi River bisa naik dan turun
+- [x] Jumlah worker mengikuti `RIVER_WORKERS`
 
 ## Catatan
 - River menggunakan koneksi database tambahan. Pastikan `DB_MAX_CONNS` (T03) cukup untuk aplikasi dan worker bersama.

@@ -9,6 +9,7 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("PORT", "9000")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "20")
+	t.Setenv("RIVER_WORKERS", "8")
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("APP_BASE_URL", "https://app.akra.id/")
 	t.Setenv("MAIL_DRIVER", "resend")
@@ -25,7 +26,7 @@ func TestLoad_AllSet(t *testing.T) {
 	want := Config{
 		Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction,
 		Argon2MemoryKiB: 65536, Argon2Iterations: 3, Argon2Parallelism: 4,
-		BaseURL:    "https://app.akra.id",
+		BaseURL: "https://app.akra.id", RiverWorkers: 8,
 		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
 	}
 	if cfg != want {
@@ -48,6 +49,7 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Setenv("RIVER_WORKERS", "")
 	t.Setenv("APP_BASE_URL", "")
 	t.Setenv("MAIL_DRIVER", "")
 	t.Setenv("MAIL_FROM", "")
@@ -74,6 +76,9 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.DBMaxConns != 10 {
 		t.Errorf("DBMaxConns = %d, want 10", cfg.DBMaxConns)
+	}
+	if cfg.RiverWorkers != 4 {
+		t.Errorf("RiverWorkers = %d, want 4", cfg.RiverWorkers)
 	}
 	if cfg.Argon2MemoryKiB != 19456 || cfg.Argon2Iterations != 2 || cfg.Argon2Parallelism != 1 {
 		t.Errorf("argon2 params = (%d, %d, %d), want (19456, 2, 1)",
@@ -182,5 +187,21 @@ func TestLoad_Mail(t *testing.T) {
 				t.Errorf("Load() error = %v, want error mentioning %s", err, tc.wantInErr)
 			}
 		})
+	}
+}
+
+func TestLoad_RiverWorkers(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("WEB_DIR", "")
+	for _, bad := range []string{"0", "-1", "banyak"} {
+		t.Setenv("RIVER_WORKERS", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "RIVER_WORKERS") {
+			t.Errorf("RIVER_WORKERS=%q: error = %v", bad, err)
+		}
+	}
+	t.Setenv("RIVER_WORKERS", "2")
+	if cfg, err := Load(); err != nil || cfg.RiverWorkers != 2 {
+		t.Errorf("RIVER_WORKERS=2: %+v, %v", cfg.RiverWorkers, err)
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/health"
+	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/internal/portal"
@@ -34,6 +35,8 @@ type appDeps struct {
 	secure   bool   // cookie Secure dan origin https (di luar development)
 	baseURL  string // URL publik untuk tautan di email
 	logger   *slog.Logger
+	jobs     *jobs.Client // untuk memasukkan job latar belakang
+	dev      bool         // APP_ENV=development: pasang route /dev
 }
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
@@ -64,6 +67,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianAccountService(d.db, activation, d.logger),
 			d.sessions, d.render, d.logger),
 		portal:     portal.NewHandler(d.sessions, d.render),
+		dev:        devRoutes(d),
 		attendance: attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		feeTypes:   billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
 	}), nil

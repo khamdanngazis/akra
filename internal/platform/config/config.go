@@ -24,6 +24,9 @@ type Config struct {
 	DBMaxConns  int32
 	AppEnv      string
 
+	// RiverWorkers adalah jumlah job latar belakang yang berjalan bersamaan.
+	RiverWorkers int
+
 	// BaseURL adalah URL publik aplikasi tanpa garis miring di akhir, mis.
 	// "https://app.akra.id". Dipakai untuk tautan di email; tidak pernah
 	// diambil dari header Host request.
@@ -71,6 +74,12 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	cfg.DBMaxConns = int32(maxConns)
+
+	riverWorkers, err := positiveInt("RIVER_WORKERS", 4, 16)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.RiverWorkers = int(riverWorkers)
 
 	memory, err := positiveInt("ARGON2_MEMORY_KIB", 19*1024, 32)
 	if err != nil {

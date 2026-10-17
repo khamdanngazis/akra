@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,12 +17,17 @@ import (
 	"akra/internal/platform/config"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
+	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/web"
 )
 
 const shutdownTimeout = 10 * time.Second
+
+// jobShutdownGrace adalah waktu tunggu job yang sedang berjalan saat server
+// berhenti. Setelah itu job dibatalkan dan dicoba ulang oleh River.
+const jobShutdownGrace = 20 * time.Second
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -77,9 +83,25 @@ func run(logger *slog.Logger) error {
 		logger.Info("client IP read from proxy header", "header", cfg.ClientIPHeader)
 	}
 
+	// Antrean job (River) di Postgres yang sama. Worker didaftarkan sebelum
+	// client dibuat; client berhenti setelah server HTTP berhenti dan sebelum
+	// pool ditutup (urutan defer).
+	workers := jobs.NewWorkers()
+	registerWorkers(workers, pool, logger)
+	jobClient, err := jobs.NewClient(pool, workers, jobs.Config{Workers: cfg.RiverWorkers}, logger)
+	if err != nil {
+		return err
+	}
+	if err := jobClient.Start(context.Background()); err != nil {
+		return fmt.Errorf("start river client: %w", err)
+	}
+	defer jobs.Shutdown(jobClient, jobShutdownGrace, logger)
+	logger.Info("river job workers started", "workers", cfg.RiverWorkers)
+
 	r, err := newApp(appDeps{
 		db: pool, pinger: pool, sessions: sessions, render: rd, static: static,
 		mailer: mailer, hasher: hasher, secure: secure, baseURL: cfg.BaseURL, logger: logger,
+		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment,
 	})
 	if err != nil {
 		return err
