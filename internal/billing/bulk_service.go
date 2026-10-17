@@ -25,7 +25,7 @@ const (
 	// bulkBatchSize adalah jumlah siswa per transaksi di job River.
 	bulkBatchSize = 25
 
-	ActionBulkCreate = "billing.bulk_create"
+	ActionBulkCreate = audit.ActionBulkCreate
 
 	RunQueued  = "queued"
 	RunRunning = "running"

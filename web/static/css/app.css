@@ -1094,3 +1094,33 @@ fieldset.field > legend {
 .void-box[open] summary {
   margin-bottom: var(--space-2);
 }
+
+/* Audit */
+
+.audit-list code {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.audit-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.audit-kv dt {
+  color: var(--color-muted);
+}
+
+.audit-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.audit-kv .audit-kv-title {
+  grid-column: 1 / -1;
+  font-weight: 600;
+  color: inherit;
+}

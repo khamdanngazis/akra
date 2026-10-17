@@ -26,8 +26,8 @@ const MaxProofSize = 2 << 20
 
 // Aksi audit bukti transfer.
 const (
-	ActionProofUpload = "payment.proof_upload"
-	ActionProofView   = "payment.proof_view"
+	ActionProofUpload = audit.ActionProofUpload
+	ActionProofView   = audit.ActionProofView
 )
 
 // ProofURLTTL adalah masa berlaku URL bertanda tangan untuk membuka bukti.

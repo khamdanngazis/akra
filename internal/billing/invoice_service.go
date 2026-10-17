@@ -14,7 +14,7 @@ import (
 )
 
 // ActionInvoiceCreate adalah aksi audit pembuatan tagihan.
-const ActionInvoiceCreate = "invoice.create"
+const ActionInvoiceCreate = audit.ActionInvoiceCreate
 
 var periodPattern = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 

@@ -99,3 +99,16 @@ func TestVoidHandler(t *testing.T) {
 		t.Errorf("void twice: status = %d", rec.Code)
 	}
 }
+
+func TestInvoiceDetailAuditLink(t *testing.T) {
+	f := newVoidFixture(t)
+	c := newClient(t, f.fixture)
+	p := f.pay(t, f.invA.ID, 1000, clock.Today())
+	link := `href="/keuangan/audit?entity=` + p.ID + `"`
+	for roles, want := range map[string]bool{"kepala_sekolah": true, "admin_tu": true, "bendahara": false} {
+		body := c.do(http.MethodGet, "/keuangan/tagihan/"+f.invA.ID, roles, nil).Body.String()
+		if strings.Contains(body, link) != want {
+			t.Errorf("%s: audit link shown = %v, want %v", roles, !want, want)
+		}
+	}
+}

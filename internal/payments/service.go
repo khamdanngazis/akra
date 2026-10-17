@@ -15,7 +15,7 @@ import (
 )
 
 // ActionPaymentCreate adalah aksi audit pencatatan pembayaran.
-const ActionPaymentCreate = "payment.create"
+const ActionPaymentCreate = audit.ActionPaymentCreate
 
 // Service menjalankan aturan bisnis pembayaran.
 type Service struct {

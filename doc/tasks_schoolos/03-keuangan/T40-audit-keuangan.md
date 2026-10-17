@@ -25,11 +25,11 @@ Setiap aksi keuangan tercatat di `audit_logs` dengan konsisten, sehingga bisa di
 - `internal/audit/handler.go` (halaman lihat audit)
 
 ## Kriteria selesai
-- [ ] Uji integrasi untuk setiap aksi di daftar menghasilkan tepat satu baris audit
-- [ ] Aksi yang gagal (misalnya transaksi rollback) tidak menghasilkan baris audit
-- [ ] Field `before` dan `after` tidak berisi password, token, atau alamat lengkap siswa
-- [ ] Halaman audit bisa difilter berdasarkan tanggal dan jenis aksi
-- [ ] Guru dan bendahara tidak bisa membuka halaman audit (`403`)
+- [x] Uji integrasi untuk setiap aksi di daftar menghasilkan tepat satu baris audit
+- [x] Aksi yang gagal (misalnya transaksi rollback) tidak menghasilkan baris audit
+- [x] Field `before` dan `after` tidak berisi password, token, atau alamat lengkap siswa
+- [x] Halaman audit bisa difilter berdasarkan tanggal dan jenis aksi
+- [x] Guru dan bendahara tidak bisa membuka halaman audit (`403`)
 
 ## Catatan
 - Tujuan audit adalah bisa menjawab pertanyaan "siapa membatalkan pembayaran X". Pertanyaan itu harus bisa dijawab dari halaman ini tanpa akses database.
