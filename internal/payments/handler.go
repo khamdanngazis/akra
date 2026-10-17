@@ -73,6 +73,11 @@ func (h *Handler) Routes(r chi.Router) {
 	// transfer yang berlaku 5 menit; setiap akses diaudit. Orang tua dan guru
 	// tidak punya akses.
 	r.With(readers).Get(proofsPath+"/{id}", h.openProof)
+	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
+	r.With(readers).Get(settingsPath, h.financeSettings)
+	// Peran: kepala_sekolah. Bendahara tidak boleh mengubah ambang yang
+	// membatasi pembatalan yang ia ajukan sendiri.
+	r.With(auth.RequireRole(auth.RoleKepalaSekolah)).Post(settingsPath, h.updateFinanceSettings)
 	r.Route(voidsPath, func(r chi.Router) {
 		r.Use(auth.RequireRole(auth.RoleKepalaSekolah))
 		// Peran: kepala_sekolah.

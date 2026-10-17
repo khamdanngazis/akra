@@ -12,6 +12,7 @@
 <a href="/keuangan/tagihan-massal">Tagihan Massal</a>{{end}}
 {{if or (.HasRole "bendahara") (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/keuangan/jenis-tagihan">Jenis Tagihan</a>{{end}}
 {{if .HasRole "kepala_sekolah"}}<a href="/keuangan/pembatalan">Pembatalan</a>{{end}}
+{{if or (.HasRole "bendahara") (.HasRole "kepala_sekolah")}}<a href="/pengaturan/keuangan">Pengaturan Keuangan</a>{{end}}
 {{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}
 <a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a>{{end}}
 </nav>

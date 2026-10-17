@@ -1,0 +1,31 @@
+{{define "title"}}Pengaturan Keuangan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<section class="card form-card">
+<h1>Pengaturan Keuangan</h1>
+{{template "flash" .}}
+
+<h2 class="section-title">Persetujuan pembatalan pembayaran</h2>
+<p class="muted">Pembatalan dengan nominal <strong>di atas</strong> ambang perlu persetujuan kepala sekolah. Pembatalan sampai ambang langsung berlaku setelah diajukan bendahara.</p>
+
+<dl class="data-list">
+<dt>Ambang saat ini</dt>
+<dd>{{if .Settings.IsSet}}<strong>{{.Current}}</strong>{{if eq .Settings.VoidApprovalThreshold 0}} <span class="muted">(semua pembatalan perlu persetujuan)</span>{{end}}{{else}}<strong>Belum diatur</strong> <span class="muted">(dianggap Rp0: semua pembatalan perlu persetujuan)</span>{{end}}</dd>
+</dl>
+
+{{if .CanEdit}}
+<form method="post" action="/pengaturan/keuangan" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field{{if .Errors.void_approval_threshold}} has-error{{end}}">
+<label for="void_approval_threshold">Ambang persetujuan (Rp)</label>
+<input id="void_approval_threshold" name="void_approval_threshold" value="{{.Threshold}}" inputmode="numeric" placeholder="500.000" autocomplete="off" required
+  x-data @blur="const d = $el.value.replace(/[^0-9]/g, ''); if (d && !/[,-]/.test($el.value.replace(/^Rp\s*/i, ''))) $el.value = Number(d).toLocaleString('id-ID')"{{if .Errors.void_approval_threshold}} aria-invalid="true" aria-describedby="threshold-error"{{end}}>
+{{with .Errors.void_approval_threshold}}<p class="field-error" id="threshold-error">{{.}}</p>{{else}}<p class="hint">Isi 0 agar setiap pembatalan perlu persetujuan. Perubahan berlaku untuk pengajuan berikutnya dan dicatat di audit.</p>{{end}}
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button></div>
+</form>
+{{else}}
+<p class="hint">Hanya kepala sekolah yang bisa mengubah ambang ini.</p>
+{{end}}
+</section>
+{{end}}
