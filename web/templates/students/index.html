@@ -1,0 +1,78 @@
+{{define "title"}}Siswa{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Siswa</h1>
+<p class="muted">{{if .YearName}}Kelas ditampilkan untuk tahun ajaran {{.YearName}}.{{else}}Belum ada tahun ajaran.{{end}}</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-primary" href="/siswa/baru">Tambah siswa</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+<form method="get" action="/siswa" class="filter-bar filter-grid" x-data>
+<div class="field">
+<label for="q">Cari nama atau NIS</label>
+<input id="q" type="search" name="q" value="{{.Query}}" placeholder="mis. Budi atau 2026" autocomplete="off">
+</div>
+{{if .Years}}
+<div class="field">
+<label for="tahun">Tahun ajaran</label>
+<select id="tahun" name="tahun" @change="$el.form.kelas.value=''; $el.form.submit()">
+{{range .Years}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas" @change="$el.form.submit()">
+<option value="">Semua kelas</option>
+{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+{{end}}
+<div class="field">
+<label for="status">Status</label>
+<select id="status" name="status" @change="$el.form.submit()">
+{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+<div class="filter-actions">
+<button type="submit" class="btn btn-ghost">Cari</button>
+{{if .HasFilters}}<a class="btn btn-ghost" href="/siswa">Reset</a>{{end}}
+</div>
+</form>
+
+{{if .Rows}}
+<p class="muted result-count">Menampilkan {{.From}}–{{.To}} dari {{.Page.Total}} siswa.</p>
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr>
+<td class="nowrap">{{.NIS}}</td>
+<td><a href="/siswa/{{.ID}}"><strong>{{.FullName}}</strong></a></td>
+<td>{{if .ClassName}}{{.ClassName}}{{else}}<span class="muted">Belum ada</span>{{end}}</td>
+<td>{{template "student_status" .Status}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{if or .PrevURL .NextURL}}
+<nav class="pagination" aria-label="Halaman">
+{{if .PrevURL}}<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}">← Sebelumnya</a>{{else}}<span></span>{{end}}
+<span class="muted">Halaman {{.Page.Page}} dari {{.Page.LastPage}}</span>
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}">Berikutnya →</a>{{else}}<span></span>{{end}}
+</nav>
+{{end}}
+{{else}}
+<section class="card empty-state">
+{{if .HasFilters}}<p>Tidak ada siswa yang cocok dengan pencarian.</p>
+{{else}}<p>Belum ada data siswa.</p>{{if .CanEdit}}<p><a class="btn btn-primary" href="/siswa/baru">Tambah siswa pertama</a></p>{{end}}{{end}}
+</section>
+{{end}}
+{{end}}

@@ -214,6 +214,11 @@ Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](interna
 - `gender`: `L`, `P`, atau kosong. `status`: `aktif` (default), `pindah`, `lulus`, `keluar`.
 - `Search(schoolID, query, limit)` mencocokkan nama yang **mengandung** query atau NIS yang **diawali** query, tanpa membedakan huruf besar/kecil; `%` dan `_` di query dicocokkan apa adanya. Paginasi dikerjakan di T22.
 - Data siswa adalah data pribadi: jangan tulis ke log. Error database yang tidak dikenali hanya membawa kode SQLSTATE dan nama constraint, bukan pesan PostgreSQL yang bisa memuat nilai baris.
+- Halaman `/siswa?q=&tahun=&kelas=&status=&page=`: 25 siswa per halaman, filter tetap terbawa di tautan halaman. Kolom kelas diambil dari enrollment aktif di tahun ajaran yang dipilih (default tahun aktif). Akses: `admin_tu` penuh, `kepala_sekolah` hanya baca, guru dan orang tua `403` (guru lewat absensi T26, orang tua lewat portal T43).
+- Tambah siswa **wajib** dengan kelas tahun aktif (dipilih lewat `<datalist>`, dicocokkan tanpa membedakan huruf besar/kecil). Siswa dan enrollment awalnya (mulai hari ini) dibuat dalam satu transaksi. Jika tahun aktif sudah berakhir, penambahan ditolak dengan pesan untuk mengaktifkan tahun ajaran berjalan.
+- Form ubah hanya untuk data pribadi dan status. Pindah kelas dari halaman detail (`POST /siswa/{id}/pindah-kelas`), yang selalu membuat enrollment baru. Halaman detail menampilkan riwayat kelas.
+- Audit: `student.create`, `student.update` (hanya bila ada perubahan), `student.place`.
+- Diukur di uji: daftar dengan 500 siswa dan pencarian selesai sekitar 10 ms per halaman.
 - Index `(school_id, full_name)` membantu daftar urut nama. Untuk pencarian "mengandung", index ini tidak terpakai; bila nanti lambat, pertimbangkan `pg_trgm` (lihat T22).
 
 ## Penempatan Kelas (Enrollment)

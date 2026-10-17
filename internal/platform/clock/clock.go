@@ -2,6 +2,7 @@
 package clock
 
 import (
+	"strconv"
 	"time"
 
 	// Data zona waktu ikut di-embed agar Asia/Jakarta tersedia di image
@@ -31,4 +32,12 @@ func Today() time.Time {
 func DateOf(t time.Time) time.Time {
 	y, m, d := t.In(Jakarta).Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+var monthsID = [...]string{"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+	"Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+
+// FormatDateID memformat tanggal dalam bahasa Indonesia, mis. "1 Juli 2026".
+func FormatDateID(t time.Time) string {
+	return strconv.Itoa(t.Day()) + " " + monthsID[t.Month()-1] + " " + strconv.Itoa(t.Year())
 }

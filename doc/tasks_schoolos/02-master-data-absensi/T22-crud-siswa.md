@@ -28,12 +28,12 @@ Admin/TU bisa mencari, menambah, dan mengubah data siswa, termasuk penempatan ke
 - `web/templates/students/index.html`, `form.html`, `detail.html`
 
 ## Kriteria selesai
-- [ ] Pencarian dengan 500 siswa dummy selesai di bawah 1 detik (diukur di data uji)
-- [ ] Hasil pencarian berhalaman 25 per halaman
-- [ ] Membuat siswa tanpa kelas ditolak
-- [ ] Pindah kelas tercatat sebagai enrollment baru, bukan edit kolom
-- [ ] Guru yang membuka `/siswa` mendapat `403` (guru hanya lewat absensi)
-- [ ] ID siswa sekolah lain menghasilkan `404`
+- [x] Pencarian dengan 500 siswa dummy selesai di bawah 1 detik (diukur di data uji)
+- [x] Hasil pencarian berhalaman 25 per halaman
+- [x] Membuat siswa tanpa kelas ditolak
+- [x] Pindah kelas tercatat sebagai enrollment baru, bukan edit kolom
+- [x] Guru yang membuka `/siswa` mendapat `403` (guru hanya lewat absensi)
+- [x] ID siswa sekolah lain menghasilkan `404`
 
 ## Catatan
 - Guru dan orang tua tidak punya akses ke daftar siswa di task ini. Akses guru ke data siswa kelasnya ditangani di T26, dan akses orang tua di T43.

@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
 )
 
@@ -97,7 +98,7 @@ func (h *AcademicYearHandler) list(w http.ResponseWriter, r *http.Request) {
 	for _, y := range years {
 		view.Years = append(view.Years, academicYearRow{
 			ID: y.ID, Name: y.Name, IsActive: y.IsActive,
-			StartDate: formatDateID(y.StartDate), EndDate: formatDateID(y.EndDate),
+			StartDate: clock.FormatDateID(y.StartDate), EndDate: clock.FormatDateID(y.EndDate),
 		})
 	}
 	h.render.Render(w, r, http.StatusOK, "school/academic_years", view)

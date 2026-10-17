@@ -23,6 +23,7 @@ import (
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/internal/school"
+	"akra/internal/students"
 	"akra/web"
 )
 
@@ -74,6 +75,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		// Service tanpa database: uji di paket ini tidak sampai ke handler tahun ajaran.
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
+		students:     students.NewHandler(students.NewService(nil), sessions, rd, logger),
 	})
 }
 

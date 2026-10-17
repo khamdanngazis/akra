@@ -1,0 +1,8 @@
+{{/* student_status menampilkan badge status siswa. Argumen: kode status. */}}
+{{define "student_status" -}}
+{{if eq . "aktif"}}<span class="badge badge-success">Aktif</span>
+{{- else if eq . "pindah"}}<span class="badge">Pindah</span>
+{{- else if eq . "lulus"}}<span class="badge badge-info">Lulus</span>
+{{- else if eq . "keluar"}}<span class="badge">Keluar</span>
+{{- else}}<span class="badge">{{.}}</span>{{end}}
+{{- end}}
