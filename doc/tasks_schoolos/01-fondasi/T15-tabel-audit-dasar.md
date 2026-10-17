@@ -33,10 +33,10 @@ Ada tabel dan fungsi pencatatan audit yang bisa dipakai modul lain. Data audit t
 - `internal/audit/audit_test.go`
 
 ## Kriteria selesai
-- [ ] `audit.Record` menyimpan satu baris dengan `before` dan `after` sebagai JSON
-- [ ] Transaksi yang di-rollback tidak menyisakan baris audit
-- [ ] Validasi menolak `action` kosong
-- [ ] Perintah `UPDATE audit_logs` dari user aplikasi ditolak database (diuji manual dengan `psql`)
+- [x] `audit.Record` menyimpan satu baris dengan `before` dan `after` sebagai JSON
+- [x] Transaksi yang di-rollback tidak menyisakan baris audit
+- [x] Validasi menolak `action` kosong
+- [x] Perintah `UPDATE audit_logs` dari user aplikasi ditolak database (diuji manual dengan `psql`)
 
 ## Catatan
 - Semua aksi keuangan (T40) dan aksi master data penting memakai fungsi ini.
