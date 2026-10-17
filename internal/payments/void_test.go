@@ -231,3 +231,38 @@ func TestVoid_DatabaseRules(t *testing.T) {
 	wantCode("empty reason", exec(`INSERT INTO payment_voids (school_id, payment_id, reason, requested_by, requires_approval, status)
 		VALUES ($1, $2, '  ', $3, true, 'pending')`, f.schoolA, p.ID, f.actor.UserID), "23514", "payment_voids_reason_check")
 }
+
+// paidSumSQL (dipakai halaman dan cek sisa) harus sama dengan
+// billing.ActivePaid (dipakai RecalculateInvoice).
+func TestPaidSumSQLMatchesActivePaid(t *testing.T) {
+	f := newVoidFixture(t)
+	ctx := context.Background()
+	f.threshold(t, "0")
+	today := clock.Today()
+	a := f.pay(t, f.invA.ID, 30000, today)
+	b := f.pay(t, f.invA.ID, 40000, today)
+	c := f.pay(t, f.invA.ID, 50000, today)
+	va, _ := f.voids.Request(ctx, f.actor, a.ID, "x")
+	if _, err := f.voids.Approve(ctx, f.kepala, va.ID); err != nil {
+		t.Fatal(err)
+	}
+	vb, _ := f.voids.Request(ctx, f.actor, b.ID, "x")
+	if _, err := f.voids.Reject(ctx, f.kepala, vb.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.voids.Request(ctx, f.actor, c.ID, "x"); err != nil { // pending
+		t.Fatal(err)
+	}
+	_, sqlPaid, _, err := invoiceForPayment(ctx, f.tx, f.schoolA, f.invA.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := []billing.PaymentLine{{ID: a.ID, Amount: 30000}, {ID: b.ID, Amount: 40000}, {ID: c.ID, Amount: 50000}}
+	goPaid := billing.ActivePaid(lines, map[string]string{a.ID: "approved", b.ID: "rejected", c.ID: "pending"})
+	if sqlPaid != goPaid || goPaid != 90000 {
+		t.Errorf("paidSumSQL = %d, ActivePaid = %d, want both 90000", sqlPaid, goPaid)
+	}
+	if s := f.status(t, f.invA.ID); s != billing.StatusPartial {
+		t.Errorf("status = %s, want sebagian", s)
+	}
+}
