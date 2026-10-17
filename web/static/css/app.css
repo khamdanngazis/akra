@@ -876,3 +876,37 @@ tr.row-inactive td {
   background: var(--color-secondary);
   transition: width 0.3s;
 }
+
+/* Rekap */
+
+.stat-card {
+  margin-bottom: var(--space-4);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.stat-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.stat-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+table.numeric td:nth-child(n + 3),
+table.numeric th:nth-child(n + 3) {
+  text-align: right;
+}

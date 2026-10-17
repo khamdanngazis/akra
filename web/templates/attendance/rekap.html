@@ -1,0 +1,67 @@
+{{define "title"}}Rekap Absensi{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Rekap Absensi</h1>
+<p class="muted">{{if .Class}}Kelas {{.Class.ClassName}} · tahun ajaran {{.Class.YearName}}{{else}}Jumlah hadir, sakit, izin, dan alpa per siswa.{{end}}</p>
+</div>
+<button type="button" class="btn btn-ghost" disabled title="Unduhan Excel dikerjakan di T47">Unduh Excel (segera)</button>
+</div>
+
+{{if not .Classes}}
+<section class="card empty-state"><p>Belum ada kelas yang bisa direkap.</p></section>
+{{else}}
+<form method="get" action="/absensi/rekap" class="filter-bar filter-grid">
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">
+{{range .Classes}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+<div class="field">
+<label for="dari">Dari</label>
+<input id="dari" type="date" name="dari" value="{{.From}}">
+</div>
+<div class="field">
+<label for="sampai">Sampai</label>
+<input id="sampai" type="date" name="sampai" value="{{.To}}">
+</div>
+<div class="filter-actions"><button type="submit" class="btn btn-primary">Tampilkan</button></div>
+</form>
+{{if .YearRange}}<p class="hint">Rentang maksimal satu tahun ajaran: {{.YearRange}}.</p>{{end}}
+
+{{template "flash" .}}
+
+{{if and .Class (not .Error)}}
+<section class="card stat-card">
+<p class="muted small">{{.Range}} · {{.Summary.Sessions}} sesi absensi</p>
+<div class="stat-grid">
+<div><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
+<div><span class="stat-value">{{.Summary.Hadir}}</span><span class="stat-label">hadir</span></div>
+<div><span class="stat-value">{{.Summary.Sakit}}</span><span class="stat-label">sakit</span></div>
+<div><span class="stat-value">{{.Summary.Izin}}</span><span class="stat-label">izin</span></div>
+<div><span class="stat-value">{{.Summary.Alpa}}</span><span class="stat-label">alpa</span></div>
+</div>
+<p class="hint">Persentase kehadiran = hadir ÷ (hadir + sakit + izin + alpa).</p>
+</section>
+
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table class="numeric">
+<thead><tr><th>NIS</th><th>Nama</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Total</th><th>Kehadiran</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr><td class="nowrap">{{.NIS}}</td><td>{{.FullName}}</td><td>{{.Hadir}}</td><td>{{.Sakit}}</td><td>{{.Izin}}</td><td>{{.Alpa}}</td><td>{{.Total}}</td><td><strong>{{.Percent}}</strong></td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada absensi pada rentang ini.</p></section>
+{{end}}
+{{end}}
+{{end}}
+{{end}}
