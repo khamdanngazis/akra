@@ -40,7 +40,10 @@ func newTestRouterWithSessions(t *testing.T) (http.Handler, *memstore.MemStore) 
 }
 
 func postLogin(h http.Handler, school, email, password string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
-	form := url.Values{"school_code": {school}, "email": {email}, "password": {password}}
+	return postLoginForm(h, url.Values{"school_code": {school}, "email": {email}, "password": {password}}, cookies...)
+}
+
+func postLoginForm(h http.Handler, form url.Values, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	for _, c := range cookies {
@@ -130,5 +133,44 @@ func TestClientIP(t *testing.T) {
 		if got := clientIP(r).String(); got != want {
 			t.Errorf("clientIP(%q) = %q, want %q", remote, got, want)
 		}
+	}
+}
+
+func TestSubmitLogin_RedirectsToNext(t *testing.T) {
+	cases := map[string]string{
+		"/kelas?tab=2":       "/kelas?tab=2",
+		"https://contoh.com": "/",
+		"//contoh.com/phish": "/",
+		"":                   "/",
+	}
+	for next, want := range cases {
+		form := url.Values{"school_code": {"sd-harapan"}, "email": {"budi@sekolah.id"}, "password": {"benar-123"}, "next": {next}}
+		rec := postLoginForm(newTestRouter(t), form)
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
+			t.Errorf("next=%q: status = %d, Location = %q; want 303 to %q", next, rec.Code, rec.Header().Get("Location"), want)
+		}
+	}
+}
+
+func TestLoginPage_CarriesSafeNext(t *testing.T) {
+	h := newTestRouter(t)
+
+	body := get(h, "/login?next=%2Fkelas%3Ftab%3D2", nil).Body.String()
+	if !strings.Contains(body, `name="next" value="/kelas?tab=2"`) {
+		t.Errorf("login form does not carry next; body:\n%s", body)
+	}
+	body = get(h, "/login?next=https%3A%2F%2Fcontoh.com", nil).Body.String()
+	if !strings.Contains(body, `name="next" value="/"`) {
+		t.Error("login form carries an unsafe next")
+	}
+}
+
+func TestLoginPage_AlreadyLoggedIn(t *testing.T) {
+	h := newTestRouter(t)
+	c := sessionCookie(t, postLogin(h, "sd-harapan", "budi@sekolah.id", "benar-123"))
+
+	rec := get(h, "/login?next=%2Fkelas", c)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/kelas" {
+		t.Errorf("status = %d, Location = %q; want 303 to /kelas", rec.Code, rec.Header().Get("Location"))
 	}
 }

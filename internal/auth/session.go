@@ -58,11 +58,3 @@ func startSession(ctx context.Context, sm *scs.SessionManager, u User) error {
 	sm.Put(ctx, sessionKeyRoles, u.Roles)
 	return nil
 }
-
-// SessionUserID mengembalikan user_id dari sesi, atau "" jika belum login.
-//
-// TODO(T08): handler sebaiknya memakai CurrentUser dari context, bukan
-// membaca sesi langsung.
-func SessionUserID(ctx context.Context, sm *scs.SessionManager) string {
-	return sm.GetString(ctx, sessionKeyUserID)
-}
