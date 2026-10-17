@@ -88,7 +88,7 @@ func TestPasswordReset_Postgres(t *testing.T) {
 		if len(mailer.sent) != before+1 {
 			t.Fatal("no reset email sent")
 		}
-		return tokenFromLink(t, mailer.sent[len(mailer.sent)-1].Link)
+		return tokenFromLink(t, linkFromMessage(t, mailer.sent[len(mailer.sent)-1]))
 	}
 
 	token := request()

@@ -71,6 +71,9 @@ Ukuran binary (Go 1.22.2, linux/amd64, 17 Oktober 2026):
 | `PORT` | tidak | `8080` | Port HTTP |
 | `APP_ENV` | tidak | `development` | `development`, `staging`, atau `production` |
 | `APP_BASE_URL` | ya, kecuali `development` | `http://localhost:<PORT>` | URL publik aplikasi tanpa path (mis. `https://app.akra.id`), untuk tautan di email. Tidak pernah diambil dari header `Host` |
+| `MAIL_DRIVER` | tidak (wajib `resend` di production) | `log` | `log`: email ditulis ke log (dev/staging). `resend`: kirim lewat [Resend HTTP API](https://resend.com/docs/api-reference/emails/send-email) |
+| `MAIL_FROM` | ya untuk `resend` | `AKRA <no-reply@akra.local>` | Alamat pengirim; domainnya harus sudah diverifikasi di Resend |
+| `RESEND_API_KEY` | ya untuk `resend` | | API key Resend (`re_...`). Simpan di variabel Railway, jangan di repo |
 | `WEB_DIR` | tidak | (kosong) | Baca template dan aset dari folder ini (mis. `web`) alih-alih dari binary. Hanya boleh saat `APP_ENV=development` |
 | `ARGON2_MEMORY_KIB` | tidak | `19456` | Memori argon2id per hash (KiB) |
 | `ARGON2_ITERATIONS` | tidak | `2` | Iterasi argon2id |
@@ -97,9 +100,10 @@ Halaman `/lupa-password` meminta kode sekolah dan email, lalu `/reset-password?t
 - Tautan berlaku 30 menit dan sekali pakai. Reset yang berhasil membatalkan semua tautan lain milik pengguna dan menghapus semua sesi aktifnya.
 - Maksimal 3 tautan per pengguna per 30 menit; permintaan berikutnya diabaikan diam-diam.
 - Password baru minimal 8 karakter.
-- Pengiriman tautan lewat interface `auth.Mailer`:
-  - `development` dan `staging`: tautan **ditulis ke log** dengan level `WARN` (`password reset link written to log instead of email`). Jangan bagikan log staging yang berisi tautan ini.
-  - `production`: `UnconfiguredMailer` selalu gagal (`auth: mailer is not configured`) sampai layanan email dipilih. Kegagalan hanya dicatat di log; pengguna tetap melihat pesan sukses yang sama.
+- Email dikirim lewat [internal/platform/mail](internal/platform/mail/mail.go) sesuai `MAIL_DRIVER`:
+  - `log` (default di development dan staging): isi email, **termasuk tautan reset**, ditulis ke log dengan level `WARN` (`email written to log instead of being sent`). Jangan bagikan log yang berisi tautan ini.
+  - `resend`: `POST https://api.resend.com/emails` dengan `Authorization: Bearer $RESEND_API_KEY`. Wajib di production; server menolak start jika production memakai `log` atau `RESEND_API_KEY` kosong.
+  - Gagal kirim hanya dicatat di log (`send password reset email`); pengguna tetap melihat pesan sukses yang sama agar email terdaftar tidak terbongkar.
 
 ### Sesi
 

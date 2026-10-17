@@ -19,6 +19,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/csrf"
+	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/web"
 )
@@ -66,7 +67,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		static:      mustSub(t, "static"),
 		authHandler: auth.NewHandler(svc, sessions, rd, logger),
 		resetHandler: auth.NewResetHandler(
-			auth.NewResetService(emptyRepo{}, hasher, auth.NewMailer("development", logger), auth.NewSessionRevoker(sessions), "http://localhost:8080", logger),
+			auth.NewResetService(emptyRepo{}, hasher, &mail.LogMailer{Logger: logger}, auth.NewSessionRevoker(sessions), "http://localhost:8080", logger),
 			sessions, rd, logger),
 	})
 }

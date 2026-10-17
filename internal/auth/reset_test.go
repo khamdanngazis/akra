@@ -9,9 +9,12 @@ import (
 	"io"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"akra/internal/platform/mail"
 )
 
 // fakeResetRepo menyimpan token di memori. Token dianggap selalu belum
@@ -80,13 +83,25 @@ func (f *fakeResetRepo) ResetPassword(_ context.Context, hash []byte, _ string) 
 }
 
 type fakeMailer struct {
-	sent []PasswordResetEmail
+	sent []mail.Message
 	err  error
 }
 
-func (m *fakeMailer) SendPasswordReset(_ context.Context, msg PasswordResetEmail) error {
+func (m *fakeMailer) Send(_ context.Context, msg mail.Message) error {
 	m.sent = append(m.sent, msg)
 	return m.err
+}
+
+var resetLinkPattern = regexp.MustCompile(`https?://\S+/reset-password\?token=\S+`)
+
+// linkFromMessage mengambil tautan reset dari isi email.
+func linkFromMessage(t *testing.T, msg mail.Message) string {
+	t.Helper()
+	link := resetLinkPattern.FindString(msg.Text)
+	if link == "" {
+		t.Fatalf("email has no reset link:\n%s", msg.Text)
+	}
+	return link
 }
 
 type fakeRevoker struct{ revoked []string }
@@ -126,14 +141,20 @@ func TestRequestReset_RegisteredUser(t *testing.T) {
 		t.Fatalf("sent %d emails and stored %d tokens, want 1 and 1", len(mailer.sent), len(repo.tokens))
 	}
 	msg := mailer.sent[0]
-	if msg.To != "budi@sekolah.id" || msg.ExpiresIn != 30*time.Minute {
+	if msg.To != "budi@sekolah.id" || msg.Subject == "" {
 		t.Errorf("email = %+v", msg)
 	}
-	if !strings.HasPrefix(msg.Link, "https://app.akra.id/reset-password?token=") {
-		t.Errorf("link = %q", msg.Link)
+	for _, want := range []string{"Halo Budi", "SD Harapan", "berlaku 30 menit", "sekali"} {
+		if !strings.Contains(msg.Text, want) {
+			t.Errorf("email text does not contain %q:\n%s", want, msg.Text)
+		}
+	}
+	link := linkFromMessage(t, msg)
+	if !strings.HasPrefix(link, "https://app.akra.id/reset-password?token=") {
+		t.Errorf("link = %q", link)
 	}
 
-	token := tokenFromLink(t, msg.Link)
+	token := tokenFromLink(t, link)
 	raw, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil || len(raw) != 32 {
 		t.Fatalf("token %q is not 32 random bytes in base64url", token)
@@ -175,7 +196,7 @@ func TestRequestReset_Limit(t *testing.T) {
 
 func TestRequestReset_MailerErrorIsHidden(t *testing.T) {
 	svc, _, mailer, _ := newTestResetService()
-	mailer.err = ErrMailerNotConfigured
+	mailer.err = errors.New("resend: status 500")
 
 	if err := svc.RequestReset(context.Background(), "sd-harapan", "budi@sekolah.id"); err != nil {
 		t.Errorf("RequestReset() error = %v, want nil so registered emails are not revealed", err)
@@ -188,7 +209,7 @@ func TestResetPassword(t *testing.T) {
 	if err := svc.RequestReset(ctx, "sd-harapan", "budi@sekolah.id"); err != nil {
 		t.Fatal(err)
 	}
-	token := tokenFromLink(t, mailer.sent[0].Link)
+	token := tokenFromLink(t, linkFromMessage(t, mailer.sent[0]))
 
 	if err := svc.CheckToken(ctx, token); err != nil {
 		t.Fatalf("CheckToken() error = %v", err)
@@ -229,20 +250,5 @@ func TestValidatePassword(t *testing.T) {
 		if got := ValidatePassword(p); !errors.Is(got, want) {
 			t.Errorf("ValidatePassword(len %d) = %v, want %v", len(p), got, want)
 		}
-	}
-}
-
-func TestNewMailer(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if _, ok := NewMailer("production", logger).(UnconfiguredMailer); !ok {
-		t.Error("production mailer is not UnconfiguredMailer")
-	}
-	for _, env := range []string{"development", "staging"} {
-		if _, ok := NewMailer(env, logger).(LogMailer); !ok {
-			t.Errorf("%s mailer is not LogMailer", env)
-		}
-	}
-	if err := (UnconfiguredMailer{}).SendPasswordReset(context.Background(), PasswordResetEmail{}); !errors.Is(err, ErrMailerNotConfigured) {
-		t.Errorf("UnconfiguredMailer error = %v", err)
 	}
 }

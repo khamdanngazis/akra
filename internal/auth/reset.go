@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"time"
 	"unicode/utf8"
+
+	"akra/internal/platform/mail"
 )
 
 // Kebijakan reset password.
@@ -57,7 +59,7 @@ type SessionRevoker interface {
 type ResetService struct {
 	repo     ResetRepository
 	hasher   *Hasher
-	mailer   Mailer
+	mailer   mail.Mailer
 	sessions SessionRevoker
 	baseURL  string
 	logger   *slog.Logger
@@ -65,7 +67,7 @@ type ResetService struct {
 
 // NewResetService mengembalikan ResetService. baseURL adalah URL publik
 // aplikasi tanpa garis miring di akhir.
-func NewResetService(repo ResetRepository, hasher *Hasher, mailer Mailer, sessions SessionRevoker, baseURL string, logger *slog.Logger) *ResetService {
+func NewResetService(repo ResetRepository, hasher *Hasher, mailer mail.Mailer, sessions SessionRevoker, baseURL string, logger *slog.Logger) *ResetService {
 	return &ResetService{repo: repo, hasher: hasher, mailer: mailer, sessions: sessions, baseURL: baseURL, logger: logger}
 }
 
@@ -103,14 +105,8 @@ func (s *ResetService) RequestReset(ctx context.Context, schoolCode, email strin
 		return fmt.Errorf("auth: create reset token: %w", err)
 	}
 
-	err = s.mailer.SendPasswordReset(ctx, PasswordResetEmail{
-		To:         user.Email,
-		FullName:   user.FullName,
-		SchoolName: user.SchoolName,
-		Link:       s.baseURL + "/reset-password?token=" + token,
-		ExpiresIn:  ResetTokenTTL,
-	})
-	if err != nil {
+	msg := passwordResetMessage(user, s.baseURL+"/reset-password?token="+token)
+	if err := s.mailer.Send(ctx, msg); err != nil {
 		s.logger.ErrorContext(ctx, "send password reset email", "user_id", user.ID, "error", err)
 	}
 	return nil

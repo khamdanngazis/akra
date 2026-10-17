@@ -55,7 +55,7 @@ func TestForgotPassword_SameResponseForRegisteredAndUnknown(t *testing.T) {
 func TestResetPasswordPage(t *testing.T) {
 	h, mailer := newResetTestRouter(t)
 	postReset(h, "/lupa-password", url.Values{"school_code": {"sd-harapan"}, "email": {"budi@sekolah.id"}})
-	token := tokenFromLink(t, mailer.sent[0].Link)
+	token := tokenFromLink(t, linkFromMessage(t, mailer.sent[0]))
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/reset-password?token="+token, nil))
