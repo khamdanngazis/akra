@@ -18,7 +18,7 @@ func TestConnect_InvalidDSN(t *testing.T) {
 }
 
 func TestConnect_DatabaseDown(t *testing.T) {
-	// Port 1 is almost certainly unused, so the connection is refused immediately.
+	// Port 1 hampir pasti tidak dipakai, jadi koneksi langsung ditolak.
 	_, err := Connect(context.Background(), "postgres://user:secret@127.0.0.1:1/db?connect_timeout=2", 10)
 	if err == nil {
 		t.Fatal("Connect() error = nil, want error")
@@ -28,7 +28,7 @@ func TestConnect_DatabaseDown(t *testing.T) {
 	}
 }
 
-// TestConnect_DatabaseUp runs only when TEST_DATABASE_URL is set.
+// TestConnect_DatabaseUp hanya berjalan jika TEST_DATABASE_URL diisi.
 func TestConnect_DatabaseUp(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {

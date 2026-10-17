@@ -1,4 +1,4 @@
-// Package database sets up the PostgreSQL connection pool.
+// Package database menyiapkan connection pool PostgreSQL.
 package database
 
 import (
@@ -16,12 +16,12 @@ const (
 	pingTimeout     = 5 * time.Second
 )
 
-// Connect creates a connection pool for dsn and verifies the database is
-// reachable with a Ping. maxConns is the upper bound of pooled connections.
+// Connect membuat connection pool ke dsn dan memastikan database bisa
+// dijangkau dengan Ping. maxConns adalah batas atas koneksi dalam pool.
 func Connect(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		// Do not include the dsn in the error: it may contain a password.
+		// Jangan sertakan dsn di pesan error karena bisa berisi password.
 		return nil, fmt.Errorf("database: invalid DATABASE_URL")
 	}
 
