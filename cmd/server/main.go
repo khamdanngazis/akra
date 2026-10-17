@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/internal/school"
+	"akra/internal/students"
 	"akra/web"
 )
 
@@ -98,6 +99,7 @@ func run(logger *slog.Logger) error {
 			sessions, rd, logger),
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(pool), sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(pool), pool, sessions, rd, logger),
+		students:     students.NewHandler(students.NewService(pool), sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, httpserver.ClientIP(cfg.ClientIPHeader)(r))

@@ -20,3 +20,12 @@ func TestDateOf(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatDateID(t *testing.T) {
+	if got := FormatDateID(time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)); got != "1 Juli 2026" {
+		t.Errorf("FormatDateID = %q", got)
+	}
+	if got := FormatDateID(time.Date(2027, 12, 31, 0, 0, 0, 0, time.UTC)); got != "31 Desember 2027" {
+		t.Errorf("FormatDateID = %q", got)
+	}
+}

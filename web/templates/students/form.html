@@ -1,0 +1,70 @@
+{{define "title"}}{{if .IsNew}}Tambah Siswa{{else}}Ubah Data Siswa{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="{{if .IsNew}}/siswa{{else}}/siswa/{{.ID}}{{end}}">← {{if .IsNew}}Siswa{{else}}Detail siswa{{end}}</a></p>
+<section class="card form-card">
+<h1>{{if .IsNew}}Tambah Siswa{{else}}Ubah Data Siswa{{end}}</h1>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+{{if and .IsNew (not .YearName)}}
+<p>Belum ada tahun ajaran aktif. Siswa baru harus langsung ditempatkan di kelas, jadi <a href="/pengaturan/tahun-ajaran">aktifkan tahun ajaran</a> dan buat kelas dulu.</p>
+{{else}}
+<form method="post" action="{{if .IsNew}}/siswa{{else}}/siswa/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .Errors.nis}} has-error{{end}}">
+<label for="nis">NIS</label>
+<input id="nis" name="nis" value="{{.Form.NIS}}" maxlength="30" inputmode="numeric" autocomplete="off" required{{if .Errors.nis}} aria-invalid="true" aria-describedby="nis-error"{{end}}>
+{{with .Errors.nis}}<p class="field-error" id="nis-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.full_name}} has-error{{end}}">
+<label for="full_name">Nama lengkap</label>
+<input id="full_name" name="full_name" value="{{.Form.FullName}}" maxlength="100" autocomplete="off" required{{if .Errors.full_name}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+{{with .Errors.full_name}}<p class="field-error" id="name-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.birth_date}} has-error{{end}}">
+<label for="birth_date">Tanggal lahir <span class="muted">(opsional)</span></label>
+<input id="birth_date" type="date" name="birth_date" value="{{.Form.BirthDate}}"{{if .Errors.birth_date}} aria-invalid="true" aria-describedby="birth-error"{{end}}>
+{{with .Errors.birth_date}}<p class="field-error" id="birth-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.gender}} has-error{{end}}">
+<label for="gender">Jenis kelamin <span class="muted">(opsional)</span></label>
+<select id="gender" name="gender">
+<option value="">Tidak diisi</option>
+<option value="L"{{if eq .Form.Gender "L"}} selected{{end}}>Laki-laki</option>
+<option value="P"{{if eq .Form.Gender "P"}} selected{{end}}>Perempuan</option>
+</select>
+{{with .Errors.gender}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+
+{{if .IsNew}}
+<div class="field{{if .Errors.class_name}} has-error{{end}}">
+<label for="class_name">Kelas ({{.YearName}})</label>
+<input id="class_name" name="class_name" list="class-options" value="{{.Form.ClassName}}" autocomplete="off" placeholder="Ketik atau pilih kelas" required{{if .Errors.class_name}} aria-invalid="true" aria-describedby="class-error"{{end}}>
+<datalist id="class-options">{{range .Classes}}<option value="{{.}}">{{end}}</datalist>
+{{with .Errors.class_name}}<p class="field-error" id="class-error">{{.}}</p>{{end}}
+{{if not .Classes}}<p class="hint">Belum ada kelas di tahun ajaran ini. <a href="/kelas/baru">Buat kelas</a> dulu.</p>{{end}}
+</div>
+{{else}}
+<div class="field{{if .Errors.status}} has-error{{end}}">
+<label for="status">Status</label>
+<select id="status" name="status">
+{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.status}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Pindah kelas dilakukan dari halaman detail siswa, bukan dari form ini.</p>
+</div>
+{{end}}
+
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
+<a class="btn btn-ghost" href="{{if .IsNew}}/siswa{{else}}/siswa/{{.ID}}{{end}}">Batal</a>
+</div>
+</form>
+{{end}}
+</section>
+{{end}}

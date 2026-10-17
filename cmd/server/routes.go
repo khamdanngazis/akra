@@ -14,6 +14,7 @@ import (
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
 	"akra/internal/school"
+	"akra/internal/students"
 )
 
 type routerDeps struct {
@@ -26,6 +27,7 @@ type routerDeps struct {
 	resetHandler *auth.ResetHandler
 	academicYear *school.AcademicYearHandler
 	classes      *classes.Handler
+	students     *students.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -60,6 +62,7 @@ func newRouter(d routerDeps) http.Handler {
 			r.Get("/", home.Handler(d.render, d.sessions))
 			d.academicYear.Routes(r)
 			d.classes.Routes(r)
+			d.students.Routes(r)
 		})
 	})
 

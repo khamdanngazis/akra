@@ -1,0 +1,73 @@
+{{define "title"}}{{.Student.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/siswa">← Siswa</a></p>
+<div class="page-header">
+<div>
+<h1>{{.Student.FullName}}</h1>
+<p class="muted">NIS {{.Student.NIS}} · {{template "student_status" .Student.Status}}</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-ghost" href="/siswa/{{.Student.ID}}/ubah">Ubah data</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+<div class="detail-grid">
+<section class="card">
+<h2>Data pribadi</h2>
+<dl class="data-list">
+<dt>NIS</dt><dd>{{.Student.NIS}}</dd>
+<dt>Nama lengkap</dt><dd>{{.Student.FullName}}</dd>
+<dt>Tanggal lahir</dt><dd>{{with .Student.BirthDate}}{{.Format "02-01-2006"}}{{else}}<span class="muted">Tidak diisi</span>{{end}}</dd>
+<dt>Jenis kelamin</dt><dd>{{if eq .Student.Gender "L"}}Laki-laki{{else if eq .Student.Gender "P"}}Perempuan{{else}}<span class="muted">Tidak diisi</span>{{end}}</dd>
+</dl>
+</section>
+
+<section class="card">
+<h2>Riwayat kelas</h2>
+{{if .History}}
+<ul class="timeline">
+{{range .History}}
+<li{{if .Active}} class="current"{{end}}>
+<strong>{{.ClassName}}</strong>
+{{if .Active}}<span class="badge badge-success">Sekarang</span>{{else if .Cancelled}}<span class="badge">Dibatalkan</span>{{end}}
+<br><span class="muted">{{.Start}}{{if and .End (not .Cancelled)}} – {{.End}}{{else if .Active}} – sekarang{{end}}</span>
+</li>
+{{end}}
+</ul>
+{{else}}
+<p class="muted">Belum pernah ditempatkan di kelas.</p>
+{{end}}
+
+{{if .CanEdit}}
+<div x-data="{ open: {{if .Errors}}true{{else}}false{{end}} }" class="move-box">
+<button type="button" class="btn btn-ghost btn-sm" x-show="!open" @click="open = true">Pindah kelas</button>
+<form method="post" action="/siswa/{{.Student.ID}}/pindah-kelas" class="stack" x-show="open" x-cloak novalidate>
+{{ csrfField }}
+<h3>Pindah kelas{{with .YearName}} ({{.}}){{end}}</h3>
+{{if not .YearName}}<p class="muted">Belum ada tahun ajaran aktif.</p>{{else}}
+<div class="field-grid">
+<div class="field{{if .Errors.class_name}} has-error{{end}}">
+<label for="class_name">Kelas tujuan</label>
+<input id="class_name" name="class_name" list="move-class-options" value="{{.Move.ClassName}}" autocomplete="off" required>
+<datalist id="move-class-options">{{range .Classes}}<option value="{{.}}">{{end}}</datalist>
+{{with .Errors.class_name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.date}} has-error{{end}}">
+<label for="date">Mulai tanggal</label>
+<input id="date" type="date" name="date" value="{{.Move.Date}}" required>
+{{with .Errors.date}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<p class="hint">Kelas lama ditutup sehari sebelum tanggal ini dan tetap tersimpan di riwayat.</p>
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Pindahkan</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="open = false">Batal</button>
+</div>
+{{end}}
+</form>
+</div>
+{{end}}
+</section>
+</div>
+{{end}}
