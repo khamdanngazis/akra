@@ -49,11 +49,12 @@ type FeeTypeInput struct {
 }
 
 // Status tagihan yang disimpan. "Terlambat" bukan status tersimpan; ia
-// dihitung saat ditampilkan (lihat IsOverdue, T31).
+// dihitung saat ditampilkan dengan IsOverdue. Status selalu ditentukan
+// dengan ComputeStatus (status.go), tidak dihitung sendiri.
 const (
-	StatusUnpaid  = "belum_bayar"
-	StatusPartial = "sebagian"
-	StatusPaid    = "lunas"
+	StatusUnpaid  Status = "belum_bayar"
+	StatusPartial Status = "sebagian"
+	StatusPaid    Status = "lunas"
 )
 
 var (
@@ -87,7 +88,7 @@ type Invoice struct {
 	Period         string // YYYY-MM
 	DueDate        time.Time
 	TotalAmount    int64
-	Status         string // StatusUnpaid, StatusPartial, atau StatusPaid
+	Status         Status
 	VoidedAt       *time.Time
 	CreatedBy      string
 	CreatedAt      time.Time

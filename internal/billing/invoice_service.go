@@ -61,7 +61,7 @@ func (s *InvoiceService) Create(ctx context.Context, actor school.Actor, req Inv
 //   - total_amount = jumlah nominal item, dihitung di sini (bukan diisi).
 //   - Jatuh tempo kosong diambil dari jatuh tempo default jenis tagihan
 //     pertama yang punya, pada bulan periode.
-//   - Tagihan bertotal 0 langsung berstatus lunas (sama dengan aturan T31).
+//   - Status awal dari ComputeStatus(total, 0): tagihan bertotal 0 lunas.
 func CreateInvoice(ctx context.Context, tx pgx.Tx, actor school.Actor, req InvoiceRequest) (Invoice, error) {
 	if !periodPattern.MatchString(req.Period) {
 		return Invoice{}, ErrInvalidPeriod
@@ -114,9 +114,10 @@ func CreateInvoice(ctx context.Context, tx pgx.Tx, actor school.Actor, req Invoi
 		}
 	}
 
-	status := StatusUnpaid
-	if total == 0 {
-		status = StatusPaid
+	// Belum ada pembayaran; tagihan bertotal 0 langsung lunas.
+	status, err := ComputeStatus(total, 0)
+	if err != nil {
+		return Invoice{}, err
 	}
 	inv, err := insertInvoice(ctx, tx, actor.SchoolID, newInvoice{
 		EnrollmentID: req.EnrollmentID, Period: req.Period, DueDate: due, Status: status, CreatedBy: actor.UserID, Items: items,
@@ -152,7 +153,7 @@ type invoiceJSON struct {
 	Period       string            `json:"period"`
 	DueDate      string            `json:"due_date"`
 	TotalAmount  int64             `json:"total_amount"`
-	Status       string            `json:"status"`
+	Status       Status            `json:"status"`
 	Items        []invoiceItemJSON `json:"items"`
 }
 

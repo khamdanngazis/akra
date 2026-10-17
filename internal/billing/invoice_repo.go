@@ -18,7 +18,7 @@ type newInvoice struct {
 	EnrollmentID string
 	Period       string
 	DueDate      time.Time
-	Status       string
+	Status       Status
 	CreatedBy    string
 	Items        []InvoiceItem
 }
