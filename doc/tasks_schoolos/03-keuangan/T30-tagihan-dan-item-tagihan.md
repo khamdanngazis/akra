@@ -27,11 +27,11 @@ Setiap siswa punya tagihan per periode. Tagihan terdiri dari satu atau lebih ite
 - `internal/billing/invoice_repo.go`, `invoice_service.go`, `model.go`
 
 ## Kriteria selesai
-- [ ] Tagihan dengan dua item menyimpan `total_amount` sesuai jumlah item
-- [ ] Membuat item SPP bulan yang sama untuk enrollment yang sama dua kali ditolak
-- [ ] Nominal item negatif ditolak
-- [ ] Status "terlambat" tidak pernah muncul di kolom `status`
-- [ ] Mengubah nominal default di T28 tidak mengubah tagihan yang sudah ada
+- [x] Tagihan dengan dua item menyimpan `total_amount` sesuai jumlah item
+- [x] Membuat item SPP bulan yang sama untuk enrollment yang sama dua kali ditolak
+- [x] Nominal item negatif ditolak
+- [x] Status "terlambat" tidak pernah muncul di kolom `status`
+- [x] Mengubah nominal default di T28 tidak mengubah tagihan yang sudah ada
 
 ## Catatan
 - Tagihan terikat ke `enrollment_id`, bukan ke `student_id`. Ini agar tagihan kelas tetap tercatat dengan benar saat siswa pindah kelas di tengah tahun.

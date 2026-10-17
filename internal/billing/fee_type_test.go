@@ -47,7 +47,11 @@ func newFixture(t *testing.T) *fixture {
 			t.Fatal(err)
 		}
 	}
-	f.actor = school.Actor{SchoolID: f.schoolA, UserID: "77777777-7777-7777-7777-777777777777", IP: netip.MustParseAddr("192.0.2.5")}
+	f.actor = school.Actor{SchoolID: f.schoolA, IP: netip.MustParseAddr("192.0.2.5")}
+	if err := tx.QueryRow(ctx, `INSERT INTO users (school_id, email, password_hash, full_name) VALUES ($1, 'bendahara@uji.id', 'x', 'Bendahara') RETURNING id`,
+		f.schoolA).Scan(&f.actor.UserID); err != nil {
+		t.Fatal(err)
+	}
 	return f
 }
 
