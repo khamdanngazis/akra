@@ -1,0 +1,29 @@
+{{define "title"}}Persetujuan Pembatalan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Persetujuan Pembatalan</h1>
+<p class="muted">Pembatalan pembayaran di atas ambang sekolah yang diajukan bendahara. Pembayaran tetap berlaku sampai disetujui.</p>
+{{template "flash" .}}
+{{if .Pending}}
+<div class="pay-list">
+{{range .Pending}}
+<section class="pay-item">
+<div class="pay-row"><strong>{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
+<p><a href="/keuangan/tagihan/{{.InvoiceID}}"><strong>{{.Student}}</strong></a> <span class="muted">· NIS {{.NIS}} · tagihan {{.Period}}</span></p>
+<p><span class="muted">Alasan:</span> {{.Reason}}</p>
+<p class="pay-item-meta">Diajukan {{.Requester}}, {{.RequestedAt}}</p>
+{{if .Own}}
+<p class="hint">Anda yang mengajukan pembatalan ini; keputusan harus oleh orang lain.</p>
+{{else}}
+<div class="action-row">
+<form method="post" action="/keuangan/pembatalan/{{.ID}}/setujui" x-data="{ submitting: false }" @submit="submitting = true">{{ csrfField }}<button type="submit" class="btn btn-danger btn-sm" :disabled="submitting">Setujui pembatalan</button></form>
+<form method="post" action="/keuangan/pembatalan/{{.ID}}/tolak" x-data="{ submitting: false }" @submit="submitting = true">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm" :disabled="submitting">Tolak</button></form>
+</div>
+{{end}}
+</section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Tidak ada pengajuan pembatalan yang menunggu.</p></section>
+{{end}}
+{{end}}

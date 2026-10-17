@@ -38,8 +38,11 @@
 {{if .Payments}}
 <div class="pay-list">
 {{range .Payments}}
-<section class="pay-item">
-<div class="pay-row"><strong>{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
+<section class="pay-item{{if eq .VoidStatus "approved"}} is-voided{{end}}">
+<div class="pay-row"><strong class="pay-amount">{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
+{{if eq .VoidStatus "approved"}}<p><span class="badge badge-danger">Dibatalkan</span> <span class="muted">{{.VoidReason}}</span></p>
+{{else if eq .VoidStatus "pending"}}<p><span class="badge badge-warning">Menunggu persetujuan pembatalan</span> <span class="muted">{{.VoidReason}}</span></p>
+{{else if eq .VoidStatus "rejected"}}<p class="muted">Pengajuan pembatalan ditolak kepala sekolah.</p>{{end}}
 {{if or .BankAccount .Reference .Note .Receipt}}<p class="pay-item-meta">{{with .BankAccount}}Ke {{.}}{{end}}{{with .Reference}} · Ref. {{.}}{{end}}{{with .Note}}<br>{{.}}{{end}}{{with .Receipt}}<br>{{.}}{{end}}</p>{{end}}
 {{range .Proofs}}<p class="proof-tag"><a href="/keuangan/bukti/{{.ID}}" target="_blank" rel="noopener noreferrer">Bukti: {{.Kind}}, {{.Size}}</a> · {{.UploadedAt}}</p>{{end}}
 {{if and .IsTransfer $.CanUpload}}
@@ -53,6 +56,20 @@
 <p class="field-error" x-show="err" x-text="err" x-cloak></p>
 <p class="hint">Foto JPG/PNG atau PDF, maksimal 2 MB.</p>
 </form>
+{{end}}
+{{if .CanVoid}}
+<details class="void-box">
+<summary>Batalkan pembayaran</summary>
+<form method="post" action="/keuangan/pembayaran/{{.ID}}/batal" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field">
+<label for="reason-{{.ID}}">Alasan pembatalan</label>
+<textarea id="reason-{{.ID}}" name="reason" rows="2" maxlength="500" required placeholder="mis. salah input nominal"></textarea>
+<p class="hint">Baris pembayaran tidak dihapus. Pembatalan di atas ambang sekolah perlu persetujuan kepala sekolah.</p>
+</div>
+<div><button type="submit" class="btn btn-danger btn-sm" :disabled="submitting">Ajukan pembatalan</button></div>
+</form>
+</details>
 {{end}}
 </section>
 {{end}}

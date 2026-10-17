@@ -35,12 +35,12 @@ Pembayaran yang salah bisa dibatalkan dengan alasan tertulis, tanpa menghapus ba
 - `internal/platform/settings/settings.go`
 
 ## Kriteria selesai
-- [ ] Pembatalan tanpa alasan ditolak
-- [ ] Pembatalan pembayaran bulan lalu ditolak
-- [ ] Pembatalan di atas ambang tidak langsung berlaku sebelum disetujui
-- [ ] Kepala sekolah tidak bisa menyetujui pembatalan yang ia ajukan sendiri
-- [ ] Pembayaran yang sama tidak bisa dibatalkan dua kali
-- [ ] Baris `payments` tidak berubah setelah pembatalan (dicek dengan membandingkan sebelum dan sesudah)
+- [x] Pembatalan tanpa alasan ditolak
+- [x] Pembatalan pembayaran bulan lalu ditolak
+- [x] Pembatalan di atas ambang tidak langsung berlaku sebelum disetujui
+- [x] Kepala sekolah tidak bisa menyetujui pembatalan yang ia ajukan sendiri
+- [x] Pembayaran yang sama tidak bisa dibatalkan dua kali
+- [x] Baris `payments` tidak berubah setelah pembatalan (dicek dengan membandingkan sebelum dan sesudah)
 
 ## Catatan
 - Status "menunggu persetujuan" perlu ditampilkan di daftar pembayaran agar bendahara tahu statusnya.

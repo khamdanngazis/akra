@@ -359,6 +359,19 @@ Storage (`STORAGE_DRIVER`):
 - Uji bucket sungguhan (opsional, tidak berjalan di `go test` biasa): `railway run --service akra -- env R2_LIVE_TEST=1 go test -run R2Live -v ./internal/platform/storage`. Mengunggah objek uji, memastikan akses tanpa tanda tangan ditolak, presigned URL berfungsi, URL kedaluwarsa ditolak `403`, lalu menghapus objeknya. Tidak mencetak kredensial.
 - `local` (default di luar production): disk `STORAGE_LOCAL_DIR` (default `data/storage`, di-ignore git). Presign menghasilkan URL `/storage/...` bertanda tangan HMAC (kunci acak per proses) yang kedaluwarsa, meniru R2.
 
+### Pembatalan pembayaran
+
+Tabel `payment_voids` dan `school_settings` (migrasi 000022), [void_service.go](internal/payments/void_service.go), pengaturan di [internal/platform/settings](internal/platform/settings/settings.go).
+
+- Baris `payments` **tidak pernah diubah**. Pembayaran dianggap batal jika punya pembatalan berstatus `approved`; jumlah terbayar (`paidSumSQL`) hanya menghitung pembayaran tanpa pembatalan disetujui. Pembatalan yang menunggu tidak mengurangi.
+- Hanya **bendahara** yang mengajukan (`POST /keuangan/pembayaran/{id}/batal`, form di detail tagihan). Alasan wajib (maks. 500 karakter). Hanya untuk pembayaran yang **tanggal bayarnya di bulan berjalan** (Asia/Jakarta).
+- Nominal **di atas** `void_approval_threshold` sekolah menunggu persetujuan **kepala sekolah** di `/keuangan/pembatalan` (setujui/tolak). Nominal sampai ambang langsung berlaku. **Ambang belum diatur = 0**, artinya setiap pembatalan perlu persetujuan. Ambang diatur di tabel `school_settings` (kunci `void_approval_threshold`, rupiah); halaman pengaturannya belum ada.
+- Pengaju tidak bisa memutuskan pengajuannya sendiri (dicek service, `403`, dan constraint `payment_voids_status_check`).
+- Satu pembayaran hanya bisa punya satu pembatalan menunggu/disetujui (indeks unik parsial). Pembatalan yang **ditolak** tidak menghalangi pengajuan baru.
+- Setelah pembatalan berlaku, status tagihan dihitung ulang dengan `billing.ComputeStatus` dalam transaksi yang sama (dirapikan di T39).
+- Trigger `payment_voids_guard`: baris tidak bisa dihapus; update hanya untuk memutuskan pengajuan `pending` (kolom selain keputusan tidak boleh berubah).
+- Audit: `payment.void_request`, `payment.void_approve`, `payment.void_reject` (`entity_id` = id pembayaran).
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).

@@ -1068,3 +1068,29 @@ fieldset.field > legend {
   color: inherit;
   font-weight: 600;
 }
+
+.btn-danger {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.pay-item.is-voided .pay-amount {
+  text-decoration: line-through;
+  color: var(--color-muted);
+}
+
+.void-box summary {
+  cursor: pointer;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.void-box[open] summary {
+  margin-bottom: var(--space-2);
+}

@@ -74,7 +74,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
-		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), d.sessions, d.render, d.logger),
+		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
 	}), nil
 }
