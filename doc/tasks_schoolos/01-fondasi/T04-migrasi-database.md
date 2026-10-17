@@ -25,10 +25,10 @@ Perubahan skema database dikelola dengan migrasi yang bisa naik dan turun, dijal
 - `README.md`
 
 ## Kriteria selesai
-- [ ] `make migrate-up` berhasil di database kosong
-- [ ] `make migrate-down` berhasil dan mengembalikan kondisi awal
-- [ ] Urutan up-down-up tidak menghasilkan error
-- [ ] Target `migrate-create` membuat dua file dengan nomor berikutnya
+- [x] `make migrate-up` berhasil di database kosong
+- [x] `make migrate-down` berhasil dan mengembalikan kondisi awal
+- [x] Urutan up-down-up tidak menghasilkan error
+- [x] Target `migrate-create` membuat dua file dengan nomor berikutnya
 
 ## Catatan
 - Aturan tim: setiap perubahan skema harus punya file `down`. Tambahkan ke `README.md`.
