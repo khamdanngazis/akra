@@ -216,6 +216,18 @@ Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](interna
 - Data siswa adalah data pribadi: jangan tulis ke log. Error database yang tidak dikenali hanya membawa kode SQLSTATE dan nama constraint, bukan pesan PostgreSQL yang bisa memuat nilai baris.
 - Index `(school_id, full_name)` membantu daftar urut nama. Untuk pencarian "mengandung", index ini tidak terpakai; bila nanti lambat, pertimbangkan `pg_trgm` (lihat T22).
 
+## Penempatan Kelas (Enrollment)
+
+Tabel `enrollments` (migrasi 000011), fungsi di [internal/students/enrollment_repo.go](internal/students/enrollment_repo.go) dan [enrollment_service.go](internal/students/enrollment_service.go).
+
+- Riwayat penempatan siswa di kelas per tahun ajaran. Satu enrollment aktif (`end_date IS NULL`) per siswa per tahun ajaran, dijaga unique partial index `enrollments_one_active`.
+- **Pindah kelas = enrollment baru**, bukan edit kolom: `students.Place(ctx, tx, ...)` menutup enrollment aktif dengan `end_date = tanggal - 1` lalu membuat enrollment baru mulai tanggal itu, dalam satu transaksi. Enrollment lama tetap ada sebagai riwayat.
+- `Place` mengunci baris siswa (`FOR UPDATE`) agar pemindahan bersamaan tidak bertabrakan. Pindah ke kelas yang sama tidak mengubah apa pun.
+- Pindah di hari yang sama dengan tanggal mulai (koreksi salah kelas) menghasilkan baris lama dengan `end_date = start_date - 1`: periode kosong, tidak dihitung di rekap, tapi riwayatnya tetap ada. Tanggal sebelum awal tahun ajaran dimajukan ke awal tahun; setelah akhir tahun ditolak.
+- Foreign key komposit `(school_id, academic_year_id, class_id) → classes` menjamin kelas berasal dari sekolah **dan** tahun ajaran yang sama; `(school_id, student_id) → students` untuk siswa.
+- `EnrollmentService.Place` mencatat audit `student.place` (before: enrollment yang ditutup, after: enrollment baru).
+- "Hari ini" selalu menurut **Asia/Jakarta** (`clock.Today()`), bukan zona server (Railway memakai UTC). Data zona waktu di-embed ke binary.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:

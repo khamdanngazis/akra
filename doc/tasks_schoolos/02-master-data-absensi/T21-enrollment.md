@@ -27,11 +27,11 @@ Penempatan siswa di kelas pada tahun ajaran tertentu tercatat sebagai riwayat. S
 - `internal/students/enrollment_service.go`
 
 ## Kriteria selesai
-- [ ] Dua enrollment aktif untuk siswa dan tahun ajaran yang sama ditolak database
-- [ ] Memindahkan siswa ke kelas lain menutup enrollment lama dan membuat yang baru dalam satu transaksi
-- [ ] Jika salah satu langkah pemindahan gagal, tidak ada enrollment yang setengah jadi (diuji dengan transaksi yang sengaja gagal)
-- [ ] Enrollment ke kelas sekolah lain ditolak
-- [ ] Riwayat enrollment lama tetap ada setelah pemindahan
+- [x] Dua enrollment aktif untuk siswa dan tahun ajaran yang sama ditolak database
+- [x] Memindahkan siswa ke kelas lain menutup enrollment lama dan membuat yang baru dalam satu transaksi
+- [x] Jika salah satu langkah pemindahan gagal, tidak ada enrollment yang setengah jadi (diuji dengan transaksi yang sengaja gagal)
+- [x] Enrollment ke kelas sekolah lain ditolak
+- [x] Riwayat enrollment lama tetap ada setelah pemindahan
 
 ## Catatan
 - Tanggal `start_date` dan `end_date` menjadi dasar rekap absensi per periode. Gunakan zona waktu Asia/Jakarta saat menentukan "hari ini" di aplikasi.
