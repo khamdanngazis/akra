@@ -340,6 +340,7 @@ textarea:focus {
    seluruh halaman scroll horizontal. */
 
 .table-wrap {
+  position: relative; /* menampung elemen absolute (mis. .visually-hidden) agar ikut ter-scroll */
   width: 100%;
   overflow-x: auto;
 }
@@ -360,4 +361,160 @@ td {
 th {
   color: var(--color-muted);
   font-weight: 600;
+}
+
+/* Navigasi di header (sementara; menu per peran di T51). */
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-right: auto;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.app-nav a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.app-nav a:hover {
+  color: var(--color-secondary);
+}
+
+/* Halaman data */
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.page-header h1 {
+  margin-bottom: var(--space-1);
+}
+
+.page-header p {
+  margin: 0;
+}
+
+.breadcrumb {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb a {
+  text-decoration: none;
+}
+
+.card-flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-flush th:first-child,
+.card-flush td:first-child {
+  padding-left: var(--space-5);
+}
+
+.card-flush th:last-child,
+.card-flush td:last-child {
+  padding-right: var(--space-5);
+}
+
+.card-flush tr:last-child td {
+  border-bottom: 0;
+}
+
+td,
+th {
+  vertical-align: middle;
+}
+
+td.actions {
+  text-align: right;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.form-card .action-row {
+  justify-content: flex-start;
+}
+
+.confirm-box {
+  max-width: 22rem;
+  margin-left: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral);
+  text-align: left;
+  white-space: normal;
+}
+
+.confirm-box p {
+  margin-bottom: var(--space-2);
+}
+
+.empty-state {
+  text-align: center;
+}
+
+.form-card {
+  max-width: 36rem;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+}
+
+.field-error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-error-text);
+  font-size: var(--text-sm);
+}
+
+.has-error input {
+  border-color: var(--color-error);
+}
+
+/* Badge status */
+
+.badge {
+  display: inline-block;
+  padding: 0.125rem var(--space-2);
+  border-radius: 999px;
+  background: var(--color-neutral);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

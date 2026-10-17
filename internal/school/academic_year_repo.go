@@ -73,6 +73,9 @@ func ListAcademicYears(ctx context.Context, q database.DBTX, schoolID string) ([
 
 // GetAcademicYear mengembalikan satu tahun ajaran milik schoolID.
 func GetAcademicYear(ctx context.Context, q database.DBTX, schoolID, id string) (AcademicYear, error) {
+	if !database.IsUUID(id) {
+		return AcademicYear{}, ErrNotFound
+	}
 	rows, err := q.Query(ctx, `SELECT `+academicYearSelectCol+` FROM academic_years
 		WHERE school_id = $1 AND id = $2`, schoolID, id)
 	if err != nil {
@@ -118,6 +121,9 @@ func CreateAcademicYear(ctx context.Context, q database.DBTX, schoolID string, i
 // UpdateAcademicYear mengubah nama dan tanggal. Status aktif hanya berubah
 // lewat SetActive.
 func UpdateAcademicYear(ctx context.Context, q database.DBTX, schoolID, id string, in AcademicYearInput) (AcademicYear, error) {
+	if !database.IsUUID(id) {
+		return AcademicYear{}, ErrNotFound
+	}
 	rows, err := q.Query(ctx, `UPDATE academic_years
 		SET name = $3, start_date = $4, end_date = $5, updated_at = now()
 		WHERE school_id = $1 AND id = $2
@@ -191,7 +197,7 @@ func mapError(op string, err error) error {
 	if errors.As(err, &pgErr) {
 		switch {
 		case pgErr.Code == pgInvalidTextRepr:
-			// ID dari URL yang bukan UUID valid.
+			// Cadangan; ID dari URL sudah diperiksa dengan database.IsUUID.
 			return ErrNotFound
 		case pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == constraintUniqueName:
 			return ErrDuplicateName

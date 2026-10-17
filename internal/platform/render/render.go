@@ -11,6 +11,8 @@ package render
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -36,8 +38,17 @@ type Renderer struct {
 
 // New mem-parse semua template di fsys. Error parse dikembalikan dengan nama
 // file-nya agar server gagal start dengan pesan yang jelas.
-func New(fsys fs.FS, logger *slog.Logger) (*Renderer, error) {
-	base, err := template.New(layoutFile).Funcs(funcs()).ParseFS(fsys, layoutFile)
+//
+// static adalah isi folder /static/ (boleh nil). Dari situ dihitung versi
+// tiap file untuk fungsi template {{ asset "css/app.css" }}, yang
+// menghasilkan "/static/css/app.css?v=<hash>". URL berubah setiap isi file
+// berubah, sehingga cache browser (max-age 1 hari) tidak menahan versi lama.
+func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
+	versions, err := assetVersions(static)
+	if err != nil {
+		return nil, err
+	}
+	base, err := template.New(layoutFile).Funcs(funcs(versions)).ParseFS(fsys, layoutFile)
 	if err != nil {
 		return nil, fmt.Errorf("render: parse %s: %w", layoutFile, err)
 	}
@@ -80,8 +91,19 @@ func New(fsys fs.FS, logger *slog.Logger) (*Renderer, error) {
 
 // funcs berisi fungsi template yang tersedia di semua halaman. Fungsi CSRF
 // diganti per request di Render.
-func funcs() template.FuncMap {
-	m := template.FuncMap{}
+func funcs(versions map[string]string) template.FuncMap {
+	m := template.FuncMap{
+		"asset": func(p string) (string, error) {
+			if versions == nil {
+				return "/static/" + p, nil
+			}
+			v, ok := versions[p]
+			if !ok {
+				return "", fmt.Errorf("render: unknown static asset %q", p)
+			}
+			return "/static/" + p + "?v=" + v, nil
+		},
+	}
 	for k, v := range csrf.PlaceholderFuncs {
 		m[k] = v
 	}
@@ -125,4 +147,29 @@ func (rd *Renderer) Pages() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// assetVersions menghitung 12 karakter pertama SHA-256 setiap file di
+// static. nil jika static nil.
+func assetVersions(static fs.FS) (map[string]string, error) {
+	if static == nil {
+		return nil, nil
+	}
+	versions := map[string]string{}
+	err := fs.WalkDir(static, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := fs.ReadFile(static, p)
+		if err != nil {
+			return err
+		}
+		sum := sha256.Sum256(b)
+		versions[p] = hex.EncodeToString(sum[:])[:12]
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("render: hash static assets: %w", err)
+	}
+	return versions, nil
 }

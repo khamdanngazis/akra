@@ -118,6 +118,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+// ClientIP mengembalikan IP klien request, untuk dicatat di audit.
+func ClientIP(r *http.Request) netip.Addr { return clientIP(r) }
+
 // clientIP mengembalikan alamat peer dari koneksi. Di belakang proxy,
 // httpserver.ClientIP (CLIENT_IP_HEADER) sudah mengganti RemoteAddr dengan IP
 // klien sebelum request sampai di sini.

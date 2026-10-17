@@ -20,7 +20,7 @@ import (
 // testRenderer memakai template asli agar uji handler ikut memeriksa template.
 func testRenderer(t *testing.T) *render.Renderer {
 	t.Helper()
-	rd, err := render.New(mustSub(t, "templates"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	rd, err := render.New(mustSub(t, "templates"), mustSub(t, "static"), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}

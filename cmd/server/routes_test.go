@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
+	"akra/internal/school"
 	"akra/web"
 )
 
@@ -56,7 +57,7 @@ func newTestRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rd, err := render.New(mustSub(t, "templates"), logger)
+	rd, err := render.New(mustSub(t, "templates"), mustSub(t, "static"), logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +70,8 @@ func newTestRouter(t *testing.T) http.Handler {
 		resetHandler: auth.NewResetHandler(
 			auth.NewResetService(emptyRepo{}, hasher, &mail.LogMailer{Logger: logger}, auth.NewSessionRevoker(sessions), "http://localhost:8080", logger),
 			sessions, rd, logger),
+		// Service tanpa database: uji di paket ini tidak sampai ke handler tahun ajaran.
+		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
 	})
 }
 

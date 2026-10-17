@@ -1,0 +1,36 @@
+{{define "title"}}{{if .IsNew}}Tambah Tahun Ajaran{{else}}Ubah Tahun Ajaran{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pengaturan/tahun-ajaran">← Tahun Ajaran</a></p>
+<section class="card form-card">
+<h1>{{if .IsNew}}Tambah Tahun Ajaran{{else}}Ubah Tahun Ajaran{{end}}</h1>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+<form method="post" action="{{if .IsNew}}/pengaturan/tahun-ajaran{{else}}/pengaturan/tahun-ajaran/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="20" placeholder="2026/2027" required{{if .Errors.name}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+{{with .Errors.name}}<p class="field-error" id="name-error">{{.}}</p>{{end}}
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.start_date}} has-error{{end}}">
+<label for="start_date">Tanggal mulai</label>
+<input id="start_date" type="date" name="start_date" value="{{.Form.StartDate}}" required{{if .Errors.start_date}} aria-invalid="true" aria-describedby="start-error"{{end}}>
+{{with .Errors.start_date}}<p class="field-error" id="start-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.end_date}} has-error{{end}}">
+<label for="end_date">Tanggal selesai</label>
+<input id="end_date" type="date" name="end_date" value="{{.Form.EndDate}}" required{{if .Errors.end_date}} aria-invalid="true" aria-describedby="end-error"{{end}}>
+{{with .Errors.end_date}}<p class="field-error" id="end-error">{{.}}</p>{{end}}
+</div>
+</div>
+{{if .IsNew}}<p class="hint">Tahun ajaran baru dibuat nonaktif. Aktifkan dari daftar tahun ajaran.</p>{{end}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
+<a class="btn btn-ghost" href="/pengaturan/tahun-ajaran">Batal</a>
+</div>
+</form>
+</section>
+{{end}}

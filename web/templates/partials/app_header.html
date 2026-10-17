@@ -2,6 +2,10 @@
 {{define "app_header" -}}
 <header class="app-header">
 <a class="brand" href="/">{{template "logo"}}<span class="brand-name">AKRA</span></a>
+<nav class="app-nav" aria-label="Menu utama">
+<a href="/">Beranda</a>
+{{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a>{{end}}
+</nav>
 <div class="app-header-user">
 <span class="app-header-school">{{.SchoolName}}</span>
 <form method="post" action="/logout">
