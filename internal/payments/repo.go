@@ -204,14 +204,6 @@ func recentBankAccounts(ctx context.Context, q database.DBTX, schoolID string, l
 	return list, nil
 }
 
-func updateInvoiceStatus(ctx context.Context, tx pgx.Tx, schoolID, invoiceID string, status billing.Status) error {
-	if _, err := tx.Exec(ctx, `UPDATE invoices SET status = $3, updated_at = now() WHERE school_id = $1 AND id = $2`,
-		schoolID, invoiceID, status); err != nil {
-		return mapError("update invoice status", err)
-	}
-	return nil
-}
-
 func scanPayment(row pgx.CollectableRow) (Payment, error) {
 	var p Payment
 	err := row.Scan(&p.ID, &p.SchoolID, &p.InvoiceID, &p.Amount, &p.PaidOn, &p.Method, &p.BankAccount,

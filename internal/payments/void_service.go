@@ -150,7 +150,7 @@ func (s *VoidService) Request(ctx context.Context, actor school.Actor, paymentID
 			return mapVoidError("insert void", err)
 		}
 		if !requires {
-			if err := recalcInvoiceStatus(ctx, tx, actor.SchoolID, invoiceID); err != nil {
+			if _, err := billing.RecalculateInvoice(ctx, tx, actor.SchoolID, invoiceID); err != nil {
 				return err
 			}
 		}
@@ -218,7 +218,7 @@ func (s *VoidService) decide(ctx context.Context, actor school.Actor, voidID, st
 			return mapVoidError("decide void", err)
 		}
 		if status == VoidApproved {
-			if err := recalcInvoiceStatus(ctx, tx, actor.SchoolID, invoiceID); err != nil {
+			if _, err := billing.RecalculateInvoice(ctx, tx, actor.SchoolID, invoiceID); err != nil {
 				return err
 			}
 		}
@@ -230,21 +230,6 @@ func (s *VoidService) decide(ctx context.Context, actor school.Actor, voidID, st
 		})
 	})
 	return v, err
-}
-
-// recalcInvoiceStatus menghitung ulang status tagihan dari pembayaran aktif.
-// TODO(T39): ganti dengan billing.RecalculateInvoice.
-func recalcInvoiceStatus(ctx context.Context, tx pgx.Tx, schoolID, invoiceID string) error {
-	var total, paid int64
-	if err := tx.QueryRow(ctx, `SELECT i.total_amount, `+paidSumSQL+` FROM invoices i WHERE i.school_id = $1 AND i.id = $2`,
-		schoolID, invoiceID).Scan(&total, &paid); err != nil {
-		return mapError("recalc invoice", err)
-	}
-	status, err := billing.ComputeStatus(total, paid)
-	if err != nil {
-		return err
-	}
-	return updateInvoiceStatus(ctx, tx, schoolID, invoiceID, status)
 }
 
 func sameMonth(a, b time.Time) bool {

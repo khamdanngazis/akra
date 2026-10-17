@@ -30,10 +30,10 @@ Setelah pembatalan disetujui, status tagihan dihitung ulang hanya dari pembayara
 - `internal/billing/status_recalc_test.go`
 
 ## Kriteria selesai
-- [ ] Semua kasus uji di atas lulus
-- [ ] Status tagihan berubah dari lunas ke sebagian atau belum bayar setelah void disetujui
-- [ ] Void yang belum disetujui tidak mengubah status
-- [ ] Recalculate dijalankan dalam transaksi yang sama dengan aksi pemicunya
+- [x] Semua kasus uji di atas lulus
+- [x] Status tagihan berubah dari lunas ke sebagian atau belum bayar setelah void disetujui
+- [x] Void yang belum disetujui tidak mengubah status
+- [x] Recalculate dijalankan dalam transaksi yang sama dengan aksi pemicunya
 
 ## Catatan
 - Status "terlambat" tetap dihitung saat tampil (T30), bukan disimpan di sini.

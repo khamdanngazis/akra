@@ -305,6 +305,8 @@ Tabel `invoices` dan `invoice_items` (migrasi 000016), fungsi di [invoice_servic
   - `ComputeStatus(total, paid)`: 0 → `belum_bayar`; kurang dari total → `sebagian`; sama dengan total → `lunas` (0/0 juga lunas); lebih → `ErrOverpayment`; negatif → `ErrNegativeAmount`. `paid` adalah jumlah pembayaran **aktif** (belum dibatalkan).
   - `IsOverdue(status, dueDate, today)`: belum lunas dan `today` setelah jatuh tempo (hari jatuh tempo belum terlambat). `today` dari `clock.Today()` (Asia/Jakarta).
   - Pembayaran (T35), pembatalan (T39), tunggakan (T42), dan portal (T45) wajib memakai fungsi ini.
+  - `ActivePaid(payments, voids)` ([active_paid.go](internal/billing/active_paid.go)): jumlah pembayaran tanpa pembatalan `approved`; pembatalan `pending`/`rejected` tidak mengurangi. Fungsi murni.
+  - `RecalculateInvoice(ctx, tx, schoolID, invoiceID)` ([recalc.go](internal/billing/recalc.go)): mengunci tagihan, mengambil pembayaran dan pembatalannya, lalu `ActivePaid` → `ComputeStatus` → update `invoices.status`. Dipanggil **di transaksi yang sama** setelah pembayaran dicatat dan setelah pembatalan berlaku, sehingga status ikut batal jika aksinya gagal. Ekspresi SQL `paidSumSQL` (halaman dan cek sisa) diuji sama hasilnya dengan `ActivePaid`.
 - Audit: `invoice.create`.
 
 ### Tagihan massal
@@ -368,7 +370,7 @@ Tabel `payment_voids` dan `school_settings` (migrasi 000022), [void_service.go](
 - Nominal **di atas** `void_approval_threshold` sekolah menunggu persetujuan **kepala sekolah** di `/keuangan/pembatalan` (setujui/tolak). Nominal sampai ambang langsung berlaku. **Ambang belum diatur = 0**, artinya setiap pembatalan perlu persetujuan. Ambang diatur kepala sekolah di **`/pengaturan/keuangan`** (bendahara dan admin_tu hanya melihat; bendahara sengaja tidak bisa mengubah ambang yang membatasi pengajuannya sendiri). Tersimpan di `school_settings` (kunci `void_approval_threshold`, rupiah); setiap perubahan diaudit `settings.update` dengan nilai sebelum dan sesudah.
 - Pengaju tidak bisa memutuskan pengajuannya sendiri (dicek service, `403`, dan constraint `payment_voids_status_check`).
 - Satu pembayaran hanya bisa punya satu pembatalan menunggu/disetujui (indeks unik parsial). Pembatalan yang **ditolak** tidak menghalangi pengajuan baru.
-- Setelah pembatalan berlaku, status tagihan dihitung ulang dengan `billing.ComputeStatus` dalam transaksi yang sama (dirapikan di T39).
+- Setelah pembatalan berlaku, status tagihan dihitung ulang dengan `billing.RecalculateInvoice` dalam transaksi yang sama.
 - Trigger `payment_voids_guard`: baris tidak bisa dihapus; update hanya untuk memutuskan pengajuan `pending` (kolom selain keputusan tidak boleh berubah).
 - Audit: `payment.void_request`, `payment.void_approve`, `payment.void_reject` (`entity_id` = id pembayaran).
 

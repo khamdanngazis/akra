@@ -52,7 +52,8 @@ func (s *Service) ListByInvoice(ctx context.Context, schoolID, invoiceID string)
 //     pembayaran aktif); lebih dari sisa ditolak dengan billing.ErrOverpayment.
 //   - Tagihan dikunci selama transaksi sehingga dua pembayaran bersamaan
 //     tidak bisa sama-sama lolos pemeriksaan sisa.
-//   - Status baru selalu dari billing.ComputeStatus.
+//   - Status tagihan dihitung ulang dengan billing.RecalculateInvoice di
+//     transaksi yang sama.
 func RecordPayment(ctx context.Context, tx pgx.Tx, actor school.Actor, req Request) (Payment, error) {
 	req, err := normalize(req)
 	if err != nil {
@@ -68,15 +69,12 @@ func RecordPayment(ctx context.Context, tx pgx.Tx, actor school.Actor, req Reque
 	if req.Amount > total-paid {
 		return Payment{}, billing.ErrOverpayment
 	}
-	status, err := billing.ComputeStatus(total, paid+req.Amount)
-	if err != nil {
-		return Payment{}, err
-	}
 	p, err := insertPayment(ctx, tx, actor.SchoolID, actor.UserID, req)
 	if err != nil {
 		return Payment{}, err
 	}
-	if err := updateInvoiceStatus(ctx, tx, actor.SchoolID, req.InvoiceID, status); err != nil {
+	status, err := billing.RecalculateInvoice(ctx, tx, actor.SchoolID, req.InvoiceID)
+	if err != nil {
 		return Payment{}, err
 	}
 	err = audit.Record(ctx, tx, audit.Entry{
