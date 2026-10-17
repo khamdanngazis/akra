@@ -833,3 +833,21 @@ td.actions {
   min-height: 3rem;
   font-size: var(--text-lg);
 }
+
+/* Keuangan */
+
+th.num,
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+tr.row-inactive td {
+  color: var(--color-muted);
+}
+
+.alert-info {
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-left: 4px solid var(--color-secondary);
+}

@@ -1,0 +1,42 @@
+{{define "title"}}{{if .IsNew}}Tambah Jenis Tagihan{{else}}Ubah Jenis Tagihan{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/keuangan/jenis-tagihan">← Jenis Tagihan</a></p>
+<section class="card form-card">
+<h1>{{if .IsNew}}Tambah Jenis Tagihan{{else}}Ubah Jenis Tagihan{{end}}</h1>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+<form method="post" action="{{if .IsNew}}/keuangan/jenis-tagihan{{else}}/keuangan/jenis-tagihan/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="60" placeholder="SPP Bulanan" required{{if .Errors.name}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+{{with .Errors.name}}<p class="field-error" id="name-error">{{.}}</p>{{end}}
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.default_amount}} has-error{{end}}">
+<label for="default_amount">Nominal default (Rp)</label>
+<input id="default_amount" name="default_amount" value="{{.Form.DefaultAmount}}" inputmode="numeric" placeholder="150.000" autocomplete="off" required
+  x-data @blur="const d = $el.value.replace(/[^0-9]/g, ''); if (d && !/[,-]/.test($el.value.replace(/^Rp\s*/i, ''))) $el.value = Number(d).toLocaleString('id-ID')"{{if .Errors.default_amount}} aria-invalid="true" aria-describedby="amount-error"{{end}}>
+{{with .Errors.default_amount}}<p class="field-error" id="amount-error">{{.}}</p>{{else}}<p class="hint">Rupiah bulat. Isi 0 untuk jenis tagihan gratis.</p>{{end}}
+</div>
+<div class="field{{if .Errors.default_due_day}} has-error{{end}}">
+<label for="default_due_day">Jatuh tempo default <span class="muted">(opsional)</span></label>
+<select id="default_due_day" name="default_due_day">
+<option value="">Tidak ditentukan</option>
+{{range $d := seq 1 28}}<option value="{{$d}}"{{if eq (print $d) $.Form.DefaultDueDay}} selected{{end}}>Tanggal {{$d}}</option>{{end}}
+</select>
+{{with .Errors.default_due_day}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Tanggal 1–28 setiap bulan.</p>{{end}}
+</div>
+</div>
+{{if not .IsNew}}
+<div class="alert alert-info" role="note">Mengubah nominal default <strong>tidak</strong> mengubah tagihan yang sudah dibuat. Nominal baru hanya dipakai untuk tagihan berikutnya.</div>
+{{end}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
+<a class="btn btn-ghost" href="/keuangan/jenis-tagihan">Batal</a>
+</div>
+</form>
+</section>
+{{end}}

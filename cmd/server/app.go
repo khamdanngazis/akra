@@ -9,6 +9,7 @@ import (
 
 	"akra/internal/attendance"
 	"akra/internal/auth"
+	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
@@ -64,5 +65,6 @@ func newApp(d appDeps) (http.Handler, error) {
 			d.sessions, d.render, d.logger),
 		portal:     portal.NewHandler(d.sessions, d.render),
 		attendance: attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		feeTypes:   billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
 	}), nil
 }
