@@ -118,12 +118,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// clientIP mengembalikan alamat peer dari koneksi.
-//
-// TODO(T14): di belakang proxy Railway, RemoteAddr adalah alamat proxy. Baca IP
-// klien dari header proxy hanya setelah konfigurasi proxy tepercaya diketahui,
-// karena mempercayai X-Forwarded-For begitu saja memungkinkan penyerang
-// melewati lockout per IP.
+// clientIP mengembalikan alamat peer dari koneksi. Di belakang proxy,
+// httpserver.ClientIP (CLIENT_IP_HEADER) sudah mengganti RemoteAddr dengan IP
+// klien sebelum request sampai di sini.
 func clientIP(r *http.Request) netip.Addr {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

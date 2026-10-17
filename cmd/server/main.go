@@ -79,6 +79,9 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	logger.Info("mail driver configured", "driver", cfg.MailDriver, "from", cfg.MailFrom)
+	if cfg.ClientIPHeader != "" {
+		logger.Info("client IP read from proxy header", "header", cfg.ClientIPHeader)
+	}
 
 	r := newRouter(routerDeps{
 		pool:        pool,
@@ -93,7 +96,7 @@ func run(logger *slog.Logger) error {
 			sessions, rd, logger),
 	})
 
-	srv := httpserver.New(cfg, r)
+	srv := httpserver.New(cfg, httpserver.ClientIP(cfg.ClientIPHeader)(r))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

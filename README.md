@@ -74,6 +74,7 @@ Ukuran binary (Go 1.22.2, linux/amd64, 17 Oktober 2026):
 | `MAIL_DRIVER` | tidak (wajib `resend` di production) | `log` | `log`: email ditulis ke log (dev/staging). `resend`: kirim lewat [Resend HTTP API](https://resend.com/docs/api-reference/emails/send-email) |
 | `MAIL_FROM` | ya untuk `resend` | `AKRA <no-reply@akra.local>` | Alamat pengirim; domainnya harus sudah diverifikasi di Resend |
 | `RESEND_API_KEY` | ya untuk `resend` | | API key Resend (`re_...`). Simpan di variabel Railway, jangan di repo |
+| `CLIENT_IP_HEADER` | tidak | (kosong) | Header berisi IP klien dari proxy. Railway: `X-Real-IP` (sudah diuji tidak bisa dipalsukan klien). Kosong = alamat koneksi |
 | `WEB_DIR` | tidak | (kosong) | Baca template dan aset dari folder ini (mis. `web`) alih-alih dari binary. Hanya boleh saat `APP_ENV=development` |
 | `ARGON2_MEMORY_KIB` | tidak | `19456` | Memori argon2id per hash (KiB) |
 | `ARGON2_ITERATIONS` | tidak | `2` | Iterasi argon2id |
@@ -178,6 +179,80 @@ web/static/
 - Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
+
+## Deploy (Railway)
+
+### Lingkungan staging
+
+| Item | Nilai |
+|---|---|
+| Project Railway | `natural-compassion` (environment Railway `production`, dipakai sebagai **staging** dengan `APP_ENV=staging`) |
+| Service | `akra` (dari repo GitHub, branch `main`, auto-deploy) dan `Postgres` (image `postgres-ssl:18`) |
+| URL | https://akra-production.up.railway.app |
+| Region | Singapura (`asia-southeast1-eqsg3a`), region Railway terdekat dengan Indonesia. Kebutuhan lokasi data di Indonesia dikonfirmasi ke calon sekolah sebelum pilot (risiko R11) |
+
+Environment `production` yang sebenarnya dibuat setelah uji internal MVP 1 (T63).
+
+### Image
+
+[Dockerfile](Dockerfile) multi-stage: build dengan `golang:1.22.2-alpine`, runtime `alpine:3.20` sebagai user non-root `akra` (uid 10001). Alpine dipakai (bukan distroless) agar pre-deploy command punya shell. Isi image:
+
+| Path | Fungsi |
+|---|---|
+| `/usr/local/bin/akra` | server (CMD) |
+| `/usr/local/bin/akra-seed` | membuat sekolah dan pengguna awal ([cmd/seed](cmd/seed/main.go)) |
+| `/usr/local/bin/akra-migrate` | pembungkus `migrate` untuk `$DATABASE_URL` ([scripts/akra-migrate](scripts/akra-migrate)) |
+| `/usr/local/bin/migrate` | CLI golang-migrate v4.20.1 (checksum diverifikasi saat build) |
+| `/app/db/migrations` | file migrasi |
+
+```sh
+docker build -t akra .
+docker run --rm --network host -e DATABASE_URL=postgres://... akra
+```
+
+### Variabel service `akra`
+
+| Variabel | Nilai |
+|---|---|
+| `APP_ENV` | `staging` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (referensi; host internal `postgres.railway.internal`) |
+| `APP_BASE_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` |
+| `MAIL_DRIVER` | `log` (staging; tautan reset ada di log Railway) |
+| `CLIENT_IP_HEADER` | `X-Real-IP` |
+
+`PORT` diisi Railway otomatis; target port domain `8080`.
+
+### Setting service (diisi di Settings Railway, bukan di repo)
+
+`railway.json` (Config as Code) sudah deprecated dan tidak dibaca untuk service ini, jadi setting berikut diisi di service:
+
+| Setting | Nilai |
+|---|---|
+| Builder | Dockerfile (`Dockerfile` di root) |
+| Pre-deploy command | `akra-migrate up` |
+| Healthcheck path | `/healthz` (timeout 60 detik) |
+| Restart policy | On failure, maksimal 10 kali |
+
+### Migrasi
+
+Migrasi dijalankan otomatis oleh **pre-deploy command** `akra-migrate up` sebelum versi baru menerima traffic. Jika migrasi gagal, deploy dibatalkan dan versi lama tetap berjalan. Cek versi dari laptop:
+
+```sh
+railway ssh --service akra -- akra-migrate version
+```
+
+Setting service hanya berlaku untuk deployment **baru**; `railway redeploy` memakai ulang setting deployment lama.
+
+### Pengguna awal
+
+Dibuat dengan `akra-seed` di dalam container, bukan SQL manual. Tanpa `AKRA_SEED_PASSWORD`, password acak dicetak sekali:
+
+```sh
+railway ssh --service akra -- akra-seed -school-code akra-demo -school-name "'Sekolah Demo AKRA'" \
+  -email admin@akra-demo.id -name "'Admin Demo'"
+```
+
+Staging berisi sekolah `akra-demo` dengan admin `admin@akra-demo.id` (peran `admin_tu`).
 
 ## Aturan Code Review
 

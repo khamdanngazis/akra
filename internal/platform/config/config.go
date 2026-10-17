@@ -36,6 +36,10 @@ type Config struct {
 	MailFrom     string
 	ResendAPIKey string
 
+	// ClientIPHeader adalah header berisi IP klien yang diisi proxy, mis.
+	// "X-Real-IP" di Railway. Kosong berarti memakai alamat koneksi.
+	ClientIPHeader string
+
 	// WebDir, jika diisi, membuat template dan aset dibaca dari disk (mis.
 	// "web") alih-alih dari binary. Hanya untuk development.
 	WebDir string
@@ -54,6 +58,8 @@ func Load() (Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		AppEnv:      getEnv("APP_ENV", EnvDevelopment),
 		WebDir:      os.Getenv("WEB_DIR"),
+
+		ClientIPHeader: os.Getenv("CLIENT_IP_HEADER"),
 	}
 
 	if cfg.DatabaseURL == "" {
