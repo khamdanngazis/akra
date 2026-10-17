@@ -1124,3 +1124,9 @@ fieldset.field > legend {
   font-weight: 600;
   color: inherit;
 }
+
+.pay-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}

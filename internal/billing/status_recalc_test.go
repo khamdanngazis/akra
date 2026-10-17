@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -38,6 +39,7 @@ type recalcFixture struct {
 	*invoiceFixture
 	inv    Invoice
 	kepala string
+	n      int // nomor kuitansi terakhir
 }
 
 func newRecalcFixture(t *testing.T) *recalcFixture {
@@ -54,8 +56,9 @@ func newRecalcFixture(t *testing.T) *recalcFixture {
 func (f *recalcFixture) pay(t *testing.T, amount int64) string {
 	t.Helper()
 	var id string
-	if err := f.tx.QueryRow(context.Background(), `INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, recorded_by)
-		VALUES ($1, $2, $3, current_date, 'tunai', $4) RETURNING id`, f.schoolA, f.inv.ID, amount, f.actor.UserID).Scan(&id); err != nil {
+	f.n++
+	if err := f.tx.QueryRow(context.Background(), `INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, recorded_by, receipt_number)
+		VALUES ($1, $2, $3, current_date, 'tunai', $4, $5) RETURNING id`, f.schoolA, f.inv.ID, amount, f.actor.UserID, fmt.Sprintf("KW/2026/%06d", f.n)).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	return id

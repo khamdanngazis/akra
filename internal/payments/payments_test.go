@@ -123,12 +123,15 @@ func (f *fixture) count(t *testing.T, sql string, args ...any) int {
 
 func TestPayments_DatabaseConstraints(t *testing.T) {
 	f := newFixture(t)
-	raw := func(schoolID, invoiceID string, amount int64, method string, bank any, recordedBy string) error {
+	rawReceipt := func(schoolID, invoiceID string, amount int64, method string, bank any, recordedBy string, receipt any) error {
 		return f.sp(t, func(q pgx.Tx) error {
-			_, err := q.Exec(context.Background(), `INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, bank_account, recorded_by)
-				VALUES ($1, $2, $3, '2026-09-01', $4, $5, $6)`, schoolID, invoiceID, amount, method, bank, recordedBy)
+			_, err := q.Exec(context.Background(), `INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, bank_account, recorded_by, receipt_number)
+				VALUES ($1, $2, $3, '2026-09-01', $4, $5, $6, $7)`, schoolID, invoiceID, amount, method, bank, recordedBy, receipt)
 			return err
 		})
+	}
+	raw := func(schoolID, invoiceID string, amount int64, method string, bank any, recordedBy string) error {
+		return rawReceipt(schoolID, invoiceID, amount, method, bank, recordedBy, "KW/2026/999999")
 	}
 	a, u := f.schoolA, f.actor.UserID
 	for _, c := range []struct {
@@ -143,6 +146,7 @@ func TestPayments_DatabaseConstraints(t *testing.T) {
 		{"transfer with blank bank account", raw(a, f.invA.ID, 1, "transfer", "  ", u), "payments_bank_account_check"},
 		{"invoice of other school", raw(a, f.invB.ID, 1, "tunai", nil, u), "payments_invoice_fkey"},
 		{"recorder of other school", raw(a, f.invA.ID, 1, "tunai", nil, f.userB), "payments_recorded_by_fkey"},
+		{"bad receipt number", rawReceipt(a, f.invA.ID, 1, "tunai", nil, u, "KW-1"), "payments_receipt_number_check"},
 	} {
 		var pgErr *pgconn.PgError
 		if !errors.As(c.err, &pgErr) || pgErr.ConstraintName != c.constraint {
@@ -151,6 +155,10 @@ func TestPayments_DatabaseConstraints(t *testing.T) {
 	}
 	if err := raw(a, f.invA.ID, 1, "transfer", "BCA 123", u); err != nil {
 		t.Errorf("valid transfer: %v", err)
+	}
+	var pgErr *pgconn.PgError
+	if err := rawReceipt(a, f.invA.ID, 1, "tunai", nil, u, nil); !errors.As(err, &pgErr) || pgErr.Code != "23502" {
+		t.Errorf("payment without receipt number: error = %v, want not-null violation", err)
 	}
 }
 
@@ -248,7 +256,7 @@ func TestRecordPayment_StatusAndRemaining(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p1.BankAccount != "" || p1.Reference != "" || p1.Note != "dibayar ibu" || p1.RecordedBy != f.actor.UserID || p1.ReceiptNumber != "" {
+	if p1.BankAccount != "" || p1.Reference != "" || p1.Note != "dibayar ibu" || p1.RecordedBy != f.actor.UserID || p1.ReceiptNumber == "" {
 		t.Errorf("cash payment = %+v", p1)
 	}
 	if s := f.status(t, f.invA.ID); s != billing.StatusPartial {

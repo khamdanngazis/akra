@@ -1,6 +1,7 @@
 package payments
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/clock"
 	"akra/internal/school"
 )
 
@@ -98,4 +100,30 @@ func (h *Handler) openProof(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	http.Redirect(w, r, u, http.StatusFound)
+}
+
+func (h *Handler) receipt(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	rc, err := GetReceipt(r.Context(), h.svc.db, id.SchoolID, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrPaymentNotFound) {
+		h.notFoundPayment(w, r, id)
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, "get receipt", err)
+		return
+	}
+	rc.PrintedAt = clock.Today()
+	var buf bytes.Buffer
+	if err := WriteReceiptPDF(&buf, rc, true); err != nil {
+		h.serverError(w, r, "render receipt", err)
+		return
+	}
+	hdr := w.Header()
+	hdr.Set("Content-Type", "application/pdf")
+	hdr.Set("Content-Disposition", `attachment; filename="`+ReceiptFilename(rc.Number)+`"`)
+	// Berisi data pribadi: jangan disimpan cache bersama.
+	hdr.Set("Cache-Control", "private, no-store")
+	hdr.Set("Content-Length", strconv.Itoa(buf.Len()))
+	_, _ = buf.WriteTo(w)
 }

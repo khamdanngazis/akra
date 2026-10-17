@@ -334,7 +334,7 @@ Tabel `payments` (migrasi 000020), paket [internal/payments](internal/payments/s
   - tanggal bayar wajib dan tidak boleh setelah hari ini (Asia/Jakarta);
   - status tagihan diperbarui dengan `billing.ComputeStatus` dalam transaksi yang sama;
   - audit `payment.create` (tanpa catatan, karena bisa berisi data pribadi).
-- Rekening dan nomor referensi hanya disimpan untuk transfer. `receipt_number` masih kosong sampai T41.
+- Rekening dan nomor referensi hanya disimpan untuk transfer.
 
 Halaman (hanya `bendahara`, kecuali detail tagihan):
 
@@ -360,6 +360,16 @@ Storage (`STORAGE_DRIVER`):
 - `r2` (wajib di production): bucket Cloudflare R2 **privat** lewat AWS SDK for Go v2 (`service/s3` v1.88.4, versi terakhir untuk Go 1.22). Akses hanya lewat presigned URL (`Presign`, dipakai T37). Variabel: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 - Uji bucket sungguhan (opsional, tidak berjalan di `go test` biasa): `railway run --service akra -- env R2_LIVE_TEST=1 go test -run R2Live -v ./internal/platform/storage`. Mengunggah objek uji, memastikan akses tanpa tanda tangan ditolak, presigned URL berfungsi, URL kedaluwarsa ditolak `403`, lalu menghapus objeknya. Tidak mencetak kredensial.
 - `local` (default di luar production): disk `STORAGE_LOCAL_DIR` (default `data/storage`, di-ignore git). Presign menghasilkan URL `/storage/...` bertanda tangan HMAC (kunci acak per proses) yang kedaluwarsa, meniru R2.
+
+### Kuitansi
+
+Migrasi 000023, [receipt_number.go](internal/payments/receipt_number.go), [receipt_pdf.go](internal/payments/receipt_pdf.go).
+
+- Nomor `KW/{tahun}/{6 digit}` per sekolah **per tahun** (tabel `receipt_counters (school_id, year)`), diisi saat pembayaran dicatat, di transaksi yang sama, lewat satu upsert `INSERT … ON CONFLICT DO UPDATE … RETURNING`. Baris counter terkunci sampai commit: pembayaran bersamaan tidak mendapat nomor kembar, dan rollback mengembalikan nomornya (tanpa celah). Diuji paralel dengan 20 transaksi sungguhan (separuh di-rollback). Tahun mengikuti tanggal pencatatan (Asia/Jakarta).
+- `payments.receipt_number` wajib (`NOT NULL`, format dicek constraint). Pembayaran lama dinomori oleh migrasi (urut waktu pencatatan); trigger append-only dimatikan sementara khusus untuk pengisian itu.
+- `GET /keuangan/pembayaran/{id}/kuitansi` untuk `bendahara` dan `admin_tu`: PDF A5 mendatar dibuat saat diminta (tidak disimpan) dengan [go-pdf/fpdf](https://github.com/go-pdf/fpdf) v0.9.0. Isi: kop sekolah, nomor, siswa, kelas, tagihan dan periode, nominal dan **terbilang** (`money.TerbilangRupiah`), metode, rekening tujuan, nama bendahara. Unduhan `kuitansi-KW-2026-000001.pdf`, `Cache-Control: private, no-store`.
+- Pembayaran yang dibatalkan tetap bisa dicetak dengan watermark **DIBATALKAN** dan alasannya.
+- Huruf memakai font inti PDF (cp1252); karakter di luar itu tampil sebagai `?`.
 
 ### Pembatalan pembayaran
 
