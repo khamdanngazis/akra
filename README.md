@@ -254,6 +254,16 @@ Migrasi 000013 menambah `users.guardian_id` (unik, foreign key komposit ke `guar
 - Setelah login, orang tua diarahkan ke `/portal` (parameter `next` ke halaman admin diabaikan). `/portal` hanya untuk peran `orang_tua`; semua halaman admin menolak orang tua dengan `403`, dan `/` mengalihkan orang tua ke `/portal`. Isi portal dikerjakan di T43–T46.
 - Audit: `guardian_account.create`, `guardian_account.resend_activation`, `guardian_account.activate`.
 
+## Absensi
+
+Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di [internal/attendance](internal/attendance/repo.go).
+
+- Satu **sesi** per kelas per tanggal (`UNIQUE (class_id, session_date)`), tanggal lokal Asia/Jakarta. `GetOrCreateSession` memakai `INSERT … ON CONFLICT DO NOTHING` lalu `SELECT`, sehingga dua guru yang membuka absensi bersamaan tetap mendapat satu sesi. Tanggal harus di dalam tahun ajaran kelas.
+- Satu **catatan** per siswa (enrollment) per sesi, status `hadir`, `sakit`, `izin`, atau `alpa` (default `hadir`).
+- `EnsureRecords` memakai enrollment yang aktif **pada tanggal sesi** (`start_date <= tanggal` dan `end_date` kosong atau `>= tanggal`). Siswa yang pindah kelas hanya muncul di kelas yang benar untuk setiap tanggal. Catatan yang sudah ada tidak diubah dan tidak pernah dihapus; koreksi dengan mengubah status.
+- Foreign key komposit menjamin sesi, kelas, enrollment, dan pembuat sesi berasal dari sekolah yang sama.
+- Form guru dan hak akses wali kelas dikerjakan di T26.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:
