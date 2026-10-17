@@ -10,7 +10,8 @@
 <a href="/absensi/rekap">Rekap Absensi</a>{{end}}
 {{if .HasRole "bendahara"}}<a href="/keuangan/pembayaran/baru">Pembayaran</a>
 <a href="/keuangan/tagihan-massal">Tagihan Massal</a>{{end}}
-{{if or (.HasRole "bendahara") (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/keuangan/jenis-tagihan">Jenis Tagihan</a>{{end}}
+{{if or (.HasRole "bendahara") (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/keuangan/tunggakan">Tunggakan</a>
+<a href="/keuangan/jenis-tagihan">Jenis Tagihan</a>{{end}}
 {{if .HasRole "kepala_sekolah"}}<a href="/keuangan/pembatalan">Pembatalan</a>{{end}}
 {{if or (.HasRole "kepala_sekolah") (.HasRole "admin_tu")}}<a href="/keuangan/audit">Audit</a>{{end}}
 {{if or (.HasRole "bendahara") (.HasRole "kepala_sekolah")}}<a href="/pengaturan/keuangan">Pengaturan Keuangan</a>{{end}}

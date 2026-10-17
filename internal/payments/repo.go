@@ -77,18 +77,12 @@ func invoiceForPayment(ctx context.Context, tx pgx.Tx, schoolID, invoiceID strin
 	return total, paid, voided, nil
 }
 
-// paidSumSQL adalah jumlah pembayaran aktif tagihan beralias i: pembayaran
-// yang tidak punya pembatalan disetujui. Pembatalan yang masih menunggu
-// persetujuan tidak mengurangi. Semua perhitungan sisa tagihan memakai
-// ekspresi ini.
-const paidSumSQL = `(SELECT coalesce(sum(p.amount), 0) FROM payments p
-	WHERE p.school_id = i.school_id AND p.invoice_id = i.id
-	  AND NOT EXISTS (SELECT 1 FROM payment_voids v WHERE v.payment_id = p.id AND v.status = 'approved'))`
-
-// feeNamesSQL adalah nama jenis tagihan item tagihan beralias i, dipisah koma.
-const feeNamesSQL = `(SELECT string_agg(f.name, ', ' ORDER BY it.position, it.created_at)
-	FROM invoice_items it JOIN fee_types f ON f.school_id = it.school_id AND f.id = it.fee_type_id
-	WHERE it.school_id = i.school_id AND it.invoice_id = i.id)`
+// paidSumSQL dan feeNamesSQL: ekspresi bersama di paket billing, agar angka
+// di halaman pembayaran sama dengan daftar tunggakan dan laporan.
+const (
+	paidSumSQL  = billing.ActivePaidSQL
+	feeNamesSQL = billing.FeeNamesSQL
+)
 
 // OpenInvoice adalah tagihan yang belum lunas beserta sisanya.
 type OpenInvoice struct {

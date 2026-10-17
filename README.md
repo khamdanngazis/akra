@@ -322,6 +322,15 @@ Halaman `/keuangan/tagihan-massal` (hanya `bendahara`), fungsi di [bulk_service.
 - Tagihan menyimpan `bulk_run_id`. Audit: satu baris `billing.bulk_create` berisi ringkasan, tidak ada `invoice.create` per tagihan.
 - Worker ada di [bulk_job.go](internal/billing/bulk_job.go) (bukan subpaket `jobs/`) karena memakai fungsi internal paket `billing`.
 
+### Daftar tunggakan
+
+[arrears.go](internal/billing/arrears.go), halaman **`/keuangan/tunggakan`** untuk `bendahara`, `admin_tu`, `kepala_sekolah` (guru dan orang tua `403`).
+
+- Tagihan **belum lunas**, **tidak dibatalkan**, dan **jatuh tempo sebelum hari ini** (Asia/Jakarta, dari handler; jatuh tempo hari ini belum terlambat). Semua tahun ajaran ikut.
+- Sisa = total − pembayaran aktif. Pembayaran aktif memakai `billing.ActivePaidSQL`, ekspresi yang sama dengan halaman pembayaran (dan laporan T48), sehingga angkanya sama persis: pembatalan yang belum disetujui tetap dihitung sebagai pembayaran.
+- Filter: kelas (pilihan dari tahun ajaran aktif), jenis tagihan (termasuk yang nonaktif), rentang jatuh tempo. Urut kelas, nama siswa, jatuh tempo. Ringkasan di atas: total sisa, jumlah siswa menunggak, jumlah tagihan.
+- Index `invoices (school_id, due_date)` dan `payment_voids (payment_id) WHERE status = 'approved'` (migrasi 000024).
+
 ### Pembayaran
 
 Tabel `payments` (migrasi 000020), paket [internal/payments](internal/payments/service.go). Form pencatatan menyusul di T35.
