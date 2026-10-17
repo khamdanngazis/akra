@@ -32,10 +32,10 @@ Aplikasi tersambung ke PostgreSQL dengan connection pool, dan gagal dengan pesan
 - `README.md`
 
 ## Kriteria selesai
-- [ ] Server tersambung ke Postgres lokal saat dijalankan
-- [ ] Dengan Postgres dimatikan, server tidak start dan pesan error menyebut host/port database
-- [ ] `GET /healthz/db` mengembalikan `200` saat database hidup, `503` saat mati
-- [ ] Tidak ada DSN atau password nyata di repositori (dicek dengan pencarian sederhana)
+- [x] Server tersambung ke Postgres lokal saat dijalankan
+- [x] Dengan Postgres dimatikan, server tidak start dan pesan error menyebut host/port database
+- [x] `GET /healthz/db` mengembalikan `200` saat database hidup, `503` saat mati
+- [x] Tidak ada DSN atau password nyata di repositori (dicek dengan pencarian sederhana)
 
 ## Catatan
 - Jangan menulis SQL di task ini. Skema dibuat di T04 dan T05.

@@ -8,13 +8,14 @@ import (
 func TestLoad_Lengkap(t *testing.T) {
 	t.Setenv("PORT", "9000")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("DB_MAX_CONNS", "20")
 	t.Setenv("APP_ENV", "production")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	want := Config{Port: "9000", DatabaseURL: "postgres://localhost/akra", AppEnv: EnvProduction}
+	want := Config{Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
 	}
@@ -37,6 +38,7 @@ func TestLoad_DatabaseURLKosong(t *testing.T) {
 func TestLoad_Default(t *testing.T) {
 	t.Setenv("PORT", "")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("DB_MAX_CONNS", "")
 	t.Setenv("APP_ENV", "")
 
 	cfg, err := Load()
@@ -46,6 +48,9 @@ func TestLoad_Default(t *testing.T) {
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
 	}
+	if cfg.DBMaxConns != 10 {
+		t.Errorf("DBMaxConns = %d, want 10", cfg.DBMaxConns)
+	}
 	if cfg.AppEnv != EnvDevelopment {
 		t.Errorf("AppEnv = %q, want %q", cfg.AppEnv, EnvDevelopment)
 	}
@@ -53,16 +58,19 @@ func TestLoad_Default(t *testing.T) {
 
 func TestLoad_NilaiTidakValid(t *testing.T) {
 	tests := []struct {
-		name, port, appEnv, wantInErr string
+		name, port, maxConns, appEnv, wantInErr string
 	}{
-		{"port bukan angka", "abc", "development", "PORT"},
-		{"port di luar rentang", "70000", "development", "PORT"},
-		{"app env tidak dikenal", "8080", "prod", "APP_ENV"},
+		{"port bukan angka", "abc", "10", "development", "PORT"},
+		{"port di luar rentang", "70000", "10", "development", "PORT"},
+		{"app env tidak dikenal", "8080", "10", "prod", "APP_ENV"},
+		{"max conns bukan angka", "8080", "banyak", "development", "DB_MAX_CONNS"},
+		{"max conns nol", "8080", "0", "development", "DB_MAX_CONNS"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PORT", tt.port)
 			t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+			t.Setenv("DB_MAX_CONNS", tt.maxConns)
 			t.Setenv("APP_ENV", tt.appEnv)
 
 			_, err := Load()

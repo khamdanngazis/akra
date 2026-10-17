@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/platform/config"
+	"akra/internal/platform/database"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
 )
@@ -34,8 +35,16 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	pool, err := database.Connect(context.Background(), cfg.DatabaseURL, cfg.DBMaxConns)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	logger.Info("terhubung ke database", "max_conns", cfg.DBMaxConns)
+
 	r := chi.NewRouter()
 	r.Get("/healthz", health.Handler)
+	r.Get("/healthz/db", health.DBHandler(pool))
 
 	srv := httpserver.New(cfg, r)
 

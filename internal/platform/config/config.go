@@ -18,6 +18,7 @@ const (
 type Config struct {
 	Port        string
 	DatabaseURL string
+	DBMaxConns  int32
 	AppEnv      string
 }
 
@@ -32,6 +33,12 @@ func Load() (Config, error) {
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("config: environment variable DATABASE_URL wajib diisi")
 	}
+
+	maxConns, err := strconv.ParseInt(getEnv("DB_MAX_CONNS", "10"), 10, 32)
+	if err != nil || maxConns < 1 {
+		return Config{}, fmt.Errorf("config: DB_MAX_CONNS harus bilangan bulat positif: %q", os.Getenv("DB_MAX_CONNS"))
+	}
+	cfg.DBMaxConns = int32(maxConns)
 
 	if p, err := strconv.Atoi(cfg.Port); err != nil || p < 1 || p > 65535 {
 		return Config{}, fmt.Errorf("config: PORT tidak valid: %q", cfg.Port)
