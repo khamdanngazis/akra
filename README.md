@@ -233,6 +233,16 @@ Tabel `enrollments` (migrasi 000011), fungsi di [internal/students/enrollment_re
 - `EnrollmentService.Place` mencatat audit `student.place` (before: enrollment yang ditutup, after: enrollment baru).
 - "Hari ini" selalu menurut **Asia/Jakarta** (`clock.Today()`), bukan zona server (Railway memakai UTC). Data zona waktu di-embed ke binary.
 
+## Orang Tua/Wali
+
+Tabel `guardians` dan `student_guardians` (migrasi 000012), fungsi di [internal/students/guardian_repo.go](internal/students/guardian_repo.go) dan [guardian_service.go](internal/students/guardian_service.go). Belum ada halaman; data wali akan diisi lewat impor (T52–T57) dan dipakai akun portal (T24).
+
+- Banyak-ke-banyak: satu siswa bisa punya beberapa wali, satu wali beberapa anak. Hubungan: `ayah`, `ibu`, `wali`, `lainnya`.
+- Satu **penanggung jawab utama** per siswa (unique partial index `student_one_primary`). `LinkToStudent(..., isPrimary=true)` melepas penanggung jawab utama lama dalam transaksi yang sama.
+- `student_guardians` menyimpan `school_id`; foreign key komposit menjamin siswa dan wali dari sekolah yang sama.
+- Telepon dinormalisasi ke satu format `+62…` (`students.NormalizePhone`): `0812-3456-7890`, `+62 812 3456 7890`, dan `81234567890` semuanya menjadi `+6281234567890`. Email disimpan huruf kecil.
+- Audit: `guardian.create`, `guardian.link`, `guardian.unlink`.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:
