@@ -24,10 +24,10 @@ Repositori Git berisi struktur folder dasar sesuai rancangan bagian 5, dan bisa 
 - `go.mod`, `.gitignore`, `README.md`, `cmd/server/main.go`, folder di atas
 
 ## Kriteria selesai
-- [ ] `go build ./cmd/server` berhasil tanpa error
-- [ ] `go vet ./...` tidak menampilkan error
-- [ ] Struktur folder sama dengan rancangan bagian 5
-- [ ] `.env` tidak ikut ter-commit (dicek dengan `git status`)
+- [x] `go build ./cmd/server` berhasil tanpa error
+- [x] `go vet ./...` tidak menampilkan error
+- [x] Struktur folder sama dengan rancangan bagian 5
+- [x] `.env` tidak ikut ter-commit (dicek dengan `git status`)
 
 ## Catatan
 - Jangan menambahkan dependensi pihak ketiga di task ini.
