@@ -10,11 +10,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"akra/internal/auth"
+	"akra/internal/platform/csrf"
 	"akra/internal/platform/health"
 )
 
 type routerDeps struct {
 	pool        *pgxpool.Pool
+	csrf        func(http.Handler) http.Handler
 	sessions    *scs.SessionManager
 	authHandler *auth.Handler
 }
@@ -32,6 +34,8 @@ func newRouter(d routerDeps) http.Handler {
 	// TODO(T12): pasang /static/ di sini, di luar sesi dan RequireLogin.
 
 	r.Group(func(r chi.Router) {
+		// CSRF dipasang sebelum sesi agar token tersedia saat render.
+		r.Use(d.csrf)
 		r.Use(d.sessions.LoadAndSave)
 
 		// Publik, tapi butuh sesi.
@@ -55,5 +59,5 @@ func homePlaceholder(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>AKRA</title>
 <p>Masuk sebagai pengguna %s.</p>
-<form method="post" action="/logout"><button type="submit">Keluar</button></form>`, html.EscapeString(id.UserID))
+<form method="post" action="/logout">%s<button type="submit">Keluar</button></form>`, html.EscapeString(id.UserID), csrf.Field(r))
 }

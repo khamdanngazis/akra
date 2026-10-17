@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"errors"
 	"html/template"
 	"log/slog"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
+
+	"akra/internal/platform/csrf"
 )
 
 const maxLoginFormBytes = 16 << 10
@@ -22,12 +25,13 @@ const (
 )
 
 // TODO(T11): ganti dengan web/templates/auth/login.html yang dirender lewat
-// internal/platform/render, dan tambahkan {{ csrfField }} di T09.
-var loginTmpl = template.Must(template.New("login").Parse(`<!doctype html>
+// internal/platform/render.
+var loginTmpl = template.Must(template.New("login").Funcs(csrf.PlaceholderFuncs).Parse(`<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrfToken }}">
 <title>Masuk · AKRA</title>
 </head>
 <body>
@@ -35,6 +39,7 @@ var loginTmpl = template.Must(template.New("login").Parse(`<!doctype html>
 <h1>Masuk ke AKRA</h1>
 {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
 <form method="post" action="/login">
+{{ csrfField }}
 <input type="hidden" name="next" value="{{.Next}}">
 <p><label>Kode sekolah<br><input name="school_code" value="{{.SchoolCode}}" autocomplete="organization" required></label></p>
 <p><label>Email<br><input type="email" name="email" value="{{.Email}}" autocomplete="username" required></label></p>
@@ -81,7 +86,7 @@ func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, next, http.StatusSeeOther)
 		return
 	}
-	h.render(w, http.StatusOK, loginPage{Next: next})
+	h.render(w, r, http.StatusOK, loginPage{Next: next})
 }
 
 func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
@@ -104,22 +109,22 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 		if err := startSession(r.Context(), h.sessions, user); err != nil {
 			h.logger.Error("start session", "error", err)
 			page.Error = msgInternalError
-			h.render(w, http.StatusInternalServerError, page)
+			h.render(w, r, http.StatusInternalServerError, page)
 			return
 		}
 		http.Redirect(w, r, page.Next, http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
-		h.render(w, http.StatusUnauthorized, page)
+		h.render(w, r, http.StatusUnauthorized, page)
 	case errors.Is(err, ErrTooManyAttempts):
 		h.logger.Warn("login locked out", "school_code", NormalizeSchoolCode(page.SchoolCode), "ip", ip.String())
 		page.Error = msgTooManyAttempts
-		h.render(w, http.StatusTooManyRequests, page)
+		h.render(w, r, http.StatusTooManyRequests, page)
 	default:
 		// err tidak pernah berisi password.
 		h.logger.Error("login failed", "error", err)
 		page.Error = msgInternalError
-		h.render(w, http.StatusInternalServerError, page)
+		h.render(w, r, http.StatusInternalServerError, page)
 	}
 }
 
@@ -132,12 +137,19 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func (h *Handler) render(w http.ResponseWriter, status int, page loginPage) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	if err := loginTmpl.Execute(w, page); err != nil {
-		h.logger.Error("render login page", "error", err)
+func (h *Handler) render(w http.ResponseWriter, r *http.Request, status int, page loginPage) {
+	tmpl, err := loginTmpl.Clone()
+	if err == nil {
+		var buf bytes.Buffer
+		if err = tmpl.Funcs(csrf.FuncMap(r)).Execute(&buf, page); err == nil {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(status)
+			_, _ = buf.WriteTo(w)
+			return
+		}
 	}
+	h.logger.Error("render login page", "error", err)
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
 // clientIP mengembalikan alamat peer dari koneksi.
