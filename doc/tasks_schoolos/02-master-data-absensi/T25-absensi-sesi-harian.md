@@ -26,10 +26,10 @@ Setiap kelas punya satu sesi absensi per tanggal, dan setiap siswa aktif di kela
 - `internal/attendance/service.go`
 
 ## Kriteria selesai
-- [ ] Dua sesi untuk kelas dan tanggal yang sama ditolak database
-- [ ] Dua permintaan `GetOrCreateSession` bersamaan menghasilkan satu sesi (diuji dengan dua goroutine)
-- [ ] Status selain empat nilai yang disepakati ditolak
-- [ ] Siswa yang pindah kelas di tengah periode tidak masuk ke sesi kelas barunya untuk tanggal sebelum pindah (dicek lewat `enrollments.start_date`)
+- [x] Dua sesi untuk kelas dan tanggal yang sama ditolak database
+- [x] Dua permintaan `GetOrCreateSession` bersamaan menghasilkan satu sesi (diuji dengan dua goroutine)
+- [x] Status selain empat nilai yang disepakati ditolak
+- [x] Siswa yang pindah kelas di tengah periode tidak masuk ke sesi kelas barunya untuk tanggal sebelum pindah (dicek lewat `enrollments.start_date`)
 
 ## Catatan
 - Tanggal sesi memakai tanggal lokal Asia/Jakarta, bukan UTC.
