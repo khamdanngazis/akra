@@ -34,8 +34,8 @@ Bukti transfer (foto atau PDF) bisa dilampirkan ke pembayaran, disimpan di R2, d
 - [x] File 3 MB ditolak sebelum disimpan ke R2
 - [x] File `.exe` yang di-rename menjadi `.jpg` ditolak (deteksi tipe dari isi)
 - [x] Unggahan file yang sama dua kali kedua ditolak
-- [ ] File tersimpan di R2 dengan kunci sesuai pola di atas
-- [ ] Objek di R2 tidak bisa diakses lewat URL publik
+- [x] File tersimpan di R2 dengan kunci sesuai pola di atas
+- [x] Objek di R2 tidak bisa diakses lewat URL publik
 
 ## Catatan
 - Layanan R2 perlu bucket privat. Pastikan public access dimatikan di dashboard.
