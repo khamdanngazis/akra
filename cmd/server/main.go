@@ -18,6 +18,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
 	"akra/internal/platform/render"
+	"akra/web"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -38,8 +39,14 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	// TODO(T12): baca dari embed.FS agar binary tidak butuh folder web/.
-	rd, err := render.New(os.DirFS("web/templates"), logger)
+	templates, static, err := web.Load(cfg.WebDir)
+	if err != nil {
+		return err
+	}
+	if cfg.WebDir != "" {
+		logger.Info("serving templates and static files from disk", "web_dir", cfg.WebDir)
+	}
+	rd, err := render.New(templates, logger)
 	if err != nil {
 		return err
 	}
@@ -71,7 +78,7 @@ func run(logger *slog.Logger) error {
 		csrf:        csrf.Middleware(secure, logger),
 		sessions:    sessions,
 		render:      rd,
-		static:      os.DirFS("web/static"),
+		static:      static,
 		authHandler: auth.NewHandler(authSvc, sessions, rd, logger),
 	})
 

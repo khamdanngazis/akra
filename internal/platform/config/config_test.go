@@ -96,3 +96,18 @@ func TestLoad_InvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_WebDirOnlyInDevelopment(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "web")
+
+	t.Setenv("APP_ENV", "development")
+	if cfg, err := Load(); err != nil || cfg.WebDir != "web" {
+		t.Errorf("development: Load() = %+v, %v; want WebDir \"web\"", cfg, err)
+	}
+
+	t.Setenv("APP_ENV", "production")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "WEB_DIR") {
+		t.Errorf("production with WEB_DIR: error = %v, want error mentioning WEB_DIR", err)
+	}
+}

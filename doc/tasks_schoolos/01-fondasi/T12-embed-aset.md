@@ -25,10 +25,10 @@ Template dan aset statis masuk ke dalam binary, sehingga deploy cukup satu file.
 - `internal/platform/httpserver/server.go`
 
 ## Kriteria selesai
-- [ ] `go build -o schoolos ./cmd/server` menghasilkan satu file
-- [ ] Binary dijalankan dari folder lain tanpa folder `web/` di sekitarnya dan halaman login tampil
-- [ ] `/static/css/app.css` mengembalikan `200` dengan header cache
-- [ ] Ukuran binary dicatat di `README.md` sebagai referensi
+- [x] `go build -o schoolos ./cmd/server` menghasilkan satu file
+- [x] Binary dijalankan dari folder lain tanpa folder `web/` di sekitarnya dan halaman login tampil
+- [x] `/static/css/app.css` mengembalikan `200` dengan header cache
+- [x] Ukuran binary dicatat di `README.md` sebagai referensi
 
 ## Catatan
 - Setiap perubahan template atau CSS sekarang memerlukan rebuild. Itu diterima untuk MVP.

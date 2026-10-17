@@ -21,6 +21,10 @@ type Config struct {
 	DBMaxConns  int32
 	AppEnv      string
 
+	// WebDir, jika diisi, membuat template dan aset dibaca dari disk (mis.
+	// "web") alih-alih dari binary. Hanya untuk development.
+	WebDir string
+
 	// Parameter biaya argon2id untuk hash password baru. Default mengikuti
 	// batas minimum OWASP (19 MiB, 2 iterasi, 1 lane).
 	Argon2MemoryKiB   uint32
@@ -34,6 +38,7 @@ func Load() (Config, error) {
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		AppEnv:      getEnv("APP_ENV", EnvDevelopment),
+		WebDir:      os.Getenv("WEB_DIR"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -70,6 +75,10 @@ func Load() (Config, error) {
 	case EnvDevelopment, EnvStaging, EnvProduction:
 	default:
 		return Config{}, fmt.Errorf("config: invalid APP_ENV %q (allowed: development, staging, production)", cfg.AppEnv)
+	}
+
+	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {
+		return Config{}, fmt.Errorf("config: WEB_DIR is only allowed when APP_ENV=development")
 	}
 
 	return cfg, nil

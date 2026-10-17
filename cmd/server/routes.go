@@ -3,7 +3,6 @@ package main
 import (
 	"io/fs"
 	"net/http"
-	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -12,6 +11,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/home"
 	"akra/internal/platform/health"
+	"akra/internal/platform/httpserver"
 )
 
 type routerDeps struct {
@@ -34,7 +34,7 @@ func newRouter(d routerDeps) http.Handler {
 	// Tanpa sesi dan tanpa CSRF.
 	r.Get("/healthz", health.Handler)
 	r.Get("/healthz/db", health.DBHandler(d.pool))
-	static := http.StripPrefix("/static/", staticHandler(d.static))
+	static := http.StripPrefix("/static/", httpserver.Static(d.static))
 	r.Get("/static/*", static.ServeHTTP)
 	r.Head("/static/*", static.ServeHTTP)
 
@@ -55,18 +55,4 @@ func newRouter(d routerDeps) http.Handler {
 	})
 
 	return r
-}
-
-// staticHandler melayani file dari fsys tanpa daftar isi folder.
-//
-// TODO(T12): ambil dari embed.FS dan tambahkan header cache.
-func staticHandler(fsys fs.FS) http.Handler {
-	files := http.FileServer(http.FS(fsys))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
-			http.NotFound(w, r)
-			return
-		}
-		files.ServeHTTP(w, r)
-	})
 }
