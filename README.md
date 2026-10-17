@@ -90,6 +90,17 @@ Sesi dikelola [`scs`](https://github.com/alexedwards/scs) dan disimpan di tabel 
 
 - Selama belum ada halaman admin, pengguna dibuat langsung lewat SQL dengan hash dari `auth.Hasher`.
 
+### Route yang wajib login
+
+Middleware `auth.RequireLogin` mengalihkan request tanpa sesi ke `/login?next=<path>`. Parameter `next` hanya menerima path lokal (diawali `/`, bukan `//` atau URL absolut), selain itu diganti `/`. Route publik hanya `/healthz`, `/healthz/db`, `/login`, `/logout`, dan `/static/`. Semua route baru dipasang di grup `RequireLogin` di [cmd/server/routes.go](cmd/server/routes.go).
+
+## Aturan Code Review
+
+- `school_id` untuk data sekolah **selalu** diambil dari `auth.CurrentUser(ctx)`. Handler tidak boleh membaca `school_id` dari `r.URL.Query()`, `chi.URLParam`, atau form.
+- Handler tidak membaca sesi langsung; gunakan `auth.CurrentUser(ctx)`.
+- Setiap route baru wajib punya uji otorisasi (lihat T58 dan T59).
+- Setiap perubahan skema wajib punya migrasi `down`.
+
 ## Migrasi Database
 
 Migrasi ada di `db/migrations/` dengan format `000001_nama.up.sql` dan `000001_nama.down.sql`. `DATABASE_URL` diambil dari environment.

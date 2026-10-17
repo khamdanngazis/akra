@@ -23,11 +23,11 @@ Route yang membutuhkan login otomatis redirect ke `/login`. Identitas sekolah da
 - `cmd/server/main.go` atau `internal/platform/httpserver/routes.go` (pemasangan grup route)
 
 ## Kriteria selesai
-- [ ] Akses `/` tanpa login redirect ke `/login?next=%2F`
-- [ ] Parameter `next=https://contoh.com` diabaikan dan redirect ke `/`
-- [ ] Setelah login, pengguna kembali ke halaman `next`
-- [ ] Uji unit: middleware tanpa sesi menghasilkan `302`, dengan sesi menghasilkan `200` dan `Identity` tersedia di context
-- [ ] Route `/login`, `/healthz`, dan `/static/*` tidak redirect
+- [x] Akses `/` tanpa login redirect ke `/login?next=%2F`
+- [x] Parameter `next=https://contoh.com` diabaikan dan redirect ke `/`
+- [x] Setelah login, pengguna kembali ke halaman `next`
+- [x] Uji unit: middleware tanpa sesi menghasilkan `302`, dengan sesi menghasilkan `200` dan `Identity` tersedia di context
+- [x] Route `/login`, `/healthz`, dan `/static/*` tidak redirect
 
 ## Catatan
 - Pemeriksaan peran dikerjakan di T10, bukan di task ini.

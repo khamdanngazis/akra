@@ -35,6 +35,7 @@ var loginTmpl = template.Must(template.New("login").Parse(`<!doctype html>
 <h1>Masuk ke AKRA</h1>
 {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
 <form method="post" action="/login">
+<input type="hidden" name="next" value="{{.Next}}">
 <p><label>Kode sekolah<br><input name="school_code" value="{{.SchoolCode}}" autocomplete="organization" required></label></p>
 <p><label>Email<br><input type="email" name="email" value="{{.Email}}" autocomplete="username" required></label></p>
 <p><label>Password<br><input type="password" name="password" autocomplete="current-password" required></label></p>
@@ -48,6 +49,7 @@ var loginTmpl = template.Must(template.New("login").Parse(`<!doctype html>
 type loginPage struct {
 	SchoolCode string
 	Email      string
+	Next       string
 	Error      string
 }
 
@@ -73,7 +75,13 @@ func (h *Handler) Routes(r chi.Router) {
 }
 
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
-	h.render(w, http.StatusOK, loginPage{})
+	next := SafeNext(r.URL.Query().Get("next"))
+	// Pengguna yang sudah login tidak perlu melihat form lagi.
+	if _, ok := identityFromSession(r, h.sessions); ok {
+		http.Redirect(w, r, next, http.StatusSeeOther)
+		return
+	}
+	h.render(w, http.StatusOK, loginPage{Next: next})
 }
 
 func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +94,7 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 	page := loginPage{
 		SchoolCode: r.PostForm.Get("school_code"),
 		Email:      r.PostForm.Get("email"),
+		Next:       SafeNext(r.PostForm.Get("next")),
 	}
 	ip := clientIP(r)
 
@@ -98,8 +107,7 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 			h.render(w, http.StatusInternalServerError, page)
 			return
 		}
-		// TODO(T08): redirect ke parameter next jika ada.
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, page.Next, http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
 		h.render(w, http.StatusUnauthorized, page)
