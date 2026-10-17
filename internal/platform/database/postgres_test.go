@@ -7,32 +7,32 @@ import (
 	"testing"
 )
 
-func TestConnect_DSNTidakValid(t *testing.T) {
-	_, err := Connect(context.Background(), "postgres://user:rahasia@host:notaport/db", 10)
+func TestConnect_InvalidDSN(t *testing.T) {
+	_, err := Connect(context.Background(), "postgres://user:secret@host:notaport/db", 10)
 	if err == nil {
 		t.Fatal("Connect() error = nil, want error")
 	}
-	if strings.Contains(err.Error(), "rahasia") {
-		t.Errorf("pesan error membocorkan password: %v", err)
+	if strings.Contains(err.Error(), "secret") {
+		t.Errorf("error message leaks the password: %v", err)
 	}
 }
 
-func TestConnect_DatabaseMati(t *testing.T) {
-	// Port 1 hampir pasti tidak dipakai, jadi koneksi langsung ditolak.
-	_, err := Connect(context.Background(), "postgres://user:rahasia@127.0.0.1:1/db?connect_timeout=2", 10)
+func TestConnect_DatabaseDown(t *testing.T) {
+	// Port 1 is almost certainly unused, so the connection is refused immediately.
+	_, err := Connect(context.Background(), "postgres://user:secret@127.0.0.1:1/db?connect_timeout=2", 10)
 	if err == nil {
 		t.Fatal("Connect() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "127.0.0.1:1") {
-		t.Errorf("pesan error tidak menyebut host/port: %v", err)
+		t.Errorf("error message does not mention host/port: %v", err)
 	}
 }
 
-// TestConnect_DatabaseHidup hanya berjalan jika TEST_DATABASE_URL diisi.
-func TestConnect_DatabaseHidup(t *testing.T) {
+// TestConnect_DatabaseUp runs only when TEST_DATABASE_URL is set.
+func TestConnect_DatabaseUp(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL tidak diisi")
+		t.Skip("TEST_DATABASE_URL is not set")
 	}
 
 	pool, err := Connect(context.Background(), dsn, 4)

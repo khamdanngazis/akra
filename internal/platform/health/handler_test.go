@@ -30,8 +30,8 @@ func TestDBHandler(t *testing.T) {
 		err        error
 		wantStatus int
 	}{
-		{"database hidup", nil, http.StatusOK},
-		{"database mati", errors.New("connection refused"), http.StatusServiceUnavailable},
+		{"database up", nil, http.StatusOK},
+		{"database down", errors.New("connection refused"), http.StatusServiceUnavailable},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

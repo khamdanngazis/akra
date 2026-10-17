@@ -1,4 +1,4 @@
-// Package database menyiapkan connection pool PostgreSQL.
+// Package database sets up the PostgreSQL connection pool.
 package database
 
 import (
@@ -16,13 +16,13 @@ const (
 	pingTimeout     = 5 * time.Second
 )
 
-// Connect membuat pool koneksi ke dsn dan memastikan database bisa dijangkau
-// dengan Ping. maxConns adalah batas atas koneksi dalam pool.
+// Connect creates a connection pool for dsn and verifies the database is
+// reachable with a Ping. maxConns is the upper bound of pooled connections.
 func Connect(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		// Jangan sertakan dsn di pesan error karena bisa berisi password.
-		return nil, fmt.Errorf("database: DATABASE_URL tidak valid")
+		// Do not include the dsn in the error: it may contain a password.
+		return nil, fmt.Errorf("database: invalid DATABASE_URL")
 	}
 
 	poolCfg.MaxConns = maxConns
@@ -32,14 +32,14 @@ func Connect(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, er
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		return nil, fmt.Errorf("database: gagal membuat pool ke %s: %w", addr, err)
+		return nil, fmt.Errorf("database: create pool for %s: %w", addr, err)
 	}
 
 	pingCtx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("database: tidak bisa terhubung ke %s: %w", addr, err)
+		return nil, fmt.Errorf("database: cannot connect to %s: %w", addr, err)
 	}
 
 	return pool, nil

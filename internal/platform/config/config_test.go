@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLoad_Lengkap(t *testing.T) {
+func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("PORT", "9000")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "20")
@@ -21,7 +21,7 @@ func TestLoad_Lengkap(t *testing.T) {
 	}
 }
 
-func TestLoad_DatabaseURLKosong(t *testing.T) {
+func TestLoad_MissingDatabaseURL(t *testing.T) {
 	t.Setenv("PORT", "9000")
 	t.Setenv("DATABASE_URL", "")
 	t.Setenv("APP_ENV", "development")
@@ -31,11 +31,11 @@ func TestLoad_DatabaseURLKosong(t *testing.T) {
 		t.Fatal("Load() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "DATABASE_URL") {
-		t.Errorf("pesan error tidak menyebut DATABASE_URL: %v", err)
+		t.Errorf("error message does not mention DATABASE_URL: %v", err)
 	}
 }
 
-func TestLoad_Default(t *testing.T) {
+func TestLoad_Defaults(t *testing.T) {
 	t.Setenv("PORT", "")
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "")
@@ -56,15 +56,15 @@ func TestLoad_Default(t *testing.T) {
 	}
 }
 
-func TestLoad_NilaiTidakValid(t *testing.T) {
+func TestLoad_InvalidValues(t *testing.T) {
 	tests := []struct {
 		name, port, maxConns, appEnv, wantInErr string
 	}{
-		{"port bukan angka", "abc", "10", "development", "PORT"},
-		{"port di luar rentang", "70000", "10", "development", "PORT"},
-		{"app env tidak dikenal", "8080", "10", "prod", "APP_ENV"},
-		{"max conns bukan angka", "8080", "banyak", "development", "DB_MAX_CONNS"},
-		{"max conns nol", "8080", "0", "development", "DB_MAX_CONNS"},
+		{"non-numeric port", "abc", "10", "development", "PORT"},
+		{"port out of range", "70000", "10", "development", "PORT"},
+		{"unknown app env", "8080", "10", "prod", "APP_ENV"},
+		{"non-numeric max conns", "8080", "many", "development", "DB_MAX_CONNS"},
+		{"zero max conns", "8080", "0", "development", "DB_MAX_CONNS"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestLoad_NilaiTidakValid(t *testing.T) {
 				t.Fatal("Load() error = nil, want error")
 			}
 			if !strings.Contains(err.Error(), tt.wantInErr) {
-				t.Errorf("pesan error tidak menyebut %s: %v", tt.wantInErr, err)
+				t.Errorf("error message does not mention %s: %v", tt.wantInErr, err)
 			}
 		})
 	}
