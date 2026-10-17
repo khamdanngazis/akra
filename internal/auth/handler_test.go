@@ -9,21 +9,43 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
 )
 
 func newTestRouter(t *testing.T) http.Handler {
 	t.Helper()
-	svc, _ := newTestService(t)
-	r := chi.NewRouter()
-	NewHandler(svc, slog.New(slog.NewTextHandler(io.Discard, nil))).Routes(r)
-	return r
+	h, _ := newTestRouterWithSessions(t)
+	return h
 }
 
-func postLogin(h http.Handler, school, email, password string) *httptest.ResponseRecorder {
+func newTestRouterWithSessions(t *testing.T) (http.Handler, *memstore.MemStore) {
+	t.Helper()
+	svc, _ := newTestService(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	store := memstore.NewWithCleanupInterval(0)
+	sm := NewSessionManager(store, false, logger)
+
+	r := chi.NewRouter()
+	r.Use(sm.LoadAndSave)
+	NewHandler(svc, sm, logger).Routes(r)
+	// Route bantu untuk uji: membuat sesi anonim dan membaca isi sesi.
+	r.Get("/test/anon", func(w http.ResponseWriter, r *http.Request) { sm.Put(r.Context(), "visited", true) })
+	r.Get("/test/whoami", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, sm.GetString(r.Context(), sessionKeyUserID)+"|"+
+			sm.GetString(r.Context(), sessionKeySchoolID)+"|"+
+			strings.Join(sm.Get(r.Context(), sessionKeyRoles).([]string), ","))
+	})
+	return r, store
+}
+
+func postLogin(h http.Handler, school, email, password string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	form := url.Values{"school_code": {school}, "email": {email}, "password": {password}}
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
 	req.RemoteAddr = "203.0.113.7:51000"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
