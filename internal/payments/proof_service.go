@@ -24,8 +24,14 @@ import (
 // constraint payment_proofs_size_check.
 const MaxProofSize = 2 << 20
 
-// ActionProofUpload adalah aksi audit unggah bukti transfer.
-const ActionProofUpload = "payment.proof_upload"
+// Aksi audit bukti transfer.
+const (
+	ActionProofUpload = "payment.proof_upload"
+	ActionProofView   = "payment.proof_view"
+)
+
+// ProofURLTTL adalah masa berlaku URL bertanda tangan untuk membuka bukti.
+const ProofURLTTL = 5 * time.Minute
 
 var (
 	// ErrPaymentNotFound dikembalikan jika pembayaran tidak ada atau milik
@@ -40,6 +46,8 @@ var (
 	ErrProofTooLarge = errors.New("payments: proof file too large")
 	// ErrProofType dikembalikan jika isi file bukan JPEG, PNG, atau PDF.
 	ErrProofType = errors.New("payments: proof must be JPEG, PNG, or PDF")
+	// ErrProofNotFound dikembalikan jika bukti tidak ada atau milik sekolah lain.
+	ErrProofNotFound = errors.New("payments: proof not found")
 	// ErrProofDuplicate dikembalikan jika file yang sama sudah dipakai
 	// sebagai bukti pembayaran lain di sekolah ini.
 	ErrProofDuplicate = errors.New("payments: proof already used")
@@ -138,6 +146,42 @@ func (s *ProofService) Upload(ctx context.Context, actor school.Actor, paymentID
 		return Proof{}, err
 	}
 	return p, nil
+}
+
+// OpenURL mencatat audit akses (payment.proof_view) lalu mengembalikan URL
+// bertanda tangan yang berlaku ProofURLTTL. Setiap pemanggilan dicatat; URL
+// tidak pernah disimpan. Gambar dibuka inline, PDF diunduh (attachment).
+func (s *ProofService) OpenURL(ctx context.Context, actor school.Actor, proofID string) (string, error) {
+	if !database.IsUUID(proofID) {
+		return "", ErrProofNotFound
+	}
+	var p Proof
+	err := s.db.QueryRow(ctx, `
+		SELECT pp.id, pp.payment_id, pp.storage_key, pp.content_type
+		FROM payment_proofs pp JOIN payments p ON p.school_id = pp.school_id AND p.id = pp.payment_id
+		WHERE pp.school_id = $1 AND pp.id = $2`, actor.SchoolID, proofID).Scan(&p.ID, &p.PaymentID, &p.StorageKey, &p.ContentType)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrProofNotFound
+	}
+	if err != nil {
+		return "", mapError("get proof", err)
+	}
+	// Audit dulu: jika gagal dicatat, URL tidak diberikan.
+	err = pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		return audit.Record(ctx, tx, audit.Entry{
+			SchoolID: actor.SchoolID, UserID: actor.UserID, IP: actor.IP,
+			Action: ActionProofView, EntityType: "payment_proof", EntityID: p.ID,
+			After: map[string]any{"payment_id": p.PaymentID},
+		})
+	})
+	if err != nil {
+		return "", err
+	}
+	disposition := "inline"
+	if p.ContentType == "application/pdf" {
+		disposition = `attachment; filename="bukti-transfer-` + p.ID[:8] + `.pdf"`
+	}
+	return s.store.Presign(ctx, p.StorageKey, ProofURLTTL, storage.PresignOptions{ContentDisposition: disposition, ContentType: p.ContentType})
 }
 
 func paymentMethod(ctx context.Context, q database.DBTX, schoolID, paymentID string) (Method, error) {

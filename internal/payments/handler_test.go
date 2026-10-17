@@ -27,9 +27,13 @@ type client struct {
 	t       *testing.T
 	h       http.Handler
 	cookies []*http.Cookie
+	// user mengganti pengguna yang login (default: bendahara fixture).
+	user string
 }
 
-func newClient(t *testing.T, f *fixture) *client {
+// newClient membuat router uji. stores opsional: storage yang dipakai bukti
+// transfer (default: driver local baru).
+func newClient(t *testing.T, f *fixture, stores ...storage.Store) *client {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
@@ -43,15 +47,21 @@ func newClient(t *testing.T, f *fixture) *client {
 	r.Use(sm.LoadAndSave)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id := auth.Identity{UserID: f.actor.UserID, SchoolID: f.schoolA, Roles: strings.Split(r.Header.Get("X-Roles"), ","), FullName: "Uji", SchoolName: "Uji"}
+			userID := f.actor.UserID
+			if u := r.Header.Get("X-User"); u != "" {
+				userID = u
+			}
+			id := auth.Identity{UserID: userID, SchoolID: f.schoolA, Roles: strings.Split(r.Header.Get("X-Roles"), ","), FullName: "Uji", SchoolName: "Uji"}
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})
-	store, err := storage.NewLocal(t.TempDir())
-	if err != nil {
+	var store storage.Store
+	if len(stores) > 0 {
+		store = stores[0]
+	} else if store, err = storage.NewLocal(t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
-	NewHandler(f.svc, NewProofService(f.tx, store), sm, rd, logger).Routes(r)
+	NewHandler(f.svc, NewProofService(f.tx, store), NewVoidService(f.tx), sm, rd, logger).Routes(r)
 	return &client{t: t, h: r}
 }
 
@@ -67,6 +77,7 @@ func (c *client) do(method, path, roles string, form url.Values) *httptest.Respo
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 	req.Header.Set("X-Roles", roles)
+	req.Header.Set("X-User", c.user)
 	for _, ck := range c.cookies {
 		req.AddCookie(ck)
 	}

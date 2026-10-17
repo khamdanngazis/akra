@@ -21,6 +21,8 @@ import (
 const (
 	paymentsPath = "/keuangan/pembayaran"
 	invoicesPath = "/keuangan/tagihan"
+	proofsPath   = "/keuangan/bukti"
+	voidsPath    = "/keuangan/pembatalan"
 	maxForm      = 64 << 10
 	pageForm     = "payments/form"
 	pageResults  = "payments/search_results"
@@ -37,6 +39,7 @@ type Renderer interface {
 type Handler struct {
 	svc      *Service
 	proofs   *ProofService
+	voids    *VoidService
 	sessions *scs.SessionManager
 	render   Renderer
 	logger   *slog.Logger
@@ -44,8 +47,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(svc *Service, proofs *ProofService, sessions *scs.SessionManager, render Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, proofs: proofs, sessions: sessions, render: render, logger: logger}
+func NewHandler(svc *Service, proofs *ProofService, voids *VoidService, sessions *scs.SessionManager, render Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, proofs: proofs, voids: voids, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route pembayaran dan detail tagihan.
@@ -60,10 +63,30 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/", h.create)
 		// Peran: bendahara. Unggah bukti transfer (multipart).
 		r.Post("/{id}/bukti", h.uploadProof)
+		// Peran: bendahara. Ajukan pembatalan pembayaran.
+		r.Post("/{id}/batal", h.requestVoid)
 	})
+	readers := auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)
 	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
-	r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)).
-		Get(invoicesPath+"/{id}", h.invoice)
+	r.With(readers).Get(invoicesPath+"/{id}", h.invoice)
+	// Peran: bendahara, admin_tu, kepala_sekolah. Redirect ke URL bukti
+	// transfer yang berlaku 5 menit; setiap akses diaudit. Orang tua dan guru
+	// tidak punya akses.
+	r.With(readers).Get(proofsPath+"/{id}", h.openProof)
+	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
+	r.With(readers).Get(settingsPath, h.financeSettings)
+	// Peran: kepala_sekolah. Bendahara tidak boleh mengubah ambang yang
+	// membatasi pembatalan yang ia ajukan sendiri.
+	r.With(auth.RequireRole(auth.RoleKepalaSekolah)).Post(settingsPath, h.updateFinanceSettings)
+	r.Route(voidsPath, func(r chi.Router) {
+		r.Use(auth.RequireRole(auth.RoleKepalaSekolah))
+		// Peran: kepala_sekolah.
+		r.Get("/", h.pendingVoids)
+		// Peran: kepala_sekolah.
+		r.Post("/{id}/setujui", h.approveVoid)
+		// Peran: kepala_sekolah.
+		r.Post("/{id}/tolak", h.rejectVoid)
+	})
 }
 
 type studentRow struct {
@@ -100,10 +123,13 @@ type paymentRow struct {
 	ID, PaidOn, Method, BankAccount, Reference, Note, Amount, Receipt string
 	IsTransfer                                                        bool
 	Proofs                                                            []proofRow
+	// Pembatalan terakhir: VoidStatus kosong jika tidak ada.
+	VoidStatus, VoidReason string
+	CanVoid                bool
 }
 
 type proofRow struct {
-	Kind, Size, UploadedAt string
+	ID, Kind, Size, UploadedAt string
 }
 
 type invoiceView struct {
@@ -298,6 +324,12 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 		h.serverError(w, r, "list proofs", err)
 		return
 	}
+	voids, err := voidsByInvoice(r.Context(), h.svc.db, id.SchoolID, d.ID)
+	if err != nil {
+		h.serverError(w, r, "list voids", err)
+		return
+	}
+	today := clock.Today()
 	for _, it := range d.Items {
 		view.Items = append(view.Items, itemRow{Name: it.FeeTypeName, Description: it.Description, Amount: money.FormatRupiah(it.Amount)})
 	}
@@ -307,8 +339,13 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 			Reference: p.Reference, Note: p.Note, Amount: money.FormatRupiah(p.Amount), Receipt: p.ReceiptNumber,
 			IsTransfer: p.Method == MethodTransfer,
 		}
+		v, hasVoid := voids[p.ID]
+		if hasVoid {
+			row.VoidStatus, row.VoidReason = v.Status, v.Reason
+		}
+		row.CanVoid = id.HasRole(auth.RoleBendahara) && (!hasVoid || v.Status == VoidRejected) && sameMonth(p.PaidOn, today)
 		for _, pr := range proofs[p.ID] {
-			row.Proofs = append(row.Proofs, proofRow{Kind: proofKinds[pr.ContentType], Size: formatSize(pr.SizeBytes), UploadedAt: clock.FormatDateID(clock.DateOf(pr.UploadedAt))})
+			row.Proofs = append(row.Proofs, proofRow{ID: pr.ID, Kind: proofKinds[pr.ContentType], Size: formatSize(pr.SizeBytes), UploadedAt: clock.FormatDateID(clock.DateOf(pr.UploadedAt))})
 		}
 		view.Payments = append(view.Payments, row)
 	}

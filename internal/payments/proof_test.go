@@ -305,3 +305,85 @@ func TestProofHandler(t *testing.T) {
 		t.Errorf("unknown payment: status = %d, want 404", rec.Code)
 	}
 }
+
+func TestProofAccess(t *testing.T) {
+	f := newProofFixture(t)
+	ctx := context.Background()
+	c := newClient(t, f.fixture, f.store)
+	img, err := f.proofs.Upload(ctx, f.actor, f.transfer.ID, bytes.NewReader(pngFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pdf, err := f.proofs.Upload(ctx, f.actor, f.transfer.ID, bytes.NewReader(pdfFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Bukti sekolah B.
+	actorB := school.Actor{SchoolID: f.schoolB, UserID: f.userB}
+	pB, err := RecordPayment(ctx, f.tx, actorB, Request{InvoiceID: f.invB.ID, Amount: 1000, PaidOn: time.Now(), Method: MethodTransfer, BankAccount: "BRI"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proofB, err := f.proofs.Upload(ctx, actorB, pB.ID, bytes.NewReader(jpeg(300, 4)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	views := func() int {
+		return f.count(t, `SELECT count(*) FROM audit_logs WHERE action = 'payment.proof_view'`)
+	}
+	open := func(proofID, roles string) *httptest.ResponseRecorder {
+		return c.do(http.MethodGet, "/keuangan/bukti/"+proofID, roles, nil)
+	}
+
+	served := 0
+	for _, roles := range []string{"bendahara", "admin_tu", "kepala_sekolah"} {
+		rec := open(img.ID, roles)
+		loc := rec.Header().Get("Location")
+		if rec.Code != http.StatusFound || !strings.HasPrefix(loc, "/storage/"+img.StorageKey+"?") ||
+			rec.Header().Get("Cache-Control") != "no-store" || rec.Header().Get("Referrer-Policy") != "no-referrer" {
+			t.Fatalf("%s: status = %d, Location = %q, headers = %v", roles, rec.Code, loc, rec.Header())
+		}
+		served++
+		// URL bertanda tangan bisa dibuka tanpa sesi, gambar inline.
+		got := httptest.NewRecorder()
+		f.store.Handler().ServeHTTP(got, httptest.NewRequest(http.MethodGet, loc, nil))
+		if got.Code != http.StatusOK || !bytes.Equal(got.Body.Bytes(), pngFile) || got.Header().Get("Content-Disposition") != "inline" ||
+			got.Header().Get("Content-Type") != "image/png" {
+			t.Errorf("%s: signed URL: %d %v", roles, got.Code, got.Header())
+		}
+	}
+	rec := open(pdf.ID, "bendahara")
+	served++
+	got := httptest.NewRecorder()
+	f.store.Handler().ServeHTTP(got, httptest.NewRequest(http.MethodGet, rec.Header().Get("Location"), nil))
+	if got.Code != http.StatusOK || !strings.HasPrefix(got.Header().Get("Content-Disposition"), `attachment; filename="bukti-transfer-`) {
+		t.Errorf("pdf: %d %v", got.Code, got.Header())
+	}
+	if n := views(); n != served {
+		t.Errorf("payment.proof_view audits = %d, want %d (one per access)", n, served)
+	}
+	var entity string
+	_ = f.tx.QueryRow(ctx, `SELECT entity_id FROM audit_logs WHERE action = 'payment.proof_view' ORDER BY id LIMIT 1`).Scan(&entity)
+	if entity != img.ID {
+		t.Errorf("audit entity_id = %q, want proof id", entity)
+	}
+
+	for _, roles := range []string{"orang_tua", "guru"} {
+		if rec := open(img.ID, roles); rec.Code != http.StatusForbidden {
+			t.Errorf("%s: status = %d, want 403", roles, rec.Code)
+		}
+	}
+	for _, id := range []string{proofB.ID, "00000000-0000-0000-0000-000000000000", "bukan-uuid"} {
+		if rec := open(id, "bendahara"); rec.Code != http.StatusNotFound {
+			t.Errorf("proof %s: status = %d, want 404", id, rec.Code)
+		}
+	}
+	if n := views(); n != served {
+		t.Errorf("denied access was audited: %d audits, want %d", n, served)
+	}
+
+	detail := c.do(http.MethodGet, "/keuangan/tagihan/"+f.invA.ID, "kepala_sekolah", nil).Body.String()
+	if !strings.Contains(detail, `href="/keuangan/bukti/`+img.ID+`"`) || strings.Contains(detail, "/storage/") {
+		t.Error("detail page must link to the proof route, never to a signed URL")
+	}
+}
