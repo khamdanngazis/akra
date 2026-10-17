@@ -28,13 +28,13 @@ Di MVP 1 belum ada tabel penugasan guru mata pelajaran. Untuk task ini, hak akse
 - `web/templates/attendance/form.html`
 
 ## Kriteria selesai
-- [ ] Wali kelas bisa mengisi absensi kelasnya
-- [ ] Guru lain yang membuka `/absensi?kelas={id}` mendapat `403`
-- [ ] Admin/TU mendapat `403` pada form absensi
-- [ ] Mengisi 30 siswa dan menyimpan selesai dalam kurang dari 2 menit (diuji manual oleh guru atau dengan simulasi)
-- [ ] Simpan sebagian gagal tidak meninggalkan data setengah jadi (transaksi)
-- [ ] Tanggal di masa depan ditolak
-- [ ] Form berfungsi di layar 360px
+- [x] Wali kelas bisa mengisi absensi kelasnya
+- [x] Guru lain yang membuka `/absensi?kelas={id}` mendapat `403`
+- [x] Admin/TU mendapat `403` pada form absensi
+- [x] Mengisi 30 siswa dan menyimpan selesai dalam kurang dari 2 menit (diuji manual oleh guru atau dengan simulasi)
+- [x] Simpan sebagian gagal tidak meninggalkan data setengah jadi (transaksi)
+- [x] Tanggal di masa depan ditolak
+- [x] Form berfungsi di layar 360px
 
 ## Catatan
 - Keputusan batas tanggal edit (misalnya hanya bisa mengubah absensi dalam 7 hari terakhir) belum ditetapkan. Catat sebagai pertanyaan untuk sekolah.

@@ -665,3 +665,171 @@ td.actions {
 .small {
   font-size: var(--text-sm);
 }
+
+/* Absensi: dibuat untuk layar HP (tombol besar, jarak cukup). */
+
+.class-picker {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attendance-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.attendance-head h1 {
+  margin-bottom: var(--space-1);
+}
+
+.attendance-head p {
+  margin: 0;
+}
+
+.date-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.date-picker input {
+  width: auto;
+}
+
+.attendance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badge-warning {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.badge-danger {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.attendance-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+.attendance-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.attendance-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-neutral);
+}
+
+.attendance-row:last-child {
+  border-bottom: 0;
+}
+
+.attendance-student {
+  min-width: 0;
+}
+
+.attendance-no {
+  color: var(--color-muted);
+}
+
+.status-group {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3.5rem, 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  flex: 1 1 16rem;
+  max-width: 24rem;
+}
+
+.status-option {
+  position: relative;
+}
+
+.status-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+}
+
+.status-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem; /* target sentuh 44px */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.status-option input:focus-visible + span {
+  box-shadow: var(--focus-ring);
+}
+
+.status-hadir input:checked + span {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.status-sakit input:checked + span {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #fff;
+}
+
+.status-izin input:checked + span {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: #fff;
+}
+
+.status-alpa input:checked + span {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: #fff;
+}
+
+.attendance-submit {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-3) 0;
+  background: linear-gradient(to top, var(--color-bg) 70%, transparent);
+}
+
+.btn-lg {
+  min-height: 3rem;
+  font-size: var(--text-lg);
+}

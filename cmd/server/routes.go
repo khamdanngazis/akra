@@ -7,6 +7,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/attendance"
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/home"
@@ -30,6 +31,7 @@ type routerDeps struct {
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
+	attendance   *attendance.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -68,6 +70,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.classes.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
+			d.attendance.Routes(r)
 		})
 	})
 

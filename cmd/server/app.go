@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	"akra/internal/attendance"
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/platform/csrf"
@@ -61,6 +62,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianService(d.db),
 			students.NewGuardianAccountService(d.db, activation, d.logger),
 			d.sessions, d.render, d.logger),
-		portal: portal.NewHandler(d.sessions, d.render),
+		portal:     portal.NewHandler(d.sessions, d.render),
+		attendance: attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 	}), nil
 }
