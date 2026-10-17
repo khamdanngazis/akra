@@ -31,8 +31,10 @@ func RequireLogin(sm *scs.SessionManager) func(http.Handler) http.Handler {
 func identityFromSession(r *http.Request, sm *scs.SessionManager) (Identity, bool) {
 	ctx := r.Context()
 	id := Identity{
-		UserID:   sm.GetString(ctx, sessionKeyUserID),
-		SchoolID: sm.GetString(ctx, sessionKeySchoolID),
+		UserID:     sm.GetString(ctx, sessionKeyUserID),
+		SchoolID:   sm.GetString(ctx, sessionKeySchoolID),
+		FullName:   sm.GetString(ctx, sessionKeyFullName),
+		SchoolName: sm.GetString(ctx, sessionKeySchoolName),
 	}
 	id.Roles, _ = sm.Get(ctx, sessionKeyRoles).([]string)
 	if id.UserID == "" || id.SchoolID == "" {

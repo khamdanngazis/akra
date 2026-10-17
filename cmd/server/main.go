@@ -17,6 +17,7 @@ import (
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
+	"akra/internal/platform/render"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -33,6 +34,12 @@ func main() {
 
 func run(logger *slog.Logger) error {
 	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	// TODO(T12): baca dari embed.FS agar binary tidak butuh folder web/.
+	rd, err := render.New(os.DirFS("web/templates"), logger)
 	if err != nil {
 		return err
 	}
@@ -63,7 +70,9 @@ func run(logger *slog.Logger) error {
 		pool:        pool,
 		csrf:        csrf.Middleware(secure, logger),
 		sessions:    sessions,
-		authHandler: auth.NewHandler(authSvc, sessions, logger),
+		render:      rd,
+		static:      os.DirFS("web/static"),
+		authHandler: auth.NewHandler(authSvc, sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, r)

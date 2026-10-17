@@ -6,12 +6,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
+
+	"akra/internal/platform/render"
 )
+
+// testRenderer memakai template asli agar uji handler ikut memeriksa template.
+func testRenderer(t *testing.T) *render.Renderer {
+	t.Helper()
+	rd, err := render.New(os.DirFS("../../web/templates"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rd
+}
 
 func newTestRouter(t *testing.T) http.Handler {
 	t.Helper()
@@ -28,7 +41,7 @@ func newTestRouterWithSessions(t *testing.T) (http.Handler, *memstore.MemStore) 
 
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
-	NewHandler(svc, sm, logger).Routes(r)
+	NewHandler(svc, sm, testRenderer(t), logger).Routes(r)
 	// Route bantu untuk uji: membuat sesi anonim dan membaca isi sesi.
 	r.Get("/test/anon", func(w http.ResponseWriter, r *http.Request) { sm.Put(r.Context(), "visited", true) })
 	r.Get("/test/whoami", func(w http.ResponseWriter, r *http.Request) {
@@ -80,11 +93,11 @@ func TestSubmitLogin_Success(t *testing.T) {
 // alertText mengembalikan pesan error yang tampil di halaman login.
 func alertText(t *testing.T, body string) string {
 	t.Helper()
-	_, rest, ok := strings.Cut(body, `<p role="alert">`)
+	_, rest, ok := strings.Cut(body, `role="alert">`)
 	if !ok {
 		t.Fatal("login page has no error message")
 	}
-	msg, _, _ := strings.Cut(rest, "</p>")
+	msg, _, _ := strings.Cut(rest, "</")
 	return msg
 }
 

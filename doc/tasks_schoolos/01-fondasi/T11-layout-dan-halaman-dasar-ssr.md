@@ -34,10 +34,10 @@ Ada layout HTML yang dipakai semua halaman, dengan CSS variables, Alpine.js dari
 - `internal/platform/render/render.go`
 
 ## Kriteria selesai
-- [ ] Halaman login tampil di Chrome desktop dan di emulasi mobile 360px tanpa scroll horizontal
-- [ ] Alpine.js termuat (dicek dengan `window.Alpine` di console)
-- [ ] Tidak ada request ke CDN eksternal (dicek di tab Network)
-- [ ] Template yang gagal di-parse membuat server gagal start dengan pesan jelas
+- [x] Halaman login tampil di Chrome desktop dan di emulasi mobile 360px tanpa scroll horizontal
+- [x] Alpine.js termuat (dicek dengan `window.Alpine` di console)
+- [x] Tidak ada request ke CDN eksternal (dicek di tab Network)
+- [x] Template yang gagal di-parse membuat server gagal start dengan pesan jelas
 
 ## Catatan
 - Warna dan font cukup satu set sederhana. Tidak perlu desain final di tahap ini.

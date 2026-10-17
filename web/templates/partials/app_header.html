@@ -1,0 +1,13 @@
+{{/* app_header adalah header halaman yang butuh login. Argumen: auth.Identity. */}}
+{{define "app_header" -}}
+<header class="app-header">
+<a class="brand" href="/">{{template "logo"}}<span class="brand-name">AKRA</span></a>
+<div class="app-header-user">
+<span class="app-header-school">{{.SchoolName}}</span>
+<form method="post" action="/logout">
+{{ csrfField }}
+<button type="submit" class="btn btn-ghost btn-sm">Keluar</button>
+</form>
+</div>
+</header>
+{{- end}}

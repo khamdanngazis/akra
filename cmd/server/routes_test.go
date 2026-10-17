@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,6 +20,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/csrf"
+	"akra/internal/platform/render"
 )
 
 // emptyRepo adalah auth.Repository tanpa pengguna: setiap login gagal dengan
@@ -40,10 +43,16 @@ func newTestRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rd, err := render.New(os.DirFS("../../web/templates"), logger)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return newRouter(routerDeps{
 		csrf:        csrf.Middleware(false, logger),
 		sessions:    sessions,
-		authHandler: auth.NewHandler(svc, sessions, logger),
+		render:      rd,
+		static:      os.DirFS("../../web/static"),
+		authHandler: auth.NewHandler(svc, sessions, rd, logger),
 	})
 }
 
@@ -225,5 +234,43 @@ func TestCSRF_AllMutatingRoutesRequireToken(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("no mutating routes found")
+	}
+}
+
+func TestRouter_Static(t *testing.T) {
+	h := newTestRouter(t)
+	for _, path := range []string{"/static/css/app.css", "/static/js/alpine.min.js", "/static/img/favicon.svg"} {
+		if rec := serve(h, httptest.NewRequest(http.MethodGet, path, nil)); rec.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want 200", path, rec.Code)
+		}
+	}
+	for _, path := range []string{"/static/", "/static/css/", "/static/nope.css"} {
+		if rec := serve(h, httptest.NewRequest(http.MethodGet, path, nil)); rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want 404", path, rec.Code)
+		}
+	}
+}
+
+// TestTemplates_NoExternalResources memastikan template dan CSS tidak
+// memuat apa pun dari luar (CDN, Google Fonts, dan sejenisnya).
+func TestTemplates_NoExternalResources(t *testing.T) {
+	external := regexp.MustCompile(`(?i)(src|href)\s*=\s*"(https?:)?//|url\(\s*["']?(https?:)?//|@import`)
+	for _, root := range []string{"../../web/templates", "../../web/static/css"} {
+		err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			b, err := fs.ReadFile(os.DirFS(root), p)
+			if err != nil {
+				return err
+			}
+			if m := external.Find(b); m != nil {
+				t.Errorf("%s/%s loads an external resource: %s", root, p, m)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }

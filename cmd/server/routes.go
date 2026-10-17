@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"html"
+	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"akra/internal/auth"
-	"akra/internal/platform/csrf"
+	"akra/internal/home"
 	"akra/internal/platform/health"
 )
 
@@ -18,21 +18,25 @@ type routerDeps struct {
 	pool        *pgxpool.Pool
 	csrf        func(http.Handler) http.Handler
 	sessions    *scs.SessionManager
+	render      home.Renderer
+	static      fs.FS
 	authHandler *auth.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
 //
-// Route publik: /healthz, /healthz/db, /login, /logout, dan nanti /static/.
+// Route publik: /healthz, /healthz/db, /static/, /login, dan /logout.
 // Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
 func newRouter(d routerDeps) http.Handler {
 	r := chi.NewRouter()
 
-	// Health check tanpa sesi.
+	// Tanpa sesi dan tanpa CSRF.
 	r.Get("/healthz", health.Handler)
 	r.Get("/healthz/db", health.DBHandler(d.pool))
-	// TODO(T12): pasang /static/ di sini, di luar sesi dan RequireLogin.
+	static := http.StripPrefix("/static/", staticHandler(d.static))
+	r.Get("/static/*", static.ServeHTTP)
+	r.Head("/static/*", static.ServeHTTP)
 
 	r.Group(func(r chi.Router) {
 		// CSRF dipasang sebelum sesi agar token tersedia saat render.
@@ -45,21 +49,24 @@ func newRouter(d routerDeps) http.Handler {
 		// Wajib login.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireLogin(d.sessions))
-			// Semua peran.
-			r.Get("/", homePlaceholder)
+			// Peran: semua peran.
+			r.Get("/", home.Handler(d.render, d.sessions))
 		})
 	})
 
 	return r
 }
 
-// homePlaceholder menampilkan identitas pengguna dan tombol logout.
+// staticHandler melayani file dari fsys tanpa daftar isi folder.
 //
-// TODO(T11): ganti dengan home.html.
-func homePlaceholder(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>AKRA</title>
-<p>Masuk sebagai pengguna %s.</p>
-<form method="post" action="/logout">%s<button type="submit">Keluar</button></form>`, html.EscapeString(id.UserID), csrf.Field(r))
+// TODO(T12): ambil dari embed.FS dan tambahkan header cache.
+func staticHandler(fsys fs.FS) http.Handler {
+	files := http.FileServer(http.FS(fsys))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		files.ServeHTTP(w, r)
+	})
 }

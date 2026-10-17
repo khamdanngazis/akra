@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alexedwards/scs/v2/memstore"
@@ -95,8 +96,9 @@ func TestLogout(t *testing.T) {
 	if _, found, _ := store.Find(c.Value); found {
 		t.Error("session still exists in the store after logout")
 	}
-	if cleared := sessionCookie(t, rec); cleared.MaxAge >= 0 {
-		t.Errorf("logout cookie MaxAge = %d, want negative (expired)", cleared.MaxAge)
+	// Logout membuat sesi baru yang hanya berisi pesan flash.
+	if next := sessionCookie(t, rec); next.Value == c.Value {
+		t.Error("session token did not change after logout")
 	}
 }
 
@@ -105,4 +107,36 @@ func TestLogout_GetNotAllowed(t *testing.T) {
 	if rec := get(h, "/logout", nil); rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("GET /logout status = %d, want 405", rec.Code)
 	}
+}
+
+func TestLogout_ShowsFlashOnLoginPage(t *testing.T) {
+	h, _ := newTestRouterWithSessions(t)
+	c := sessionCookie(t, postLogin(h, "sd-harapan", "budi@sekolah.id", "benar-123"))
+
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(c)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	flashCookie := sessionCookie(t, rec)
+	if flashCookie.MaxAge <= 0 {
+		t.Fatalf("logout did not create a flash session: %+v", flashCookie)
+	}
+
+	page := get(h, "/login", flashCookie)
+	if !strings.Contains(page.Body.String(), msgLoggedOut) {
+		t.Error("login page after logout does not show the flash message")
+	}
+	if _, ok := identityFromSessionCookie(t, h, flashCookie); ok {
+		t.Error("flash session after logout still carries an identity")
+	}
+	if strings.Contains(get(h, "/login", flashCookie).Body.String(), msgLoggedOut) {
+		t.Error("flash message is shown twice")
+	}
+}
+
+// identityFromSessionCookie memeriksa apakah sesi c dianggap login dengan
+// membuka /login: pengguna yang sudah login dialihkan.
+func identityFromSessionCookie(t *testing.T, h http.Handler, c *http.Cookie) (struct{}, bool) {
+	t.Helper()
+	return struct{}{}, get(h, "/login", c).Code == http.StatusSeeOther
 }
