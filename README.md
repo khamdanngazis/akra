@@ -11,7 +11,13 @@ Sistem manajemen sekolah (SchoolOS) untuk sekolah swasta di Indonesia. Rancangan
 ## Menjalankan
 
 ```sh
-go run ./cmd/server
+DATABASE_URL=postgres://localhost/akra go run ./cmd/server
+```
+
+Cek server:
+
+```sh
+curl -i localhost:8080/healthz
 ```
 
 Build binary:
@@ -20,4 +26,18 @@ Build binary:
 go build -o bin/server ./cmd/server
 ```
 
-Konfigurasi environment dan database akan ditambahkan di T02 dan T03.
+## Konfigurasi
+
+| Variabel | Wajib | Default | Keterangan |
+|---|---|---|---|
+| `DATABASE_URL` | ya | | Connection string PostgreSQL (koneksi dibuat di T03) |
+| `PORT` | tidak | `8080` | Port HTTP |
+| `APP_ENV` | tidak | `development` | `development`, `staging`, atau `production` |
+
+## Pengujian
+
+```sh
+go test ./...
+```
+
+Catatan: dependensi dipilih agar tetap kompatibel dengan Go 1.22. Jika `go get` mencoba menaikkan versi Go, jalankan dengan `GOTOOLCHAIN=local`.
