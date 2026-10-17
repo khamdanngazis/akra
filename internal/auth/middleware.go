@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -69,4 +70,48 @@ func SafeNext(raw string) string {
 		return "/"
 	}
 	return raw
+}
+
+const forbiddenPage = `<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Akses ditolak · AKRA</title></head>
+<body>
+<main>
+<h1>Akses ditolak</h1>
+<p>Akun Anda tidak memiliki izin untuk membuka halaman ini.</p>
+<p><a href="/">Kembali ke beranda</a></p>
+</main>
+</body>
+</html>
+`
+
+// RequireRole mengembalikan middleware yang hanya meneruskan request jika
+// pengguna memiliki minimal satu dari roles. Pengguna yang belum login
+// dialihkan ke /login; pengguna dengan peran lain mendapat 403.
+//
+// Pasang di dalam grup RequireLogin:
+//
+//	r.With(auth.RequireRole(auth.RoleBendahara)).Get("/tagihan", h.listInvoices)
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+	if len(roles) == 0 {
+		panic("auth: RequireRole called without roles")
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, ok := CurrentUser(r.Context())
+			if !ok {
+				// Seharusnya sudah ditangani RequireLogin; tetap aman jika lupa dipasang.
+				http.Redirect(w, r, loginURL(r), http.StatusFound)
+				return
+			}
+			if !HasAnyRole(id, roles...) {
+				slog.WarnContext(r.Context(), "access denied", "user_id", id.UserID, "method", r.Method, "path", r.URL.Path, "required_roles", roles)
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(forbiddenPage))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

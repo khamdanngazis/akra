@@ -104,10 +104,35 @@ Semua request POST, PUT, PATCH, dan DELETE di grup aplikasi wajib membawa token 
 - Cookie `akra_csrf`: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` di luar `development`. nosurf juga menolak request dengan header `Origin`/`Referer` dari host lain.
 - Uji `TestCSRF_AllMutatingRoutesRequireToken` di [cmd/server/routes_test.go](cmd/server/routes_test.go) menelusuri semua route dan gagal jika ada route yang mengubah data tanpa perlindungan CSRF.
 
+### Pembatasan peran (RBAC)
+
+Peran tersimpan di sesi saat login dan dibaca ke `auth.Identity` oleh `RequireLogin`. `auth.RequireRole` meneruskan request jika pengguna punya **minimal satu** peran yang disebut; selain itu `403 Akses ditolak`.
+
+| Konstanta | Kode | Peran |
+|---|---|---|
+| `auth.RoleAdminTU` | `admin_tu` | Admin/TU |
+| `auth.RoleBendahara` | `bendahara` | Bendahara |
+| `auth.RoleGuru` | `guru` | Guru |
+| `auth.RoleKepalaSekolah` | `kepala_sekolah` | Kepala sekolah |
+| `auth.RoleOrangTua` | `orang_tua` | Orang tua |
+
+Contoh, di dalam grup `RequireLogin` di [cmd/server/routes.go](cmd/server/routes.go):
+
+```go
+// Peran: bendahara, kepala_sekolah (hanya baca).
+r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleKepalaSekolah)).Get("/tagihan", billingHandler.list)
+
+// Peran: bendahara.
+r.With(auth.RequireRole(auth.RoleBendahara)).Post("/tagihan", billingHandler.create)
+```
+
+Untuk logika di dalam handler atau service, gunakan `auth.HasAnyRole(id, ...)` atau `id.HasRole(...)`. RBAC tidak membatasi sekolah; isolasi `school_id` tetap wajib di setiap query (T58).
+
 ## Aturan Code Review
 
 - `school_id` untuk data sekolah **selalu** diambil dari `auth.CurrentUser(ctx)`. Handler tidak boleh membaca `school_id` dari `r.URL.Query()`, `chi.URLParam`, atau form.
 - Handler tidak membaca sesi langsung; gunakan `auth.CurrentUser(ctx)`.
+- Setiap route baru wajib menyebut peran yang diizinkan di komentar di atas handler, misalnya `// Peran: bendahara.`
 - Setiap route baru wajib punya uji otorisasi (lihat T58 dan T59).
 - Setiap perubahan skema wajib punya migrasi `down`.
 
