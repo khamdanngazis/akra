@@ -82,3 +82,20 @@ func formatSize(n int) string {
 	tenths := (n*10 + 1<<19) >> 20
 	return strconv.Itoa(tenths/10) + "," + strconv.Itoa(tenths%10) + " MB"
 }
+
+func (h *Handler) openProof(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	u, err := h.proofs.OpenURL(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrProofNotFound) {
+		h.renderNotFound(w, r, id, "Bukti transfer tidak ditemukan.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, "open proof", err)
+		return
+	}
+	// URL bertanda tangan tidak boleh di-cache atau bocor lewat Referer.
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	http.Redirect(w, r, u, http.StatusFound)
+}

@@ -351,6 +351,7 @@ Tabel `payment_proofs` (migrasi 000021), [proof_service.go](internal/payments/pr
 - Kunci storage: `schools/{school_id}/proofs/{uuid}.{jpg|png|pdf}` (dijaga constraint). File disimpan dulu, lalu baris dan audit `payment.proof_upload` dalam satu transaksi; jika transaksi gagal, objek dihapus lagi.
 - Body request dibatasi 8 MB untuk semua route (`httpserver.LimitBody`, sebelum CSRF), karena nosurf mem-parse seluruh form multipart sebelum handler.
 - Kompresi gambar belum dikerjakan (ditunda).
+- **Membuka bukti** (T37): `GET /keuangan/bukti/{id}` untuk `bendahara`, `admin_tu`, `kepala_sekolah` (guru dan orang tua `403`; bukti sekolah lain `404`). Setiap akses dicatat dulu di audit `payment.proof_view` (`entity_id` = id bukti), baru redirect `302` ke presigned URL yang berlaku **5 menit**. Gambar dibuka `inline`, PDF diunduh (`attachment`). URL tidak pernah disimpan atau dirender di halaman; halaman hanya menaut ke route ini. Respons redirect memakai `Cache-Control: no-store` dan `Referrer-Policy: no-referrer`.
 
 Storage (`STORAGE_DRIVER`):
 

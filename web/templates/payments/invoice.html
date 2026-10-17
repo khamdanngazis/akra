@@ -41,7 +41,7 @@
 <section class="pay-item">
 <div class="pay-row"><strong>{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
 {{if or .BankAccount .Reference .Note .Receipt}}<p class="pay-item-meta">{{with .BankAccount}}Ke {{.}}{{end}}{{with .Reference}} · Ref. {{.}}{{end}}{{with .Note}}<br>{{.}}{{end}}{{with .Receipt}}<br>{{.}}{{end}}</p>{{end}}
-{{range .Proofs}}<p class="proof-tag">Bukti: {{.Kind}}, {{.Size}} · {{.UploadedAt}}</p>{{end}}
+{{range .Proofs}}<p class="proof-tag"><a href="/keuangan/bukti/{{.ID}}" target="_blank" rel="noopener noreferrer">Bukti: {{.Kind}}, {{.Size}}</a> · {{.UploadedAt}}</p>{{end}}
 {{if and .IsTransfer $.CanUpload}}
 <form method="post" action="/keuangan/pembayaran/{{.ID}}/bukti" enctype="multipart/form-data" class="proof-form" data-max="{{$.MaxProofSize}}"
   x-data="{ err: '', submitting: false }"

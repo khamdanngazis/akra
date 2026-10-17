@@ -21,6 +21,7 @@ import (
 const (
 	paymentsPath = "/keuangan/pembayaran"
 	invoicesPath = "/keuangan/tagihan"
+	proofsPath   = "/keuangan/bukti"
 	maxForm      = 64 << 10
 	pageForm     = "payments/form"
 	pageResults  = "payments/search_results"
@@ -61,9 +62,13 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: bendahara. Unggah bukti transfer (multipart).
 		r.Post("/{id}/bukti", h.uploadProof)
 	})
+	readers := auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)
 	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
-	r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)).
-		Get(invoicesPath+"/{id}", h.invoice)
+	r.With(readers).Get(invoicesPath+"/{id}", h.invoice)
+	// Peran: bendahara, admin_tu, kepala_sekolah. Redirect ke URL bukti
+	// transfer yang berlaku 5 menit; setiap akses diaudit. Orang tua dan guru
+	// tidak punya akses.
+	r.With(readers).Get(proofsPath+"/{id}", h.openProof)
 }
 
 type studentRow struct {
@@ -103,7 +108,7 @@ type paymentRow struct {
 }
 
 type proofRow struct {
-	Kind, Size, UploadedAt string
+	ID, Kind, Size, UploadedAt string
 }
 
 type invoiceView struct {
@@ -308,7 +313,7 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 			IsTransfer: p.Method == MethodTransfer,
 		}
 		for _, pr := range proofs[p.ID] {
-			row.Proofs = append(row.Proofs, proofRow{Kind: proofKinds[pr.ContentType], Size: formatSize(pr.SizeBytes), UploadedAt: clock.FormatDateID(clock.DateOf(pr.UploadedAt))})
+			row.Proofs = append(row.Proofs, proofRow{ID: pr.ID, Kind: proofKinds[pr.ContentType], Size: formatSize(pr.SizeBytes), UploadedAt: clock.FormatDateID(clock.DateOf(pr.UploadedAt))})
 		}
 		view.Payments = append(view.Payments, row)
 	}

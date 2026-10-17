@@ -29,7 +29,9 @@ type client struct {
 	cookies []*http.Cookie
 }
 
-func newClient(t *testing.T, f *fixture) *client {
+// newClient membuat router uji. stores opsional: storage yang dipakai bukti
+// transfer (default: driver local baru).
+func newClient(t *testing.T, f *fixture, stores ...storage.Store) *client {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
@@ -47,8 +49,10 @@ func newClient(t *testing.T, f *fixture) *client {
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})
-	store, err := storage.NewLocal(t.TempDir())
-	if err != nil {
+	var store storage.Store
+	if len(stores) > 0 {
+		store = stores[0]
+	} else if store, err = storage.NewLocal(t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	NewHandler(f.svc, NewProofService(f.tx, store), sm, rd, logger).Routes(r)

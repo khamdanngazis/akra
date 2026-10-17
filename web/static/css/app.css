@@ -1063,3 +1063,8 @@ fieldset.field > legend {
   max-width: 100%;
   font-size: var(--text-sm);
 }
+
+.proof-tag a {
+  color: inherit;
+  font-weight: 600;
+}

@@ -23,12 +23,12 @@ Bukti transfer hanya bisa dibuka oleh peran yang berwenang, lewat URL sementara 
 - `internal/platform/storage/r2.go` (fungsi presign, sudah dibuat di T36)
 
 ## Kriteria selesai
-- [ ] Bendahara membuka bukti dan mendapat redirect ke R2
-- [ ] Orang tua yang mencoba route yang sama mendapat `403`
-- [ ] Guru mendapat `403`
-- [ ] Bendahara sekolah lain mendapat `404` untuk id bukti sekolah ini
-- [ ] URL yang dibuka setelah 5 menit mengembalikan error dari R2 (diuji dengan menunggu atau mengubah TTL di uji)
-- [ ] Setiap akses tercatat di audit log
+- [x] Bendahara membuka bukti dan mendapat redirect ke R2
+- [x] Orang tua yang mencoba route yang sama mendapat `403`
+- [x] Guru mendapat `403`
+- [x] Bendahara sekolah lain mendapat `404` untuk id bukti sekolah ini
+- [x] URL yang dibuka setelah 5 menit mengembalikan error dari R2 (diuji dengan menunggu atau mengubah TTL di uji)
+- [x] Setiap akses tercatat di audit log
 
 ## Catatan
 - Presigned URL yang sudah dibagikan tetap berlaku sampai kedaluwarsa. Itu risiko yang diterima untuk 5 menit.
