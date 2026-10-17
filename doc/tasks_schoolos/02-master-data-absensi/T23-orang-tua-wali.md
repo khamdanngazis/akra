@@ -28,11 +28,11 @@ Data orang tua atau wali tersimpan dan terhubung ke siswa. Satu siswa bisa punya
 - `internal/students/guardian_service.go`
 
 ## Kriteria selesai
-- [ ] Satu siswa dengan dua wali tersimpan dan keduanya tampil
-- [ ] Satu wali dengan dua anak tersimpan dan keduanya tampil
-- [ ] Dua penanggung jawab utama untuk satu siswa ditolak database
-- [ ] Nomor `0812-3456-7890` dan `+62 812 3456 7890` tersimpan dengan format yang sama
-- [ ] Wali sekolah lain tidak muncul di `ListByStudent`
+- [x] Satu siswa dengan dua wali tersimpan dan keduanya tampil
+- [x] Satu wali dengan dua anak tersimpan dan keduanya tampil
+- [x] Dua penanggung jawab utama untuk satu siswa ditolak database
+- [x] Nomor `0812-3456-7890` dan `+62 812 3456 7890` tersimpan dengan format yang sama
+- [x] Wali sekolah lain tidak muncul di `ListByStudent`
 
 ## Catatan
 - Email wali bersifat opsional di tahap ini, tetapi diperlukan untuk akun portal di T24.
