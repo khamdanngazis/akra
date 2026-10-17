@@ -1,0 +1,58 @@
+{{define "title"}}Absensi {{.Session.ClassName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="attendance-head">
+<div>
+<h1>Absensi {{.Session.ClassName}}</h1>
+<p class="muted">{{.DateLabel}}{{if .IsToday}} · hari ini{{end}}</p>
+</div>
+<form method="get" action="/absensi" class="date-picker">
+<input type="hidden" name="kelas" value="{{.Session.ClassID}}">
+<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}" aria-label="Hari sebelumnya">‹</a>
+<input type="date" name="tanggal" value="{{.Date}}" max="{{.Today}}" aria-label="Tanggal" onchange="this.form.submit()">
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}" aria-label="Hari berikutnya">›</a>{{else}}<span class="btn btn-ghost btn-sm" aria-disabled="true">›</span>{{end}}
+</form>
+</div>
+
+{{template "flash" .}}
+
+<p class="attendance-summary">
+<span class="badge badge-success">{{.Summary.Hadir}} hadir</span>
+<span class="badge badge-warning">{{.Summary.Sakit}} sakit</span>
+<span class="badge badge-info">{{.Summary.Izin}} izin</span>
+<span class="badge badge-danger">{{.Summary.Alpa}} alpa</span>
+<span class="muted small">dari {{.Summary.Total}} siswa</span>
+</p>
+
+{{if .Records}}
+<form method="post" action="/absensi/{{.Session.ID}}" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="attendance-actions">
+<button type="button" class="btn btn-ghost" @click="$root.querySelectorAll('input[type=radio][value=hadir]').forEach(r => r.checked = true)">Tandai semua hadir</button>
+</div>
+<ol class="attendance-list">
+{{range $i, $r := .Records}}
+<li class="attendance-row">
+<div class="attendance-student"><span class="attendance-no">{{inc $i}}.</span> <strong>{{$r.FullName}}</strong> <span class="muted small">{{$r.NIS}}</span></div>
+<fieldset class="status-group">
+<legend class="visually-hidden">Status {{$r.FullName}}</legend>
+{{range $.Statuses}}
+<label class="status-option status-{{.Value}}">
+<input type="radio" name="s_{{$r.EnrollmentID}}" value="{{.Value}}"{{if eq .Value $r.Status}} checked{{end}}>
+<span>{{.Label}}</span>
+</label>
+{{end}}
+</fieldset>
+</li>
+{{end}}
+</ol>
+<div class="attendance-submit">
+<button type="submit" class="btn btn-primary btn-block btn-lg" :disabled="submitting">Simpan absensi</button>
+</div>
+</form>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada siswa di kelas ini pada tanggal tersebut.</p>
+</section>
+{{end}}
+{{end}}

@@ -31,3 +31,13 @@ func ServerError(rd Renderer, logger *slog.Logger, w http.ResponseWriter, r *htt
 		User: user, Title: "Terjadi kesalahan", Message: "Terjadi kesalahan pada server. Silakan coba lagi.",
 	})
 }
+
+// Forbidden merender halaman 403 dengan pesan message.
+func Forbidden(rd Renderer, w http.ResponseWriter, r *http.Request, user any, message string) {
+	rd.Render(w, r, http.StatusForbidden, "error", ErrorView{User: user, Title: "Akses ditolak", Message: message})
+}
+
+// BadRequest merender halaman 400 dengan judul dan pesan.
+func BadRequest(rd Renderer, w http.ResponseWriter, r *http.Request, user any, title, message string) {
+	rd.Render(w, r, http.StatusBadRequest, "error", ErrorView{User: user, Title: title, Message: message})
+}

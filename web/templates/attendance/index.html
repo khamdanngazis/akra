@@ -1,0 +1,17 @@
+{{define "title"}}Absensi{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Absensi</h1>
+{{template "flash" .}}
+{{if .Classes}}
+<p class="muted">Pilih kelas yang akan diisi absensinya.</p>
+<ul class="class-picker">
+{{range .Classes}}<li><a class="btn btn-ghost btn-block" href="/absensi?kelas={{.ID}}">{{.Name}} <span class="muted">· {{.YearName}}</span></a></li>{{end}}
+</ul>
+{{else}}
+<section class="card empty-state">
+<p>Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
+<p class="muted">Absensi diisi oleh wali kelas. Hubungi admin/TU jika ini keliru.</p>
+</section>
+{{end}}
+{{end}}

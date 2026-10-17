@@ -17,6 +17,7 @@ import (
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/attendance"
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/platform/csrf"
@@ -80,6 +81,7 @@ func newTestRouter(t *testing.T) http.Handler {
 			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),
 		activation: auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
 		portal:     portal.NewHandler(sessions, rd),
+		attendance: attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
 	})
 }
 

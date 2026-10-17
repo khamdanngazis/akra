@@ -93,6 +93,8 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 // diganti per request di Render.
 func funcs(versions map[string]string) template.FuncMap {
 	m := template.FuncMap{
+		// inc menambah satu; mis. nomor urut {{inc $i}} dari indeks range.
+		"inc": func(i int) int { return i + 1 },
 		// seq menghasilkan from, from+1, ..., to; mis. {{range seq 1 12}}.
 		"seq": func(from, to int) []int {
 			var s []int

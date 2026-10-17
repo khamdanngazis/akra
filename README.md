@@ -262,7 +262,12 @@ Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di
 - Satu **catatan** per siswa (enrollment) per sesi, status `hadir`, `sakit`, `izin`, atau `alpa` (default `hadir`).
 - `EnsureRecords` memakai enrollment yang aktif **pada tanggal sesi** (`start_date <= tanggal` dan `end_date` kosong atau `>= tanggal`). Siswa yang pindah kelas hanya muncul di kelas yang benar untuk setiap tanggal. Catatan yang sudah ada tidak diubah dan tidak pernah dihapus; koreksi dengan mengubah status.
 - Foreign key komposit menjamin sesi, kelas, enrollment, dan pembuat sesi berasal dari sekolah yang sama.
-- Form guru dan hak akses wali kelas dikerjakan di T26.
+- **Form guru** `GET /absensi?kelas=&tanggal=` dan `POST /absensi/{sessionID}` ([handler.go](internal/attendance/handler.go)):
+  - Hanya peran `guru`, dan hanya **wali kelas** dari kelas itu (`attendance.CanEditClass`). Guru lain, admin/TU, kepala sekolah, dan orang tua mendapat `403`. Belum ada penugasan guru mata pelajaran di MVP 1.
+  - Tanpa `?kelas`, guru melihat kelas perwaliannya di tahun aktif (langsung dibuka jika hanya satu). Tanggal default hari ini (WIB); tanggal masa depan dan di luar tahun ajaran ditolak.
+  - Semua status disimpan dengan **satu POST** dan satu `UPDATE` dalam satu transaksi; satu baris tidak valid membatalkan semuanya. Tombol "Tandai semua hadir" (Alpine) hanya mengubah pilihan di browser. Setelah simpan tampil ringkasan hadir/sakit/izin/alpa.
+  - Dibuat untuk HP: tombol status 44px, tombol simpan menempel di bawah. Diukur di uji: simpan 30 siswa sekitar 10 ms.
+  - **Belum diputuskan:** batas berapa hari ke belakang absensi masih boleh diubah (saat ini tidak dibatasi). Tanyakan ke sekolah saat wawancara.
 
 ## Audit
 
