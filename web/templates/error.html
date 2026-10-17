@@ -1,5 +1,5 @@
 {{define "title"}}{{.Title}}{{end}}
-{{define "header"}}{{if .User.UserID}}{{template "app_header" .User}}{{end}}{{end}}
+{{define "header"}}{{with .User}}{{template "app_header" .}}{{end}}{{end}}
 {{define "content"}}
 <section class="card">
 <h1>{{.Title}}</h1>

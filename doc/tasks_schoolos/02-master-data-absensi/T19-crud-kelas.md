@@ -28,12 +28,12 @@ Admin/TU bisa mengelola kelas dan menugaskan wali kelas dari daftar guru sekolah
 - `web/templates/classes/index.html`, `form.html`
 
 ## Kriteria selesai
-- [ ] Admin/TU bisa membuat kelas dan memilih wali kelas
-- [ ] Wali kelas yang dipilih tampil di daftar kelas
-- [ ] Pengguna dengan peran orang tua yang dicoba dijadikan wali kelas ditolak service
-- [ ] Pengguna nonaktif tidak muncul di pilihan wali kelas
-- [ ] Guru tidak bisa membuka form ubah kelas (`403`)
-- [ ] Setiap perubahan tercatat di audit log
+- [x] Admin/TU bisa membuat kelas dan memilih wali kelas
+- [x] Wali kelas yang dipilih tampil di daftar kelas
+- [x] Pengguna dengan peran orang tua yang dicoba dijadikan wali kelas ditolak service
+- [x] Pengguna nonaktif tidak muncul di pilihan wali kelas
+- [x] Guru tidak bisa membuka form ubah kelas (`403`)
+- [x] Setiap perubahan tercatat di audit log
 
 ## Catatan
 - Kelas dan penempatan siswa (T21) adalah dua hal berbeda. Menghapus kelas tidak dibuat di task ini.

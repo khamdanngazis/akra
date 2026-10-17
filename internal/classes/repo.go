@@ -139,3 +139,78 @@ func nullIfEmpty(s string) any {
 	}
 	return s
 }
+
+// Update mengubah nama dan tingkat kelas milik schoolID.
+func Update(ctx context.Context, q database.DBTX, schoolID, id string, in ClassUpdate) (Class, error) {
+	if !database.IsUUID(id) {
+		return Class{}, ErrNotFound
+	}
+	tag, err := q.Exec(ctx, `UPDATE classes SET name = $3, grade_level = $4, updated_at = now()
+		WHERE school_id = $1 AND id = $2`, schoolID, id, in.Name, in.GradeLevel)
+	if err != nil {
+		return Class{}, mapError("update class", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return Class{}, ErrNotFound
+	}
+	return GetByID(ctx, q, schoolID, id)
+}
+
+// SetHomeroomTeacher mengganti wali kelas. teacherID kosong menghapus wali
+// kelas. Pemeriksaan peran dan status aktif dilakukan di service.
+func SetHomeroomTeacher(ctx context.Context, q database.DBTX, schoolID, id, teacherID string) (Class, error) {
+	if !database.IsUUID(id) {
+		return Class{}, ErrNotFound
+	}
+	if teacherID != "" && !database.IsUUID(teacherID) {
+		return Class{}, ErrTeacherNotFound
+	}
+	tag, err := q.Exec(ctx, `UPDATE classes SET homeroom_teacher_id = $3, updated_at = now()
+		WHERE school_id = $1 AND id = $2`, schoolID, id, nullIfEmpty(teacherID))
+	if err != nil {
+		return Class{}, mapError("set homeroom teacher", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return Class{}, ErrNotFound
+	}
+	return GetByID(ctx, q, schoolID, id)
+}
+
+const activeTeachersSQL = `
+SELECT u.id, u.full_name, u.email
+FROM users u
+JOIN user_roles ur ON ur.user_id = u.id
+JOIN roles r ON r.id = ur.role_id AND r.code = 'guru'
+WHERE u.school_id = $1 AND u.is_active`
+
+// ListTeachers mengembalikan pengguna aktif berperan guru di schoolID,
+// urut nama. Pilihan wali kelas diambil dari sini.
+func ListTeachers(ctx context.Context, q database.DBTX, schoolID string) ([]Teacher, error) {
+	rows, err := q.Query(ctx, activeTeachersSQL+` ORDER BY lower(u.full_name), u.email`, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("classes: list teachers: %w", err)
+	}
+	teachers, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Teacher, error) {
+		var t Teacher
+		err := row.Scan(&t.ID, &t.FullName, &t.Email)
+		return t, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("classes: list teachers: %w", err)
+	}
+	return teachers, nil
+}
+
+// IsActiveTeacher melaporkan apakah userID adalah pengguna aktif berperan
+// guru di schoolID.
+func IsActiveTeacher(ctx context.Context, q database.DBTX, schoolID, userID string) (bool, error) {
+	if !database.IsUUID(userID) {
+		return false, nil
+	}
+	var ok bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (`+activeTeachersSQL+` AND u.id = $2)`, schoolID, userID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("classes: check teacher: %w", err)
+	}
+	return ok, nil
+}

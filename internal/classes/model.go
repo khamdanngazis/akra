@@ -51,3 +51,17 @@ type ClassInput struct {
 	GradeLevel        int
 	HomeroomTeacherID string // kosong berarti tanpa wali kelas
 }
+
+// ClassUpdate adalah data kelas yang bisa diubah. Tahun ajaran tidak bisa
+// dipindah; wali kelas diubah lewat SetHomeroomTeacher.
+type ClassUpdate struct {
+	Name       string
+	GradeLevel int
+}
+
+// Teacher adalah pengguna yang bisa dipilih sebagai wali kelas.
+type Teacher struct {
+	ID       string
+	FullName string
+	Email    string
+}
