@@ -1,0 +1,59 @@
+{{define "title"}}Tagihan {{.Invoice.StudentName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Tagihan {{.Period}}</h1>
+<p class="muted"><strong>{{.Invoice.StudentName}}</strong> · NIS {{.Invoice.NIS}} · {{.Invoice.ClassName}} · {{.Invoice.YearName}}</p>
+</div>
+{{if .CanPay}}<a class="btn btn-primary" href="/keuangan/pembayaran/baru?siswa={{.Invoice.StudentID}}">Catat pembayaran</a>{{end}}
+</div>
+{{template "flash" .}}
+
+<section class="card stat-card">
+<dl class="data-list">
+<dt>Status</dt><dd>{{if .Invoice.VoidedAt}}<span class="badge">Dibatalkan</span>{{else}}{{if eq .Status "Lunas"}}<span class="badge badge-success">Lunas</span>{{else if eq .Status "Sebagian"}}<span class="badge badge-warning">Sebagian</span>{{else}}<span class="badge">{{.Status}}</span>{{end}}{{if .Overdue}} <span class="badge badge-danger">Terlambat</span>{{end}}{{end}}</dd>
+<dt>Jatuh tempo</dt><dd>{{.DueDate}}</dd>
+</dl>
+<div class="stat-grid stat-grid-money">
+<div><span class="stat-value">{{.Total}}</span><span class="stat-label">total tagihan</span></div>
+<div><span class="stat-value">{{.Paid}}</span><span class="stat-label">terbayar</span></div>
+<div><span class="stat-value">{{.Remaining}}</span><span class="stat-label">sisa</span></div>
+</div>
+</section>
+
+<h2 class="section-title">Rincian</h2>
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Jenis tagihan</th><th class="num">Nominal</th></tr></thead>
+<tbody>
+{{range .Items}}<tr><td>{{.Name}}{{with .Description}}<br><span class="muted">{{.}}</span>{{end}}</td><td class="num nowrap">{{.Amount}}</td></tr>{{end}}
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 class="section-title">Pembayaran</h2>
+{{if .Payments}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tanggal</th><th>Metode</th><th>Keterangan</th><th class="num">Nominal</th></tr></thead>
+<tbody>
+{{range .Payments}}
+<tr>
+<td class="nowrap">{{.PaidOn}}</td>
+<td>{{.Method}}</td>
+<td>{{with .BankAccount}}Ke {{.}}{{end}}{{with .Reference}}<br><span class="muted">Ref. {{.}}</span>{{end}}{{with .Note}}<br><span class="muted">{{.}}</span>{{end}}{{with .Receipt}}<br><span class="muted">{{.}}</span>{{end}}</td>
+<td class="num nowrap">{{.Amount}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada pembayaran.</p></section>
+{{end}}
+{{end}}

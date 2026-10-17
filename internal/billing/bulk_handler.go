@@ -128,7 +128,7 @@ func (h *BulkHandler) renderForm(w http.ResponseWriter, r *http.Request, id auth
 	}
 	for _, run := range recent {
 		view.Recent = append(view.Recent, runRow{
-			ID: run.ID, FeeType: run.FeeTypeName, Period: periodLabel(run.Period), ClassName: run.ClassName,
+			ID: run.ID, FeeType: run.FeeTypeName, Period: PeriodLabel(run.Period), ClassName: run.ClassName,
 			Status: run.Status, StatusLabel: runStatusLabels[run.Status], Created: run.CreatedCount, Skipped: run.SkippedCount,
 			CreatedAt: clock.FormatDateID(clock.DateOf(run.CreatedAt)),
 		})
@@ -148,7 +148,7 @@ func (h *BulkHandler) preview(w http.ResponseWriter, r *http.Request) {
 	}
 	h.render.Render(w, r, http.StatusOK, pageBulkPrev, bulkPreviewView{
 		User: id, Form: f, Preview: p, Amount: money.FormatRupiah(p.Amount), Total: money.FormatRupiah(p.Total),
-		DueDate: clock.FormatDateID(p.DueDate), Period: periodLabel(p.Period),
+		DueDate: clock.FormatDateID(p.DueDate), Period: PeriodLabel(p.Period),
 	})
 }
 
@@ -176,7 +176,7 @@ func (h *BulkHandler) show(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "get bulk run", err)
 		return
 	}
-	view := bulkRunView{User: id, Run: run, Period: periodLabel(run.Period), DueDate: clock.FormatDateID(run.DueDate), StatusLabel: runStatusLabels[run.Status]}
+	view := bulkRunView{User: id, Run: run, Period: PeriodLabel(run.Period), DueDate: clock.FormatDateID(run.DueDate), StatusLabel: runStatusLabels[run.Status]}
 	if run.TotalCount > 0 {
 		view.Percent = min(100, run.ProcessedCount*100/run.TotalCount)
 	} else if run.Finished() {
@@ -220,8 +220,8 @@ func (h *BulkHandler) serverError(w http.ResponseWriter, r *http.Request, op str
 
 var monthNames = [...]string{"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
 
-// periodLabel mengubah "2026-09" menjadi "September 2026".
-func periodLabel(period string) string {
+// PeriodLabel mengubah "2026-09" menjadi "September 2026".
+func PeriodLabel(period string) string {
 	if !periodPattern.MatchString(period) {
 		return period
 	}

@@ -73,6 +73,23 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestRenderFragment(t *testing.T) {
+	rd, err := New(goodFS(), nil, discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	rd.RenderFragment(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "home", "content", map[string]string{"Name": "<Budi>"})
+	if body := rec.Body.String(); rec.Code != http.StatusOK || strings.Contains(body, "<title>") || !strings.HasPrefix(body, "Halo &lt;Budi&gt;") {
+		t.Errorf("status = %d, body = %q; want content block only", rec.Code, body)
+	}
+	rec = httptest.NewRecorder()
+	rd.RenderFragment(rec, httptest.NewRequest(http.MethodGet, "/", nil), http.StatusOK, "home", "nope", nil)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("unknown block: status = %d, want 500", rec.Code)
+	}
+}
+
 func TestRender_ExecErrorReturns500(t *testing.T) {
 	fsys := goodFS()
 	fsys["bad.html"] = &fstest.MapFile{Data: []byte(`{{define "content"}}{{.Missing.Field}}{{end}}`)}

@@ -36,12 +36,12 @@ Bendahara bisa mencari siswa, memilih tagihan, dan mencatat pembayaran. Status t
 - `web/templates/payments/form.html`, `search_results.html`
 
 ## Kriteria selesai
-- [ ] Pembayaran penuh mengubah status tagihan menjadi `lunas`
-- [ ] Pembayaran sebagian mengubah status menjadi `sebagian`
-- [ ] Dua pembayaran bertotal lebih dari sisa, pembayaran kedua ditolak dan pembayaran pertama tidak tersimpan (transaksi)
-- [ ] Guru dan orang tua mendapat `403`
-- [ ] Pencarian siswa dari sekolah lain tidak mengembalikan hasil
-- [ ] Form berfungsi di layar 360px
+- [x] Pembayaran penuh mengubah status tagihan menjadi `lunas`
+- [x] Pembayaran sebagian mengubah status menjadi `sebagian`
+- [x] Dua pembayaran bertotal lebih dari sisa, pembayaran kedua ditolak dan pembayaran pertama tidak tersimpan (transaksi)
+- [x] Guru dan orang tua mendapat `403`
+- [x] Pencarian siswa dari sekolah lain tidak mengembalikan hasil
+- [x] Form berfungsi di layar 360px
 
 ## Catatan
 - Rekening tujuan diatur di pengaturan sekolah. Tabel dan halamannya belum ada di MVP 1 dan perlu task tambahan kecil bila belum tersedia. Untuk sementara, pilihan bisa berupa teks bebas.

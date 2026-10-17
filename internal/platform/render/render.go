@@ -130,7 +130,20 @@ func (rd *Renderer) Render(w http.ResponseWriter, r *http.Request, status int, n
 	}
 }
 
+// RenderFragment merender satu blok (define) dari halaman name tanpa layout,
+// mis. hasil pencarian yang dimuat Alpine.js ke halaman yang sudah terbuka.
+func (rd *Renderer) RenderFragment(w http.ResponseWriter, r *http.Request, status int, name, block string, data any) {
+	if err := rd.execute(w, r, status, name, block, data); err != nil {
+		rd.logger.ErrorContext(r.Context(), "render fragment", "page", name, "block", block, "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
 func (rd *Renderer) render(w http.ResponseWriter, r *http.Request, status int, name string, data any) error {
+	return rd.execute(w, r, status, name, "layout", data)
+}
+
+func (rd *Renderer) execute(w http.ResponseWriter, r *http.Request, status int, name, block string, data any) error {
 	page, ok := rd.pages[name]
 	if !ok {
 		return fmt.Errorf("render: unknown page %q", name)
@@ -140,7 +153,7 @@ func (rd *Renderer) render(w http.ResponseWriter, r *http.Request, status int, n
 		return err
 	}
 	var buf bytes.Buffer
-	if err := t.Funcs(csrf.FuncMap(r)).ExecuteTemplate(&buf, "layout", data); err != nil {
+	if err := t.Funcs(csrf.FuncMap(r)).ExecuteTemplate(&buf, block, data); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

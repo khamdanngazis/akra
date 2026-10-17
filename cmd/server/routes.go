@@ -12,6 +12,7 @@ import (
 	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/home"
+	"akra/internal/payments"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
 	"akra/internal/portal"
@@ -35,6 +36,7 @@ type routerDeps struct {
 	attendance   *attendance.Handler
 	feeTypes     *billing.FeeTypeHandler
 	bulkInvoice  *billing.BulkHandler
+	payments     *payments.Handler
 	// dev berisi route khusus development (nil di staging/production).
 	dev func(chi.Router)
 }
@@ -83,6 +85,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)
 			d.bulkInvoice.Routes(r)
+			d.payments.Routes(r)
 		})
 	})
 

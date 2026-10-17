@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -69,12 +70,135 @@ func invoiceForPayment(ctx context.Context, tx pgx.Tx, schoolID, invoiceID strin
 	if err != nil {
 		return 0, 0, false, mapError("lock invoice", err)
 	}
-	// TODO(T38): kecualikan pembayaran yang pembatalannya sudah disetujui.
-	if err = tx.QueryRow(ctx, `SELECT coalesce(sum(amount), 0) FROM payments
-		WHERE school_id = $1 AND invoice_id = $2`, schoolID, invoiceID).Scan(&paid); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT `+paidSumSQL+` FROM invoices i WHERE i.school_id = $1 AND i.id = $2`,
+		schoolID, invoiceID).Scan(&paid); err != nil {
 		return 0, 0, false, mapError("sum payments", err)
 	}
 	return total, paid, voided, nil
+}
+
+// paidSumSQL adalah jumlah pembayaran aktif tagihan beralias i. Semua
+// perhitungan sisa tagihan memakai ekspresi ini.
+// TODO(T38): kecualikan pembayaran yang pembatalannya sudah disetujui.
+const paidSumSQL = `(SELECT coalesce(sum(p.amount), 0) FROM payments p WHERE p.school_id = i.school_id AND p.invoice_id = i.id)`
+
+// feeNamesSQL adalah nama jenis tagihan item tagihan beralias i, dipisah koma.
+const feeNamesSQL = `(SELECT string_agg(f.name, ', ' ORDER BY it.position, it.created_at)
+	FROM invoice_items it JOIN fee_types f ON f.school_id = it.school_id AND f.id = it.fee_type_id
+	WHERE it.school_id = i.school_id AND it.invoice_id = i.id)`
+
+// OpenInvoice adalah tagihan yang belum lunas beserta sisanya.
+type OpenInvoice struct {
+	ID        string
+	Period    string
+	DueDate   time.Time
+	Total     int64
+	Paid      int64
+	Status    billing.Status
+	FeeNames  string
+	ClassName string
+	YearName  string
+}
+
+// Remaining adalah sisa tagihan.
+func (o OpenInvoice) Remaining() int64 { return o.Total - o.Paid }
+
+// listOpenInvoices mengembalikan tagihan siswa yang belum lunas dan tidak
+// dibatalkan, di semua tahun ajaran, urut jatuh tempo.
+func listOpenInvoices(ctx context.Context, q database.DBTX, schoolID, studentID string) ([]OpenInvoice, error) {
+	rows, err := q.Query(ctx, `
+		SELECT i.id, i.period, i.due_date, i.total_amount, `+paidSumSQL+`, i.status, coalesce(`+feeNamesSQL+`, ''), c.name, y.name
+		FROM invoices i
+		JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
+		JOIN classes c ON c.school_id = e.school_id AND c.id = e.class_id
+		JOIN academic_years y ON y.school_id = i.school_id AND y.id = i.academic_year_id
+		WHERE i.school_id = $1 AND e.student_id = $2 AND i.voided_at IS NULL AND i.status <> 'lunas'
+		ORDER BY i.due_date, i.period, i.created_at`, schoolID, studentID)
+	if err != nil {
+		return nil, mapError("list open invoices", err)
+	}
+	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (OpenInvoice, error) {
+		var o OpenInvoice
+		err := row.Scan(&o.ID, &o.Period, &o.DueDate, &o.Total, &o.Paid, &o.Status, &o.FeeNames, &o.ClassName, &o.YearName)
+		return o, err
+	})
+	if err != nil {
+		return nil, mapError("list open invoices", err)
+	}
+	return list, nil
+}
+
+// InvoiceDetail adalah tagihan beserta siswa, kelas, dan jumlah terbayar.
+type InvoiceDetail struct {
+	billing.Invoice
+	StudentID   string
+	StudentName string
+	NIS         string
+	ClassName   string
+	YearName    string
+	Paid        int64
+}
+
+// Remaining adalah sisa tagihan.
+func (d InvoiceDetail) Remaining() int64 { return d.TotalAmount - d.Paid }
+
+func getInvoiceDetail(ctx context.Context, q database.DBTX, schoolID, invoiceID string) (InvoiceDetail, error) {
+	inv, err := billing.GetInvoice(ctx, q, schoolID, invoiceID)
+	if err != nil {
+		return InvoiceDetail{}, err
+	}
+	d := InvoiceDetail{Invoice: inv}
+	err = q.QueryRow(ctx, `
+		SELECT s.id, s.full_name, s.nis, c.name, y.name, `+paidSumSQL+`
+		FROM invoices i
+		JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
+		JOIN students s ON s.school_id = e.school_id AND s.id = e.student_id
+		JOIN classes c ON c.school_id = e.school_id AND c.id = e.class_id
+		JOIN academic_years y ON y.school_id = i.school_id AND y.id = i.academic_year_id
+		WHERE i.school_id = $1 AND i.id = $2`, schoolID, invoiceID).
+		Scan(&d.StudentID, &d.StudentName, &d.NIS, &d.ClassName, &d.YearName, &d.Paid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return InvoiceDetail{}, billing.ErrInvoiceNotFound
+	}
+	if err != nil {
+		return InvoiceDetail{}, mapError("get invoice detail", err)
+	}
+	return d, nil
+}
+
+// invoiceStudentID mengembalikan siswa pemilik tagihan.
+func invoiceStudentID(ctx context.Context, q database.DBTX, schoolID, invoiceID string) (string, error) {
+	if !database.IsUUID(invoiceID) {
+		return "", billing.ErrInvoiceNotFound
+	}
+	var id string
+	err := q.QueryRow(ctx, `SELECT e.student_id FROM invoices i
+		JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
+		WHERE i.school_id = $1 AND i.id = $2`, schoolID, invoiceID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", billing.ErrInvoiceNotFound
+	}
+	if err != nil {
+		return "", mapError("get invoice student", err)
+	}
+	return id, nil
+}
+
+// recentBankAccounts mengembalikan rekening tujuan yang pernah dipakai
+// sekolah, paling baru dulu. Dipakai sebagai saran isian sampai pengaturan
+// rekening sekolah tersedia.
+func recentBankAccounts(ctx context.Context, q database.DBTX, schoolID string, limit int) ([]string, error) {
+	rows, err := q.Query(ctx, `SELECT bank_account FROM payments
+		WHERE school_id = $1 AND bank_account IS NOT NULL
+		GROUP BY bank_account ORDER BY max(created_at) DESC LIMIT $2`, schoolID, limit)
+	if err != nil {
+		return nil, mapError("list bank accounts", err)
+	}
+	list, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, mapError("list bank accounts", err)
+	}
+	return list, nil
 }
 
 func updateInvoiceStatus(ctx context.Context, tx pgx.Tx, schoolID, invoiceID string, status billing.Status) error {
