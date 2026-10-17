@@ -31,3 +31,15 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+.env.*
+!.env.example
+
+# Build output
+/bin/
+/build/
+/dist/
+/server
+tmp/
+
+# Logs
+*.log

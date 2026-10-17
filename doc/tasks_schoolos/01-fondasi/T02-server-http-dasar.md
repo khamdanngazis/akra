@@ -30,10 +30,10 @@ Server HTTP berjalan dengan router `chi`, membaca konfigurasi dari environment, 
 - `README.md`
 
 ## Kriteria selesai
-- [ ] `curl -i localhost:8080/healthz` mengembalikan `200 OK` dengan body `ok`
-- [ ] Menjalankan tanpa `DATABASE_URL` berhenti dengan pesan error yang jelas
-- [ ] `Ctrl+C` menghentikan server tanpa panic
-- [ ] Ada uji unit untuk `config.Load()` pada kasus: variabel lengkap, variabel wajib kosong, nilai default
+- [x] `curl -i localhost:8080/healthz` mengembalikan `200 OK` dengan body `ok`
+- [x] Menjalankan tanpa `DATABASE_URL` berhenti dengan pesan error yang jelas
+- [x] `Ctrl+C` menghentikan server tanpa panic
+- [x] Ada uji unit untuk `config.Load()` pada kasus: variabel lengkap, variabel wajib kosong, nilai default
 
 ## Catatan
 - Pada tahap ini koneksi database belum dibuat. Itu dikerjakan di T03.
