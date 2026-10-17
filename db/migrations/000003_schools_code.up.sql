@@ -1,5 +1,5 @@
--- code identifies a school on the login form (and later, possibly a subdomain).
--- Lower-case letters, digits, and single hyphens; 3-32 characters.
+-- code mengidentifikasi sekolah di form login (dan nanti mungkin subdomain).
+-- Huruf kecil, angka, dan tanda hubung tunggal; 3-32 karakter.
 ALTER TABLE schools
     ADD COLUMN code text NOT NULL,
     ADD CONSTRAINT schools_code_key UNIQUE (code),

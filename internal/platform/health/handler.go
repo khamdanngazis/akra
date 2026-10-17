@@ -1,4 +1,4 @@
-// Package health provides health check endpoints.
+// Package health menyediakan endpoint health check.
 package health
 
 import (
@@ -9,17 +9,17 @@ import (
 
 const dbPingTimeout = 2 * time.Second
 
-// Pinger is anything whose connectivity can be checked, e.g. *pgxpool.Pool.
+// Pinger adalah apa pun yang koneksinya bisa diperiksa, misalnya *pgxpool.Pool.
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// Handler responds 200 with body "ok".
+// Handler membalas 200 dengan body "ok".
 func Handler(w http.ResponseWriter, _ *http.Request) {
 	writeText(w, http.StatusOK, "ok")
 }
 
-// DBHandler responds 200 if db can be pinged, 503 otherwise.
+// DBHandler membalas 200 jika db bisa di-ping, dan 503 jika tidak.
 func DBHandler(db Pinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), dbPingTimeout)

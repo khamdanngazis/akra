@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// testParams keeps hashing fast in tests.
+// testParams membuat hashing cepat saat pengujian.
 var testParams = PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1}
 
 func TestHashAndVerifyPassword(t *testing.T) {

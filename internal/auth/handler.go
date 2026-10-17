@@ -13,15 +13,15 @@ import (
 
 const maxLoginFormBytes = 16 << 10
 
-// User-facing messages (Indonesian UI).
+// Pesan yang tampil ke pengguna.
 const (
 	msgInvalidCredentials = "Kode sekolah, email, atau password salah."
 	msgTooManyAttempts    = "Terlalu banyak percobaan masuk. Coba lagi beberapa menit lagi."
 	msgInternalError      = "Terjadi kesalahan pada server. Silakan coba lagi."
 )
 
-// TODO(T11): replace with web/templates/auth/login.html rendered through
-// internal/platform/render, and add {{ csrfField }} in T09.
+// TODO(T11): ganti dengan web/templates/auth/login.html yang dirender lewat
+// internal/platform/render, dan tambahkan {{ csrfField }} di T09.
 var loginTmpl = template.Must(template.New("login").Parse(`<!doctype html>
 <html lang="id">
 <head>
@@ -50,18 +50,18 @@ type loginPage struct {
 	Error      string
 }
 
-// Handler serves the login pages.
+// Handler melayani halaman login.
 type Handler struct {
 	svc    *Service
 	logger *slog.Logger
 }
 
-// NewHandler returns a Handler.
+// NewHandler mengembalikan Handler.
 func NewHandler(svc *Service, logger *slog.Logger) *Handler {
 	return &Handler{svc: svc, logger: logger}
 }
 
-// Routes registers the login routes on r.
+// Routes mendaftarkan route login ke r.
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/login", h.showLogin)
 	r.Post("/login", h.submitLogin)
@@ -87,8 +87,8 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 	_, err := h.svc.Authenticate(r.Context(), page.SchoolCode, page.Email, r.PostForm.Get("password"), ip)
 	switch {
 	case err == nil:
-		// TODO(T07): renew the session token and store user_id, school_id,
-		// and roles in the session before redirecting.
+		// TODO(T07): perbarui token sesi lalu simpan user_id, school_id, dan
+		// peran ke sesi sebelum redirect.
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
@@ -98,7 +98,7 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 		page.Error = msgTooManyAttempts
 		h.render(w, http.StatusTooManyRequests, page)
 	default:
-		// err never contains the password.
+		// err tidak pernah berisi password.
 		h.logger.Error("login failed", "error", err)
 		page.Error = msgInternalError
 		h.render(w, http.StatusInternalServerError, page)
@@ -113,11 +113,12 @@ func (h *Handler) render(w http.ResponseWriter, status int, page loginPage) {
 	}
 }
 
-// clientIP returns the peer address of the connection.
+// clientIP mengembalikan alamat peer dari koneksi.
 //
-// TODO(T14): behind the Railway proxy RemoteAddr is the proxy; read the client
-// IP from the proxy header only once the trusted proxy setup is known, since
-// trusting X-Forwarded-For blindly lets attackers bypass the IP lockout.
+// TODO(T14): di belakang proxy Railway, RemoteAddr adalah alamat proxy. Baca IP
+// klien dari header proxy hanya setelah konfigurasi proxy tepercaya diketahui,
+// karena mempercayai X-Forwarded-For begitu saja memungkinkan penyerang
+// melewati lockout per IP.
 func clientIP(r *http.Request) netip.Addr {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

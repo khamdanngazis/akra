@@ -1,5 +1,5 @@
--- One row per login attempt, used for lockout. school_code is stored as typed
--- (normalized) because the school may not exist.
+-- Satu baris per percobaan login, dipakai untuk lockout. school_code disimpan
+-- seperti yang diketik (sudah dinormalisasi) karena sekolahnya bisa saja tidak ada.
 CREATE TABLE login_attempts (
     id               bigserial   PRIMARY KEY,
     school_code      text        NOT NULL,

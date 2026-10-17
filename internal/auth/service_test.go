@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-// fakeRepo is an in-memory Repository. It ignores the window: every recorded
-// attempt counts as recent.
+// fakeRepo adalah Repository di memori. Parameter window diabaikan: semua
+// percobaan yang tercatat dianggap baru.
 type fakeRepo struct {
-	users    map[string]UserCredentials // key: schoolCode + "|" + email
+	users    map[string]UserCredentials // kunci: schoolCode + "|" + email
 	attempts []LoginAttempt
 }
 
@@ -128,7 +128,7 @@ func TestAuthenticate_LockoutByEmail(t *testing.T) {
 	ctx := context.Background()
 
 	for i := range MaxFailuresPerEmail {
-		// Vary the IP so only the email limit applies.
+		// IP dibuat berbeda agar hanya batas per email yang berlaku.
 		ip := netip.AddrFrom4([4]byte{198, 51, 100, byte(i)})
 		if _, err := svc.Authenticate(ctx, "sd-harapan", "budi@sekolah.id", "salah", ip); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: error = %v, want ErrInvalidCredentials", i+1, err)
@@ -143,7 +143,7 @@ func TestAuthenticate_LockoutByEmail(t *testing.T) {
 		t.Errorf("recorded %d attempts, want %d (locked attempts are not recorded)", n, MaxFailuresPerEmail)
 	}
 
-	// Another user of the same school is not affected.
+	// Pengguna lain di sekolah yang sama tidak ikut terkunci.
 	repo.users["sd-harapan|ani@sekolah.id"] = repo.users["sd-harapan|budi@sekolah.id"]
 	if _, err := svc.Authenticate(ctx, "sd-harapan", "ani@sekolah.id", "benar-123", testIP); err != nil {
 		t.Errorf("other user: error = %v, want nil", err)
@@ -155,7 +155,7 @@ func TestAuthenticate_LockoutByIP(t *testing.T) {
 	ctx := context.Background()
 
 	for i := range MaxFailuresPerIP {
-		// A different email each time so only the IP limit applies.
+		// Email dibuat berbeda agar hanya batas per IP yang berlaku.
 		email := string(rune('a'+i%26)) + "@sekolah.id"
 		if i >= 26 {
 			email = "x" + email

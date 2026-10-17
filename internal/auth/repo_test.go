@@ -10,8 +10,8 @@ import (
 	"akra/internal/platform/database"
 )
 
-// TestPostgresRepository_Login runs the login flow against a real database.
-// It requires TEST_DATABASE_URL pointing at a migrated database.
+// TestPostgresRepository_Login menjalankan alur login ke database sungguhan.
+// Butuh TEST_DATABASE_URL yang menunjuk ke database yang sudah dimigrasi.
 func TestPostgresRepository_Login(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {

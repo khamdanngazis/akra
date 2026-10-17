@@ -1,4 +1,4 @@
-// Package config loads application configuration from environment variables.
+// Package config memuat konfigurasi aplikasi dari environment variable.
 package config
 
 import (
@@ -7,28 +7,28 @@ import (
 	"strconv"
 )
 
-// Valid values for APP_ENV.
+// Nilai yang valid untuk APP_ENV.
 const (
 	EnvDevelopment = "development"
 	EnvStaging     = "staging"
 	EnvProduction  = "production"
 )
 
-// Config holds the runtime configuration of the application.
+// Config berisi konfigurasi yang dibutuhkan saat aplikasi berjalan.
 type Config struct {
 	Port        string
 	DatabaseURL string
 	DBMaxConns  int32
 	AppEnv      string
 
-	// argon2id cost parameters for new password hashes. The defaults follow
-	// the OWASP minimum (19 MiB, 2 iterations, 1 lane).
+	// Parameter biaya argon2id untuk hash password baru. Default mengikuti
+	// batas minimum OWASP (19 MiB, 2 iterasi, 1 lane).
 	Argon2MemoryKiB   uint32
 	Argon2Iterations  uint32
 	Argon2Parallelism uint8
 }
 
-// Load reads the configuration from environment variables and validates it.
+// Load membaca konfigurasi dari environment variable lalu memvalidasinya.
 func Load() (Config, error) {
 	cfg := Config{
 		Port:        getEnv("PORT", "8080"),
@@ -75,8 +75,8 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// positiveInt parses key as a positive integer that fits in a signed integer
-// of bitSize bits, returning fallback when key is unset.
+// positiveInt membaca key sebagai bilangan bulat positif yang muat dalam
+// signed integer bitSize bit, dan mengembalikan fallback jika key kosong.
 func positiveInt(key string, fallback int64, bitSize int) (int64, error) {
 	raw := os.Getenv(key)
 	if raw == "" {

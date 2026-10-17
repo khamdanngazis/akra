@@ -52,7 +52,7 @@ func TestSubmitLogin_Success(t *testing.T) {
 	}
 }
 
-// alertText returns the error message shown on the login page.
+// alertText mengembalikan pesan error yang tampil di halaman login.
 func alertText(t *testing.T, body string) string {
 	t.Helper()
 	_, rest, ok := strings.Cut(body, `<p role="alert">`)

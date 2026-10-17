@@ -16,10 +16,10 @@ CREATE TABLE users (
     is_active     boolean     NOT NULL DEFAULT true,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
-    -- Email is unique per school, not globally.
+    -- Email unik per sekolah, bukan global.
     CONSTRAINT users_school_id_email_key UNIQUE (school_id, email),
-    -- The application normalizes email to lower case (T06); this guards
-    -- against writes that bypass it.
+    -- Aplikasi menormalisasi email ke huruf kecil (T06); constraint ini
+    -- menjaga dari penulisan yang tidak lewat aplikasi.
     CONSTRAINT users_email_lowercase CHECK (email = lower(email))
 );
 

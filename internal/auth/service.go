@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-// Lockout policy. Failures are counted per (school code, email) and per IP
-// within LockoutWindow. The IP limit is higher than the email limit because
-// many users of one school typically share a single NAT address.
+// Kebijakan lockout. Kegagalan dihitung per (kode sekolah, email) dan per IP
+// dalam LockoutWindow. Batas IP lebih tinggi dari batas email karena banyak
+// pengguna satu sekolah biasanya berbagi satu alamat NAT.
 const (
 	LockoutWindow       = 15 * time.Minute
 	MaxFailuresPerEmail = 5
@@ -21,19 +21,19 @@ const (
 )
 
 var (
-	// ErrInvalidCredentials is returned for every credential failure (unknown
-	// school, unknown email, wrong password, inactive user) so callers cannot
-	// tell them apart.
+	// ErrInvalidCredentials dikembalikan untuk semua kegagalan kredensial
+	// (sekolah tidak ada, email tidak terdaftar, password salah, akun nonaktif)
+	// agar pemanggil tidak bisa membedakannya.
 	ErrInvalidCredentials = errors.New("auth: invalid credentials")
 
-	// ErrTooManyAttempts is returned while the email or IP is locked out.
+	// ErrTooManyAttempts dikembalikan selama email atau IP sedang terkunci.
 	ErrTooManyAttempts = errors.New("auth: too many failed login attempts")
 
-	// ErrNotFound is returned by Repository when no matching row exists.
+	// ErrNotFound dikembalikan Repository jika baris yang dicari tidak ada.
 	ErrNotFound = errors.New("auth: not found")
 )
 
-// User is an authenticated user. It never carries the password hash.
+// User adalah pengguna yang sudah terautentikasi. Tidak pernah membawa hash password.
 type User struct {
 	ID       string
 	SchoolID string
@@ -42,41 +42,41 @@ type User struct {
 	Roles    []string
 }
 
-// UserCredentials is a user row as needed for login.
+// UserCredentials adalah data pengguna yang dibutuhkan untuk login.
 type UserCredentials struct {
 	User
 	PasswordHash string
 	IsActive     bool
 }
 
-// LoginAttempt is one recorded login attempt.
+// LoginAttempt adalah satu percobaan login yang dicatat.
 type LoginAttempt struct {
 	SchoolCode string
 	Email      string
-	IP         netip.Addr // zero value when unknown
+	IP         netip.Addr // zero value jika tidak diketahui
 	Success    bool
 }
 
-// Repository is the data access needed by Service.
+// Repository adalah akses data yang dibutuhkan Service.
 type Repository interface {
-	// FindUserForLogin returns ErrNotFound when the school or user does not exist.
+	// FindUserForLogin mengembalikan ErrNotFound jika sekolah atau pengguna tidak ada.
 	FindUserForLogin(ctx context.Context, schoolCode, email string) (UserCredentials, error)
-	// CountRecentFailures returns failed attempts within window for the
-	// (schoolCode, email) pair since its last success, and for ip.
+	// CountRecentFailures mengembalikan jumlah kegagalan dalam window untuk
+	// pasangan (schoolCode, email) sejak login sukses terakhirnya, dan untuk ip.
 	CountRecentFailures(ctx context.Context, schoolCode, email string, ip netip.Addr, window time.Duration) (byEmail, byIP int, err error)
 	RecordLoginAttempt(ctx context.Context, a LoginAttempt) error
 }
 
-// Service implements login.
+// Service menjalankan proses login.
 type Service struct {
 	repo Repository
-	// dummyHash is verified when the user does not exist so that the
-	// response time does not reveal whether an email is registered.
+	// dummyHash diverifikasi saat pengguna tidak ada, agar waktu respons
+	// tidak membocorkan apakah sebuah email terdaftar.
 	dummyHash string
 }
 
-// NewService returns a Service. hasher is only used to build the dummy hash,
-// so it must use the same parameters as real password hashes.
+// NewService mengembalikan Service. hasher hanya dipakai untuk membuat hash
+// dummy, jadi parameternya harus sama dengan hash password sungguhan.
 func NewService(repo Repository, hasher *Hasher) (*Service, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -89,19 +89,19 @@ func NewService(repo Repository, hasher *Hasher) (*Service, error) {
 	return &Service{repo: repo, dummyHash: dummy}, nil
 }
 
-// NormalizeEmail trims surrounding spaces and lower-cases email.
+// NormalizeEmail membuang spasi di awal/akhir dan mengubah email ke huruf kecil.
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-// NormalizeSchoolCode trims surrounding spaces and lower-cases code.
+// NormalizeSchoolCode membuang spasi di awal/akhir dan mengubah kode ke huruf kecil.
 func NormalizeSchoolCode(code string) string {
 	return strings.ToLower(strings.TrimSpace(code))
 }
 
-// IsLocked returns ErrTooManyAttempts if the (schoolCode, email) pair or ip
-// has reached its failure limit within LockoutWindow. Inputs must already be
-// normalized.
+// IsLocked mengembalikan ErrTooManyAttempts jika pasangan (schoolCode, email)
+// atau ip sudah mencapai batas kegagalan dalam LockoutWindow. Input harus
+// sudah dinormalisasi.
 func (s *Service) IsLocked(ctx context.Context, schoolCode, email string, ip netip.Addr) error {
 	byEmail, byIP, err := s.repo.CountRecentFailures(ctx, schoolCode, email, ip, LockoutWindow)
 	if err != nil {
@@ -113,9 +113,9 @@ func (s *Service) IsLocked(ctx context.Context, schoolCode, email string, ip net
 	return nil
 }
 
-// Authenticate checks the credentials and records the attempt. It returns
-// ErrTooManyAttempts while locked out (without checking the password) and
-// ErrInvalidCredentials for any credential failure.
+// Authenticate memeriksa kredensial dan mencatat percobaannya. Mengembalikan
+// ErrTooManyAttempts selama terkunci (tanpa memeriksa password) dan
+// ErrInvalidCredentials untuk semua kegagalan kredensial.
 func (s *Service) Authenticate(ctx context.Context, schoolCode, email, password string, ip netip.Addr) (User, error) {
 	schoolCode = NormalizeSchoolCode(schoolCode)
 	email = NormalizeEmail(email)
@@ -131,7 +131,7 @@ func (s *Service) Authenticate(ctx context.Context, schoolCode, email, password 
 
 	attempt := LoginAttempt{SchoolCode: schoolCode, Email: email, IP: ip, Success: ok}
 	if err := s.repo.RecordLoginAttempt(ctx, attempt); err != nil {
-		// Fail closed: without the record the lockout cannot be enforced.
+		// Fail closed: tanpa catatan ini lockout tidak bisa ditegakkan.
 		return User{}, fmt.Errorf("auth: record login attempt: %w", err)
 	}
 

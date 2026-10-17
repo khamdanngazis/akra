@@ -10,12 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// PostgresRepository implements Repository with PostgreSQL.
+// PostgresRepository mengimplementasikan Repository dengan PostgreSQL.
 type PostgresRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewRepository returns a PostgresRepository backed by db.
+// NewRepository mengembalikan PostgresRepository yang memakai db.
 func NewRepository(db *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
@@ -41,8 +41,8 @@ func (r *PostgresRepository) FindUserForLogin(ctx context.Context, schoolCode, e
 	return c, err
 }
 
-// The email count only includes failures after the pair's last success, so a
-// successful login resets it. The IP count is never reset by a success.
+// Hitungan per email hanya mencakup kegagalan setelah login sukses terakhir,
+// jadi login sukses mereset hitungan itu. Hitungan per IP tidak direset.
 const countRecentFailuresSQL = `
 WITH since AS (
     SELECT now() - make_interval(secs => $4) AS t
@@ -72,7 +72,7 @@ func (r *PostgresRepository) RecordLoginAttempt(ctx context.Context, a LoginAtte
 	return err
 }
 
-// inetArg maps the zero netip.Addr to SQL NULL.
+// inetArg mengubah netip.Addr kosong menjadi SQL NULL.
 func inetArg(ip netip.Addr) any {
 	if !ip.IsValid() {
 		return nil
