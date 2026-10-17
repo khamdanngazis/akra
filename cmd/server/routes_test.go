@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/render"
+	"akra/web"
 )
 
 // emptyRepo adalah auth.Repository tanpa pengguna: setiap login gagal dengan
@@ -43,7 +43,7 @@ func newTestRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rd, err := render.New(os.DirFS("../../web/templates"), logger)
+	rd, err := render.New(mustSub(t, "templates"), logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		csrf:        csrf.Middleware(false, logger),
 		sessions:    sessions,
 		render:      rd,
-		static:      os.DirFS("../../web/static"),
+		static:      mustSub(t, "static"),
 		authHandler: auth.NewHandler(svc, sessions, rd, logger),
 	})
 }
@@ -244,7 +244,7 @@ func TestRouter_Static(t *testing.T) {
 			t.Errorf("GET %s status = %d, want 200", path, rec.Code)
 		}
 	}
-	for _, path := range []string{"/static/", "/static/css/", "/static/nope.css"} {
+	for _, path := range []string{"/static/", "/static/css/", "/static/nope.css", "/static/../embed.go"} {
 		if rec := serve(h, httptest.NewRequest(http.MethodGet, path, nil)); rec.Code != http.StatusNotFound {
 			t.Errorf("GET %s status = %d, want 404", path, rec.Code)
 		}
@@ -255,12 +255,13 @@ func TestRouter_Static(t *testing.T) {
 // memuat apa pun dari luar (CDN, Google Fonts, dan sejenisnya).
 func TestTemplates_NoExternalResources(t *testing.T) {
 	external := regexp.MustCompile(`(?i)(src|href)\s*=\s*"(https?:)?//|url\(\s*["']?(https?:)?//|@import`)
-	for _, root := range []string{"../../web/templates", "../../web/static/css"} {
-		err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
+	for _, root := range []string{"templates", "static/css"} {
+		sub := mustSub(t, root)
+		err := fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return err
 			}
-			b, err := fs.ReadFile(os.DirFS(root), p)
+			b, err := fs.ReadFile(sub, p)
 			if err != nil {
 				return err
 			}
@@ -273,4 +274,13 @@ func TestTemplates_NoExternalResources(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func mustSub(t *testing.T, dir string) fs.FS {
+	t.Helper()
+	sub, err := fs.Sub(web.FS, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sub
 }

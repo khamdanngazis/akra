@@ -2,11 +2,11 @@ package auth
 
 import (
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 
@@ -14,12 +14,13 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/platform/render"
+	"akra/web"
 )
 
 // testRenderer memakai template asli agar uji handler ikut memeriksa template.
 func testRenderer(t *testing.T) *render.Renderer {
 	t.Helper()
-	rd, err := render.New(os.DirFS("../../web/templates"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	rd, err := render.New(mustSub(t, "templates"), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,4 +187,13 @@ func TestLoginPage_AlreadyLoggedIn(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/kelas" {
 		t.Errorf("status = %d, Location = %q; want 303 to /kelas", rec.Code, rec.Header().Get("Location"))
 	}
+}
+
+func mustSub(t *testing.T, dir string) fs.FS {
+	t.Helper()
+	sub, err := fs.Sub(web.FS, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sub
 }

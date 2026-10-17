@@ -50,8 +50,17 @@ curl -i localhost:8080/healthz/db   # 200 jika database terjangkau, 503 jika tid
 Build binary:
 
 ```sh
-go build -o bin/server ./cmd/server
+go build -o bin/akra ./cmd/server
 ```
+
+Template dan aset statis (`web/templates`, `web/static`) ikut masuk ke binary lewat `embed.FS` ([web/embed.go](web/embed.go)), jadi deploy cukup satu file. Perubahan template atau CSS memerlukan rebuild, kecuali saat development dengan `WEB_DIR=web` (cukup restart).
+
+Ukuran binary (Go 1.22.2, linux/amd64, 17 Oktober 2026):
+
+| Build | Ukuran |
+|---|---|
+| `go build -o bin/akra ./cmd/server` | 16,9 MB |
+| `go build -trimpath -ldflags="-s -w" -o bin/akra ./cmd/server` | 11,7 MB |
 
 ## Konfigurasi
 
@@ -61,6 +70,7 @@ go build -o bin/server ./cmd/server
 | `DB_MAX_CONNS` | tidak | `10` | Batas koneksi pool (`MinConns` = 2) |
 | `PORT` | tidak | `8080` | Port HTTP |
 | `APP_ENV` | tidak | `development` | `development`, `staging`, atau `production` |
+| `WEB_DIR` | tidak | (kosong) | Baca template dan aset dari folder ini (mis. `web`) alih-alih dari binary. Hanya boleh saat `APP_ENV=development` |
 | `ARGON2_MEMORY_KIB` | tidak | `19456` | Memori argon2id per hash (KiB) |
 | `ARGON2_ITERATIONS` | tidak | `2` | Iterasi argon2id |
 | `ARGON2_PARALLELISM` | tidak | `1` | Paralelisme argon2id |
@@ -146,6 +156,7 @@ web/static/
 ```
 
 - Halaman baru: buat `web/templates/<nama>.html` yang mendefinisikan blok `title` dan `content`, lalu panggil `rd.Render(w, r, http.StatusOK, "<nama>", data)`.
+- `/static/` dilayani dengan `Cache-Control: public, max-age=86400`. Nama file belum berhash, jadi perubahan CSS/JS bisa baru terlihat di browser pengguna setelah sampai 1 hari.
 - Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
