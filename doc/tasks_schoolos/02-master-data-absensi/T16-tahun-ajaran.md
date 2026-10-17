@@ -27,11 +27,11 @@ Setiap sekolah punya daftar tahun ajaran, dan tepat satu tahun ajaran aktif per 
 - `internal/school/academic_year_repo.go`
 
 ## Kriteria selesai
-- [ ] Dua tahun aktif di sekolah yang sama ditolak database
-- [ ] Fungsi `SetActive` pada tahun kedua menonaktifkan tahun pertama dalam satu transaksi
-- [ ] Tahun aktif di sekolah A tidak mempengaruhi sekolah B
-- [ ] `end_date` sebelum `start_date` ditolak database
-- [ ] Nama tahun ajaran yang sama di sekolah yang sama ditolak
+- [x] Dua tahun aktif di sekolah yang sama ditolak database
+- [x] Fungsi `SetActive` pada tahun kedua menonaktifkan tahun pertama dalam satu transaksi
+- [x] Tahun aktif di sekolah A tidak mempengaruhi sekolah B
+- [x] `end_date` sebelum `start_date` ditolak database
+- [x] Nama tahun ajaran yang sama di sekolah yang sama ditolak
 
 ## Catatan
 - Tahun ajaran baru dibuat dengan `is_active = false`. Aktivasi dilakukan eksplisit oleh admin.
