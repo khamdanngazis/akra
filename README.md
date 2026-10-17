@@ -282,6 +282,7 @@ Tabel `fee_types` (migrasi 000015), fungsi di [internal/billing](internal/billin
 - Jenis tagihan **tidak dihapus**, hanya dinonaktifkan; `ListActiveFeeTypes` (untuk tagihan baru) tidak mengembalikan yang nonaktif.
 - Nominal yang berbeda per kelas (mis. SPP kelas 1 vs kelas 6) ditangani lewat nominal per item tagihan (T30), bukan dengan membuat banyak jenis tagihan. Mengubah nominal default tidak mengubah tagihan yang sudah dibuat.
 - Audit: `fee_type.create`, `fee_type.update` (hanya bila ada perubahan), `fee_type.deactivate`, `fee_type.activate`.
+- Halaman `/keuangan/jenis-tagihan`: daftar untuk `bendahara`, `admin_tu`, dan `kepala_sekolah` (hanya baca); tambah, ubah, nonaktifkan, dan aktifkan untuk `bendahara` dan `admin_tu`. Peran lain `403`. Tidak ada tombol hapus. Form ubah menampilkan catatan bahwa perubahan nominal default tidak mengubah tagihan yang sudah dibuat.
 
 ## Audit
 

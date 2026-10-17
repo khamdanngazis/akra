@@ -23,11 +23,11 @@ Bendahara dan admin bisa mengelola jenis tagihan dari antarmuka. Jenis tagihan y
 - `web/templates/billing/fee_types.html`, `fee_type_form.html`
 
 ## Kriteria selesai
-- [ ] Bendahara bisa membuat, mengubah, dan menonaktifkan jenis tagihan
-- [ ] Jenis tagihan nonaktif tidak muncul di pilihan form tagihan massal (uji di T32)
-- [ ] Guru mendapat `403` pada semua route ini
-- [ ] Mengubah nominal default tidak mengubah nilai `invoice_items` yang sudah ada (diuji di T30)
-- [ ] Setiap perubahan tercatat di audit log
+- [x] Bendahara bisa membuat, mengubah, dan menonaktifkan jenis tagihan
+- [x] Jenis tagihan nonaktif tidak muncul di pilihan form tagihan massal (uji di T32)
+- [x] Guru mendapat `403` pada semua route ini
+- [x] Mengubah nominal default tidak mengubah nilai `invoice_items` yang sudah ada (diuji di T30)
+- [x] Setiap perubahan tercatat di audit log
 
 ## Catatan
 - Tidak ada tombol hapus. Jenis tagihan yang pernah dipakai tidak boleh dihapus.

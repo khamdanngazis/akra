@@ -19,6 +19,7 @@ import (
 
 	"akra/internal/attendance"
 	"akra/internal/auth"
+	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
@@ -82,6 +83,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		activation: auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
 		portal:     portal.NewHandler(sessions, rd),
 		attendance: attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
+		feeTypes:   billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
 	})
 }
 

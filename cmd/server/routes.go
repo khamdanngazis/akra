@@ -9,6 +9,7 @@ import (
 
 	"akra/internal/attendance"
 	"akra/internal/auth"
+	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/home"
 	"akra/internal/platform/health"
@@ -32,6 +33,7 @@ type routerDeps struct {
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
 	attendance   *attendance.Handler
+	feeTypes     *billing.FeeTypeHandler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -71,6 +73,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
+			d.feeTypes.Routes(r)
 		})
 	})
 

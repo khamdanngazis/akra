@@ -1,0 +1,60 @@
+{{define "title"}}Jenis Tagihan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Jenis Tagihan</h1>
+<p class="muted">Nominal dan jatuh tempo default untuk membuat tagihan. Jenis tagihan nonaktif tidak bisa dipakai untuk tagihan baru.</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-primary" href="/keuangan/jenis-tagihan/baru">Tambah jenis tagihan</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nama</th><th class="num">Nominal default</th><th>Jatuh tempo</th><th>Status</th>{{if $.CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}
+<tr{{if not .IsActive}} class="row-inactive"{{end}}>
+<td><strong>{{.Name}}</strong></td>
+<td class="num nowrap">{{.Amount}}</td>
+<td>{{if .DueDay}}Tanggal {{.DueDay}}{{else}}<span class="muted">–</span>{{end}}</td>
+<td>{{if .IsActive}}<span class="badge badge-success">Aktif</span>{{else}}<span class="badge">Nonaktif</span>{{end}}</td>
+{{if $.CanEdit}}
+<td class="actions" x-data="{ confirming: false }">
+<div class="action-row" x-show="!confirming">
+<a class="btn btn-ghost btn-sm" href="/keuangan/jenis-tagihan/{{.ID}}/ubah">Ubah</a>
+{{if .IsActive}}
+<button type="button" class="btn btn-ghost btn-sm" @click="confirming = true">Nonaktifkan</button>
+{{else}}
+<form method="post" action="/keuangan/jenis-tagihan/{{.ID}}/aktifkan">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Aktifkan</button></form>
+{{end}}
+</div>
+{{if .IsActive}}
+<form method="post" action="/keuangan/jenis-tagihan/{{.ID}}/nonaktifkan" class="confirm-box" x-show="confirming" x-cloak>
+{{ csrfField }}
+<p>Nonaktifkan <strong>{{.Name}}</strong>? Tagihan yang sudah ada tetap berlaku, tetapi jenis ini tidak bisa dipakai untuk tagihan baru.</p>
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Ya, nonaktifkan</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="confirming = false">Batal</button>
+</div>
+</form>
+{{end}}
+</td>
+{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada jenis tagihan.</p>
+{{if .CanEdit}}<p><a class="btn btn-primary" href="/keuangan/jenis-tagihan/baru">Tambah jenis tagihan pertama</a></p>{{end}}
+</section>
+{{end}}
+{{end}}
