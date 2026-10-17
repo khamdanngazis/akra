@@ -209,6 +209,12 @@ svg {
   font-size: var(--text-sm);
 }
 
+.auth-footer {
+  margin: var(--space-5) 0 0;
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
 /* Form */
 
 .field label {
@@ -237,6 +243,12 @@ textarea:focus {
   outline: none;
   border-color: var(--color-secondary);
   box-shadow: var(--focus-ring);
+}
+
+.hint {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
 
 .input-group {

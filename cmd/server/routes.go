@@ -15,17 +15,19 @@ import (
 )
 
 type routerDeps struct {
-	pool        *pgxpool.Pool
-	csrf        func(http.Handler) http.Handler
-	sessions    *scs.SessionManager
-	render      home.Renderer
-	static      fs.FS
-	authHandler *auth.Handler
+	pool         *pgxpool.Pool
+	csrf         func(http.Handler) http.Handler
+	sessions     *scs.SessionManager
+	render       home.Renderer
+	static       fs.FS
+	authHandler  *auth.Handler
+	resetHandler *auth.ResetHandler
 }
 
 // newRouter menyusun semua route aplikasi.
 //
-// Route publik: /healthz, /healthz/db, /static/, /login, dan /logout.
+// Route publik: /healthz, /healthz/db, /static/, /login, /logout,
+// /lupa-password, dan /reset-password.
 // Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
 func newRouter(d routerDeps) http.Handler {
@@ -45,6 +47,7 @@ func newRouter(d routerDeps) http.Handler {
 
 		// Publik, tapi butuh sesi.
 		d.authHandler.Routes(r)
+		d.resetHandler.Routes(r)
 
 		// Wajib login.
 		r.Group(func(r chi.Router) {

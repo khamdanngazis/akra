@@ -3,8 +3,11 @@ package config
 
 import (
 	"fmt"
+	"net/mail"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Nilai yang valid untuk APP_ENV.
@@ -20,6 +23,18 @@ type Config struct {
 	DatabaseURL string
 	DBMaxConns  int32
 	AppEnv      string
+
+	// BaseURL adalah URL publik aplikasi tanpa garis miring di akhir, mis.
+	// "https://app.akra.id". Dipakai untuk tautan di email; tidak pernah
+	// diambil dari header Host request.
+	BaseURL string
+
+	// Pengiriman email. MailDriver "log" (default di luar production) hanya
+	// menulis email ke log; "resend" mengirim lewat Resend HTTP API dan wajib
+	// di production.
+	MailDriver   string
+	MailFrom     string
+	ResendAPIKey string
 
 	// WebDir, jika diisi, membuat template dan aset dibaca dari disk (mis.
 	// "web") alih-alih dari binary. Hanya untuk development.
@@ -75,6 +90,42 @@ func Load() (Config, error) {
 	case EnvDevelopment, EnvStaging, EnvProduction:
 	default:
 		return Config{}, fmt.Errorf("config: invalid APP_ENV %q (allowed: development, staging, production)", cfg.AppEnv)
+	}
+
+	cfg.BaseURL = strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+	if cfg.BaseURL == "" {
+		if cfg.AppEnv != EnvDevelopment {
+			return Config{}, fmt.Errorf("config: environment variable APP_BASE_URL is required when APP_ENV=%s", cfg.AppEnv)
+		}
+		cfg.BaseURL = "http://localhost:" + cfg.Port
+	}
+	if u, err := url.Parse(cfg.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" {
+		return Config{}, fmt.Errorf("config: APP_BASE_URL must be an absolute http(s) URL without a path, got %q", cfg.BaseURL)
+	}
+
+	cfg.MailDriver = getEnv("MAIL_DRIVER", "log")
+	cfg.MailFrom = os.Getenv("MAIL_FROM")
+	cfg.ResendAPIKey = os.Getenv("RESEND_API_KEY")
+	switch cfg.MailDriver {
+	case "log":
+		if cfg.AppEnv == EnvProduction {
+			return Config{}, fmt.Errorf("config: MAIL_DRIVER=log is not allowed in production (emails would be written to the log)")
+		}
+		if cfg.MailFrom == "" {
+			cfg.MailFrom = "AKRA <no-reply@akra.local>"
+		}
+	case "resend":
+		if cfg.ResendAPIKey == "" {
+			return Config{}, fmt.Errorf("config: environment variable RESEND_API_KEY is required when MAIL_DRIVER=resend")
+		}
+		if cfg.MailFrom == "" {
+			return Config{}, fmt.Errorf("config: environment variable MAIL_FROM is required when MAIL_DRIVER=resend")
+		}
+	default:
+		return Config{}, fmt.Errorf("config: invalid MAIL_DRIVER %q (allowed: log, resend)", cfg.MailDriver)
+	}
+	if _, err := mail.ParseAddress(cfg.MailFrom); err != nil {
+		return Config{}, fmt.Errorf("config: invalid MAIL_FROM %q: %w", cfg.MailFrom, err)
 	}
 
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {

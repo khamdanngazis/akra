@@ -75,3 +75,25 @@ func SetFlash(ctx context.Context, sm *scs.SessionManager, msg string) {
 func PopFlash(ctx context.Context, sm *scs.SessionManager) string {
 	return sm.PopString(ctx, sessionKeyFlash)
 }
+
+// ScsSessionRevoker mengimplementasikan SessionRevoker dengan scs. Store
+// harus mendukung iterasi (pgxstore dan memstore mendukung). Iterasi membaca
+// semua sesi aktif; cukup untuk skala MVP.
+type ScsSessionRevoker struct {
+	sm *scs.SessionManager
+}
+
+// NewSessionRevoker mengembalikan ScsSessionRevoker untuk sm.
+func NewSessionRevoker(sm *scs.SessionManager) *ScsSessionRevoker {
+	return &ScsSessionRevoker{sm: sm}
+}
+
+// RevokeUserSessions menghapus semua sesi yang berisi user_id = userID.
+func (r *ScsSessionRevoker) RevokeUserSessions(ctx context.Context, userID string) error {
+	return r.sm.Iterate(ctx, func(ctx context.Context) error {
+		if r.sm.GetString(ctx, sessionKeyUserID) != userID {
+			return nil
+		}
+		return r.sm.Destroy(ctx)
+	})
+}

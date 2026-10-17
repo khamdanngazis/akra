@@ -30,12 +30,12 @@ Pengguna yang lupa password bisa meminta tautan reset. Tautan hanya berlaku 30 m
 - `web/templates/auth/lupa_password.html`, `web/templates/auth/reset_password.html`
 
 ## Kriteria selesai
-- [ ] Email tidak terdaftar dan terdaftar menghasilkan pesan sukses yang sama
-- [ ] Tautan yang sudah dipakai ditolak
-- [ ] Tautan setelah 30 menit ditolak
-- [ ] Token di database tersimpan dalam bentuk hash, bukan plaintext
-- [ ] Setelah reset, login dengan password lama gagal dan password baru berhasil
-- [ ] Sesi aktif pengguna dihapus setelah reset
+- [x] Email tidak terdaftar dan terdaftar menghasilkan pesan sukses yang sama
+- [x] Tautan yang sudah dipakai ditolak
+- [x] Tautan setelah 30 menit ditolak
+- [x] Token di database tersimpan dalam bentuk hash, bukan plaintext
+- [x] Setelah reset, login dengan password lama gagal dan password baru berhasil
+- [x] Sesi aktif pengguna dihapus setelah reset
 
 ## Catatan
 - Gunakan `crypto/rand` untuk token. Jangan `math/rand`.

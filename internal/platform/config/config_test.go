@@ -10,6 +10,10 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
 	t.Setenv("DB_MAX_CONNS", "20")
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id/")
+	t.Setenv("MAIL_DRIVER", "resend")
+	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
+	t.Setenv("RESEND_API_KEY", "re_test")
 	t.Setenv("ARGON2_MEMORY_KIB", "65536")
 	t.Setenv("ARGON2_ITERATIONS", "3")
 	t.Setenv("ARGON2_PARALLELISM", "4")
@@ -21,6 +25,8 @@ func TestLoad_AllSet(t *testing.T) {
 	want := Config{
 		Port: "9000", DatabaseURL: "postgres://localhost/akra", DBMaxConns: 20, AppEnv: EnvProduction,
 		Argon2MemoryKiB: 65536, Argon2Iterations: 3, Argon2Parallelism: 4,
+		BaseURL:    "https://app.akra.id",
+		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -42,6 +48,9 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Setenv("APP_BASE_URL", "")
+	t.Setenv("MAIL_DRIVER", "")
+	t.Setenv("MAIL_FROM", "")
 	t.Setenv("ARGON2_MEMORY_KIB", "")
 	t.Setenv("ARGON2_ITERATIONS", "")
 	t.Setenv("ARGON2_PARALLELISM", "")
@@ -56,6 +65,12 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
+	}
+	if cfg.BaseURL != "http://localhost:8080" {
+		t.Errorf("BaseURL = %q, want http://localhost:8080", cfg.BaseURL)
+	}
+	if cfg.MailDriver != "log" || cfg.MailFrom != "AKRA <no-reply@akra.local>" {
+		t.Errorf("mail = (%q, %q), want log driver with default sender", cfg.MailDriver, cfg.MailFrom)
 	}
 	if cfg.DBMaxConns != 10 {
 		t.Errorf("DBMaxConns = %d, want 10", cfg.DBMaxConns)
@@ -107,7 +122,65 @@ func TestLoad_WebDirOnlyInDevelopment(t *testing.T) {
 	}
 
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
+	t.Setenv("MAIL_DRIVER", "resend")
+	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
+	t.Setenv("RESEND_API_KEY", "re_test")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "WEB_DIR") {
 		t.Errorf("production with WEB_DIR: error = %v, want error mentioning WEB_DIR", err)
+	}
+}
+
+func TestLoad_BaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "")
+
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv("APP_BASE_URL", "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "APP_BASE_URL") {
+		t.Errorf("staging without APP_BASE_URL: error = %v, want error", err)
+	}
+
+	for _, bad := range []string{"app.akra.id", "ftp://app.akra.id", "https://app.akra.id/sub", "https://"} {
+		t.Setenv("APP_BASE_URL", bad)
+		if _, err := Load(); err == nil {
+			t.Errorf("APP_BASE_URL=%q: error = nil, want error", bad)
+		}
+	}
+}
+
+func TestLoad_Mail(t *testing.T) {
+	cases := []struct {
+		name, env, driver, from, key, wantInErr string
+	}{
+		{"log in production", "production", "log", "", "", "MAIL_DRIVER=log"},
+		{"resend without key", "staging", "resend", "AKRA <a@akra.id>", "", "RESEND_API_KEY"},
+		{"resend without sender", "staging", "resend", "", "re_x", "MAIL_FROM"},
+		{"unknown driver", "development", "smtp", "", "", "MAIL_DRIVER"},
+		{"invalid sender", "development", "log", "bukan email", "", "MAIL_FROM"},
+		{"resend in production", "production", "resend", "AKRA <a@akra.id>", "re_x", ""},
+		{"log in staging", "staging", "log", "", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+			t.Setenv("WEB_DIR", "")
+			t.Setenv("APP_ENV", tc.env)
+			t.Setenv("APP_BASE_URL", "https://app.akra.id")
+			t.Setenv("MAIL_DRIVER", tc.driver)
+			t.Setenv("MAIL_FROM", tc.from)
+			t.Setenv("RESEND_API_KEY", tc.key)
+
+			_, err := Load()
+			if tc.wantInErr == "" {
+				if err != nil {
+					t.Errorf("Load() error = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantInErr) {
+				t.Errorf("Load() error = %v, want error mentioning %s", err, tc.wantInErr)
+			}
+		})
 	}
 }

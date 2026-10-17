@@ -17,6 +17,7 @@ import (
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
+	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/web"
 )
@@ -73,6 +74,12 @@ func run(logger *slog.Logger) error {
 	secure := cfg.AppEnv != config.EnvDevelopment
 	sessions := auth.NewSessionManager(sessionStore, secure, logger)
 
+	mailer, err := mail.New(mail.Config{Driver: cfg.MailDriver, From: cfg.MailFrom, ResendAPIKey: cfg.ResendAPIKey}, logger)
+	if err != nil {
+		return err
+	}
+	logger.Info("mail driver configured", "driver", cfg.MailDriver, "from", cfg.MailFrom)
+
 	r := newRouter(routerDeps{
 		pool:        pool,
 		csrf:        csrf.Middleware(secure, logger),
@@ -80,6 +87,10 @@ func run(logger *slog.Logger) error {
 		render:      rd,
 		static:      static,
 		authHandler: auth.NewHandler(authSvc, sessions, rd, logger),
+		resetHandler: auth.NewResetHandler(
+			auth.NewResetService(auth.NewRepository(pool), hasher, mailer,
+				auth.NewSessionRevoker(sessions), cfg.BaseURL, logger),
+			sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, r)
