@@ -34,6 +34,9 @@ type routerDeps struct {
 	portal       *portal.Handler
 	attendance   *attendance.Handler
 	feeTypes     *billing.FeeTypeHandler
+	bulkInvoice  *billing.BulkHandler
+	// dev berisi route khusus development (nil di staging/production).
+	dev func(chi.Router)
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -52,6 +55,11 @@ func newRouter(d routerDeps) http.Handler {
 	static := http.StripPrefix("/static/", httpserver.Static(d.static))
 	r.Get("/static/*", static.ServeHTTP)
 	r.Head("/static/*", static.ServeHTTP)
+
+	// Hanya development: alat bantu tanpa sesi dan tanpa CSRF.
+	if d.dev != nil {
+		r.Route("/dev", d.dev)
+	}
 
 	r.Group(func(r chi.Router) {
 		// CSRF dipasang sebelum sesi agar token tersedia saat render.
@@ -74,6 +82,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)
+			d.bulkInvoice.Routes(r)
 		})
 	})
 

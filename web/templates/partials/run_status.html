@@ -1,0 +1,7 @@
+{{/* run_status menampilkan badge status proses tagihan massal. Argumen: kode status. */}}
+{{define "run_status" -}}
+{{if eq . "done"}}<span class="badge badge-success">Selesai</span>
+{{- else if eq . "failed"}}<span class="badge badge-danger">Gagal</span>
+{{- else if eq . "running"}}<span class="badge badge-info">Diproses</span>
+{{- else}}<span class="badge">Antre</span>{{end}}
+{{- end}}

@@ -7,6 +7,7 @@
 {{if .HasRole "guru"}}<a href="/absensi">Absensi</a>{{end}}
 {{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/siswa">Siswa</a>
 <a href="/kelas">Kelas</a>{{end}}
+{{if .HasRole "bendahara"}}<a href="/keuangan/tagihan-massal">Tagihan Massal</a>{{end}}
 {{if or (.HasRole "bendahara") (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/keuangan/jenis-tagihan">Jenis Tagihan</a>{{end}}
 {{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}
 <a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a>{{end}}

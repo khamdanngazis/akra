@@ -1,0 +1,51 @@
+{{define "title"}}Pratinjau Tagihan Massal{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/keuangan/tagihan-massal">← Tagihan Massal</a></p>
+<h1>Pratinjau</h1>
+<p class="muted">Belum ada yang disimpan. Periksa ringkasan di bawah, lalu tekan <strong>Buat tagihan</strong>.</p>
+
+<section class="card stat-card">
+<dl class="data-list">
+<dt>Jenis tagihan</dt><dd><strong>{{.Preview.FeeTypeName}}</strong></dd>
+<dt>Periode</dt><dd>{{.Period}}</dd>
+<dt>Kelas</dt><dd>{{.Preview.ClassName}} · {{.Preview.YearName}}</dd>
+<dt>Jatuh tempo</dt><dd>{{.DueDate}}</dd>
+<dt>Nominal per siswa</dt><dd>{{.Amount}}</dd>
+</dl>
+<div class="stat-grid">
+<div><span class="stat-value">{{.Preview.ToCreate}}</span><span class="stat-label">tagihan akan dibuat</span></div>
+<div><span class="stat-value">{{.Preview.Skipped}}</span><span class="stat-label">dilewati (sudah ada)</span></div>
+<div><span class="stat-value">{{.Total}}</span><span class="stat-label">total nominal</span></div>
+</div>
+{{if .Preview.Async}}<p class="hint">Lebih dari 50 siswa: tagihan dibuat di latar belakang dan halaman berikutnya menampilkan progres.</p>{{end}}
+</section>
+
+{{if .Preview.PerClass}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kelas</th><th class="num">Akan dibuat</th><th class="num">Dilewati</th></tr></thead>
+<tbody>
+{{range .Preview.PerClass}}<tr><td>{{.ClassName}}</td><td class="num">{{.ToCreate}}</td><td class="num">{{.Skipped}}</td></tr>{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{end}}
+
+<form method="post" action="/keuangan/tagihan-massal" class="action-row form-actions" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="fee_type_id" value="{{.Form.FeeTypeID}}">
+<input type="hidden" name="period" value="{{.Form.Period}}">
+<input type="hidden" name="class_id" value="{{.Form.ClassID}}">
+<input type="hidden" name="due_date" value="{{.Form.DueDate}}">
+<input type="hidden" name="amount" value="{{.Form.Amount}}">
+{{if .Preview.ToCreate}}
+<button type="submit" class="btn btn-primary" :disabled="submitting">Buat {{.Preview.ToCreate}} tagihan</button>
+{{else}}
+<button type="button" class="btn btn-primary" disabled>Tidak ada tagihan baru</button>
+{{end}}
+<a class="btn btn-ghost" href="/keuangan/tagihan-massal">Ubah isian</a>
+</form>
+{{end}}

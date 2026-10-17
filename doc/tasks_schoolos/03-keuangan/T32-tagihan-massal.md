@@ -27,12 +27,12 @@ Bendahara bisa membuat tagihan untuk satu kelas atau semua kelas dalam satu aksi
 - `web/templates/billing/bulk_form.html`, `bulk_preview.html`
 
 ## Kriteria selesai
-- [ ] Pratinjau menampilkan jumlah tagihan yang akan dibuat dan yang dilewati, tanpa mengubah database
-- [ ] Menjalankan dua kali untuk periode dan jenis yang sama tidak menghasilkan tagihan ganda
-- [ ] Jenis tagihan nonaktif tidak bisa dipilih
-- [ ] Kelas dari sekolah lain tidak bisa dipilih (`403` atau `404`)
-- [ ] Tagihan untuk 200 siswa selesai tanpa membuat halaman macet (job River)
-- [ ] Kegagalan di tengah job tidak meninggalkan setengah tagihan: job diulang dan hasilnya tetap idempoten
+- [x] Pratinjau menampilkan jumlah tagihan yang akan dibuat dan yang dilewati, tanpa mengubah database
+- [x] Menjalankan dua kali untuk periode dan jenis yang sama tidak menghasilkan tagihan ganda
+- [x] Jenis tagihan nonaktif tidak bisa dipilih
+- [x] Kelas dari sekolah lain tidak bisa dipilih (`403` atau `404`)
+- [x] Tagihan untuk 200 siswa selesai tanpa membuat halaman macet (job River)
+- [x] Kegagalan di tengah job tidak meninggalkan setengah tagihan: job diulang dan hasilnya tetap idempoten
 
 ## Catatan
 - Siswa yang enrollment-nya baru ditambahkan setelah pratinjau tidak ikut. Pratinjau dan eksekusi bisa berbeda; tampilkan jumlah saat eksekusi di hasil.
