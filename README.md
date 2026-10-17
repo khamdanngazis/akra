@@ -269,6 +269,12 @@ Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di
   - Semua status disimpan dengan **satu POST** dan satu `UPDATE` dalam satu transaksi; satu baris tidak valid membatalkan semuanya. Tombol "Tandai semua hadir" (Alpine) hanya mengubah pilihan di browser. Setelah simpan tampil ringkasan hadir/sakit/izin/alpa.
   - Dibuat untuk HP: tombol status 44px, tombol simpan menempel di bawah. Diukur di uji: simpan 30 siswa sekitar 10 ms.
   - **Belum diputuskan:** batas berapa hari ke belakang absensi masih boleh diubah (saat ini tidak dibatasi). Tanyakan ke sekolah saat wawancara.
+- **Rekap** `GET /absensi/rekap?kelas=&dari=&sampai=` ([report.go](internal/attendance/report.go)):
+  - Akses: `admin_tu` dan `kepala_sekolah` untuk semua kelas sekolahnya, `guru` hanya kelas perwaliannya (lainnya `403`).
+  - `SummaryByStudent` dan `SummaryByClass` menghitung hadir/sakit/izin/alpa dengan `GROUP BY`, **hanya** untuk sesi yang tanggalnya di dalam masa enrollment siswa. Siswa yang pindah kelas terhitung di kelas yang benar untuk setiap tanggal.
+  - Persentase kehadiran = hadir ÷ (hadir + sakit + izin + alpa). **Definisi ini perlu dikonfirmasi ke sekolah.**
+  - Rentang default: awal tahun ajaran sampai hari ini; maksimal satu tahun ajaran kelas (di luar itu ditolak dengan pesan yang menyebut batasnya).
+  - Diukur di uji: 30 siswa × 60 sesi sekitar 16 ms. Tombol unduh Excel masih placeholder (T47).
 
 ## Keuangan
 

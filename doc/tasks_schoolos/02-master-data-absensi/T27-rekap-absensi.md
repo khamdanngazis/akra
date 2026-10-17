@@ -27,11 +27,11 @@ Admin, kepala sekolah, dan wali kelas bisa melihat rekap absensi per siswa dan p
 - `web/templates/attendance/rekap.html`
 
 ## Kriteria selesai
-- [ ] Jumlah hadir + sakit + izin + alpa per siswa sama dengan jumlah sesi yang tercatat untuk siswa tersebut
-- [ ] Uji dengan data contoh (misalnya 3 siswa, 10 sesi, satu siswa pindah kelas di tengah) menghasilkan angka yang sudah dihitung manual
-- [ ] Rentang lebih dari satu tahun ajaran ditolak dengan pesan jelas
-- [ ] Rekap untuk 30 siswa dan 60 sesi selesai di bawah 1 detik
-- [ ] Guru yang membuka rekap kelas lain mendapat `403`
+- [x] Jumlah hadir + sakit + izin + alpa per siswa sama dengan jumlah sesi yang tercatat untuk siswa tersebut
+- [x] Uji dengan data contoh (misalnya 3 siswa, 10 sesi, satu siswa pindah kelas di tengah) menghasilkan angka yang sudah dihitung manual
+- [x] Rentang lebih dari satu tahun ajaran ditolak dengan pesan jelas
+- [x] Rekap untuk 30 siswa dan 60 sesi selesai di bawah 1 detik
+- [x] Guru yang membuka rekap kelas lain mendapat `403`
 
 ## Catatan
 - Persentase kehadiran dihitung dari (hadir + sakit + izin + alpa) sebagai pembagi, bukan hanya sesi yang "hadir". Definisi ini perlu dikonfirmasi ke sekolah pada wawancara.

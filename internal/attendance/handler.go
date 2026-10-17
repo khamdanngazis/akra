@@ -43,15 +43,18 @@ func NewHandler(svc *Service, db database.DBTX, sessions *scs.SessionManager, re
 	return &Handler{svc: svc, db: db, sessions: sessions, render: render, logger: logger, today: clock.Today}
 }
 
-// Routes mendaftarkan route absensi. Hanya peran guru; di dalamnya hanya
-// wali kelas yang boleh membuka kelasnya (CanEditClass).
+// Routes mendaftarkan route absensi. Form hanya untuk peran guru, dan di
+// dalamnya hanya wali kelas yang boleh membuka kelasnya (CanEditClass).
+// Rekap untuk admin_tu, kepala_sekolah, dan guru untuk kelas perwaliannya.
 func (h *Handler) Routes(r chi.Router) {
 	r.Route(attendancePath, func(r chi.Router) {
-		r.Use(auth.RequireRole(auth.RoleGuru))
+		teacher := auth.RequireRole(auth.RoleGuru)
 		// Peran: guru (wali kelas dari kelas yang dibuka).
-		r.Get("/", h.form)
+		r.With(teacher).Get("/", h.form)
 		// Peran: guru (wali kelas dari kelas sesi).
-		r.Post("/{sessionID}", h.save)
+		r.With(teacher).Post("/{sessionID}", h.save)
+		// Peran: admin_tu, kepala_sekolah (semua kelas), guru (kelas perwaliannya).
+		r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru)).Get("/rekap", h.report)
 	})
 }
 
@@ -74,6 +77,7 @@ type formView struct {
 	IsToday   bool
 	PrevURL   string
 	NextURL   string // kosong jika besok sudah masa depan
+	ReportURL string
 	Flash     string
 	Error     string
 }
@@ -146,7 +150,7 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 	view := formView{
 		User: id, Session: session, Records: records, Summary: Summarize(records), Statuses: statusOptions,
 		Date: date.Format(dateLayout), DateLabel: clock.FormatDateID(date), Today: today.Format(dateLayout),
-		IsToday: date.Equal(today), PrevURL: formURL(classID, date.AddDate(0, 0, -1)),
+		IsToday: date.Equal(today), PrevURL: formURL(classID, date.AddDate(0, 0, -1)), ReportURL: reportURL(classID),
 		Flash: auth.PopFlash(r.Context(), h.sessions),
 	}
 	if next := date.AddDate(0, 0, 1); !next.After(today) {
