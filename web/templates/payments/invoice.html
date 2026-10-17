@@ -57,6 +57,7 @@
 <p class="hint">Foto JPG/PNG atau PDF, maksimal 2 MB.</p>
 </form>
 {{end}}
+{{if $.CanAudit}}<p class="pay-item-meta"><a href="/keuangan/audit?entity={{.ID}}">Riwayat audit</a></p>{{end}}
 {{if .CanVoid}}
 <details class="void-box">
 <summary>Batalkan pembayaran</summary>

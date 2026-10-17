@@ -22,7 +22,7 @@ const (
 	settingsPath = "/pengaturan/keuangan"
 	pageSettings = "payments/settings"
 	// ActionSettingsUpdate adalah aksi audit perubahan pengaturan keuangan.
-	ActionSettingsUpdate = "settings.update"
+	ActionSettingsUpdate = audit.ActionSettingsUpdate
 )
 
 // FinanceSettings adalah pengaturan keuangan sekolah.

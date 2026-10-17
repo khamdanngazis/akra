@@ -19,10 +19,10 @@ import (
 
 // Aksi audit jenis tagihan.
 const (
-	ActionFeeTypeCreate     = "fee_type.create"
-	ActionFeeTypeUpdate     = "fee_type.update"
-	ActionFeeTypeDeactivate = "fee_type.deactivate"
-	ActionFeeTypeActivate   = "fee_type.activate"
+	ActionFeeTypeCreate     = audit.ActionFeeTypeCreate
+	ActionFeeTypeUpdate     = audit.ActionFeeTypeUpdate
+	ActionFeeTypeDeactivate = audit.ActionFeeTypeDeactivate
+	ActionFeeTypeActivate   = audit.ActionFeeTypeActivate
 
 	maxFeeTypeNameLen = 60
 	// MaxAmount membatasi nominal satu tagihan (Rp1 triliun) untuk menangkap

@@ -8,6 +8,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"akra/internal/attendance"
+	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
@@ -76,6 +77,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
 		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
+		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
 	}), nil
 }
 

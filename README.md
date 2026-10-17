@@ -407,6 +407,13 @@ err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 
 Batasan: aplikasi dan migrasi saat ini memakai user database yang sama (`postgres`, superuser di lokal dan Railway). `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` di migrasi tidak berpengaruh untuk pemilik tabel atau superuser, jadi perlindungan yang berlaku sekarang adalah trigger. Superuser masih bisa menonaktifkan trigger secara sengaja (`ALTER TABLE ... DISABLE TRIGGER`); itu tindakan administrasi database, bukan lewat aplikasi. Untuk production, sebaiknya aplikasi memakai role terpisah tanpa hak DDL. Migrasi `down` untuk tabel ini menghapus seluruh jejak audit, jadi hanya untuk development.
 
+### Audit keuangan
+
+- Daftar aksi keuangan ada di [internal/audit/actions.go](internal/audit/actions.go) (`audit.FinanceActions`): `fee_type.create/update/deactivate/activate`, `invoice.create`, `billing.bulk_create`, `payment.create`, `payment.proof_upload`, `payment.proof_view`, `payment.void_request/approve/reject`, `settings.update`. Paket billing dan payments memakai konstanta ini.
+- Uji integrasi [audit_integration_test.go](internal/payments/audit_integration_test.go): setiap aksi menulis **tepat satu** baris audit, aksi yang gagal (rollback) tidak menulis apa pun, dan `before`/`after` tidak berisi password, token, alamat, kunci storage, atau catatan bebas.
+- Halaman **`/keuangan/audit`** ([internal/audit/view](internal/audit/view/handler.go)) untuk `kepala_sekolah` dan `admin_tu` (guru, bendahara, orang tua `403`): filter jenis aksi, ID entitas, dan rentang tanggal (hari Asia/Jakarta, tanggal "sampai" termasuk), terbaru dulu, 50 per halaman ("Muat lebih lama"). Hanya aksi keuangan sekolah sendiri. Di detail tagihan, kepala sekolah dan admin TU mendapat tautan **Riwayat audit** per pembayaran, sehingga "siapa membatalkan pembayaran X" terjawab tanpa akses database.
+- Handler halaman ada di subpaket `audit/view` karena paket `auth` mengimpor `audit`.
+
 ## Deploy (Railway)
 
 ### Lingkungan staging

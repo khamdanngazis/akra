@@ -146,6 +146,8 @@ type invoiceView struct {
 	Remaining string
 	CanPay    bool
 	CanUpload bool
+	// CanAudit: tautan riwayat audit per pembayaran (kepala sekolah, admin TU).
+	CanAudit bool
 	// MaxProofSize dipakai Alpine.js untuk menolak file besar sebelum diunggah.
 	MaxProofSize int
 	Error        string
@@ -318,6 +320,7 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 		CanPay: id.HasRole(auth.RoleBendahara) && d.VoidedAt == nil && d.Status != billing.StatusPaid,
 		Flash:  auth.PopFlash(r.Context(), h.sessions), Error: errMsg,
 		CanUpload: id.HasRole(auth.RoleBendahara), MaxProofSize: MaxProofSize,
+		CanAudit: auth.HasAnyRole(id, auth.RoleKepalaSekolah, auth.RoleAdminTU),
 	}
 	proofs, err := ListProofsByInvoice(r.Context(), h.svc.db, id.SchoolID, d.ID)
 	if err != nil {

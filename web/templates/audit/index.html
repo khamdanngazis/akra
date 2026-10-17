@@ -1,0 +1,41 @@
+{{define "title"}}Audit Keuangan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Audit Keuangan</h1>
+<p class="muted">Jejak setiap aksi keuangan: siapa, kapan, dan apa yang berubah. Isi <strong>ID entitas</strong> dengan id pembayaran untuk melihat siapa yang mencatat atau membatalkannya.</p>
+{{template "flash" .}}
+
+<form method="get" action="/keuangan/audit" class="card filter-bar stack">
+<div class="field-grid">
+<div class="field">
+<label for="aksi">Aksi</label>
+<select id="aksi" name="aksi">{{range .Actions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+<div class="field">
+<label for="entity">ID entitas <span class="muted">(opsional)</span></label>
+<input id="entity" name="entity" value="{{.Entity}}" placeholder="id pembayaran, tagihan, …" autocomplete="off">
+</div>
+</div>
+<div class="field-grid">
+<div class="field"><label for="dari">Dari tanggal</label><input id="dari" type="date" name="dari" value="{{.From}}"></div>
+<div class="field"><label for="sampai">Sampai tanggal</label><input id="sampai" type="date" name="sampai" value="{{.To}}"></div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tampilkan</button><a class="btn btn-ghost" href="/keuangan/audit">Reset</a></div>
+</form>
+
+{{if .Rows}}
+<div class="pay-list audit-list">
+{{range .Rows}}
+<section class="pay-item">
+<div class="pay-row"><strong>{{or .ActionLabel .Action}}</strong><span class="muted">{{.Time}}</span></div>
+<p class="pay-item-meta">Oleh <strong>{{.User}}</strong> · {{.EntityType}} <code>{{.EntityID}}</code></p>
+{{if .Before}}<dl class="audit-kv"><dt class="audit-kv-title">Sebelum</dt>{{range .Before}}<dt>{{.Key}}</dt><dd>{{.Value}}</dd>{{end}}</dl>{{end}}
+{{if .After}}<dl class="audit-kv">{{if .Before}}<dt class="audit-kv-title">Sesudah</dt>{{end}}{{range .After}}<dt>{{.Key}}</dt><dd>{{.Value}}</dd>{{end}}</dl>{{end}}
+</section>
+{{end}}
+</div>
+{{with .NextURL}}<p class="action-row form-actions"><a class="btn btn-ghost" href="{{.}}">Muat lebih lama</a></p>{{end}}
+{{else}}
+<section class="card empty-state"><p>Tidak ada catatan audit untuk filter ini.</p></section>
+{{end}}
+{{end}}

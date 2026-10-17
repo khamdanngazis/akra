@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/attendance"
+	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
@@ -38,6 +39,7 @@ type routerDeps struct {
 	feeTypes     *billing.FeeTypeHandler
 	bulkInvoice  *billing.BulkHandler
 	payments     *payments.Handler
+	auditLog     *auditview.Handler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -98,6 +100,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.feeTypes.Routes(r)
 			d.bulkInvoice.Routes(r)
 			d.payments.Routes(r)
+			d.auditLog.Routes(r)
 		})
 	})
 

@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/attendance"
+	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
@@ -87,6 +88,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(nil, nil), sessions, rd, logger),
 		payments:    payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), payments.NewVoidService(nil), sessions, rd, logger),
+		auditLog:    auditview.NewHandler(nil, rd, logger),
 	})
 }
 

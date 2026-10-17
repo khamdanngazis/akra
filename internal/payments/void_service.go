@@ -27,9 +27,9 @@ const (
 
 // Aksi audit pembatalan.
 const (
-	ActionVoidRequest = "payment.void_request"
-	ActionVoidApprove = "payment.void_approve"
-	ActionVoidReject  = "payment.void_reject"
+	ActionVoidRequest = audit.ActionVoidRequest
+	ActionVoidApprove = audit.ActionVoidApprove
+	ActionVoidReject  = audit.ActionVoidReject
 )
 
 // MaxVoidReasonLen adalah panjang maksimal alasan pembatalan.
