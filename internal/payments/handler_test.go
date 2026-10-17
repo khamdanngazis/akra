@@ -19,6 +19,7 @@ import (
 	"akra/internal/billing"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/render"
+	"akra/internal/platform/storage"
 	"akra/web"
 )
 
@@ -46,7 +47,11 @@ func newClient(t *testing.T, f *fixture) *client {
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})
-	NewHandler(f.svc, sm, rd, logger).Routes(r)
+	store, err := storage.NewLocal(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	NewHandler(f.svc, NewProofService(f.tx, store), sm, rd, logger).Routes(r)
 	return &client{t: t, h: r}
 }
 

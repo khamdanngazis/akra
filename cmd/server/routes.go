@@ -15,6 +15,7 @@ import (
 	"akra/internal/payments"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
+	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/school"
 	"akra/internal/students"
@@ -37,6 +38,8 @@ type routerDeps struct {
 	feeTypes     *billing.FeeTypeHandler
 	bulkInvoice  *billing.BulkHandler
 	payments     *payments.Handler
+	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
+	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
 	dev func(chi.Router)
 }
@@ -58,12 +61,21 @@ func newRouter(d routerDeps) http.Handler {
 	r.Get("/static/*", static.ServeHTTP)
 	r.Head("/static/*", static.ServeHTTP)
 
+	// Driver storage local: URL bertanda tangan dan kedaluwarsa (pengganti
+	// presigned URL R2), tanpa sesi.
+	if d.storage != nil {
+		r.Get(storage.LocalRoute+"/*", d.storage.ServeHTTP)
+	}
+
 	// Hanya development: alat bantu tanpa sesi dan tanpa CSRF.
 	if d.dev != nil {
 		r.Route("/dev", d.dev)
 	}
 
 	r.Group(func(r chi.Router) {
+		// Batas body dipasang sebelum CSRF: nosurf mem-parse form multipart
+		// (unggahan) seluruhnya untuk mencari token.
+		r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
 		// CSRF dipasang sebelum sesi agar token tersedia saat render.
 		r.Use(d.csrf)
 		r.Use(d.sessions.LoadAndSave)

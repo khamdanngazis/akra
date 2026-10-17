@@ -31,9 +31,9 @@ Bukti transfer (foto atau PDF) bisa dilampirkan ke pembayaran, disimpan di R2, d
 - `internal/payments/proof_handler.go`, `proof_service.go`
 
 ## Kriteria selesai
-- [ ] File 3 MB ditolak sebelum disimpan ke R2
-- [ ] File `.exe` yang di-rename menjadi `.jpg` ditolak (deteksi tipe dari isi)
-- [ ] Unggahan file yang sama dua kali kedua ditolak
+- [x] File 3 MB ditolak sebelum disimpan ke R2
+- [x] File `.exe` yang di-rename menjadi `.jpg` ditolak (deteksi tipe dari isi)
+- [x] Unggahan file yang sama dua kali kedua ditolak
 - [ ] File tersimpan di R2 dengan kunci sesuai pola di atas
 - [ ] Objek di R2 tidak bisa diakses lewat URL publik
 

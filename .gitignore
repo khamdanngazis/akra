@@ -43,3 +43,6 @@ tmp/
 
 # Logs
 *.log
+
+# Storage lokal (STORAGE_DRIVER=local)
+/data/

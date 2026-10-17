@@ -36,22 +36,26 @@
 
 <h2 class="section-title">Pembayaran</h2>
 {{if .Payments}}
-<div class="card card-flush">
-<div class="table-wrap">
-<table>
-<thead><tr><th>Tanggal</th><th>Metode</th><th>Keterangan</th><th class="num">Nominal</th></tr></thead>
-<tbody>
+<div class="pay-list">
 {{range .Payments}}
-<tr>
-<td class="nowrap">{{.PaidOn}}</td>
-<td>{{.Method}}</td>
-<td>{{with .BankAccount}}Ke {{.}}{{end}}{{with .Reference}}<br><span class="muted">Ref. {{.}}</span>{{end}}{{with .Note}}<br><span class="muted">{{.}}</span>{{end}}{{with .Receipt}}<br><span class="muted">{{.}}</span>{{end}}</td>
-<td class="num nowrap">{{.Amount}}</td>
-</tr>
+<section class="pay-item">
+<div class="pay-row"><strong>{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
+{{if or .BankAccount .Reference .Note .Receipt}}<p class="pay-item-meta">{{with .BankAccount}}Ke {{.}}{{end}}{{with .Reference}} · Ref. {{.}}{{end}}{{with .Note}}<br>{{.}}{{end}}{{with .Receipt}}<br>{{.}}{{end}}</p>{{end}}
+{{range .Proofs}}<p class="proof-tag">Bukti: {{.Kind}}, {{.Size}} · {{.UploadedAt}}</p>{{end}}
+{{if and .IsTransfer $.CanUpload}}
+<form method="post" action="/keuangan/pembayaran/{{.ID}}/bukti" enctype="multipart/form-data" class="proof-form" data-max="{{$.MaxProofSize}}"
+  x-data="{ err: '', submitting: false }"
+  @submit="const f = $refs.file.files[0]; err = !f ? 'Pilih file bukti transfer.' : (f.size > Number($el.dataset.max) ? 'File terlalu besar. Maksimal 2 MB.' : ''); if (err) $event.preventDefault(); else submitting = true">
+{{ csrfField }}
+<label class="visually-hidden" for="proof-{{.ID}}">Bukti transfer</label>
+<input id="proof-{{.ID}}" type="file" name="file" accept="image/jpeg,image/png,application/pdf" x-ref="file" required>
+<button type="submit" class="btn btn-ghost btn-sm" :disabled="submitting">{{if .Proofs}}Tambah bukti{{else}}Unggah bukti{{end}}</button>
+<p class="field-error" x-show="err" x-text="err" x-cloak></p>
+<p class="hint">Foto JPG/PNG atau PDF, maksimal 2 MB.</p>
+</form>
 {{end}}
-</tbody>
-</table>
-</div>
+</section>
+{{end}}
 </div>
 {{else}}
 <section class="card empty-state"><p>Belum ada pembayaran.</p></section>

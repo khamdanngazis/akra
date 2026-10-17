@@ -18,6 +18,7 @@ import (
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
+	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/school"
 	"akra/internal/students"
@@ -36,8 +37,9 @@ type appDeps struct {
 	secure   bool   // cookie Secure dan origin https (di luar development)
 	baseURL  string // URL publik untuk tautan di email
 	logger   *slog.Logger
-	jobs     *jobs.Client // untuk memasukkan job latar belakang
-	dev      bool         // APP_ENV=development: pasang route /dev
+	jobs     *jobs.Client  // untuk memasukkan job latar belakang
+	store    storage.Store // file privat (bukti transfer)
+	dev      bool          // APP_ENV=development: pasang route /dev
 }
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
@@ -72,6 +74,16 @@ func newApp(d appDeps) (http.Handler, error) {
 		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
-		payments:    payments.NewHandler(payments.NewService(d.db), d.sessions, d.render, d.logger),
+		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), d.sessions, d.render, d.logger),
+		storage:     localStorageHandler(d.store),
 	}), nil
+}
+
+// localStorageHandler mengembalikan handler URL bertanda tangan driver
+// local, atau nil untuk R2 (URL langsung ke Cloudflare).
+func localStorageHandler(store storage.Store) http.Handler {
+	if l, ok := store.(*storage.Local); ok {
+		return l.Handler()
+	}
+	return nil
 }

@@ -39,6 +39,16 @@ type Config struct {
 	MailFrom     string
 	ResendAPIKey string
 
+	// Penyimpanan file (bukti transfer). StorageDriver "local" (default di
+	// luar production) menyimpan di disk StorageLocalDir; "r2" menyimpan di
+	// bucket Cloudflare R2 privat dan wajib di production.
+	StorageDriver     string
+	StorageLocalDir   string
+	R2AccountID       string
+	R2Bucket          string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+
 	// ClientIPHeader adalah header berisi IP klien yang diisi proxy, mis.
 	// "X-Real-IP" di Railway. Kosong berarti memakai alamat koneksi.
 	ClientIPHeader string
@@ -141,6 +151,30 @@ func Load() (Config, error) {
 	}
 	if _, err := mail.ParseAddress(cfg.MailFrom); err != nil {
 		return Config{}, fmt.Errorf("config: invalid MAIL_FROM %q: %w", cfg.MailFrom, err)
+	}
+
+	cfg.StorageDriver = getEnv("STORAGE_DRIVER", "local")
+	switch cfg.StorageDriver {
+	case "local":
+		if cfg.AppEnv == EnvProduction {
+			return Config{}, fmt.Errorf("config: STORAGE_DRIVER=local is not allowed in production (the container disk is not persistent)")
+		}
+		cfg.StorageLocalDir = getEnv("STORAGE_LOCAL_DIR", "data/storage")
+	case "r2":
+		cfg.R2AccountID = os.Getenv("R2_ACCOUNT_ID")
+		cfg.R2Bucket = os.Getenv("R2_BUCKET")
+		cfg.R2AccessKeyID = os.Getenv("R2_ACCESS_KEY_ID")
+		cfg.R2SecretAccessKey = os.Getenv("R2_SECRET_ACCESS_KEY")
+		for _, v := range []struct{ key, val string }{
+			{"R2_ACCOUNT_ID", cfg.R2AccountID}, {"R2_BUCKET", cfg.R2Bucket},
+			{"R2_ACCESS_KEY_ID", cfg.R2AccessKeyID}, {"R2_SECRET_ACCESS_KEY", cfg.R2SecretAccessKey},
+		} {
+			if v.val == "" {
+				return Config{}, fmt.Errorf("config: environment variable %s is required when STORAGE_DRIVER=r2", v.key)
+			}
+		}
+	default:
+		return Config{}, fmt.Errorf("config: invalid STORAGE_DRIVER %q (allowed: local, r2)", cfg.StorageDriver)
 	}
 
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {
