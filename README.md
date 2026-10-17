@@ -269,6 +269,20 @@ Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di
   - Dibuat untuk HP: tombol status 44px, tombol simpan menempel di bawah. Diukur di uji: simpan 30 siswa sekitar 10 ms.
   - **Belum diputuskan:** batas berapa hari ke belakang absensi masih boleh diubah (saat ini tidak dibatasi). Tanyakan ke sekolah saat wawancara.
 
+## Keuangan
+
+Semua nominal disimpan sebagai **bilangan bulat rupiah** (`bigint`/`int64`), tidak pernah float. Isian pengguna dibaca dengan `money.ParseRupiah` ([internal/platform/money](internal/platform/money/money.go)), yang menerima `150000`, `150.000`, `Rp 150.000`, dan `150.000,-`, serta menolak pecahan dan angka negatif. Tampilan memakai `money.FormatRupiah` (`Rp150.000`).
+
+### Jenis tagihan
+
+Tabel `fee_types` (migrasi 000015), fungsi di [internal/billing](internal/billing/fee_type_service.go).
+
+- Nominal default `>= 0` (nol untuk jenis tagihan gratis). Tanggal jatuh tempo default 1–28 (menghindari masalah Februari) atau kosong.
+- Nama unik per sekolah tanpa membedakan huruf besar/kecil, maksimal 60 karakter.
+- Jenis tagihan **tidak dihapus**, hanya dinonaktifkan; `ListActiveFeeTypes` (untuk tagihan baru) tidak mengembalikan yang nonaktif.
+- Nominal yang berbeda per kelas (mis. SPP kelas 1 vs kelas 6) ditangani lewat nominal per item tagihan (T30), bukan dengan membuat banyak jenis tagihan. Mengubah nominal default tidak mengubah tagihan yang sudah dibuat.
+- Audit: `fee_type.create`, `fee_type.update` (hanya bila ada perubahan), `fee_type.deactivate`, `fee_type.activate`.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:

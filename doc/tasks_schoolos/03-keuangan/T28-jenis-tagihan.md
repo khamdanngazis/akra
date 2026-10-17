@@ -24,12 +24,12 @@ Sekolah bisa mendefinisikan jenis tagihan (SPP, uang pangkal, kegiatan) dengan n
 - `internal/billing/fee_type_repo.go`, `fee_type_service.go`, `model.go`
 
 ## Kriteria selesai
-- [ ] Nominal `-1` ditolak database
-- [ ] Nominal `0` diterima
-- [ ] Tanggal jatuh tempo `29` ditolak
-- [ ] Nama sama di sekolah yang sama ditolak
-- [ ] `ListActive` tidak mengembalikan jenis tagihan nonaktif
-- [ ] Jenis tagihan sekolah lain tidak muncul
+- [x] Nominal `-1` ditolak database
+- [x] Nominal `0` diterima
+- [x] Tanggal jatuh tempo `29` ditolak
+- [x] Nama sama di sekolah yang sama ditolak
+- [x] `ListActive` tidak mengembalikan jenis tagihan nonaktif
+- [x] Jenis tagihan sekolah lain tidak muncul
 
 ## Catatan
 - Nominal default bisa berbeda per kelas (misalnya SPP kelas 1 dan kelas 6). Itu ditangani di T30 lewat nominal per item tagihan, bukan dengan membuat banyak jenis tagihan. Keputusan ini dicatat di sini agar tidak dibahas ulang.
