@@ -1,0 +1,29 @@
+{{define "title"}}Hasil Tagihan Massal{{end}}
+{{define "head"}}{{if not .Run.Finished}}<meta http-equiv="refresh" content="2">{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/keuangan/tagihan-massal">← Tagihan Massal</a></p>
+<div class="page-header">
+<div>
+<h1>Tagihan {{.Run.FeeTypeName}} · {{.Period}}</h1>
+<p class="muted">{{.Run.ClassName}} · jatuh tempo {{.DueDate}}</p>
+</div>
+{{template "run_status" .Run.Status}}
+</div>
+
+<section class="card stat-card">
+{{if not .Run.Finished}}
+<p><strong>{{.StatusLabel}}…</strong> Halaman ini diperbarui otomatis.</p>
+<div class="progress" role="progressbar" aria-valuenow="{{.Percent}}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{.Percent}}%"></span></div>
+<p class="muted small">{{.Run.ProcessedCount}} dari {{.Run.TotalCount}} siswa diproses.</p>
+{{else if eq .Run.Status "failed"}}
+<div class="alert alert-error" role="alert">Proses gagal setelah beberapa percobaan. Tagihan yang sudah dibuat tetap tersimpan; jalankan ulang untuk melengkapi sisanya (siswa yang sudah ditagih akan dilewati).</div>
+{{end}}
+<div class="stat-grid">
+<div><span class="stat-value">{{.Run.CreatedCount}}</span><span class="stat-label">tagihan dibuat</span></div>
+<div><span class="stat-value">{{.Run.SkippedCount}}</span><span class="stat-label">dilewati (sudah ada)</span></div>
+<div><span class="stat-value">{{.Run.TotalCount}}</span><span class="stat-label">siswa saat eksekusi</span></div>
+</div>
+<p class="hint">Jumlah siswa dihitung ulang saat eksekusi, jadi bisa berbeda dari pratinjau.</p>
+</section>
+{{end}}

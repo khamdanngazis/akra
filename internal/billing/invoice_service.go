@@ -24,6 +24,8 @@ type InvoiceRequest struct {
 	Period       string    // YYYY-MM
 	DueDate      time.Time // zero: dari jatuh tempo default jenis tagihan
 	Items        []ItemRequest
+	// BulkRunID diisi jika tagihan dibuat oleh tagihan massal (T32).
+	BulkRunID string
 }
 
 // InvoiceService menjalankan aturan bisnis tagihan.
@@ -63,6 +65,12 @@ func (s *InvoiceService) Create(ctx context.Context, actor school.Actor, req Inv
 //     pertama yang punya, pada bulan periode.
 //   - Status awal dari ComputeStatus(total, 0): tagihan bertotal 0 lunas.
 func CreateInvoice(ctx context.Context, tx pgx.Tx, actor school.Actor, req InvoiceRequest) (Invoice, error) {
+	return createInvoice(ctx, tx, actor, req, true)
+}
+
+// createInvoice adalah CreateInvoice dengan pilihan audit. Tagihan massal
+// mencatat satu audit ringkasan (billing.bulk_create), bukan per tagihan.
+func createInvoice(ctx context.Context, tx pgx.Tx, actor school.Actor, req InvoiceRequest, withAudit bool) (Invoice, error) {
 	if !periodPattern.MatchString(req.Period) {
 		return Invoice{}, ErrInvalidPeriod
 	}
@@ -121,9 +129,13 @@ func CreateInvoice(ctx context.Context, tx pgx.Tx, actor school.Actor, req Invoi
 	}
 	inv, err := insertInvoice(ctx, tx, actor.SchoolID, newInvoice{
 		EnrollmentID: req.EnrollmentID, Period: req.Period, DueDate: due, Status: status, CreatedBy: actor.UserID, Items: items,
+		BulkRunID: req.BulkRunID,
 	})
 	if err != nil {
 		return Invoice{}, err
+	}
+	if !withAudit {
+		return inv, nil
 	}
 	err = audit.Record(ctx, tx, audit.Entry{
 		SchoolID: actor.SchoolID, UserID: actor.UserID, IP: actor.IP,

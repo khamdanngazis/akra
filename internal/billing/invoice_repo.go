@@ -20,6 +20,7 @@ type newInvoice struct {
 	DueDate      time.Time
 	Status       Status
 	CreatedBy    string
+	BulkRunID    string
 	Items        []InvoiceItem
 }
 
@@ -45,9 +46,9 @@ func insertInvoice(ctx context.Context, tx pgx.Tx, schoolID string, in newInvoic
 	}
 	var id string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO invoices (school_id, academic_year_id, enrollment_id, period, due_date, total_amount, status, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-		schoolID, yearID, in.EnrollmentID, in.Period, in.DueDate, total, in.Status, nullIfEmpty(in.CreatedBy)).Scan(&id)
+		INSERT INTO invoices (school_id, academic_year_id, enrollment_id, period, due_date, total_amount, status, created_by, bulk_run_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		schoolID, yearID, in.EnrollmentID, in.Period, in.DueDate, total, in.Status, nullIfEmpty(in.CreatedBy), nullIfEmpty(in.BulkRunID)).Scan(&id)
 	if err != nil {
 		return Invoice{}, mapInvoiceError("create invoice", err)
 	}

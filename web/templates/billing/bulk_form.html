@@ -1,0 +1,80 @@
+{{define "title"}}Tagihan Massal{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Tagihan Massal</h1>
+<p class="muted">Buat tagihan satu jenis untuk satu kelas atau semua kelas{{with .YearName}} di tahun ajaran {{.}}{{end}}. Siswa yang sudah punya tagihan jenis yang sama pada periode yang sama dilewati.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+{{if .YearName}}
+{{if not .FeeTypes}}
+<section class="card empty-state"><p>Belum ada jenis tagihan aktif. <a href="/keuangan/jenis-tagihan">Buat jenis tagihan</a> dulu.</p></section>
+{{else}}
+<section class="card form-card">
+<form method="post" action="/keuangan/tagihan-massal/pratinjau" class="stack" novalidate>
+{{ csrfField }}
+<div class="field{{if .Errors.fee_type_id}} has-error{{end}}">
+<label for="fee_type_id">Jenis tagihan</label>
+<select id="fee_type_id" name="fee_type_id" required>
+<option value="">Pilih jenis tagihan</option>
+{{range .FeeTypes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.fee_type_id}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Hanya jenis tagihan aktif.</p>{{end}}
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.period}} has-error{{end}}">
+<label for="period">Periode</label>
+<input id="period" type="month" name="period" value="{{.Form.Period}}" placeholder="2026-09" required>
+{{with .Errors.period}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field">
+<label for="class_id">Kelas</label>
+<select id="class_id" name="class_id">
+{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.due_date}} has-error{{end}}">
+<label for="due_date">Jatuh tempo <span class="muted">(opsional)</span></label>
+<input id="due_date" type="date" name="due_date" value="{{.Form.DueDate}}">
+{{with .Errors.due_date}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Kosong: tanggal jatuh tempo default jenis tagihan pada bulan periode.</p>{{end}}
+</div>
+<div class="field{{if .Errors.amount}} has-error{{end}}">
+<label for="amount">Nominal per siswa <span class="muted">(opsional)</span></label>
+<input id="amount" name="amount" value="{{.Form.Amount}}" inputmode="numeric" placeholder="Default jenis tagihan" autocomplete="off">
+{{with .Errors.amount}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Isi jika nominal kelas ini berbeda (mis. SPP kelas 6).</p>{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Pratinjau</button></div>
+</form>
+</section>
+{{end}}
+{{end}}
+
+{{if .Recent}}
+<h2 class="section-title">Riwayat terakhir</h2>
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Dibuat</th><th>Jenis</th><th>Periode</th><th>Kelas</th><th class="num">Dibuat</th><th class="num">Dilewati</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Recent}}
+<tr>
+<td class="nowrap"><a href="/keuangan/tagihan-massal/{{.ID}}">{{.CreatedAt}}</a></td>
+<td>{{.FeeType}}</td><td class="nowrap">{{.Period}}</td><td>{{.ClassName}}</td>
+<td class="num">{{.Created}}</td><td class="num">{{.Skipped}}</td>
+<td>{{template "run_status" .Status}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{end}}
+{{end}}

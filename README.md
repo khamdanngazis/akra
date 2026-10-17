@@ -301,6 +301,19 @@ Tabel `invoices` dan `invoice_items` (migrasi 000016), fungsi di [invoice_servic
   - Pembayaran (T35), pembatalan (T39), tunggakan (T42), dan portal (T45) wajib memakai fungsi ini.
 - Audit: `invoice.create`.
 
+### Tagihan massal
+
+Halaman `/keuangan/tagihan-massal` (hanya `bendahara`), fungsi di [bulk_service.go](internal/billing/bulk_service.go), tabel `bulk_invoice_runs` (migrasi 000019).
+
+- Input: jenis tagihan **aktif**, periode `YYYY-MM`, satu kelas atau semua kelas tahun ajaran aktif, jatuh tempo, dan nominal (opsional, default dari jenis tagihan). Kelas dari sekolah atau tahun ajaran lain → `404`.
+- Dua langkah: **Pratinjau** (hitung yang akan dibuat, dilewati, dan total nominal per kelas; tidak menyimpan apa pun), lalu **Buat N tagihan**. Tombol buat hanya ada di halaman pratinjau.
+- Sasaran: enrollment aktif dengan status siswa `aktif`. Enrollment yang sudah punya item jenis dan periode yang sama dilewati, jadi menjalankan ulang tidak menghasilkan tagihan ganda (dijaga juga oleh `UNIQUE` item).
+- ≤ 50 siswa: langsung dalam satu transaksi. > 50 siswa: baris run dan job River `billing_bulk_invoice` disimpan dalam transaksi yang sama, lalu halaman hasil menampilkan progres (refresh otomatis 2 detik).
+- Job memproses per 25 tagihan, tiap batch dalam transaksi sendiri. Jika gagal di tengah, job diulang (maks. 5 kali) dan menghitung ulang sasaran, sehingga hasilnya tetap idempoten. Setelah percobaan terakhir gagal, run ditandai `failed`.
+- Jumlah dibuat/dilewati di hasil adalah jumlah **saat eksekusi**; enrollment yang ditambahkan setelah pratinjau ikut dihitung saat itu.
+- Tagihan menyimpan `bulk_run_id`. Audit: satu baris `billing.bulk_create` berisi ringkasan, tidak ada `invoice.create` per tagihan.
+- Worker ada di [bulk_job.go](internal/billing/bulk_job.go) (bukan subpaket `jobs/`) karena memakai fungsi internal paket `billing`.
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).

@@ -34,6 +34,7 @@ type routerDeps struct {
 	portal       *portal.Handler
 	attendance   *attendance.Handler
 	feeTypes     *billing.FeeTypeHandler
+	bulkInvoice  *billing.BulkHandler
 	// dev berisi route khusus development (nil di staging/production).
 	dev func(chi.Router)
 }
@@ -81,6 +82,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)
+			d.bulkInvoice.Routes(r)
 		})
 	})
 

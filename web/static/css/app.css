@@ -851,3 +851,28 @@ tr.row-inactive td {
   color: #1e3a8a;
   border-left: 4px solid var(--color-secondary);
 }
+
+.section-title {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.form-actions {
+  justify-content: flex-start;
+  margin-top: var(--space-4);
+}
+
+.progress {
+  height: 0.75rem;
+  margin-bottom: var(--space-2);
+  border-radius: 999px;
+  background: var(--color-neutral);
+  overflow: hidden;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--color-secondary);
+  transition: width 0.3s;
+}
