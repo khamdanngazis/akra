@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -50,21 +51,25 @@ type loginPage struct {
 	Error      string
 }
 
-// Handler melayani halaman login.
+// Handler melayani halaman login dan logout.
 type Handler struct {
-	svc    *Service
-	logger *slog.Logger
+	svc      *Service
+	sessions *scs.SessionManager
+	logger   *slog.Logger
 }
 
-// NewHandler mengembalikan Handler.
-func NewHandler(svc *Service, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, logger: logger}
+// NewHandler mengembalikan Handler. Route-nya harus dibungkus
+// sessions.LoadAndSave.
+func NewHandler(svc *Service, sessions *scs.SessionManager, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, sessions: sessions, logger: logger}
 }
 
-// Routes mendaftarkan route login ke r.
+// Routes mendaftarkan route login dan logout ke r.
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/login", h.showLogin)
 	r.Post("/login", h.submitLogin)
+	// Logout hanya lewat POST agar tidak bisa dipicu dari link atau <img>.
+	r.Post("/logout", h.logout)
 }
 
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
@@ -84,11 +89,16 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	ip := clientIP(r)
 
-	_, err := h.svc.Authenticate(r.Context(), page.SchoolCode, page.Email, r.PostForm.Get("password"), ip)
+	user, err := h.svc.Authenticate(r.Context(), page.SchoolCode, page.Email, r.PostForm.Get("password"), ip)
 	switch {
 	case err == nil:
-		// TODO(T07): perbarui token sesi lalu simpan user_id, school_id, dan
-		// peran ke sesi sebelum redirect.
+		if err := startSession(r.Context(), h.sessions, user); err != nil {
+			h.logger.Error("start session", "error", err)
+			page.Error = msgInternalError
+			h.render(w, http.StatusInternalServerError, page)
+			return
+		}
+		// TODO(T08): redirect ke parameter next jika ada.
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	case errors.Is(err, ErrInvalidCredentials):
 		page.Error = msgInvalidCredentials
@@ -103,6 +113,15 @@ func (h *Handler) submitLogin(w http.ResponseWriter, r *http.Request) {
 		page.Error = msgInternalError
 		h.render(w, http.StatusInternalServerError, page)
 	}
+}
+
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	if err := h.sessions.Destroy(r.Context()); err != nil {
+		h.logger.Error("destroy session", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func (h *Handler) render(w http.ResponseWriter, status int, page loginPage) {

@@ -34,11 +34,11 @@ Login menghasilkan sesi yang disimpan di Postgres. Sesi bertahan setelah reload 
 - `cmd/server/main.go` (pasang middleware)
 
 ## Kriteria selesai
-- [ ] Setelah login, refresh halaman tetap dalam keadaan login
-- [ ] Setelah logout, membuka halaman yang sebelumnya terlindungi kembali ke `/login`
-- [ ] Cookie `schoolos_session` memiliki atribut `HttpOnly` dan `SameSite=Lax` (dicek di DevTools)
-- [ ] Di staging atau production, cookie memiliki atribut `Secure`
-- [ ] Token sesi berubah setelah login (tidak sama dengan token sebelum login)
+- [x] Setelah login, refresh halaman tetap dalam keadaan login
+- [x] Setelah logout, membuka halaman yang sebelumnya terlindungi kembali ke `/login`
+- [x] Cookie `schoolos_session` memiliki atribut `HttpOnly` dan `SameSite=Lax` (dicek di DevTools)
+- [x] Di staging atau production, cookie memiliki atribut `Secure`
+- [x] Token sesi berubah setelah login (tidak sama dengan token sebelum login)
 
 ## Catatan
 - Middleware autentikasi yang memeriksa sesi dikerjakan di T08.

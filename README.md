@@ -75,6 +75,19 @@ Login memakai **kode sekolah**, email, dan password. Email unik per sekolah, jad
 
 - Semua kegagalan kredensial (sekolah tidak ada, email tidak terdaftar, password salah, akun nonaktif) menampilkan pesan yang sama.
 - Percobaan dicatat di `login_attempts`. Login dikunci selama 15 menit setelah 5 kegagalan untuk pasangan kode sekolah + email (dihitung sejak login sukses terakhir), atau 20 kegagalan dari satu IP. Batas IP lebih longgar karena banyak pengguna satu sekolah berbagi satu IP.
+- Setelah login berhasil, token sesi diganti (mencegah session fixation) lalu `user_id`, `school_id`, dan daftar peran disimpan di sesi. Logout hanya lewat `POST /logout`.
+
+### Sesi
+
+Sesi dikelola [`scs`](https://github.com/alexedwards/scs) dan disimpan di tabel `sessions` (pgxstore).
+
+| Pengaturan | Nilai |
+|---|---|
+| Cookie | `akra_session`, `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` di luar `development` |
+| Lifetime | 12 jam (batas mutlak sejak login) |
+| Idle timeout | 2 jam tanpa aktivitas |
+| Pembersihan sesi kedaluwarsa | Otomatis oleh pgxstore setiap 5 menit |
+
 - Selama belum ada halaman admin, pengguna dibuat langsung lewat SQL dengan hash dari `auth.Hasher`.
 
 ## Migrasi Database

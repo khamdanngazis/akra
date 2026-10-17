@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"html"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
@@ -27,6 +31,23 @@ func main() {
 	if err := run(logger); err != nil {
 		logger.Error("server exited with error", "error", err)
 		os.Exit(1)
+	}
+}
+
+// homePlaceholder menampilkan status login dan tombol logout.
+//
+// TODO(T08): lindungi dengan RequireLogin. TODO(T11): ganti dengan home.html.
+func homePlaceholder(sessions *scs.SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := auth.SessionUserID(r.Context(), sessions)
+		if userID == "" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>AKRA</title>
+<p>Masuk sebagai pengguna %s.</p>
+<form method="post" action="/logout"><button type="submit">Keluar</button></form>`, html.EscapeString(userID))
 	}
 }
 
@@ -53,10 +74,18 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	sessionStore := pgxstore.NewWithCleanupInterval(pool, auth.SessionCleanupInterval)
+	defer sessionStore.StopCleanup()
+	sessions := auth.NewSessionManager(sessionStore, cfg.AppEnv != config.EnvDevelopment, logger)
+
 	r := chi.NewRouter()
 	r.Get("/healthz", health.Handler)
 	r.Get("/healthz/db", health.DBHandler(pool))
-	auth.NewHandler(authSvc, logger).Routes(r)
+	r.Group(func(r chi.Router) {
+		r.Use(sessions.LoadAndSave)
+		auth.NewHandler(authSvc, sessions, logger).Routes(r)
+		r.Get("/", homePlaceholder(sessions))
+	})
 
 	srv := httpserver.New(cfg, r)
 
