@@ -25,12 +25,12 @@ Wali bisa punya akun login untuk portal. Akun ini hanya bisa mengakses portal, t
 - `web/templates/auth/aktivasi.html`
 
 ## Kriteria selesai
-- [ ] Membuat akun untuk wali yang sama dua kali ditolak
-- [ ] Wali tanpa email tidak bisa dibuatkan akun
-- [ ] Akun belum aktif tidak bisa login
-- [ ] Setelah aktivasi, akun orang tua bisa login dan diarahkan ke `/portal`
-- [ ] Akun orang tua mendapat `403` saat membuka `/siswa` atau `/pengaturan/tahun-ajaran`
-- [ ] Tautan aktivasi yang sudah dipakai atau kedaluwarsa ditolak
+- [x] Membuat akun untuk wali yang sama dua kali ditolak
+- [x] Wali tanpa email tidak bisa dibuatkan akun
+- [x] Akun belum aktif tidak bisa login
+- [x] Setelah aktivasi, akun orang tua bisa login dan diarahkan ke `/portal`
+- [x] Akun orang tua mendapat `403` saat membuka `/siswa` atau `/pengaturan/tahun-ajaran`
+- [x] Tautan aktivasi yang sudah dipakai atau kedaluwarsa ditolak
 
 ## Catatan
 - Orang tua tidak pernah menentukan `school_id` sendiri. Nilai ini diambil dari wali yang ditautkan.

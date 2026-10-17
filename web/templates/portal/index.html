@@ -1,0 +1,10 @@
+{{define "title"}}Portal Orang Tua{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "flash" .}}
+<section class="card">
+<h1>Halo, {{.User.FullName}}</h1>
+<p class="muted">Selamat datang di portal orang tua {{.User.SchoolName}}.</p>
+<p>Data anak, absensi, dan tagihan akan tampil di sini.</p>
+</section>
+{{end}}

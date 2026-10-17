@@ -6,19 +6,19 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/home"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
+	"akra/internal/portal"
 	"akra/internal/school"
 	"akra/internal/students"
 )
 
 type routerDeps struct {
-	pool         *pgxpool.Pool
+	pinger       health.Pinger
 	csrf         func(http.Handler) http.Handler
 	sessions     *scs.SessionManager
 	render       home.Renderer
@@ -28,12 +28,15 @@ type routerDeps struct {
 	academicYear *school.AcademicYearHandler
 	classes      *classes.Handler
 	students     *students.Handler
+	activation   *auth.ActivationHandler
+	portal       *portal.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
 //
 // Route publik: /healthz, /healthz/db, /static/, /login, /logout,
-// /lupa-password, dan /reset-password.
+// /lupa-password, /reset-password, dan /aktivasi. /portal hanya untuk orang
+// tua; route lain menolak orang tua dengan 403.
 // Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
 func newRouter(d routerDeps) http.Handler {
@@ -41,7 +44,7 @@ func newRouter(d routerDeps) http.Handler {
 
 	// Tanpa sesi dan tanpa CSRF.
 	r.Get("/healthz", health.Handler)
-	r.Get("/healthz/db", health.DBHandler(d.pool))
+	r.Get("/healthz/db", health.DBHandler(d.pinger))
 	static := http.StripPrefix("/static/", httpserver.Static(d.static))
 	r.Get("/static/*", static.ServeHTTP)
 	r.Head("/static/*", static.ServeHTTP)
@@ -54,6 +57,7 @@ func newRouter(d routerDeps) http.Handler {
 		// Publik, tapi butuh sesi.
 		d.authHandler.Routes(r)
 		d.resetHandler.Routes(r)
+		d.activation.Routes(r)
 
 		// Wajib login.
 		r.Group(func(r chi.Router) {
@@ -63,6 +67,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.academicYear.Routes(r)
 			d.classes.Routes(r)
 			d.students.Routes(r)
+			d.portal.Routes(r)
 		})
 	})
 

@@ -26,16 +26,18 @@ const (
 
 // Handler melayani halaman data siswa.
 type Handler struct {
-	svc      *Service
-	sessions *scs.SessionManager
-	render   page.Renderer
-	logger   *slog.Logger
+	svc       *Service
+	guardians *GuardianService
+	accounts  *GuardianAccountService
+	sessions  *scs.SessionManager
+	render    page.Renderer
+	logger    *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(svc *Service, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
+func NewHandler(svc *Service, guardians *GuardianService, accounts *GuardianAccountService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, guardians: guardians, accounts: accounts, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route siswa ke r. Guru dan orang tua tidak punya akses
@@ -61,6 +63,10 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Post("/{id}", h.update)
 			// Peran: admin_tu.
 			r.Post("/{id}/pindah-kelas", h.move)
+			// Peran: admin_tu.
+			r.Post("/{id}/wali/{guardianID}/akun", h.createAccount)
+			// Peran: admin_tu.
+			r.Post("/{id}/wali/{guardianID}/akun/kirim-ulang", h.resendActivation)
 		})
 	})
 }
@@ -102,17 +108,30 @@ type formView struct {
 }
 
 type detailView struct {
-	User     auth.Identity
-	CanEdit  bool
-	Student  Student
-	History  []historyRow
-	YearName string
-	Classes  []string
-	Move     MoveForm
-	Errors   map[string]string
-	Error    string
-	Flash    string
+	User      auth.Identity
+	CanEdit   bool
+	Student   Student
+	History   []historyRow
+	Guardians []guardianRow
+	YearName  string
+	Classes   []string
+	Move      MoveForm
+	Errors    map[string]string
+	Error     string
+	Flash     string
 }
+
+type guardianRow struct {
+	ID            string
+	FullName      string
+	Relationship  string
+	IsPrimary     bool
+	Phone         string
+	Email         string
+	AccountStatus string
+}
+
+var relationshipLabels = map[string]string{RelationFather: "Ayah", RelationMother: "Ibu", RelationGuardian: "Wali", RelationOther: "Lainnya"}
 
 type historyRow struct {
 	ClassName string
@@ -223,6 +242,17 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 		}
 		view.History = append(view.History, row)
 	}
+	guardians, err := h.guardians.ListByStudent(r.Context(), id.SchoolID, st.ID)
+	if err != nil {
+		h.serverError(w, r, "list guardians", err)
+		return
+	}
+	for _, g := range guardians {
+		view.Guardians = append(view.Guardians, guardianRow{
+			ID: g.ID, FullName: g.FullName, Relationship: relationshipLabels[g.Relationship], IsPrimary: g.IsPrimary,
+			Phone: g.Phone, Email: g.Email, AccountStatus: g.AccountStatus,
+		})
+	}
 	if view.CanEdit {
 		if ok := h.fillClasses(w, r, id, &view.YearName, &view.Classes); !ok {
 			return
@@ -322,6 +352,66 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 	default:
 		h.serverError(w, r, "move student", err)
 	}
+}
+
+func (h *Handler) createAccount(w http.ResponseWriter, r *http.Request) {
+	h.accountAction(w, r, false)
+}
+
+func (h *Handler) resendActivation(w http.ResponseWriter, r *http.Request) {
+	h.accountAction(w, r, true)
+}
+
+// accountAction membuat akun portal wali, atau mengirim ulang tautan
+// aktivasinya. Wali harus terhubung ke siswa di URL.
+func (h *Handler) accountAction(w http.ResponseWriter, r *http.Request, resend bool) {
+	id, _ := auth.CurrentUser(r.Context())
+	studentID, guardianID := chi.URLParam(r, "id"), chi.URLParam(r, "guardianID")
+	guardians, err := h.guardians.ListByStudent(r.Context(), id.SchoolID, studentID)
+	if err != nil {
+		h.serverError(w, r, "list guardians", err)
+		return
+	}
+	linked := false
+	for _, g := range guardians {
+		linked = linked || g.ID == guardianID
+	}
+	if !linked {
+		page.NotFound(h.render, w, r, id, "Wali yang Anda pilih tidak terhubung ke siswa ini.")
+		return
+	}
+
+	var res AccountResult
+	if resend {
+		res, err = h.accounts.ResendActivation(r.Context(), actorFrom(r, id), guardianID)
+	} else {
+		res, err = h.accounts.CreateAccount(r.Context(), actorFrom(r, id), guardianID)
+	}
+	var msg string
+	switch {
+	case err == nil && res.MailErr != nil:
+		msg = "Akun dibuat, tetapi email aktivasi ke " + res.Email + " gagal dikirim. Coba kirim ulang."
+	case err == nil && resend:
+		msg = "Tautan aktivasi baru dikirim ke " + res.Email + "."
+	case err == nil:
+		msg = "Akun portal dibuat. Tautan aktivasi dikirim ke " + res.Email + "."
+	case errors.Is(err, ErrGuardianNoEmail):
+		msg = "Wali belum punya email. Tambahkan email dulu untuk membuat akun portal."
+	case errors.Is(err, ErrAccountExists):
+		msg = "Wali ini sudah punya akun portal."
+	case errors.Is(err, ErrAccountNotPending):
+		msg = "Akun wali ini tidak sedang menunggu aktivasi."
+	case errors.Is(err, ErrEmailInUse):
+		msg = "Email wali sudah dipakai akun lain di sekolah ini."
+	case errors.Is(err, ErrGuardianNotFound):
+		page.NotFound(h.render, w, r, id, "Wali yang Anda pilih tidak ditemukan.")
+		return
+	default:
+		h.serverError(w, r, "guardian account", err)
+		return
+	}
+	auth.SetFlash(r.Context(), h.sessions, msg)
+	http.Redirect(w, r, studentsPath+"/"+studentID, http.StatusSeeOther)
 }
 
 // fillClasses mengisi nama tahun aktif dan daftar nama kelasnya (untuk
