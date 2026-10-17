@@ -284,6 +284,18 @@ Tabel `fee_types` (migrasi 000015), fungsi di [internal/billing](internal/billin
 - Audit: `fee_type.create`, `fee_type.update` (hanya bila ada perubahan), `fee_type.deactivate`, `fee_type.activate`.
 - Halaman `/keuangan/jenis-tagihan`: daftar untuk `bendahara`, `admin_tu`, dan `kepala_sekolah` (hanya baca); tambah, ubah, nonaktifkan, dan aktifkan untuk `bendahara` dan `admin_tu`. Peran lain `403`. Tidak ada tombol hapus. Form ubah menampilkan catatan bahwa perubahan nominal default tidak mengubah tagihan yang sudah dibuat.
 
+### Tagihan
+
+Tabel `invoices` dan `invoice_items` (migrasi 000016), fungsi di [invoice_service.go](internal/billing/invoice_service.go).
+
+- Tagihan terikat ke **enrollment** (bukan siswa) per periode `YYYY-MM`, agar tagihan kelas tetap benar saat siswa pindah kelas. Foreign key komposit menjamin tahun ajaran tagihan sama dengan tahun ajaran enrollment-nya.
+- Tagihan berisi satu atau lebih item. `total_amount` **dihitung** dari jumlah item di service, dan database memeriksa ulang saat commit (constraint trigger `invoice_total_matches_items`, deferred) sehingga total tidak pernah bisa berbeda dari item.
+- Satu jenis tagihan per enrollment per periode (`UNIQUE (enrollment_id, fee_type_id, period)` di item): SPP September tidak bisa tertagih dua kali. Item menyimpan salinan `enrollment_id` dan `period` yang dijaga foreign key komposit ke tagihannya.
+- Nominal item diambil dari default jenis tagihan, tetapi bisa diisi lain per siswa (`ItemRequest.Amount`). Nominal tersimpan di item, jadi mengubah default jenis tagihan tidak mengubah tagihan yang sudah ada. Hanya jenis tagihan aktif yang bisa dipakai.
+- Jatuh tempo default: tanggal jatuh tempo jenis tagihan pada bulan periode.
+- Status tersimpan hanya `belum_bayar`, `sebagian`, `lunas`. **"Terlambat" tidak disimpan**; dihitung saat ditampilkan (T31). Tagihan bertotal 0 langsung `lunas`.
+- Audit: `invoice.create`.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:
