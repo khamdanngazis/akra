@@ -27,11 +27,11 @@ Pembayaran tercatat sebagai baris yang tidak pernah diubah atau dihapus. Pembata
 - `internal/payments/repo.go`, `service.go`, `model.go`
 
 ## Kriteria selesai
-- [ ] Pembayaran dengan `amount = 0` atau negatif ditolak
-- [ ] Pembayaran transfer tanpa `bank_account` ditolak database
-- [ ] `UPDATE payments SET amount = ...` dari user aplikasi ditolak database (diuji dengan `psql`)
-- [ ] `DELETE FROM payments` dari user aplikasi ditolak database
-- [ ] Pembayaran melebihi sisa tagihan ditolak service
+- [x] Pembayaran dengan `amount = 0` atau negatif ditolak
+- [x] Pembayaran transfer tanpa `bank_account` ditolak database
+- [x] `UPDATE payments SET amount = ...` dari user aplikasi ditolak database (diuji dengan `psql`)
+- [x] `DELETE FROM payments` dari user aplikasi ditolak database
+- [x] Pembayaran melebihi sisa tagihan ditolak service
 
 ## Catatan
 - Kolom `receipt_number` diisi saat pembayaran dicatat, dalam transaksi yang sama, lewat `NextReceiptNumber` dari T41. Migrasi `receipt_counters` (T41) harus sudah ada sebelum T35 dijalankan, jadi urutkan migrasinya di awal fase 03.
