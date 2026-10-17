@@ -69,7 +69,12 @@ func RecordPayment(ctx context.Context, tx pgx.Tx, actor school.Actor, req Reque
 	if req.Amount > total-paid {
 		return Payment{}, billing.ErrOverpayment
 	}
-	p, err := insertPayment(ctx, tx, actor.SchoolID, actor.UserID, req)
+	// Nomor kuitansi mengikuti tahun pencatatan (Asia/Jakarta).
+	receipt, err := NextReceiptNumber(ctx, tx, actor.SchoolID, clock.Today().Year())
+	if err != nil {
+		return Payment{}, err
+	}
+	p, err := insertPayment(ctx, tx, actor.SchoolID, actor.UserID, receipt, req)
 	if err != nil {
 		return Payment{}, err
 	}

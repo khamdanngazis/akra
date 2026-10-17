@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.4
 	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/justinas/nosurf v1.2.0
 	github.com/riverqueue/river v0.18.0

@@ -32,11 +32,11 @@ Setiap pembayaran yang berhasil bisa dicetak sebagai kuitansi PDF dengan nomor u
 - `internal/payments/receipt_number.go`
 
 ## Kriteria selesai
-- [ ] Dua pembayaran berurutan menghasilkan nomor `...000001` dan `...000002`
-- [ ] Dua pembayaran bersamaan (uji paralel) tidak menghasilkan nomor kembar
-- [ ] Pembayaran yang di-rollback tidak meninggalkan celah yang tercatat sebagai nomor terpakai (diuji dan dicatat)
-- [ ] PDF terbuka dengan benar di Chrome dan pembaca PDF umum
-- [ ] Kuitansi pembayaran yang dibatalkan menampilkan keterangan dibatalkan
+- [x] Dua pembayaran berurutan menghasilkan nomor `...000001` dan `...000002`
+- [x] Dua pembayaran bersamaan (uji paralel) tidak menghasilkan nomor kembar
+- [x] Pembayaran yang di-rollback tidak meninggalkan celah yang tercatat sebagai nomor terpakai (diuji dan dicatat)
+- [x] PDF terbuka dengan benar di Chrome dan pembaca PDF umum
+- [x] Kuitansi pembayaran yang dibatalkan menampilkan keterangan dibatalkan
 - [ ] Orang tua bisa mengunduh kuitansi anaknya lewat portal (dikerjakan di T46)
 
 ## Catatan

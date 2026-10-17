@@ -17,13 +17,13 @@ import (
 // update atau delete; database juga menolaknya (trigger payments_append_only).
 
 // insertPayment menyimpan pembayaran yang sudah divalidasi service.
-func insertPayment(ctx context.Context, q database.DBTX, schoolID, recordedBy string, r Request) (Payment, error) {
+func insertPayment(ctx context.Context, q database.DBTX, schoolID, recordedBy, receiptNumber string, r Request) (Payment, error) {
 	rows, err := q.Query(ctx, `
-		INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, bank_account, reference, note, recorded_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO payments (school_id, invoice_id, amount, paid_on, method, bank_account, reference, note, recorded_by, receipt_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING `+paymentColumns,
 		schoolID, r.InvoiceID, r.Amount, r.PaidOn, r.Method,
-		nullIfEmpty(r.BankAccount), nullIfEmpty(r.Reference), nullIfEmpty(r.Note), recordedBy)
+		nullIfEmpty(r.BankAccount), nullIfEmpty(r.Reference), nullIfEmpty(r.Note), recordedBy, receiptNumber)
 	if err != nil {
 		return Payment{}, mapError("insert payment", err)
 	}

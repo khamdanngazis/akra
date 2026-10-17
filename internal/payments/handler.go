@@ -54,17 +54,21 @@ func NewHandler(svc *Service, proofs *ProofService, voids *VoidService, sessions
 // Routes mendaftarkan route pembayaran dan detail tagihan.
 func (h *Handler) Routes(r chi.Router) {
 	r.Route(paymentsPath, func(r chi.Router) {
-		r.Use(auth.RequireRole(auth.RoleBendahara))
-		// Peran: bendahara.
-		r.Get("/baru", h.form)
-		// Peran: bendahara. Potongan HTML untuk pencarian Alpine.js.
-		r.Get("/cari", h.search)
-		// Peran: bendahara.
-		r.Post("/", h.create)
-		// Peran: bendahara. Unggah bukti transfer (multipart).
-		r.Post("/{id}/bukti", h.uploadProof)
-		// Peran: bendahara. Ajukan pembatalan pembayaran.
-		r.Post("/{id}/batal", h.requestVoid)
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireRole(auth.RoleBendahara))
+			// Peran: bendahara.
+			r.Get("/baru", h.form)
+			// Peran: bendahara. Potongan HTML untuk pencarian Alpine.js.
+			r.Get("/cari", h.search)
+			// Peran: bendahara.
+			r.Post("/", h.create)
+			// Peran: bendahara. Unggah bukti transfer (multipart).
+			r.Post("/{id}/bukti", h.uploadProof)
+			// Peran: bendahara. Ajukan pembatalan pembayaran.
+			r.Post("/{id}/batal", h.requestVoid)
+		})
+		// Peran: bendahara, admin_tu. Kuitansi PDF (dibuat saat diminta).
+		r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU)).Get("/{id}/kuitansi", h.receipt)
 	})
 	readers := auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)
 	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
@@ -148,6 +152,8 @@ type invoiceView struct {
 	CanUpload bool
 	// CanAudit: tautan riwayat audit per pembayaran (kepala sekolah, admin TU).
 	CanAudit bool
+	// CanReceipt: tautan cetak kuitansi (bendahara, admin TU).
+	CanReceipt bool
 	// MaxProofSize dipakai Alpine.js untuk menolak file besar sebelum diunggah.
 	MaxProofSize int
 	Error        string
@@ -320,7 +326,8 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 		CanPay: id.HasRole(auth.RoleBendahara) && d.VoidedAt == nil && d.Status != billing.StatusPaid,
 		Flash:  auth.PopFlash(r.Context(), h.sessions), Error: errMsg,
 		CanUpload: id.HasRole(auth.RoleBendahara), MaxProofSize: MaxProofSize,
-		CanAudit: auth.HasAnyRole(id, auth.RoleKepalaSekolah, auth.RoleAdminTU),
+		CanAudit:   auth.HasAnyRole(id, auth.RoleKepalaSekolah, auth.RoleAdminTU),
+		CanReceipt: auth.HasAnyRole(id, auth.RoleBendahara, auth.RoleAdminTU),
 	}
 	proofs, err := ListProofsByInvoice(r.Context(), h.svc.db, id.SchoolID, d.ID)
 	if err != nil {
