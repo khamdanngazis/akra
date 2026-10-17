@@ -1,0 +1,55 @@
+{{define "title"}}Kelas{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Kelas</h1>
+<p class="muted">Kelas dan wali kelas per tahun ajaran.</p>
+</div>
+{{if and .CanEdit .Year}}<a class="btn btn-primary" href="{{.NewClass}}">Tambah kelas</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+{{if not .Year}}
+<section class="card empty-state">
+<p>Belum ada tahun ajaran. Buat tahun ajaran dulu sebelum menambah kelas.</p>
+<p><a class="btn btn-primary" href="/pengaturan/tahun-ajaran">Buka Tahun Ajaran</a></p>
+</section>
+{{else}}
+<form method="get" action="/kelas" class="filter-bar" x-data>
+<label for="tahun">Tahun ajaran</label>
+<select id="tahun" name="tahun" @change="$el.form.submit()">
+{{range .Years}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}{{if .IsActive}} (aktif){{end}}</option>{{end}}
+</select>
+<noscript><button type="submit" class="btn btn-ghost btn-sm">Tampilkan</button></noscript>
+</form>
+
+{{if .Classes}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Kelas</th><th>Tingkat</th><th>Wali kelas</th>{{if $.CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr>
+</thead>
+<tbody>
+{{range .Classes}}
+<tr>
+<td><strong>{{.Name}}</strong></td>
+<td>{{.GradeLevel}}</td>
+<td>{{if .HomeroomTeacherName}}{{.HomeroomTeacherName}}{{else}}<span class="muted">Belum ada</span>{{end}}</td>
+{{if $.CanEdit}}<td class="actions"><a class="btn btn-ghost btn-sm" href="/kelas/{{.ID}}/ubah">Ubah</a></td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada kelas di tahun ajaran {{.Year.Name}}.</p>
+{{if .CanEdit}}<p><a class="btn btn-primary" href="{{.NewClass}}">Tambah kelas pertama</a></p>{{end}}
+</section>
+{{end}}
+{{end}}
+{{end}}

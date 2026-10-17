@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/page"
 )
 
 const (
@@ -17,9 +18,7 @@ const (
 )
 
 // Renderer merender halaman dari web/templates.
-type Renderer interface {
-	Render(w http.ResponseWriter, r *http.Request, status int, name string, data any)
-}
+type Renderer = page.Renderer
 
 // AcademicYearHandler melayani halaman pengaturan tahun ajaran.
 type AcademicYearHandler struct {
@@ -81,12 +80,6 @@ type academicYearFormView struct {
 	Errors map[string]string
 	Error  string
 	Flash  string
-}
-
-type errorView struct {
-	User    auth.Identity
-	Title   string
-	Message string
 }
 
 func (h *AcademicYearHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -213,18 +206,12 @@ func (h *AcademicYearHandler) formError(w http.ResponseWriter, r *http.Request, 
 }
 
 func (h *AcademicYearHandler) notFound(w http.ResponseWriter, r *http.Request, id auth.Identity) {
-	h.render.Render(w, r, http.StatusNotFound, "error", errorView{
-		User: id, Title: "Data tidak ditemukan",
-		Message: "Tahun ajaran yang Anda cari tidak ada atau bukan milik sekolah Anda.",
-	})
+	page.NotFound(h.render, w, r, id, "Tahun ajaran yang Anda cari tidak ada atau bukan milik sekolah Anda.")
 }
 
 func (h *AcademicYearHandler) serverError(w http.ResponseWriter, r *http.Request, op string, err error) {
-	h.logger.ErrorContext(r.Context(), op, "error", err)
 	id, _ := auth.CurrentUser(r.Context())
-	h.render.Render(w, r, http.StatusInternalServerError, "error", errorView{
-		User: id, Title: "Terjadi kesalahan", Message: "Terjadi kesalahan pada server. Silakan coba lagi.",
-	})
+	page.ServerError(h.render, h.logger, w, r, id, op, err)
 }
 
 func actorFrom(r *http.Request, id auth.Identity) Actor {

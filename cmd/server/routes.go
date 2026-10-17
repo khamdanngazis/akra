@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"akra/internal/auth"
+	"akra/internal/classes"
 	"akra/internal/home"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
@@ -24,6 +25,7 @@ type routerDeps struct {
 	authHandler  *auth.Handler
 	resetHandler *auth.ResetHandler
 	academicYear *school.AcademicYearHandler
+	classes      *classes.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -57,6 +59,7 @@ func newRouter(d routerDeps) http.Handler {
 			// Peran: semua peran.
 			r.Get("/", home.Handler(d.render, d.sessions))
 			d.academicYear.Routes(r)
+			d.classes.Routes(r)
 		})
 	})
 

@@ -13,6 +13,7 @@ import (
 	"github.com/alexedwards/scs/pgxstore"
 
 	"akra/internal/auth"
+	"akra/internal/classes"
 	"akra/internal/platform/config"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
@@ -96,6 +97,7 @@ func run(logger *slog.Logger) error {
 				auth.NewSessionRevoker(sessions), cfg.BaseURL, logger),
 			sessions, rd, logger),
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(pool), sessions, rd, logger),
+		classes:      classes.NewHandler(classes.NewService(pool), pool, sessions, rd, logger),
 	})
 
 	srv := httpserver.New(cfg, httpserver.ClientIP(cfg.ClientIPHeader)(r))

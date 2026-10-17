@@ -93,6 +93,14 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 // diganti per request di Render.
 func funcs(versions map[string]string) template.FuncMap {
 	m := template.FuncMap{
+		// seq menghasilkan from, from+1, ..., to; mis. {{range seq 1 12}}.
+		"seq": func(from, to int) []int {
+			var s []int
+			for i := from; i <= to; i++ {
+				s = append(s, i)
+			}
+			return s
+		},
 		"asset": func(p string) (string, error) {
 			if versions == nil {
 				return "/static/" + p, nil

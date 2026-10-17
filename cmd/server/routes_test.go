@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/classes"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
@@ -72,6 +73,7 @@ func newTestRouter(t *testing.T) http.Handler {
 			sessions, rd, logger),
 		// Service tanpa database: uji di paket ini tidak sampai ke handler tahun ajaran.
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
+		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 	})
 }
 

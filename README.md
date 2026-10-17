@@ -175,6 +175,8 @@ web/static/
 ```
 
 - Halaman baru: buat `web/templates/<nama>.html` yang mendefinisikan blok `title` dan `content`, lalu panggil `rd.Render(w, r, http.StatusOK, "<nama>", data)`.
+- Halaman 404/500 bersama ada di [internal/platform/page](internal/platform/page/page.go) (`page.NotFound`, `page.ServerError`).
+- Fungsi template umum: `{{ seq 1 12 }}` untuk daftar angka.
 - `/static/` dilayani dengan `Cache-Control: public, max-age=86400`. Di template, rujuk aset dengan `{{ asset "css/app.css" }}`, yang menghasilkan `/static/css/app.css?v=<hash isi file>`. URL berubah setiap isi file berubah, jadi browser tidak menahan versi lama. Pengecualian: font, karena URL-nya juga dipakai `url()` di CSS.
 - Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
@@ -200,6 +202,9 @@ Tabel `classes` (migrasi 000009), fungsi di [internal/classes/repo.go](internal/
 - `grade_level` 1–12 dijaga `CHECK` di database.
 - Tahun ajaran dan wali kelas wajib dari sekolah yang sama. Dijaga dua lapis: repository memeriksa `WHERE school_id = $1 AND id = $2` (pesan error jelas), dan **foreign key komposit** `(school_id, academic_year_id)` serta `(school_id, homeroom_teacher_id)` menolak data lintas sekolah walau repository dilewati.
 - Pola foreign key komposit ini dipakai untuk tabel berikutnya yang merujuk data milik sekolah.
+- Halaman `/kelas?tahun=<id>` (default tahun aktif, atau terbaru jika belum ada yang aktif): daftar untuk `admin_tu` dan `kepala_sekolah` (hanya baca); tambah dan ubah hanya `admin_tu`. Tahun ajaran kelas tidak bisa dipindah setelah dibuat.
+- Wali kelas dipilih dari guru **aktif** sekolah yang sama (`classes.ListTeachers`); service menolak pengguna lain. Wali kelas lama yang sudah dinonaktifkan tetap tampil di form ubah (bertanda "nonaktif") agar menyimpan perubahan nama tidak diam-diam menghapusnya.
+- Audit: `class.create`, `class.update` (nama/tingkat), `class.assign_teacher` (wali kelas). Menyimpan tanpa perubahan tidak menambah audit.
 
 ## Audit
 

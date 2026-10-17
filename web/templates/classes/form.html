@@ -1,0 +1,64 @@
+{{define "title"}}{{if .IsNew}}Tambah Kelas{{else}}Ubah Kelas{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="{{.BackURL}}">← Kelas</a></p>
+<section class="card form-card">
+<h1>{{if .IsNew}}Tambah Kelas{{else}}Ubah Kelas{{end}}</h1>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+{{if and .IsNew (not .Years)}}
+<p>Belum ada tahun ajaran. <a href="/pengaturan/tahun-ajaran">Buat tahun ajaran</a> dulu.</p>
+{{else}}
+<form method="post" action="{{if .IsNew}}/kelas{{else}}/kelas/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+
+{{if .IsNew}}
+<div class="field{{if .Errors.academic_year_id}} has-error{{end}}">
+<label for="academic_year_id">Tahun ajaran</label>
+<select id="academic_year_id" name="academic_year_id" required>
+{{range .Years}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}{{if .IsActive}} (aktif){{end}}</option>{{end}}
+</select>
+{{with .Errors.academic_year_id}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+{{else}}
+<div class="field">
+<label>Tahun ajaran</label>
+<p class="static-value">{{.YearName}}</p>
+</div>
+{{end}}
+
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama kelas</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="20" placeholder="1A" required{{if .Errors.name}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+{{with .Errors.name}}<p class="field-error" id="name-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.grade_level}} has-error{{end}}">
+<label for="grade_level">Tingkat</label>
+<select id="grade_level" name="grade_level" required{{if .Errors.grade_level}} aria-invalid="true" aria-describedby="grade-error"{{end}}>
+<option value="">Pilih tingkat</option>
+{{range $g := seq 1 12}}<option value="{{$g}}"{{if eq (print $g) $.Form.GradeLevel}} selected{{end}}>{{$g}}</option>{{end}}
+</select>
+{{with .Errors.grade_level}}<p class="field-error" id="grade-error">{{.}}</p>{{end}}
+</div>
+</div>
+
+<div class="field{{if .Errors.homeroom_teacher_id}} has-error{{end}}">
+<label for="homeroom_teacher_id">Wali kelas</label>
+<select id="homeroom_teacher_id" name="homeroom_teacher_id"{{if .Errors.homeroom_teacher_id}} aria-invalid="true" aria-describedby="teacher-error"{{end}}>
+<option value="">Belum ditentukan</option>
+{{range .Teachers}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.homeroom_teacher_id}}<p class="field-error" id="teacher-error">{{.}}</p>{{end}}
+{{if not .Teachers}}<p class="hint">Belum ada guru aktif. Wali kelas bisa diisi nanti.</p>{{end}}
+</div>
+
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
+<a class="btn btn-ghost" href="{{.BackURL}}">Batal</a>
+</div>
+</form>
+{{end}}
+</section>
+{{end}}
