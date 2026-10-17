@@ -180,6 +180,15 @@ web/static/
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
 
+## Tahun Ajaran
+
+Tabel `academic_years` (migrasi 000008), fungsi di [internal/school/academic_year_repo.go](internal/school/academic_year_repo.go).
+
+- Tepat satu tahun ajaran aktif per sekolah, dijaga unique partial index `academic_years_one_active`. Tahun ajaran baru selalu nonaktif.
+- `end_date` harus setelah `start_date`, dan nama unik per sekolah (database menolak keduanya).
+- Ganti tahun aktif hanya lewat `school.SetActive(ctx, tx, schoolID, yearID)` di dalam transaksi. Fungsi ini mengunci semua tahun ajaran sekolah dulu agar dua aktivasi bersamaan tidak bertabrakan.
+- Semua fungsi repository menerima `school_id` dan memperlakukan data sekolah lain sebagai tidak ada (`school.ErrNotFound`). Fungsi repository menerima `database.DBTX` (pool atau transaksi), sehingga perubahan data dan `audit.Record` bisa berada di satu transaksi.
+
 ## Audit
 
 Paket [internal/audit](internal/audit/audit.go) mencatat perubahan data ke tabel `audit_logs`:
