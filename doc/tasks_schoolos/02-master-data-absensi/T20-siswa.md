@@ -24,11 +24,11 @@ Data siswa tersimpan dengan NIS unik per sekolah. Siswa tidak terikat ke kelas d
 - `internal/students/repo.go`, `model.go`
 
 ## Kriteria selesai
-- [ ] Dua siswa dengan NIS sama di sekolah yang sama ditolak database
-- [ ] Dua siswa dengan NIS sama di sekolah berbeda diizinkan
-- [ ] NIS `007` tetap tersimpan sebagai `007`, tidak berubah menjadi `7`
-- [ ] `gender` selain `L`, `P`, atau NULL ditolak
-- [ ] `Search` hanya mengembalikan siswa dari sekolah pemanggil
+- [x] Dua siswa dengan NIS sama di sekolah yang sama ditolak database
+- [x] Dua siswa dengan NIS sama di sekolah berbeda diizinkan
+- [x] NIS `007` tetap tersimpan sebagai `007`, tidak berubah menjadi `7`
+- [x] `gender` selain `L`, `P`, atau NULL ditolak
+- [x] `Search` hanya mengembalikan siswa dari sekolah pemanggil
 
 ## Catatan
 - Status `lulus` dan `pindah` disiapkan sejak awal, walaupun alur kenaikan kelas belum ada di MVP 1.
