@@ -11,18 +11,47 @@
 
 {{template "flash" .}}
 
-<section class="kpi-grid kpi-grid-2" aria-label="Ringkasan">
-<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Baris data</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "spreadsheet"}}</span></span><span class="kpi-value">{{.Batch.TotalRows}}</span><span class="kpi-hint">Belum disimpan ke data siswa</span></div>
+{{if .Batch.Validated}}
+<section class="kpi-grid" aria-label="Ringkasan">
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Siswa baru</span><span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "user-check"}}</span></span><span class="kpi-value">{{.Batch.NewRows}}</span><span class="kpi-hint">Baris valid, NIS belum terdaftar</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Akan diperbarui</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "users"}}</span></span><span class="kpi-value">{{.Batch.UpdateRows}}</span><span class="kpi-hint">NIS sudah terdaftar di sekolah</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Perlu diperbaiki</span><span class="kpi-icon bg-red-50 text-red-600">{{template "icon" "error"}}</span></span><span class="kpi-value">{{.Batch.ErrorRows}}</span><span class="kpi-hint">Tidak akan disimpan</span></div>
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Dilewati</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.SkippedRows}}</span><span class="kpi-hint">Baris kosong atau baris contoh</span></div>
 </section>
+{{else}}
+<section class="kpi-grid kpi-grid-2" aria-label="Ringkasan">
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Baris data</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "spreadsheet"}}</span></span><span class="kpi-value">{{.Batch.TotalRows}}</span><span class="kpi-hint">Belum diperiksa</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Dilewati</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.SkippedRows}}</span><span class="kpi-hint">Baris kosong atau baris contoh</span></div>
+</section>
+{{end}}
+
+{{if .Errors}}
+<section class="card mb-4 desktop:mb-6" aria-labelledby="errors-title">
+<div class="card-head"><div><h2 id="errors-title" class="card-title">Baris yang perlu diperbaiki</h2><p class="m-0 text-sm text-slate-500">Perbaiki baris ini di file Excel, lalu unggah lagi. Baris lain tidak terpengaruh.</p></div></div>
+<ul class="error-list">
+{{range .Errors}}<li>
+<span class="column-letter" aria-hidden="true">{{.Line}}</span>
+<div class="min-w-0 flex-1">
+<strong class="block">Baris {{.Line}}{{with .NIS}} · NIS {{.}}{{end}}{{with .Name}} · {{.}}{{end}}</strong>
+<ul class="error-messages">{{range .Errors}}<li>{{.Message}}</li>{{end}}</ul>
+</div>
+</li>
+{{end}}</ul>
+{{with .ErrorsMore}}<p class="muted mt-4 mb-0 text-sm">dan {{.}} baris lain yang perlu diperbaiki.</p>{{end}}
+</section>
+{{end}}
 
 <div class="batch-grid">
 <section class="card" aria-labelledby="next-title">
 <h2 id="next-title" class="card-title">Langkah impor</h2>
 <ol class="steps">
 <li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Unggah file</strong><p>File terbaca dan judul kolom sesuai template.</p></div></li>
+{{if .Batch.Validated}}
+<li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Periksa data per baris</strong><p>{{.Batch.ValidRows}} baris siap disimpan, {{.Batch.ErrorRows}} baris perlu diperbaiki.</p></div></li>
+{{else}}
 <li class="step"><span class="step-num">2</span><div><strong>Periksa data per baris</strong><p>NIS, kelas, tanggal lahir, dan data wali diperiksa sebelum disimpan.</p></div></li>
-<li class="step"><span class="step-num">3</span><div><strong>Simpan ke data siswa</strong><p>Hanya baris yang benar yang disimpan.</p></div></li>
+{{end}}
+<li class="step"><span class="step-num">3</span><div><strong>Simpan ke data siswa</strong><p>Hanya baris yang benar yang disimpan. Siswa yang NIS-nya sudah ada akan diperbarui.</p></div></li>
 </ol>
 </section>
 
@@ -40,7 +69,7 @@
 </div>
 
 <section class="card card-flush mt-4 desktop:mt-6" aria-labelledby="preview-title">
-<div class="px-5 pt-5 sm:px-6 sm:pt-6"><h2 id="preview-title" class="card-title">Pratinjau data</h2><p class="m-0 text-sm text-slate-500">{{len .Batch.Preview}} baris pertama dari {{.Batch.TotalRows}}.</p></div>
+<div class="px-5 pt-5 sm:px-6 sm:pt-6"><h2 id="preview-title" class="card-title">Pratinjau data</h2><p class="m-0 text-sm text-slate-500">{{len .Batch.Preview}} baris pertama dari {{.Batch.TotalRows}}, sesuai isi file.</p></div>
 <div class="table-wrap mt-4">
 <table>
 <thead><tr><th>Baris</th>{{range .Columns}}<th class="nowrap">{{.Header}}</th>{{end}}</tr></thead>

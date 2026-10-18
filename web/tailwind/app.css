@@ -1124,6 +1124,22 @@
     @apply grid grid-cols-1 items-start gap-4 desktop:grid-cols-2 desktop:gap-6;
   }
 
+  .error-list {
+    @apply m-0 list-none divide-y divide-slate-100 p-0;
+  }
+
+  .error-list > li {
+    @apply flex items-start gap-3 py-3 first:pt-0 last:pb-0;
+  }
+
+  .error-list .column-letter {
+    @apply border-red-200 bg-red-50 text-red-700;
+  }
+
+  .error-messages {
+    @apply m-0 mt-1 grid list-none gap-0.5 p-0 text-sm text-red-700;
+  }
+
   .steps {
     @apply m-0 mt-4 grid list-none gap-4 p-0;
   }

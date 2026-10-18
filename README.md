@@ -472,7 +472,16 @@ Paket [internal/importer](internal/importer). Akses: `admin_tu`. Menu "Siswa" te
   - lebih dari 5.000 baris data.
 - Hanya sheet pertama yang dibaca. Baris pertama yang berisi adalah header. Baris kosong di tengah dan baris contoh template dilewati dan dicatat; baris kosong di akhir tidak dicatat. Isi sel di-trim; tanggal yang diubah Excel menjadi angka seri dikembalikan ke `YYYY-MM-DD`.
 - Hasil parsing disimpan di `import_batches.parsed_rows` (migrasi 000028) dengan status `diunggah`; file aslinya tidak disimpan. Belum ada data yang ditulis ke `students`. Halaman `GET /impor/batch/{id}` menampilkan jumlah baris, baris yang dilewati, dan pratinjau 5 baris pertama.
-- Berikutnya: validasi per baris (T54), simpan sebagai job (T55), laporan kesalahan (T56).
+- Validasi per baris ([validate.go](internal/importer/validate.go), T54) berjalan langsung setelah unggahan, dalam transaksi yang sama, lalu batch berstatus `divalidasi`:
+  - aturan sama dengan form siswa dan wali: NIS wajib (maks. 30 karakter, tidak boleh ganda di file yang sama), nama wajib (maks. 100), tanggal lahir `YYYY-MM-DD` antara 1950 dan hari ini, jenis kelamin `L`/`P`, kelas wajib dan ada di tahun ajaran aktif, telepon wali dinormalisasi seperti T23, email wali valid, nama wali wajib jika telepon atau email wali diisi;
+  - semua kesalahan satu baris dilaporkan sekaligus, dengan nomor baris Excel asli; baris salah tidak menghentikan baris lain;
+  - NIS yang sudah ada di sekolah bukan kesalahan: baris ditandai `diperbarui`;
+  - hasil per baris di tabel `import_rows` (migrasi 000029): `raw` (isi sel), `status` (`valid`, `error`, `dilewati`), `action` (`baru`/`diperbarui`), `data` (hasil normalisasi untuk T55), dan `errors` (kolom, jenis, pesan);
+  - tanpa tahun ajaran aktif unggahan ditolak dan tidak ada batch yang tersimpan;
+  - validasi tidak menulis ke `students`, `guardians`, atau `enrollments`.
+- Halaman batch menampilkan jumlah siswa baru, akan diperbarui, perlu diperbaiki, dan dilewati, serta daftar 50 baris error pertama beserta pesannya.
+- File uji 200 baris (3 salah) ada di [internal/importer/testdata](internal/importer/testdata); buat ulang dengan `go test ./internal/importer -run TestTestdata200UpToDate -update`.
+- Berikutnya: simpan sebagai job (T55), laporan kesalahan (T56).
 
 ## Job Latar Belakang (River)
 
