@@ -421,7 +421,7 @@ err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 
 - `Record` wajib dipanggil di **transaksi yang sama** dengan perubahan datanya, sehingga audit ikut di-rollback bila aksi gagal.
 - `school_id`, `action`, `entity_type`, dan `entity_id` wajib. `user_id` kosong berarti aksi sistem.
-- `Before`/`After` di-encode ke JSON. Kunci yang mengandung `password`, `token`, `secret`, atau `api_key` ditolak agar rahasia tidak masuk ke jejak audit.
+- `Before`/`After` di-encode ke JSON. Kunci yang mengandung `password`, `token`, `secret`, atau `api_key` ditolak agar rahasia tidak masuk ke jejak audit. Kunci yang mengandung `address` atau `alamat` dengan nilai **teks** juga ditolak (alamat adalah data pribadi siswa/wali); tanda boolean seperti `has_address` boleh. Audit wali mencatat `has_address`, bukan alamatnya; baris audit lama sudah diredaksi oleh migrasi 000025 (satu-satunya pengecualian append-only, khusus penghapusan data pribadi).
 - **Append-only:** trigger database menolak `UPDATE`, `DELETE`, dan `TRUNCATE` pada `audit_logs` untuk semua user, termasuk superuser.
 
 Batasan: aplikasi dan migrasi saat ini memakai user database yang sama (`postgres`, superuser di lokal dan Railway). `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` di migrasi tidak berpengaruh untuk pemilik tabel atau superuser, jadi perlindungan yang berlaku sekarang adalah trigger. Superuser masih bisa menonaktifkan trigger secara sengaja (`ALTER TABLE ... DISABLE TRIGGER`); itu tindakan administrasi database, bukan lewat aplikasi. Untuk production, sebaiknya aplikasi memakai role terpisah tanpa hak DDL. Migrasi `down` untuk tabel ini menghapus seluruh jejak audit, jadi hanya untuk development.

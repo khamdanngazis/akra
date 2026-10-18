@@ -41,6 +41,11 @@ type Entry struct {
 // After, agar rahasia tidak sengaja masuk ke jejak audit.
 var sensitiveKeys = []string{"password", "token", "secret", "api_key", "apikey"}
 
+// addressKeys adalah potongan nama kunci alamat. Alamat (data pribadi siswa
+// dan wali) ditolak jika nilainya teks; tanda seperti has_address (boolean)
+// tetap boleh.
+var addressKeys = []string{"address", "alamat"}
+
 // Record menyimpan e di dalam transaksi tx.
 func Record(ctx context.Context, tx pgx.Tx, e Entry) error {
 	if err := validate(e); err != nil {
@@ -115,6 +120,13 @@ func findSensitiveKey(v any) (string, bool) {
 			for _, s := range sensitiveKeys {
 				if strings.Contains(lk, s) {
 					return k, true
+				}
+			}
+			if _, isText := child.(string); isText {
+				for _, s := range addressKeys {
+					if strings.Contains(lk, s) {
+						return k, true
+					}
 				}
 			}
 			if key, ok := findSensitiveKey(child); ok {

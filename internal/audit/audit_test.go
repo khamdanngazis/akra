@@ -43,6 +43,8 @@ func TestRecord_RejectsSensitiveKeys(t *testing.T) {
 		map[string]any{"email": "a@b.id", "password_hash": "$argon2id$..."},
 		map[string]any{"user": map[string]any{"ResetToken": "abc"}},
 		[]any{map[string]any{"api_key": "re_x"}},
+		map[string]any{"address": "Jl. Melati No. 5"},
+		map[string]any{"wali": map[string]any{"alamat_rumah": "Jl. Mawar 1"}},
 		struct {
 			Name   string
 			Secret string `json:"client_secret"`
@@ -54,6 +56,14 @@ func TestRecord_RejectsSensitiveKeys(t *testing.T) {
 		if err := Record(context.Background(), nil, e); !errors.Is(err, ErrInvalidEntry) {
 			t.Errorf("After = %#v: error = %v, want ErrInvalidEntry", v, err)
 		}
+	}
+}
+
+func TestRecord_AllowsAddressFlags(t *testing.T) {
+	e := validEntry()
+	e.After = map[string]any{"has_address": true, "email": "a@b.id"}
+	if _, err := encode("after", e.After); err != nil {
+		t.Errorf("boolean address flag rejected: %v", err)
 	}
 }
 

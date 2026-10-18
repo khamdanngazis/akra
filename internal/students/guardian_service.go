@@ -180,15 +180,17 @@ func NormalizePhone(raw string) (string, error) {
 	return "+" + d, nil
 }
 
+// guardianJSON adalah isi audit wali. Alamat tidak disimpan (praktis sama
+// dengan alamat rumah siswa); cukup tanda apakah alamat diisi.
 type guardianJSON struct {
-	FullName string `json:"full_name"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
-	Address  string `json:"address"`
+	FullName   string `json:"full_name"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	HasAddress bool   `json:"has_address"`
 }
 
 func guardianSnapshot(g Guardian) guardianJSON {
-	return guardianJSON{FullName: g.FullName, Phone: g.Phone, Email: g.Email, Address: g.Address}
+	return guardianJSON{FullName: g.FullName, Phone: g.Phone, Email: g.Email, HasAddress: g.Address != ""}
 }
 
 func guardianAudit(actor school.Actor, action, id string, before, after any) audit.Entry {
