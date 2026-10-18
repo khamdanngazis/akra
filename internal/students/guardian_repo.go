@@ -92,6 +92,38 @@ func CreateGuardian(ctx context.Context, q database.DBTX, schoolID string, in Gu
 	return g, nil
 }
 
+// FindMatchingGuardian mencari wali yang dianggap orang yang sama saat
+// impor (T57), dengan nama tanpa membedakan huruf besar/kecil:
+//
+//  1. wali yang sudah tertaut ke siswa studentID dengan nama yang sama; atau
+//  2. wali lain di sekolah dengan nama dan telepon (sudah dinormalisasi)
+//     yang sama.
+//
+// Tanpa telepon, hanya aturan 1 yang berlaku agar dua wali bernama sama
+// tidak tergabung. ErrGuardianNotFound jika tidak ada yang cocok. Dua orang
+// berbeda dengan nama dan telepon sama bisa tergabung; risiko ini diterima
+// untuk MVP dan bisa dirapikan manual.
+func FindMatchingGuardian(ctx context.Context, q database.DBTX, schoolID, studentID, fullName, phone string) (Guardian, error) {
+	rows, err := q.Query(ctx, `
+		SELECT `+guardianColumns+` FROM guardians g
+		LEFT JOIN student_guardians sg ON sg.school_id = g.school_id AND sg.guardian_id = g.id AND sg.student_id = $2
+		WHERE g.school_id = $1 AND lower(g.full_name) = lower($3)
+		  AND (sg.guardian_id IS NOT NULL OR ($4::text IS NOT NULL AND g.phone = $4))
+		ORDER BY sg.guardian_id IS NOT NULL DESC, g.created_at, g.id
+		LIMIT 1`, schoolID, studentID, fullName, nullIfEmpty(phone))
+	if err != nil {
+		return Guardian{}, mapGuardianError("find matching guardian", err)
+	}
+	g, err := pgx.CollectExactlyOneRow(rows, scanGuardian)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Guardian{}, ErrGuardianNotFound
+	}
+	if err != nil {
+		return Guardian{}, mapGuardianError("find matching guardian", err)
+	}
+	return g, nil
+}
+
 // GetGuardian mengembalikan satu wali milik schoolID.
 func GetGuardian(ctx context.Context, q database.DBTX, schoolID, id string) (Guardian, error) {
 	if !database.IsUUID(id) {
