@@ -135,7 +135,11 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (f *fixture) get(user, school, roles string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, "/portal", nil)
+	return f.getPath("/portal", user, school, roles)
+}
+
+func (f *fixture) getPath(path, user, school, roles string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.Header.Set("X-User", user)
 	req.Header.Set("X-School", school)
 	req.Header.Set("X-Roles", roles)

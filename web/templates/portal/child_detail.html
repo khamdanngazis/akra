@@ -1,0 +1,37 @@
+{{define "title"}}{{.Child.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/portal">← Daftar anak</a></p>
+<h1>{{.Child.FullName}}</h1>
+<p class="muted">NIS {{.Child.NIS}}</p>
+{{template "flash" .}}
+
+<section class="card">
+<h2 class="section-title">Profil</h2>
+<dl class="data-list">
+<dt>Nama lengkap</dt><dd>{{.Child.FullName}}</dd>
+<dt>NIS</dt><dd>{{.Child.NIS}}</dd>
+<dt>Tanggal lahir</dt><dd>{{or .BirthDate "—"}}</dd>
+<dt>Jenis kelamin</dt><dd>{{or .Gender "—"}}</dd>
+<dt>Kelas</dt><dd>{{if .Child.ClassName}}{{.Child.ClassName}} · {{.Child.YearName}}{{else}}<span class="muted">Belum ditempatkan di kelas tahun ajaran aktif.</span>{{end}}</dd>
+<dt>Wali kelas</dt><dd>{{or .Child.Homeroom "—"}}</dd>
+</dl>
+</section>
+
+<h2 class="section-title">Absensi</h2>
+{{if .Child.HasRecap}}
+<section class="card stat-card">
+<p class="muted">Tahun ajaran {{.Child.YearName}}, {{.Range}}.</p>
+<div class="stat-grid">
+<div><span class="stat-value">{{.Child.Attendance.Hadir}}</span><span class="stat-label">hadir</span></div>
+<div><span class="stat-value">{{.Child.Attendance.Sakit}}</span><span class="stat-label">sakit</span></div>
+<div><span class="stat-value">{{.Child.Attendance.Izin}}</span><span class="stat-label">izin</span></div>
+<div><span class="stat-value">{{.Child.Attendance.Alpa}}</span><span class="stat-label">alpa</span></div>
+<div><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
+</div>
+{{if eq .Child.Attendance.Total 0}}<p class="hint">Belum ada catatan absensi.</p>{{end}}
+</section>
+{{else}}
+<section class="card empty-state"><p>Belum ada tahun ajaran aktif.</p></section>
+{{end}}
+{{end}}

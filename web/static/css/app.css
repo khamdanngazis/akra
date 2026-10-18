@@ -1136,3 +1136,7 @@ fieldset.field > legend {
 .child-name {
   font-size: var(--text-lg);
 }
+
+.card > .section-title:first-child {
+  margin-top: 0;
+}

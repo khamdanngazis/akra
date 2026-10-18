@@ -260,6 +260,8 @@ Migrasi 000013 menambah `users.guardian_id` (unik, foreign key komposit ke `guar
 Paket [internal/portal](internal/portal/service.go). Semua route `/portal` hanya untuk `orang_tua` (staf `403`).
 
 - **Daftar anak** (`GET /portal`, T43): anak yang terhubung lewat `student_guardians` dengan wali akun yang login. Wali dicari dari `users.guardian_id` berdasarkan user dan sekolah di sesi pada setiap request, tidak dari parameter atau sesi, sehingga perubahan hubungan wali langsung berlaku. Satu anak tampil sebagai ringkasan, lebih dari satu sebagai kartu. Kelas hanya dari enrollment aktif di **tahun ajaran aktif**; anak yang belum ditempatkan ditandai. Tanpa anak: "Belum ada data anak yang terhubung. Hubungi sekolah." Satu anak bisa punya dua wali; keduanya melihat anak yang sama.
+- **Detail siswa** (`GET /portal/siswa/{id}`, T44, [child_service.go](internal/portal/child_service.go)): nama, NIS, tanggal lahir, jenis kelamin, kelas dan wali kelas di tahun ajaran aktif, serta rekap absensi tahun ajaran aktif (awal tahun ajaran sampai hari ini). Rekap memakai `attendance.SummaryByStudent` (T27) untuk setiap kelas yang pernah ditempati anak di tahun ajaran aktif lalu dijumlahkan, sehingga angkanya sama dengan rekap kelas, termasuk untuk anak yang pindah kelas. Tidak menampilkan status siswa, catatan staf, atau wali lain, dan tidak ada aksi ubah.
+- Siswa yang tidak ada, milik sekolah lain, atau bukan anak sendiri sama-sama `404` dengan isi halaman yang sama, agar id siswa lain tidak bisa ditebak.
 
 ## Absensi
 

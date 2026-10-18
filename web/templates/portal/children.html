@@ -10,9 +10,10 @@
 <div class="pay-list child-list">
 {{range .Children}}
 <section class="pay-item child-card">
-<div class="pay-row"><strong class="child-name">{{.Name}}</strong>{{template "student_status" .Status}}</div>
+<div class="pay-row"><a href="/portal/siswa/{{.ID}}"><strong class="child-name">{{.Name}}</strong></a></div>
 <p class="pay-item-meta">NIS {{.NIS}}{{with .Relationship}} · Anda: {{.}}{{end}}</p>
 <p>{{if .ClassName}}Kelas <strong>{{.ClassName}}</strong> · {{.YearName}}{{else}}<span class="muted">Belum ditempatkan di kelas tahun ajaran aktif.</span>{{end}}</p>
+<p><a href="/portal/siswa/{{.ID}}">Lihat profil dan absensi →</a></p>
 </section>
 {{end}}
 </div>
