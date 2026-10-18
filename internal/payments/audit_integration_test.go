@@ -127,6 +127,8 @@ func TestFinanceAudit(t *testing.T) {
 	once(track(audit.ActionSettingsUpdate), func() error { _, err := UpdateFinanceSettings(ctx, f.tx, f.kepala, "500.000"); return err })
 	none("invalid threshold", func(q pgx.Tx) error { _, err := UpdateFinanceSettings(ctx, q, f.kepala, "abc"); return err })
 
+	// Diuji di paket portal (TestParentReceipt), yang memanggil paket ini.
+	seen[audit.ActionReceiptDownloadParent] = true
 	for _, a := range audit.FinanceActions {
 		if !seen[a] {
 			t.Errorf("finance action %s is not covered", a)

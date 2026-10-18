@@ -23,11 +23,11 @@ Orang tua bisa mengunduh kuitansi untuk pembayaran anaknya sendiri, dan hanya it
 - `web/templates/portal/billing.html` (tautan)
 
 ## Kriteria selesai
-- [ ] Orang tua mengunduh kuitansi anaknya dan PDF-nya sama dengan yang dicetak bendahara
-- [ ] Mengubah `paymentID` ke pembayaran siswa lain menghasilkan `404`
-- [ ] Mengubah `paymentID` ke pembayaran sekolah lain menghasilkan `404`
-- [ ] Unduhan tercatat di audit log
-- [ ] Kuitansi pembayaran yang dibatalkan tetap bisa diunduh dengan watermark (sesuai T41)
+- [x] Orang tua mengunduh kuitansi anaknya dan PDF-nya sama dengan yang dicetak bendahara
+- [x] Mengubah `paymentID` ke pembayaran siswa lain menghasilkan `404`
+- [x] Mengubah `paymentID` ke pembayaran sekolah lain menghasilkan `404`
+- [x] Unduhan tercatat di audit log
+- [x] Kuitansi pembayaran yang dibatalkan tetap bisa diunduh dengan watermark (sesuai T41)
 
 ## Catatan
 - Pengecekan kepemilikan dilakukan di handler dan di query. Jangan hanya di salah satunya.

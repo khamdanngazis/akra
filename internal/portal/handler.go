@@ -3,9 +3,11 @@
 package portal
 
 import (
+	"bytes"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -17,6 +19,7 @@ import (
 	"akra/internal/platform/clock"
 	"akra/internal/platform/money"
 	"akra/internal/platform/page"
+	"akra/internal/school"
 )
 
 const (
@@ -50,6 +53,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/siswa/{id}", h.childDetail)
 		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
 		r.Get("/siswa/{id}/tagihan", h.childBilling)
+		// Peran: orang_tua (hanya pembayaran anak sendiri; selain itu 404).
+		r.Get("/pembayaran/{id}/kuitansi", h.receipt)
 	})
 }
 
@@ -175,4 +180,30 @@ func (h *Handler) childBilling(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	h.render.Render(w, r, http.StatusOK, pageBilling, v)
+}
+
+func (h *Handler) receipt(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	actor := school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}
+	rc, err := h.svc.ParentReceipt(r.Context(), actor, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrNotFound) {
+		page.NotFound(h.render, w, r, id, "Kuitansi tidak ditemukan.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "parent receipt", err)
+		return
+	}
+	rc.PrintedAt = clock.Today()
+	var buf bytes.Buffer
+	if err := payments.WriteReceiptPDF(&buf, rc, true); err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "render receipt", err)
+		return
+	}
+	hdr := w.Header()
+	hdr.Set("Content-Type", "application/pdf")
+	hdr.Set("Content-Disposition", `attachment; filename="`+payments.ReceiptFilename(rc.Number)+`"`)
+	hdr.Set("Cache-Control", "private, no-store")
+	hdr.Set("Content-Length", strconv.Itoa(buf.Len()))
+	_, _ = buf.WriteTo(w)
 }
