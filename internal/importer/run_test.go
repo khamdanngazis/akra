@@ -135,7 +135,7 @@ func TestRun_SyncSavesStudentsClassesAndGuardians(t *testing.T) {
 	}
 
 	page := f.do(httptest.NewRequest(http.MethodGet, "/impor/batch/"+batchID, nil), f.schoolA, f.adminA, auth.RoleAdminTU).Body.String()
-	if !strings.Contains(page, "2 siswa baru, 1 diperbarui.") || !strings.Contains(page, `badge-success">Selesai`) {
+	if !strings.Contains(page, "2 siswa baru, 1 diperbarui, 0 dilewati.") || !strings.Contains(page, `badge-success">Selesai`) {
 		t.Error("batch page misses the result")
 	}
 
@@ -196,7 +196,7 @@ func TestRun_RowFailureDoesNotStopOthers(t *testing.T) {
 		t.Errorf("failed rows = %+v, %v", failed, err)
 	}
 	page := f.do(httptest.NewRequest(http.MethodGet, "/impor/batch/"+batchID, nil), f.schoolA, f.adminA, auth.RoleAdminTU).Body.String()
-	if !strings.Contains(page, "Baris yang gagal disimpan") || !strings.Contains(page, "1 siswa baru, 0 diperbarui, 1 gagal.") {
+	if !strings.Contains(page, "Baris yang gagal disimpan") || !strings.Contains(page, "1 siswa baru, 0 diperbarui, 0 dilewati, 1 gagal.") {
 		t.Error("batch page misses failed rows")
 	}
 }

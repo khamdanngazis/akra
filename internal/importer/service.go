@@ -55,6 +55,10 @@ type Batch struct {
 	Error         string
 }
 
+// NotImported adalah jumlah baris yang tidak masuk ke data siswa: gagal
+// validasi atau gagal disimpan.
+func (b Batch) NotImported() int { return b.ErrorRows + b.FailedCount }
+
 // Running melaporkan apakah penyimpanan sedang berjalan.
 func (b Batch) Running() bool { return b.Status == StatusRunning }
 

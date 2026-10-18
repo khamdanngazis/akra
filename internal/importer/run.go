@@ -106,7 +106,7 @@ func (s *Service) Run(ctx context.Context, actor school.Actor, batchID string, t
 			return err
 		}
 		for {
-			n, err := processChunk(ctx, tx, actor.SchoolID, batchID, today)
+			n, err := processChunk(ctx, tx, actor.SchoolID, batchID, today, 0)
 			if err != nil {
 				return err
 			}
@@ -130,6 +130,9 @@ type ImportStudentsWorker struct {
 	// failAfterChunks, jika > 0, membuat Work gagal setelah sekian
 	// transaksi (hanya untuk uji).
 	failAfterChunks int
+	// failAtLine, jika > 0, membuat transaksi gagal di tengah saat akan
+	// memproses baris Excel tersebut (hanya untuk uji).
+	failAtLine int
 }
 
 // NewImportStudentsWorker mengembalikan worker impor siswa.
@@ -170,7 +173,7 @@ func (w *ImportStudentsWorker) run(ctx context.Context, args ImportStudentsArgs)
 		var n int
 		err := pgx.BeginFunc(ctx, w.DB, func(tx pgx.Tx) error {
 			var err error
-			n, err = processChunk(ctx, tx, args.SchoolID, args.BatchID, runOn)
+			n, err = processChunk(ctx, tx, args.SchoolID, args.BatchID, runOn, w.failAtLine)
 			return err
 		})
 		if err != nil {
@@ -200,8 +203,10 @@ func (w *ImportStudentsWorker) markFailed(args ImportStudentsArgs, cause error) 
 
 // processChunk menyimpan paling banyak runChunkSize baris valid yang belum
 // diproses, lalu memperbarui hitungan batch. Mengembalikan jumlah baris yang
-// diproses (0 = selesai).
-func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runOn time.Time) (int, error) {
+// diproses (0 = selesai). Jika gagal, seluruh transaksi batal sehingga tidak
+// ada baris setengah tersimpan; percobaan berikutnya mengulang dari baris
+// pertama yang belum ditandai processed_at.
+func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runOn time.Time, failAtLine int) (int, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT id, line, data FROM import_rows
 		WHERE school_id = $1 AND batch_id = $2 AND status = 'valid' AND processed_at IS NULL
@@ -226,6 +231,9 @@ func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runO
 		return 0, fmt.Errorf("importer: pending rows: %w", err)
 	}
 	for _, p := range list {
+		if failAtLine > 0 && p.line == failAtLine {
+			return 0, errors.New("injected failure for test")
+		}
 		result, msg, err := saveRow(ctx, tx, schoolID, p.data, runOn)
 		if err != nil {
 			return 0, fmt.Errorf("importer: line %d: %w", p.line, err)
@@ -318,29 +326,23 @@ func upsertRow(ctx context.Context, tx pgx.Tx, schoolID string, d ValidRow, runO
 	return ResultUpdated, nil
 }
 
-// upsertGuardian memakai wali yang sama jika ada: wali siswa ini dengan nama
-// yang sama, atau wali di sekolah dengan nama dan telepon yang sama. Jika
-// tidak ada, wali baru dibuat. Telepon dan email kosong tidak menghapus data
-// yang sudah ada.
+// upsertGuardian memakai wali yang sama jika ada (students.FindMatchingGuardian),
+// atau membuat wali baru, lalu menautkannya ke siswa. Telepon dan email
+// kosong tidak menghapus data wali yang sudah ada.
 func upsertGuardian(ctx context.Context, tx pgx.Tx, schoolID, studentID string, d ValidRow) error {
 	var guardianID string
-	err := tx.QueryRow(ctx, `
-		SELECT g.id FROM guardians g
-		WHERE g.school_id = $1 AND lower(g.full_name) = lower($3)
-		  AND (EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.school_id = g.school_id AND sg.guardian_id = g.id AND sg.student_id = $2)
-		       OR ($4::text IS NOT NULL AND g.phone = $4))
-		ORDER BY EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id AND sg.student_id = $2) DESC, g.created_at
-		LIMIT 1`, schoolID, studentID, d.GuardianName, nullIfEmpty(d.GuardianPhone)).Scan(&guardianID)
+	g, err := students.FindMatchingGuardian(ctx, tx, schoolID, studentID, d.GuardianName, d.GuardianPhone)
 	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		err = tx.QueryRow(ctx, `INSERT INTO guardians (school_id, full_name, phone, email) VALUES ($1, $2, $3, $4) RETURNING id`,
-			schoolID, d.GuardianName, nullIfEmpty(d.GuardianPhone), nullIfEmpty(d.GuardianEmail)).Scan(&guardianID)
+	case errors.Is(err, students.ErrGuardianNotFound):
+		g, err = students.CreateGuardian(ctx, tx, schoolID, students.GuardianInput{FullName: d.GuardianName, Phone: d.GuardianPhone, Email: d.GuardianEmail})
 		if err != nil {
 			return fmt.Errorf("create guardian: %w", err)
 		}
+		guardianID = g.ID
 	case err != nil:
 		return fmt.Errorf("find guardian: %w", err)
 	default:
+		guardianID = g.ID
 		_, err = tx.Exec(ctx, `
 			UPDATE guardians SET phone = coalesce($3, phone), email = coalesce($4, email), updated_at = now()
 			WHERE school_id = $1 AND id = $2`, schoolID, guardianID, nullIfEmpty(d.GuardianPhone), nullIfEmpty(d.GuardianEmail))

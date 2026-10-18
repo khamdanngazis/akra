@@ -16,8 +16,8 @@
 <section class="kpi-grid" aria-label="Ringkasan">
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Siswa baru</span><span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "user-check"}}</span></span><span class="kpi-value">{{.Batch.CreatedCount}}</span><span class="kpi-hint">Tersimpan dan masuk kelas</span></div>
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Diperbarui</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "users"}}</span></span><span class="kpi-value">{{.Batch.UpdatedCount}}</span><span class="kpi-hint">Siswa yang NIS-nya sudah ada</span></div>
-<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Gagal disimpan</span><span class="kpi-icon bg-red-50 text-red-600">{{template "icon" "error"}}</span></span><span class="kpi-value">{{.Batch.FailedCount}}</span><span class="kpi-hint">{{if .Batch.FailedCount}}Lihat alasannya di bawah{{else}}Semua baris valid tersimpan{{end}}</span></div>
-<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Tidak diimpor</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.ErrorRows}}</span><span class="kpi-hint">Baris yang perlu diperbaiki</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Dilewati</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.SkippedRows}}</span><span class="kpi-hint">Baris kosong atau baris contoh</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Tidak diimpor</span><span class="kpi-icon bg-red-50 text-red-600">{{template "icon" "error"}}</span></span><span class="kpi-value">{{.Batch.NotImported}}</span><span class="kpi-hint">{{if .Batch.NotImported}}Perlu diperbaiki atau gagal disimpan{{else}}Semua baris valid tersimpan{{end}}</span></div>
 </section>
 {{else if .Batch.Validated}}
 <section class="kpi-grid" aria-label="Ringkasan">
@@ -115,7 +115,7 @@
 <li class="step"><span class="step-num">2</span><div><strong>Periksa data per baris</strong><p>NIS, kelas, tanggal lahir, dan data wali diperiksa sebelum disimpan.</p></div></li>
 {{end}}
 {{if eq .Batch.Status "selesai"}}
-<li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Simpan ke data siswa</strong><p>{{.Batch.CreatedCount}} siswa baru, {{.Batch.UpdatedCount}} diperbarui{{if .Batch.FailedCount}}, {{.Batch.FailedCount}} gagal{{end}}.</p></div></li>
+<li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Simpan ke data siswa</strong><p>{{.Batch.CreatedCount}} siswa baru, {{.Batch.UpdatedCount}} diperbarui, {{.Batch.SkippedRows}} dilewati{{if .Batch.FailedCount}}, {{.Batch.FailedCount}} gagal{{end}}.</p></div></li>
 {{else}}
 <li class="step"><span class="step-num">3</span><div><strong>Simpan ke data siswa</strong><p>Hanya baris yang benar yang disimpan. Siswa yang NIS-nya sudah ada akan diperbarui.</p></div></li>
 {{end}}

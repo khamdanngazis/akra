@@ -1184,6 +1184,10 @@
     @apply m-0 mt-4 flex gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600 [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:flex-none [&_svg]:text-blue-600;
   }
 
+  .import-note-plain {
+    @apply mt-3 border-t-0 pt-0;
+  }
+
   .column-list {
     @apply m-0 list-none divide-y divide-slate-100 p-0;
   }

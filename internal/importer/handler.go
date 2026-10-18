@@ -268,7 +268,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	}
 	msg := "Impor berjalan di latar belakang. Halaman ini diperbarui otomatis."
 	if b.Status == StatusDone {
-		msg = fmt.Sprintf("Impor selesai: %d siswa baru, %d diperbarui.", b.CreatedCount, b.UpdatedCount)
+		msg = fmt.Sprintf("Impor selesai: %d siswa baru, %d diperbarui, %d dilewati.", b.CreatedCount, b.UpdatedCount, b.SkippedRows)
 		if b.FailedCount > 0 {
 			msg += fmt.Sprintf(" %d baris gagal disimpan.", b.FailedCount)
 		}
