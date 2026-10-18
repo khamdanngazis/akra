@@ -101,3 +101,50 @@ func (s *R2) Presign(ctx context.Context, key string, ttl time.Duration, opts Pr
 	}
 	return req.URL, nil
 }
+
+// Object adalah satu objek hasil List.
+type Object struct {
+	Key          string
+	Size         int64
+	LastModified time.Time
+}
+
+// List mengembalikan semua objek dengan awalan prefix (mis. "backups/"),
+// mengikuti halaman ListObjectsV2 sampai habis.
+func (s *R2) List(ctx context.Context, prefix string) ([]Object, error) {
+	var (
+		out   []Object
+		token *string
+	)
+	for {
+		res, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket: aws.String(s.bucket), Prefix: aws.String(prefix), ContinuationToken: token,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("storage: list %s: %w", prefix, err)
+		}
+		for _, o := range res.Contents {
+			obj := Object{Key: aws.ToString(o.Key), Size: aws.ToInt64(o.Size)}
+			if o.LastModified != nil {
+				obj.LastModified = *o.LastModified
+			}
+			out = append(out, obj)
+		}
+		if !aws.ToBool(res.IsTruncated) || res.NextContinuationToken == nil {
+			return out, nil
+		}
+		token = res.NextContinuationToken
+	}
+}
+
+// Get membuka objek untuk dibaca. Pemanggil wajib menutup body.
+func (s *R2) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	if !validKey(key) {
+		return nil, fmt.Errorf("storage: invalid key %q", key)
+	}
+	res, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
+	if err != nil {
+		return nil, fmt.Errorf("storage: get %s: %w", key, err)
+	}
+	return res.Body, nil
+}

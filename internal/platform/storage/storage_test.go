@@ -167,3 +167,58 @@ func TestR2_Presign(t *testing.T) {
 		t.Error("missing account id must be rejected")
 	}
 }
+
+// fakeList menjawab ListObjectsV2 dalam dua halaman dan GetObject.
+type fakeList struct{ reqs []string }
+
+func (f *fakeList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.reqs = append(f.reqs, r.Method+" "+r.URL.RequestURI())
+	if r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2" {
+		w.Header().Set("Content-Type", "application/xml")
+		if r.URL.Query().Get("continuation-token") == "" {
+			_, _ = io.WriteString(w, `<ListBucketResult><IsTruncated>true</IsTruncated><NextContinuationToken>t2</NextContinuationToken>
+<Contents><Key>backups/2026-10-17/schoolos.dump</Key><Size>10</Size><LastModified>2026-10-17T18:00:00Z</LastModified></Contents></ListBucketResult>`)
+			return
+		}
+		_, _ = io.WriteString(w, `<ListBucketResult><IsTruncated>false</IsTruncated>
+<Contents><Key>backups/2026-10-18/schoolos.dump</Key><Size>20</Size><LastModified>2026-10-18T18:00:00Z</LastModified></Contents></ListBucketResult>`)
+		return
+	}
+	if r.Method == http.MethodGet {
+		_, _ = io.WriteString(w, "PGDMP-isi")
+		return
+	}
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func TestR2_ListAndGet(t *testing.T) {
+	fake := &fakeList{}
+	srv := httptest.NewServer(fake)
+	defer srv.Close()
+	s, err := NewR2(R2Config{Endpoint: srv.URL, Bucket: "akra-private", AccessKeyID: "AKID", SecretAccessKey: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	objs, err := s.List(ctx, "backups/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(objs) != 2 || objs[1].Key != "backups/2026-10-18/schoolos.dump" || objs[1].Size != 20 || objs[1].LastModified.Day() != 18 {
+		t.Errorf("objects = %+v", objs)
+	}
+	if len(fake.reqs) != 2 || !strings.Contains(fake.reqs[0], "prefix=backups%2F") || !strings.Contains(fake.reqs[1], "continuation-token=t2") {
+		t.Errorf("requests = %v", fake.reqs)
+	}
+	body, err := s.Get(ctx, "backups/2026-10-18/schoolos.dump")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(body)
+	body.Close()
+	if string(b) != "PGDMP-isi" {
+		t.Errorf("body = %q", b)
+	}
+	if _, err := s.Get(ctx, "../rahasia"); err == nil {
+		t.Error("invalid key must be rejected")
+	}
+}
