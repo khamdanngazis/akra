@@ -282,7 +282,7 @@ func TestCSRF_AllMutatingRoutesRequireToken(t *testing.T) {
 
 func TestRouter_Static(t *testing.T) {
 	h := newTestRouter(t)
-	for _, path := range []string{"/static/css/app.css", "/static/js/alpine.min.js", "/static/img/favicon.svg"} {
+	for _, path := range []string{"/static/css/app.css", "/static/js/alpine.min.js", "/static/img/favicon.png"} {
 		if rec := serve(h, httptest.NewRequest(http.MethodGet, path, nil)); rec.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want 200", path, rec.Code)
 		}

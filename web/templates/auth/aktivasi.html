@@ -1,47 +1,35 @@
 {{define "title"}}Aktivasi akun{{end}}
 {{define "bodyClass"}}page-auth{{end}}
 {{define "content"}}
-<div class="auth-layout">
-{{template "auth_aside"}}
+{{template "auth_logo"}}
 <section class="card auth-card">
-<div class="auth-brand">
-{{template "logo"}}
-<div>
-<h1 class="brand-name">AKRA</h1>
-<p class="muted">Aktivasi akun portal orang tua</p>
-</div>
-</div>
-
+<h1>Aktivasi akun</h1>
+<p class="auth-sub">Akun portal orang tua untuk memantau anak Anda.</p>
 {{template "flash" .}}
 
 {{if .TokenValid}}
 <p>Halo <strong>{{.FullName}}</strong>, buat password untuk akun Anda.</p>
-<dl class="data-list compact">
+<dl class="data-list compact rounded-xl border border-slate-200 bg-slate-50 p-3">
 <dt>Kode sekolah</dt><dd><strong>{{.SchoolCode}}</strong></dd>
 <dt>Email</dt><dd>{{.Email}}</dd>
 </dl>
 <p class="hint">Catat kode sekolah di atas; dipakai setiap kali masuk.</p>
-<form method="post" action="/aktivasi" class="stack" x-data="{ showPassword: false, submitting: false }" @submit="submitting = true" novalidate>
+<form method="post" action="/aktivasi" class="stack mt-4" x-data="{ showPassword: false, submitting: false }" @submit="submitting = true" novalidate>
 {{ csrfField }}
 <input type="hidden" name="token" value="{{.Token}}">
 <div class="field{{if .Errors.password}} has-error{{end}}">
 <label for="password">Password baru</label>
-<div class="input-group">
-<input id="password" :type="showPassword ? 'text' : 'password'" type="password" name="password" autocomplete="new-password" minlength="8" required>
-<button type="button" class="btn btn-ghost btn-sm" @click="showPassword = !showPassword" x-text="showPassword ? 'Sembunyikan' : 'Tampilkan'">Tampilkan</button>
-</div>
+{{template "password_field" dict "id" "password" "name" "password" "autocomplete" "new-password" "min" true}}
 {{with .Errors.password}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Minimal 8 karakter.</p>{{end}}
 </div>
 <div class="field{{if .Errors.password_confirm}} has-error{{end}}">
 <label for="password_confirm">Ulangi password</label>
-<input id="password_confirm" :type="showPassword ? 'text' : 'password'" type="password" name="password_confirm" autocomplete="new-password" minlength="8" required>
+<div class="input-icon">{{template "icon" "lock"}}<input id="password_confirm" :type="showPassword ? 'text' : 'password'" type="password" name="password_confirm" autocomplete="new-password" minlength="8" required></div>
 {{with .Errors.password_confirm}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">Aktifkan akun</button>
 </form>
 {{end}}
-
-<p class="auth-footer"><a href="/login">Ke halaman masuk</a></p>
 </section>
-</div>
+<p class="auth-footer"><a href="/login">Ke halaman masuk</a></p>
 {{end}}

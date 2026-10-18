@@ -93,3 +93,23 @@ func TestCurrent(t *testing.T) {
 		t.Error("portal current item")
 	}
 }
+
+func TestBottomAndShortcuts(t *testing.T) {
+	kepala := MenuFor([]string{"kepala_sekolah"})
+	if got := Bottom(kepala); len(got) != 4 || got[0].Path != "/" {
+		t.Errorf("Bottom = %s", paths(got))
+	}
+	sc := Shortcuts(kepala)
+	if len(sc) != MaxShortcuts || strings.Contains(paths(sc), "/ ") || sc[0].Path == "/" {
+		t.Errorf("Shortcuts = %s", paths(sc))
+	}
+	parent := MenuFor([]string{"orang_tua"})
+	if got := Bottom(parent); len(got) != len(parent) {
+		t.Errorf("parent Bottom = %s", paths(got))
+	}
+	for _, it := range kepala {
+		if it.ShortLabel() == "" || len(it.ShortLabel()) > 10 {
+			t.Errorf("short label of %s = %q", it.Path, it.ShortLabel())
+		}
+	}
+}

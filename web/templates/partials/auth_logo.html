@@ -1,0 +1,12 @@
+{{/* auth_logo: logo lengkap (simbol, wordmark, tagline) di atas kartu halaman masuk. */}}
+{{define "auth_logo" -}}
+<div class="auth-logo">
+<div class="brand-row">{{template "logo"}}{{template "wordmark"}}</div>
+<p>Satu Sistem, Banyak Cerita</p>
+</div>
+{{- end}}
+
+{{/* password_field: input password dengan ikon gembok dan tombol tampilkan. Argumen: map id, name, autocomplete. Butuh x-data showPassword di form. */}}
+{{define "password_field" -}}
+<div class="input-icon">{{template "icon" "lock"}}<input id="{{.id}}" :type="showPassword ? 'text' : 'password'" type="password" name="{{.name}}" autocomplete="{{.autocomplete}}" class="has-reveal"{{if .min}} minlength="8"{{end}} required><button type="button" class="icon-btn reveal" @click="showPassword = !showPassword" :aria-pressed="showPassword.toString()" :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'" aria-label="Tampilkan password"><span x-show="!showPassword">{{template "icon" "eye"}}</span><span x-show="showPassword" x-cloak>{{template "icon" "eye-off"}}</span></button></div>
+{{- end}}

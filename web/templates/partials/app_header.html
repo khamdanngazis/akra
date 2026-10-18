@@ -1,36 +1,57 @@
-{{/* app_header adalah kerangka halaman yang butuh login: top bar (tablet, HP), sidebar navy (desktop) atau drawer. Argumen: auth.Identity. Menu dari nav.MenuFor (per peran). */}}
+{{/* app_header adalah kerangka halaman yang butuh login (lihat AKRA_Brand_Design_Guide.md bagian 5):
+     sidebar navy di desktop, drawer di tablet dan HP, header putih (pencarian bila ada akses, profil),
+     dan bottom navigation di HP. Argumen: auth.Identity. Menu dari nav.MenuFor (per peran). */}}
 {{define "app_header" -}}
 {{- $items := menu .Roles}}{{$current := currentMenu $items}}{{$home := "/"}}{{if .HasRole "orang_tua"}}{{$home = "/portal"}}{{end -}}
 <div class="app-chrome" x-data="{ open: false }" x-init="$el.dataset.js = '1'" @keydown.escape.window="open = false">
-<header class="app-topbar">
-<button type="button" class="icon-btn nav-toggle" @click="open = true" aria-controls="app-sidebar" :aria-expanded="open.toString()" aria-label="Buka menu">{{template "icon" "menu"}}</button>
-<a class="brand" href="{{$home}}">{{template "logo"}}<span class="brand-name">AKRA</span></a>
-<span class="ml-auto truncate text-sm text-slate-500">{{.SchoolName}}</span>
-</header>
 <aside id="app-sidebar" class="app-sidebar" :class="{ 'is-open': open }" aria-label="Navigasi">
-<div class="sidebar-head flex items-center justify-between px-2">
-<a class="brand" href="{{$home}}">{{template "logo"}}<span class="brand-name">AKRA</span></a>
+<div class="sidebar-head flex items-center justify-between px-3 pt-1 pb-2">
+<a class="brand brand-on-dark" href="{{$home}}">{{template "brand"}}</a>
 <button type="button" class="icon-btn sidebar-close" @click="open = false" aria-label="Tutup menu">{{template "icon" "close"}}</button>
 </div>
-<div class="mx-1 rounded-xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-white/10">
-<span class="block text-[11px] font-bold tracking-widest text-navy-300 uppercase">Sekolah</span>
-<span class="block text-sm leading-snug font-semibold text-white">{{.SchoolName}}</span>
-</div>
-<nav id="app-nav" class="app-nav flex flex-col gap-0.5" aria-label="Menu utama">
+<nav id="app-nav" class="app-nav flex flex-col gap-1" aria-label="Menu utama">
 {{range $items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.Label}}</span></a>
 {{end}}</nav>
-<div class="mt-auto flex items-center gap-3 border-t border-white/10 px-2 pt-4">
-<span class="inline-flex size-10 flex-none items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-emerald-500 text-sm font-bold text-white shadow-sm" aria-hidden="true">{{initials .FullName}}</span>
-<div class="min-w-0 flex-1 leading-tight">
-<strong class="block truncate text-sm text-white">{{.FullName}}</strong>
-<span class="block truncate text-xs text-navy-300">{{roleLabel .Roles}}</span>
+<div class="mt-auto flex items-center gap-3 rounded-xl bg-white/8 px-3 py-3 ring-1 ring-white/10">
+<span class="inline-flex size-9 flex-none items-center justify-center rounded-lg bg-white/10 text-white">{{template "icon" "building"}}</span>
+<div class="min-w-0 leading-tight">
+<strong class="block truncate text-sm text-white">{{.SchoolName}}</strong>
+<span class="block truncate text-xs text-navy-200">{{roleLabel .Roles}}</span>
 </div>
-<form method="post" action="/logout" class="m-0">
-{{ csrfField }}
-<button type="submit" class="icon-btn" title="Keluar">{{template "icon" "logout"}}<span class="visually-hidden">Keluar</span></button>
-</form>
 </div>
 </aside>
 <div class="sidebar-backdrop fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] desktop:hidden" x-show="open" x-transition.opacity x-cloak @click="open = false"></div>
+
+<header class="app-header">
+<button type="button" class="icon-btn nav-toggle hidden md:inline-flex desktop:hidden" @click="open = true" aria-controls="app-sidebar" :aria-expanded="open.toString()" aria-label="Buka menu">{{template "icon" "menu"}}</button>
+<a class="brand desktop:hidden" href="{{$home}}">{{template "brand"}}</a>
+{{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}
+<form method="get" action="/siswa" role="search" class="header-search">{{template "icon" "search"}}<label for="header-q" class="visually-hidden">Cari siswa</label><input id="header-q" type="search" name="q" placeholder="Cari siswa (nama atau NIS)…" autocomplete="off"></form>
+{{else if .HasRole "bendahara"}}
+<form method="get" action="/keuangan/pembayaran/baru" role="search" class="header-search">{{template "icon" "search"}}<label for="header-q" class="visually-hidden">Cari siswa untuk pembayaran</label><input id="header-q" type="search" name="q" placeholder="Cari siswa untuk pembayaran…" autocomplete="off"></form>
+{{end}}
+<div class="relative ml-auto" x-data="{ menu: false }" @click.outside="menu = false" @keydown.escape="menu = false">
+<button type="button" class="user-chip" @click="menu = !menu" :aria-expanded="menu.toString()" aria-haspopup="true">
+<span class="avatar" aria-hidden="true">{{initials .FullName}}</span>
+<span class="hidden min-w-0 text-left leading-tight sm:block"><strong class="block truncate text-sm text-slate-900">{{.FullName}}</strong><span class="block truncate text-xs text-slate-500">{{roleLabel .Roles}}</span></span>
+<span class="hidden text-slate-400 sm:inline-flex">{{template "icon" "chevron-down"}}</span>
+</button>
+<div class="user-menu" x-show="menu" x-transition.origin.top.right x-cloak>
+<div class="border-b border-slate-100 px-4 py-3 leading-tight">
+<strong class="block truncate text-sm">{{.FullName}}</strong>
+<span class="block truncate text-xs text-slate-500">{{roleLabel .Roles}} · {{.SchoolName}}</span>
+</div>
+<form method="post" action="/logout" class="m-0 p-1.5">
+{{ csrfField }}
+<button type="submit" class="user-menu-item">{{template "icon" "logout"}}<span>Keluar</span></button>
+</form>
+</div>
+</div>
+</header>
+
+<nav class="bottom-nav" aria-label="Menu cepat">
+{{range bottomMenu $items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.ShortLabel}}</span></a>
+{{end}}{{if gt (len $items) 4}}<button type="button" @click="open = true" aria-controls="app-sidebar">{{template "icon" "menu"}}<span>Menu</span></button>{{end}}
+</nav>
 </div>
 {{- end}}

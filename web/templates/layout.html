@@ -6,7 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="{{ csrfToken }}">
 <title>{{block "title" .}}{{end}} · AKRA</title>
-<link rel="icon" href="{{ asset "img/favicon.svg" }}" type="image/svg+xml">
+<link rel="icon" href="{{ asset "img/favicon.png" }}" type="image/png">
+<link rel="apple-touch-icon" href="{{ asset "img/akra-mark.png" }}">
 {{/* Font tanpa versi: URL harus sama dengan url() di app.css. */}}
 <link rel="preload" href="/static/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ asset "css/app.css" }}">

@@ -94,6 +94,22 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 // diganti per request di Render.
 func funcs(versions map[string]string) template.FuncMap {
 	m := template.FuncMap{
+		// dict membuat map untuk argumen partial, mis.
+		// {{template "password_field" dict "id" "password" "name" "password"}}.
+		"dict": func(kv ...any) (map[string]any, error) {
+			if len(kv)%2 != 0 {
+				return nil, fmt.Errorf("render: dict needs key/value pairs")
+			}
+			m := make(map[string]any, len(kv)/2)
+			for i := 0; i < len(kv); i += 2 {
+				k, ok := kv[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("render: dict key %v is not a string", kv[i])
+				}
+				m[k] = kv[i+1]
+			}
+			return m, nil
+		},
 		// inc menambah satu; mis. nomor urut {{inc $i}} dari indeks range.
 		"inc": func(i int) int { return i + 1 },
 		// seq menghasilkan from, from+1, ..., to; mis. {{range seq 1 12}}.
@@ -118,6 +134,8 @@ func funcs(versions map[string]string) template.FuncMap {
 	// menu mengembalikan item navigasi untuk peran pengguna (T51).
 	m["menu"] = nav.MenuFor
 	m["roleLabel"] = nav.RoleLabel
+	m["bottomMenu"] = nav.Bottom
+	m["shortcuts"] = nav.Shortcuts
 	m["initials"] = nav.Initials
 	// currentMenu mengembalikan Path item menu yang aktif untuk request ini.
 	m["currentMenu"] = func([]nav.MenuItem) string { return "" }
