@@ -13,6 +13,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/home"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
@@ -81,6 +82,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
 		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
+		home:        home.NewHandler(d.db, d.render, d.sessions, d.logger),
 		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
 		reports:     reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger),
 	}), nil

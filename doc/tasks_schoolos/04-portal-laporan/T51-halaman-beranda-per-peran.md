@@ -32,11 +32,11 @@ Setiap peran melihat beranda dan menu yang sesuai. Peran lain tidak melihat menu
 - `web/templates/home.html`, `web/templates/layout.html` (bagian menu)
 
 ## Kriteria selesai
-- [ ] Uji unit: setiap peran hanya mendapat item menu yang sesuai
-- [ ] Guru tidak melihat menu tagihan atau siswa
-- [ ] Bendahara tidak melihat menu absensi
-- [ ] Ringkasan beranda bendahara sama dengan T42 untuk total sisa
-- [ ] Pengguna dengan dua peran melihat gabungan menu tanpa duplikat
+- [x] Uji unit: setiap peran hanya mendapat item menu yang sesuai
+- [x] Guru tidak melihat menu tagihan atau siswa
+- [x] Bendahara tidak melihat menu absensi
+- [x] Ringkasan beranda bendahara sama dengan T42 untuk total sisa
+- [x] Pengguna dengan dua peran melihat gabungan menu tanpa duplikat
 
 ## Catatan
 - Menu yang tersembunyi tetap harus dicek di server (`RequireRole`). Menyembunyikan menu saja bukan kontrol akses.

@@ -23,6 +23,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/home"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
@@ -94,6 +95,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		auditLog:    auditview.NewHandler(nil, rd, logger),
 		reports:     reports.NewHandler(nil, nil, nil, rd, logger),
 		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
+		home:        home.NewHandler(nil, rd, sessions, logger),
 	})
 }
 

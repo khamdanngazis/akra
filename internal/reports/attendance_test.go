@@ -325,3 +325,18 @@ func mustQuery(q string) url.Values {
 }
 
 func writePDF(w io.Writer, t export.Table) error { return export.WritePDF(w, t) }
+
+func TestReportsHub(t *testing.T) {
+	f := newFixture(t)
+	if rec := f.get("/laporan", "guru"); rec.Code != http.StatusForbidden {
+		t.Errorf("teacher: status = %d, want 403", rec.Code)
+	}
+	b := f.get("/laporan", "bendahara").Body.String()
+	if strings.Contains(b, `href="/laporan/kehadiran"`) || !strings.Contains(b, `href="/laporan/tunggakan.xlsx"`) {
+		t.Error("treasurer hub must list only the arrears report")
+	}
+	a := f.get("/laporan", "admin_tu").Body.String()
+	if !strings.Contains(a, `href="/laporan/kehadiran"`) || !strings.Contains(a, `href="/laporan/tunggakan.pdf"`) {
+		t.Error("admin hub must list both reports")
+	}
+}

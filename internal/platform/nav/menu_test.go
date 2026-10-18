@@ -1,0 +1,95 @@
+package nav
+
+import (
+	"strings"
+	"testing"
+)
+
+func paths(items []MenuItem) string {
+	var s []string
+	for _, it := range items {
+		s = append(s, it.Path)
+	}
+	return strings.Join(s, " ")
+}
+
+func TestMenuFor(t *testing.T) {
+	for role, want := range map[string]string{
+		"admin_tu":       "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran",
+		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
+		"guru":           "/ /absensi /pengumuman",
+		"kepala_sekolah": "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran",
+		"orang_tua":      "/portal /portal/pengumuman",
+	} {
+		if got := paths(MenuFor([]string{role})); got != want {
+			t.Errorf("%s:\n got %s\nwant %s", role, got, want)
+		}
+	}
+	if got := MenuFor(nil); len(got) != 0 {
+		t.Errorf("no roles: %v", got)
+	}
+	if got := MenuFor([]string{"tidak_dikenal"}); len(got) != 0 {
+		t.Errorf("unknown role: %v", got)
+	}
+}
+
+func TestMenuFor_Restrictions(t *testing.T) {
+	guru := paths(MenuFor([]string{"guru"}))
+	for _, p := range []string{"/keuangan", "/siswa", "/laporan"} {
+		if strings.Contains(guru, p) {
+			t.Errorf("teacher menu contains %s: %s", p, guru)
+		}
+	}
+	if b := paths(MenuFor([]string{"bendahara"})); strings.Contains(b, "/absensi") {
+		t.Errorf("treasurer menu contains attendance: %s", b)
+	}
+	if p := paths(MenuFor([]string{"orang_tua"})); strings.Contains(p, "/keuangan") || strings.Contains(p, "/pengumuman ") || strings.HasPrefix(p, "/ ") {
+		t.Errorf("parent menu leaks staff items: %s", p)
+	}
+}
+
+func TestMenuFor_TwoRolesMergedWithoutDuplicates(t *testing.T) {
+	got := MenuFor([]string{"guru", "bendahara"})
+	seen := map[string]bool{}
+	for _, it := range got {
+		if seen[it.Path] {
+			t.Errorf("duplicate %s", it.Path)
+		}
+		seen[it.Path] = true
+	}
+	for _, p := range []string{"/", "/absensi", "/keuangan/pembayaran/baru", "/pengumuman"} {
+		if !seen[p] {
+			t.Errorf("merged menu misses %s", p)
+		}
+	}
+	if len(got) != len(MenuFor([]string{"bendahara"}))+1 { // + /absensi
+		t.Errorf("merged menu = %s", paths(got))
+	}
+	// Urutan mengikuti Items, bukan urutan peran.
+	if paths(MenuFor([]string{"bendahara", "guru"})) != paths(got) {
+		t.Error("menu order depends on role order")
+	}
+}
+
+func TestCurrent(t *testing.T) {
+	items := MenuFor([]string{"admin_tu", "guru"})
+	for path, want := range map[string]string{
+		"/":                        "/",
+		"/siswa":                   "/siswa",
+		"/siswa/123/ubah":          "/siswa",
+		"/absensi":                 "/absensi",
+		"/absensi/rekap":           "/absensi/rekap",
+		"/keuangan/tagihan/1":      "",
+		"/laporan/kehadiran":       "/laporan",
+		"/pengaturan/tahun-ajaran": "/pengaturan/tahun-ajaran",
+		"/siswax":                  "",
+	} {
+		if got := Current(items, path); got != want {
+			t.Errorf("Current(%q) = %q, want %q", path, got, want)
+		}
+	}
+	parent := MenuFor([]string{"orang_tua"})
+	if Current(parent, "/portal/siswa/1/tagihan") != "/portal" || Current(parent, "/portal/pengumuman") != "/portal/pengumuman" {
+		t.Error("portal current item")
+	}
+}

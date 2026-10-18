@@ -158,6 +158,17 @@ r.With(auth.RequireRole(auth.RoleBendahara)).Post("/tagihan", billingHandler.cre
 
 Untuk logika di dalam handler atau service, gunakan `auth.HasAnyRole(id, ...)` atau `id.HasRole(...)`. RBAC tidak membatasi sekolah; isolasi `school_id` tetap wajib di setiap query (T58).
 
+## Menu dan beranda per peran
+
+- Menu header dari [nav.MenuFor](internal/platform/nav/menu.go) (fungsi template `menu`): satu daftar `Items` dengan peran per item; pengguna dengan beberapa peran mendapat gabungan tanpa duplikat, dalam urutan tetap. Item aktif ditandai `aria-current="page"` (`currentMenu`). Di layar kecil menu dilipat di balik tombol **Menu** (Alpine.js; tanpa JavaScript menu tetap tampil). **Menyembunyikan menu bukan kontrol akses**: setiap route tetap memakai `RequireRole`.
+- Beranda ([internal/home](internal/home/handler.go)) menampilkan ringkasan sesuai peran (beberapa peran: semua ringkasan):
+  - bendahara: total sisa tunggakan (dari `billing.ListArrears`, sama dengan `/keuangan/tunggakan`) dan pembayaran aktif yang dicatat hari ini;
+  - guru: kelas wali di tahun ajaran aktif dan apakah absensi hari ini sudah disimpan (membuka form saja belum dihitung);
+  - admin/TU: jumlah siswa aktif dan tahun ajaran aktif;
+  - kepala sekolah: rekap kehadiran semua kelas minggu ini (Senin sampai hari ini, `reports.BuildAttendanceReport`).
+  - Tanpa tahun ajaran aktif: pesan, dengan tautan pengaturan untuk admin/TU dan kepala sekolah.
+- `/laporan`: daftar laporan sesuai peran dan riwayat ekspor di server (milik sendiri; kepala sekolah semua).
+
 ## Tampilan (SSR)
 
 Halaman dirender di server dengan `html/template` lewat [internal/platform/render](internal/platform/render/render.go). Semua template di-parse saat start; template yang rusak membuat server gagal start dengan nama file-nya.
