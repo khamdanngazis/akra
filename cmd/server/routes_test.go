@@ -24,6 +24,7 @@ import (
 	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/home"
+	"akra/internal/importer"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
@@ -96,6 +97,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		reports:     reports.NewHandler(nil, nil, nil, rd, logger),
 		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
 		home:        home.NewHandler(nil, rd, sessions, logger),
+		importer:    importer.NewHandler(rd, logger),
 	})
 }
 

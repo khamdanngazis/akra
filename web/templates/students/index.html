@@ -6,7 +6,7 @@
 <h1>Siswa</h1>
 <p class="muted">{{if .YearName}}Kelas ditampilkan untuk tahun ajaran {{.YearName}}.{{else}}Belum ada tahun ajaran.{{end}}</p>
 </div>
-{{if .CanEdit}}<a class="btn btn-primary" href="/siswa/baru">Tambah siswa</a>{{end}}
+{{if .CanEdit}}<div class="action-row"><a class="btn btn-ghost" href="/impor/siswa">Impor dari Excel</a><a class="btn btn-primary" href="/siswa/baru">Tambah siswa</a></div>{{end}}
 </div>
 
 {{template "flash" .}}
