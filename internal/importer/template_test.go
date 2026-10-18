@@ -118,7 +118,7 @@ func newRouter(t *testing.T) http.Handler {
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
-	NewHandler(NewService(nil), sm, rd, logger).Routes(r)
+	NewHandler(NewService(nil, nil), sm, rd, logger).Routes(r)
 	return r
 }
 

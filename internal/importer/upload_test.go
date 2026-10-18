@@ -28,6 +28,8 @@ type uploadFixture struct {
 	h                http.Handler
 	schoolA, schoolB string
 	adminA, adminB   string
+	class1A, class1B string
+	jobs             *fakeJobs
 }
 
 func newUploadFixture(t *testing.T) *uploadFixture {
@@ -63,9 +65,12 @@ func newUploadFixture(t *testing.T) *uploadFixture {
 	// Sekolah A punya tahun ajaran aktif dengan kelas 1A dan 1B; sekolah B belum.
 	year := one(`INSERT INTO academic_years (school_id, name, start_date, end_date, is_active) VALUES ($1, '2026/2027', '2026-07-13', '2027-06-25', true) RETURNING id`, f.schoolA)
 	old := one(`INSERT INTO academic_years (school_id, name, start_date, end_date) VALUES ($1, '2025/2026', '2025-07-14', '2026-06-26') RETURNING id`, f.schoolA)
-	for _, c := range []struct{ year, name string }{{year, "1A"}, {year, "1B"}, {old, "6A"}} {
-		one(`INSERT INTO classes (school_id, academic_year_id, name, grade_level) VALUES ($1, $2, $3, 1) RETURNING id`, f.schoolA, c.year, c.name)
+	class := func(y, name string) string {
+		return one(`INSERT INTO classes (school_id, academic_year_id, name, grade_level) VALUES ($1, $2, $3, 1) RETURNING id`, f.schoolA, y, name)
 	}
+	f.class1A, f.class1B = class(year, "1A"), class(year, "1B")
+	class(old, "6A")
+	f.jobs = &fakeJobs{}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, static, err := web.Load("")
@@ -79,7 +84,7 @@ func newUploadFixture(t *testing.T) *uploadFixture {
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
-	h := NewHandler(NewService(tx), sm, rd, logger)
+	h := NewHandler(NewService(tx, f.jobs), sm, rd, logger)
 	h.today = func() time.Time { return testToday }
 	h.Routes(r)
 	f.h = r
@@ -129,7 +134,7 @@ func TestUpload_CreatesBatchWithoutTouchingStudents(t *testing.T) {
 	}
 	batchID := strings.TrimPrefix(rec.Header().Get("Location"), "/impor/batch/")
 
-	b, err := NewService(f.tx).GetBatch(context.Background(), f.schoolA, batchID)
+	b, err := NewService(f.tx, nil).GetBatch(context.Background(), f.schoolA, batchID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +145,7 @@ func TestUpload_CreatesBatchWithoutTouchingStudents(t *testing.T) {
 		t.Errorf("skipped %v, preview %+v", b.Skipped, b.Preview)
 	}
 	// Setelah validasi, data baris ada di import_rows, bukan parsed_rows.
-	if rows, err := NewService(f.tx).ParsedRows(context.Background(), f.schoolA, batchID); err != nil || len(rows) != 0 {
+	if rows, err := NewService(f.tx, nil).ParsedRows(context.Background(), f.schoolA, batchID); err != nil || len(rows) != 0 {
 		t.Errorf("parsed rows after validation = %+v, %v", rows, err)
 	}
 	if n := f.count(t, `SELECT count(*) FROM import_rows WHERE batch_id = $1`, batchID); n != 3 {
@@ -160,7 +165,7 @@ func TestUpload_CreatesBatchWithoutTouchingStudents(t *testing.T) {
 	if rec := f.do(httptest.NewRequest(http.MethodGet, "/impor/batch/"+batchID, nil), f.schoolB, f.adminB, auth.RoleAdminTU); rec.Code != http.StatusNotFound {
 		t.Errorf("other school: status = %d", rec.Code)
 	}
-	if _, err := NewService(f.tx).ParsedRows(context.Background(), f.schoolB, batchID); err != ErrBatchNotFound {
+	if _, err := NewService(f.tx, nil).ParsedRows(context.Background(), f.schoolB, batchID); err != ErrBatchNotFound {
 		t.Errorf("other school parsed rows: %v", err)
 	}
 	if rec := f.do(httptest.NewRequest(http.MethodGet, "/impor/batch/bukan-uuid", nil), f.schoolA, f.adminA, auth.RoleAdminTU); rec.Code != http.StatusNotFound {

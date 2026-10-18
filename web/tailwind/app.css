@@ -1120,6 +1120,10 @@
     @apply xl:grid-cols-2;
   }
 
+  .run-card {
+    @apply flex flex-col gap-4 border-blue-200 bg-blue-50/40 sm:flex-row sm:items-center sm:justify-between;
+  }
+
   .batch-grid {
     @apply grid grid-cols-1 items-start gap-4 desktop:grid-cols-2 desktop:gap-6;
   }
