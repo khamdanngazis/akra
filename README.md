@@ -677,6 +677,25 @@ Mitigasi utama risiko kebocoran data antar sekolah:
 - [internal/platform/money/nofloat_test.go](internal/platform/money/nofloat_test.go) memeriksa kode (AST) paket keuangan (`money`, `billing`, `payments`, `portal`, `home`, `reports`): tidak boleh ada `float32/float64`, fungsi paket `math`, `strconv.*Float`, literal desimal (kecuali koordinat tata letak kuitansi PDF), format `%f/%g/%e`, atau cast pecahan di SQL; migrasi tidak boleh punya kolom `float/real/numeric/decimal`.
 - Aturan pembatalan (bulan berjalan, ambang persetujuan, pengaju tidak boleh menyetujui atau menolak sendiri) dan tagihan massal tanpa duplikat diuji di `void_test.go` dan `bulk_test.go`.
 
+### Data demo
+
+`akra-demoseed` ([cmd/demoseed](cmd/demoseed/main.go), [internal/demo](internal/demo/seed.go)) membuat sekolah demo lengkap untuk presentasi dan wawancara, dengan kode login `demo` (bisa diganti dengan `-code`):
+
+- 12 kelas (1A–6B) dengan wali kelas; 240 siswa dan walinya;
+- SPP sejak Juli sampai bulan ini dan uang kegiatan, dengan campuran lunas, sebagian, dan menunggak;
+- pembayaran tunai/transfer dibuat lewat service aplikasi, jadi nomor kuitansi dan audit asli;
+- satu pembatalan sudah berlaku dan satu menunggu persetujuan kepala sekolah;
+- absensi harian sampai kemarin (hari ini kosong agar wali kelas bisa mencoba);
+- pengumuman umum dan satu pengumuman kelas;
+- akun aktif untuk semua peran. Akun orang tua tidak butuh email aktivasi: satu orang tua dua anak, satu dengan tunggakan, satu lunas semua.
+
+Semua akun memakai password dari `DEMO_PASSWORD`; jika kosong, password acak dicetak sekali. Email berdomain `.akra.test`, jadi tidak ada email terkirim. Perintah ini ditolak jika `APP_ENV=production`. Di staging:
+
+```sh
+railway ssh --service akra -- akra-demoseed            # buat
+railway ssh --service akra -- akra-demoseed -reset     # buat ulang dari awal (data relatif ke hari ini)
+```
+
 ### Uji beban ringan (T61)
 
 Data uji dari [cmd/loadseed](cmd/loadseed/main.go) (tiga sekolah, 5.400 tagihan per sekolah, 10.000 pembayaran) dan skenario k6 di [loadtest/](loadtest/README.md). Hasil, versi alat, dan batas kasar kapasitas dicatat di [loadtest/README.md](loadtest/README.md). Hash dan verifikasi password argon2id dibatasi 4 bersamaan per proses agar login serentak tidak memakan memori berlebih.

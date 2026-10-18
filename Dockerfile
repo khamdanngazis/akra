@@ -8,7 +8,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -trimpath -ldflags="-s -w" -o /out/akra ./cmd/server && \
-    go build -trimpath -ldflags="-s -w" -o /out/akra-seed ./cmd/seed
+    go build -trimpath -ldflags="-s -w" -o /out/akra-seed ./cmd/seed && \
+    go build -trimpath -ldflags="-s -w" -o /out/akra-demoseed ./cmd/demoseed
 
 # ---- CLI golang-migrate (versi sama dengan README) ----
 FROM alpine:3.20 AS migrate
@@ -25,7 +26,7 @@ RUN wget -q -O /tmp/migrate.tar.gz \
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata && \
     adduser -D -H -u 10001 akra
-COPY --from=build /out/akra /out/akra-seed /usr/local/bin/
+COPY --from=build /out/akra /out/akra-seed /out/akra-demoseed /usr/local/bin/
 COPY --from=migrate /usr/local/bin/migrate /usr/local/bin/migrate
 COPY --chmod=0755 scripts/akra-migrate /usr/local/bin/akra-migrate
 COPY db/migrations /app/db/migrations
