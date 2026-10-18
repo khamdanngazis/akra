@@ -37,25 +37,39 @@ type ChildDetail struct {
 	Attendance attendance.Counts
 }
 
+// checkChild memastikan studentID adalah anak akun userID di sekolah
+// schoolID (keduanya dari sesi). Semua halaman per anak memanggilnya lebih
+// dulu; selain itu ErrNotFound.
+func (s *Service) checkChild(ctx context.Context, schoolID, userID, studentID string) error {
+	if !database.IsUUID(schoolID) || !database.IsUUID(userID) || !database.IsUUID(studentID) {
+		return ErrNotFound
+	}
+	var ok bool
+	err := s.db.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM users u
+			JOIN student_guardians sg ON sg.school_id = u.school_id AND sg.guardian_id = u.guardian_id
+			WHERE u.school_id = $1 AND u.id = $2 AND u.guardian_id IS NOT NULL AND sg.student_id = $3)`,
+		schoolID, userID, studentID).Scan(&ok)
+	if err != nil {
+		return fmt.Errorf("portal: check child: %w", err)
+	}
+	if !ok {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // GetChildDetail mengembalikan detail anak studentID milik akun userID di
 // sekolah schoolID (keduanya dari sesi). today (Asia/Jakarta) membatasi
 // akhir rekap absensi, sama dengan default rekap kelas (T27).
 func (s *Service) GetChildDetail(ctx context.Context, schoolID, userID, studentID string, today time.Time) (ChildDetail, error) {
-	if !database.IsUUID(schoolID) || !database.IsUUID(userID) || !database.IsUUID(studentID) {
-		return ChildDetail{}, ErrNotFound
+	if err := s.checkChild(ctx, schoolID, userID, studentID); err != nil {
+		return ChildDetail{}, err
 	}
 	var d ChildDetail
 	var gender *string
-	err := s.db.QueryRow(ctx, `
-		SELECT st.id, st.nis, st.full_name, st.birth_date, st.gender
-		FROM users u
-		JOIN student_guardians sg ON sg.school_id = u.school_id AND sg.guardian_id = u.guardian_id
-		JOIN students st ON st.school_id = sg.school_id AND st.id = sg.student_id
-		WHERE u.school_id = $1 AND u.id = $2 AND u.guardian_id IS NOT NULL AND st.id = $3`,
-		schoolID, userID, studentID).Scan(&d.ID, &d.NIS, &d.FullName, &d.BirthDate, &gender)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ChildDetail{}, ErrNotFound
-	}
+	err := s.db.QueryRow(ctx, `SELECT id, nis, full_name, birth_date, gender FROM students WHERE school_id = $1 AND id = $2`,
+		schoolID, studentID).Scan(&d.ID, &d.NIS, &d.FullName, &d.BirthDate, &gender)
 	if err != nil {
 		return ChildDetail{}, fmt.Errorf("portal: get child: %w", err)
 	}

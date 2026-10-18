@@ -1,0 +1,45 @@
+{{define "title"}}Tagihan {{.Child.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/portal/siswa/{{.Child.ID}}">← {{.Child.FullName}}</a></p>
+<h1>Tagihan dan Pembayaran</h1>
+<p class="muted">{{.Child.FullName}} · NIS {{.Child.NIS}}</p>
+{{template "flash" .}}
+
+<section class="card stat-card">
+<div class="stat-grid stat-grid-money">
+<div><span class="stat-value">{{.TotalRemaining}}</span><span class="stat-label">total sisa tagihan</span></div>
+<div><span class="stat-value{{if .HasOverdue}} text-danger{{end}}">{{.OverdueRemaining}}</span><span class="stat-label">sudah lewat jatuh tempo</span></div>
+</div>
+</section>
+
+<h2 class="section-title">Tagihan</h2>
+{{if .Invoices}}
+<div class="pay-list">
+{{range .Invoices}}
+<section class="pay-item">
+<div class="pay-row"><strong>{{.Fees}} · {{.Period}}</strong><span>{{if .IsPaid}}<span class="badge badge-success">Lunas</span>{{else if eq .Status "Sebagian"}}<span class="badge badge-warning">Sebagian</span>{{else}}<span class="badge">{{.Status}}</span>{{end}}{{if .Overdue}} <span class="badge badge-danger">Terlambat</span>{{end}}</span></div>
+<p class="pay-item-meta">{{.Class}} · jatuh tempo {{.DueDate}}</p>
+<p>Total {{.Total}}{{if not .Paid0}} · dibayar {{.Paid}}{{end}}{{if not .IsPaid}} · <strong>sisa {{.Remaining}}</strong>{{end}}</p>
+</section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada tagihan.</p></section>
+{{end}}
+
+<h2 class="section-title">Riwayat pembayaran</h2>
+{{if .Payments}}
+<div class="pay-list">
+{{range .Payments}}
+<section class="pay-item{{if .Voided}} is-voided{{end}}">
+<div class="pay-row"><strong class="pay-amount">{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
+<p class="pay-item-meta">{{.Fees}} · {{.Period}} · No. {{.Receipt}}</p>
+{{if .Voided}}<p><span class="badge badge-danger">Dibatalkan</span> <span class="muted">{{.VoidReason}}</span></p>{{end}}
+</section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada pembayaran.</p></section>
+{{end}}
+{{end}}

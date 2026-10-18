@@ -26,11 +26,11 @@ Orang tua melihat tagihan anaknya, status, dan riwayat pembayaran. Pembayaran ya
 - `web/templates/portal/billing.html`
 
 ## Kriteria selesai
-- [ ] Angka total dan sisa di portal sama dengan `ListArrears` (T42) dan rekap keuangan untuk siswa yang sama
-- [ ] Pembayaran yang dibatalkan tampil dengan keterangan dibatalkan
-- [ ] Label "Terlambat" muncul hanya untuk tagihan yang lewat jatuh tempo dan belum lunas
-- [ ] Orang tua tidak bisa membuka tagihan siswa lain (`404`)
-- [ ] Bukti transfer tidak ditampilkan dan tidak ada tautannya
+- [x] Angka total dan sisa di portal sama dengan `ListArrears` (T42) dan rekap keuangan untuk siswa yang sama
+- [x] Pembayaran yang dibatalkan tampil dengan keterangan dibatalkan
+- [x] Label "Terlambat" muncul hanya untuk tagihan yang lewat jatuh tempo dan belum lunas
+- [x] Orang tua tidak bisa membuka tagihan siswa lain (`404`)
+- [x] Bukti transfer tidak ditampilkan dan tidak ada tautannya
 
 ## Catatan
 - Orang tua tidak melihat catatan internal pembatalan atau nama bendahara yang mencatat pembayaran.

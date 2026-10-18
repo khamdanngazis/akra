@@ -13,7 +13,7 @@
 <div class="pay-row"><a href="/portal/siswa/{{.ID}}"><strong class="child-name">{{.Name}}</strong></a></div>
 <p class="pay-item-meta">NIS {{.NIS}}{{with .Relationship}} · Anda: {{.}}{{end}}</p>
 <p>{{if .ClassName}}Kelas <strong>{{.ClassName}}</strong> · {{.YearName}}{{else}}<span class="muted">Belum ditempatkan di kelas tahun ajaran aktif.</span>{{end}}</p>
-<p><a href="/portal/siswa/{{.ID}}">Lihat profil dan absensi →</a></p>
+<p class="pay-links"><a href="/portal/siswa/{{.ID}}">Profil dan absensi</a><a href="/portal/siswa/{{.ID}}/tagihan">Tagihan dan pembayaran</a></p>
 </section>
 {{end}}
 </div>
