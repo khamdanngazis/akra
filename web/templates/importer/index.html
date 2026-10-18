@@ -11,13 +11,19 @@
 
 {{template "flash" .}}
 
-<section class="card">
-<h2 class="section-title">Cara mengisi</h2>
-<ul>
-<li>Jangan mengubah urutan atau judul kolom di baris pertama.</li>
-<li>Baris kedua berwarna abu-abu adalah contoh. Hapus baris itu sebelum mengunggah.</li>
-<li>Satu baris untuk satu siswa. Kolom bertanda wajib harus diisi.</li>
-</ul>
+<section class="callout-warning" aria-labelledby="import-rules">
+<div class="callout-head">
+{{template "icon" "warning"}}
+<div>
+<h2 id="import-rules">Perhatikan sebelum mengisi template</h2>
+<p>Data yang tidak mengikuti aturan ini tidak dapat diimpor.</p>
+</div>
+</div>
+<ol class="steps">
+<li class="step"><span class="step-num">1</span><div><strong>Jangan ubah baris pertama</strong><p>Urutan dan judul kolom harus tetap sama seperti di template.</p></div></li>
+<li class="step"><span class="step-num">2</span><div><strong>Hapus baris contoh</strong><p>Baris kedua berwarna abu-abu bertanda <span class="example-chip">contoh, hapus baris ini</span>.</p></div></li>
+<li class="step"><span class="step-num">3</span><div><strong>Satu baris, satu siswa</strong><p>Kolom bertanda <span class="badge badge-info">Wajib</span> harus diisi.</p></div></li>
+</ol>
 </section>
 
 <div class="card card-flush">
