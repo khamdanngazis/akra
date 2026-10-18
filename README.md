@@ -488,7 +488,10 @@ Paket [internal/importer](internal/importer). Akses: `admin_tu`. Menu "Siswa" te
   - diproses 100 baris per transaksi; setiap baris ditandai `processed_at` dan `result` (`baru`, `diperbarui`, `gagal`), jadi job yang diulang melanjutkan baris yang belum diproses dan hitungan dihitung ulang dari `import_rows`;
   - kegagalan satu baris (mis. kelas dihapus setelah validasi) dibatalkan lewat savepoint dan dicatat `gagal` dengan pesannya, baris lain tetap tersimpan;
   - setelah selesai: satu audit `import.run` berisi ringkasan jumlah (tanpa data pribadi). Batch yang selesai tidak bisa dijalankan ulang; unggah file lagi sebagai batch baru (aman karena upsert).
-- Berikutnya: laporan kesalahan (T56).
+- Laporan kesalahan (T56, [error_report.go](internal/importer/error_report.go)):
+  - `GET /impor/batch/{id}/kesalahan.xlsx` (admin_tu): semua baris yang perlu diperbaiki, ditambah baris yang lolos validasi tetapi gagal disimpan, urut nomor baris asli;
+  - kolom: "Baris asli", kedelapan kolom template (isi apa adanya, format teks), lalu "Kesalahan" (satu pesan per baris sel). Parser hanya membaca kolom template, jadi file yang sudah diperbaiki bisa langsung diunggah ulang;
+  - halaman batch menampilkan ringkasan jumlah baris per jenis kesalahan (mis. "2 NIS kosong", "1 kelas tidak ditemukan"); satu baris dengan dua jenis kesalahan dihitung di keduanya.
 
 ## Job Latar Belakang (River)
 

@@ -56,6 +56,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get(batchPath+"/{id}", h.batch)
 		// Peran: admin_tu.
 		r.Post(batchPath+"/{id}/simpan", h.run)
+		// Peran: admin_tu.
+		r.Get(batchPath+"/{id}/kesalahan.xlsx", h.errorReport)
 	})
 }
 
@@ -183,6 +185,7 @@ type batchView struct {
 	ErrorsMore  int
 	Failed      []ErrorRow
 	FailedMore  int
+	Summary     []KindCount
 	SyncLimit   int
 	Flash       string
 	Error       string
@@ -219,6 +222,12 @@ func (h *Handler) renderBatch(w http.ResponseWriter, r *http.Request, id auth.Id
 			return
 		}
 		v.ErrorsMore = b.ErrorRows - len(v.Errors)
+	}
+	if b.ErrorRows > 0 || b.FailedCount > 0 {
+		if v.Summary, err = h.svc.ErrorSummary(r.Context(), id.SchoolID, b.ID); err != nil {
+			page.ServerError(h.render, h.logger, w, r, id, "import error summary", err)
+			return
+		}
 	}
 	if b.FailedCount > 0 {
 		if v.Failed, err = h.svc.FailedRows(r.Context(), id.SchoolID, b.ID, maxErrorsShown); err != nil {
@@ -287,4 +296,31 @@ func (h *Handler) template(w http.ResponseWriter, r *http.Request) {
 	hdr.Set("Cache-Control", "private, no-store")
 	hdr.Set("Content-Length", strconv.Itoa(len(data)))
 	_, _ = w.Write(data)
+}
+
+// errorReport mengirim file Excel berisi baris yang perlu diperbaiki.
+func (h *Handler) errorReport(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	batchID := chi.URLParam(r, "id")
+	data, err := h.svc.ErrorReport(r.Context(), id.SchoolID, batchID)
+	if errors.Is(err, ErrBatchNotFound) {
+		page.NotFound(h.render, w, r, id, "Batch impor tidak ditemukan.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "import error report", err)
+		return
+	}
+	hdr := w.Header()
+	hdr.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	hdr.Set("Content-Disposition", `attachment; filename="`+errorReportFilename(batchID)+`"`)
+	hdr.Set("Cache-Control", "private, no-store")
+	hdr.Set("Content-Length", strconv.Itoa(len(data)))
+	_, _ = w.Write(data)
+}
+
+// errorReportFilename memberi nama file laporan kesalahan, mis.
+// "kesalahan-impor-1a2b3c4d.xlsx" (8 karakter awal id batch).
+func errorReportFilename(batchID string) string {
+	return "kesalahan-impor-" + batchID[:8] + ".xlsx"
 }
