@@ -2,6 +2,14 @@
 
 Catatan uji alur kerja utama dari awal sampai akhir di staging, sebelum pilot dengan sekolah.
 
+> **Status:** ditutup oleh pemilik proyek pada 18 Oktober 2026. Keenam skenario sudah dijalankan dan lulus.
+>
+> **Syarat wajib sebelum pilot:**
+> - K-7: verifikasi domain email di Resend dan kembalikan `MAIL_FROM` dari `onboarding@resend.dev`;
+> - uji ulang aktivasi orang tua dan reset password.
+>
+> Waktu isi absensi oleh guru di HP belum diukur dan dianjurkan dicoba saat persiapan pilot.
+
 ## Lingkungan dan data
 
 | | |
