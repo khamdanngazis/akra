@@ -1,0 +1,22 @@
+{{define "title"}}Portal Orang Tua{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Halo, {{.User.FullName}}</h1>
+<p class="muted">Portal orang tua {{.User.SchoolName}}.</p>
+{{template "flash" .}}
+
+{{if .Children}}
+<h2 class="section-title">{{if .Single}}Anak Anda{{else}}Anak Anda ({{len .Children}}){{end}}</h2>
+<div class="pay-list child-list">
+{{range .Children}}
+<section class="pay-item child-card">
+<div class="pay-row"><strong class="child-name">{{.Name}}</strong>{{template "student_status" .Status}}</div>
+<p class="pay-item-meta">NIS {{.NIS}}{{with .Relationship}} · Anda: {{.}}{{end}}</p>
+<p>{{if .ClassName}}Kelas <strong>{{.ClassName}}</strong> · {{.YearName}}{{else}}<span class="muted">Belum ditempatkan di kelas tahun ajaran aktif.</span>{{end}}</p>
+</section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada data anak yang terhubung. Hubungi sekolah.</p></section>
+{{end}}
+{{end}}

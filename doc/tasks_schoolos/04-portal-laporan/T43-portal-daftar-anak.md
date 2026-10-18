@@ -25,11 +25,11 @@ Orang tua yang login melihat daftar anak yang terhubung dengannya, dan tidak mel
 - `web/templates/portal/children.html`
 
 ## Kriteria selesai
-- [ ] Orang tua dengan dua anak melihat dua kartu
-- [ ] Orang tua tanpa anak terhubung melihat pesan kosong, bukan error
-- [ ] Anak dari keluarga lain tidak muncul, walaupun berada di sekolah yang sama
-- [ ] Peran admin atau bendahara yang membuka `/portal` mendapat `403`
-- [ ] Hanya enrollment tahun ajaran aktif yang ditampilkan kelasnya
+- [x] Orang tua dengan dua anak melihat dua kartu
+- [x] Orang tua tanpa anak terhubung melihat pesan kosong, bukan error
+- [x] Anak dari keluarga lain tidak muncul, walaupun berada di sekolah yang sama
+- [x] Peran admin atau bendahara yang membuka `/portal` mendapat `403`
+- [x] Hanya enrollment tahun ajaran aktif yang ditampilkan kelasnya
 
 ## Catatan
 - Satu anak bisa punya dua wali (T23). Keduanya melihat anak yang sama, dan itu sesuai rancangan.
