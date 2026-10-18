@@ -38,6 +38,7 @@ type routerDeps struct {
 	attendance   *attendance.Handler
 	feeTypes     *billing.FeeTypeHandler
 	bulkInvoice  *billing.BulkHandler
+	arrears      *billing.ArrearsHandler
 	payments     *payments.Handler
 	auditLog     *auditview.Handler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
@@ -99,6 +100,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)
 			d.bulkInvoice.Routes(r)
+			d.arrears.Routes(r)
 			d.payments.Routes(r)
 			d.auditLog.Routes(r)
 		})

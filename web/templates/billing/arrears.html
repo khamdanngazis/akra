@@ -1,0 +1,44 @@
+{{define "title"}}Daftar Tunggakan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Daftar Tunggakan</h1>
+<p class="muted">Tagihan yang belum lunas dan sudah lewat jatuh tempo per {{.Today}}. Jatuh tempo hari ini belum dihitung terlambat. Semua tahun ajaran ikut.</p>
+{{template "flash" .}}
+
+<section class="card stat-card">
+<div class="stat-grid stat-grid-money">
+<div><span class="stat-value">{{.TotalRemaining}}</span><span class="stat-label">total sisa tunggakan</span></div>
+<div><span class="stat-value">{{.StudentCount}}</span><span class="stat-label">siswa menunggak</span></div>
+<div><span class="stat-value">{{.InvoiceCount}}</span><span class="stat-label">tagihan</span></div>
+</div>
+</section>
+
+<form method="get" action="/keuangan/tunggakan" class="card filter-bar stack">
+<div class="field-grid">
+<div class="field"><label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="jenis">Jenis tagihan</label>
+<select id="jenis" name="jenis">{{range .FeeTypes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+</div>
+<div class="field-grid">
+<div class="field"><label for="dari">Jatuh tempo dari</label><input id="dari" type="date" name="dari" value="{{.From}}"></div>
+<div class="field"><label for="sampai">Jatuh tempo sampai</label><input id="sampai" type="date" name="sampai" value="{{.To}}"></div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tampilkan</button>{{if .Filtered}}<a class="btn btn-ghost" href="/keuangan/tunggakan">Reset</a>{{end}}</div>
+</form>
+
+{{if .Rows}}
+<div class="pay-list">
+{{range .Rows}}
+<section class="pay-item">
+<div class="pay-row"><a href="/keuangan/tagihan/{{.InvoiceID}}"><strong>{{.Student}}</strong></a><strong>{{.Remaining}}</strong></div>
+<p class="pay-item-meta">NIS {{.NIS}} · {{.Class}}</p>
+<p>{{.Fees}} · {{.Period}}</p>
+<p class="pay-item-meta">Jatuh tempo {{.DueDate}} <span class="badge badge-danger">{{.Days}}</span> · total {{.Total}}</p>
+</section>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>{{if .Filtered}}Tidak ada tunggakan untuk filter ini.{{else}}Tidak ada tunggakan. Semua tagihan yang sudah jatuh tempo lunas.{{end}}</p></section>
+{{end}}
+{{end}}

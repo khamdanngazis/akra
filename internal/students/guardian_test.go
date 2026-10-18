@@ -212,3 +212,22 @@ func TestGuardians(t *testing.T) {
 		}
 	})
 }
+
+func TestGuardianAuditOmitsAddress(t *testing.T) {
+	g := newGuardianFixture(t)
+	ctx := context.Background()
+	gd, err := g.svc.Create(ctx, g.actorA, GuardianForm{FullName: "Ibu Rina", Phone: "081234567890", Address: "Jl. Kenanga No. 7, Bandung"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gd.Address != "Jl. Kenanga No. 7, Bandung" {
+		t.Fatalf("address not stored on the guardian: %q", gd.Address)
+	}
+	var after string
+	if err := g.tx.QueryRow(ctx, `SELECT after::text FROM audit_logs WHERE action = 'guardian.create' AND entity_id = $1`, gd.ID).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(after, "Kenanga") || strings.Contains(after, `"address"`) || !strings.Contains(after, `"has_address": true`) {
+		t.Errorf("guardian.create audit = %s; want has_address without the address", after)
+	}
+}

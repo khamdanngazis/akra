@@ -28,3 +28,17 @@ func ActivePaid(payments []PaymentLine, voids map[string]string) int64 {
 	}
 	return sum
 }
+
+// ActivePaidSQL adalah ekspresi SQL jumlah pembayaran aktif tagihan beralias
+// i: pembayaran tanpa pembatalan berstatus approved (sama dengan
+// ActivePaid). Dipakai halaman pembayaran, daftar tunggakan, dan laporan
+// agar angkanya sama persis.
+const ActivePaidSQL = `(SELECT coalesce(sum(p.amount), 0) FROM payments p
+	WHERE p.school_id = i.school_id AND p.invoice_id = i.id
+	  AND NOT EXISTS (SELECT 1 FROM payment_voids v WHERE v.payment_id = p.id AND v.status = 'approved'))`
+
+// FeeNamesSQL adalah nama jenis tagihan item tagihan beralias i, dipisah
+// koma sesuai urutan item.
+const FeeNamesSQL = `(SELECT string_agg(f.name, ', ' ORDER BY it.position, it.created_at)
+	FROM invoice_items it JOIN fee_types f ON f.school_id = it.school_id AND f.id = it.fee_type_id
+	WHERE it.school_id = i.school_id AND it.invoice_id = i.id)`

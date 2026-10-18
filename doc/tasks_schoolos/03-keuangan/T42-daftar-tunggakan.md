@@ -30,13 +30,13 @@ Bendahara dan kepala sekolah bisa melihat daftar tagihan yang sudah lewat jatuh 
 - `web/templates/billing/arrears.html`
 
 ## Kriteria selesai
-- [ ] Tagihan yang sudah lunas tidak muncul
-- [ ] Tagihan yang jatuh tempo hari ini tidak muncul (belum terlambat)
-- [ ] Sisa tunggakan sama dengan `total_amount` dikurangi pembayaran aktif, diuji dengan data contoh
-- [ ] Pembayaran yang dibatalkan dan belum disetujui tetap menghitung sebagai pembayaran aktif (sesuai T39)
-- [ ] Filter kelas dan jenis tagihan bekerja
-- [ ] Data sekolah lain tidak muncul
-- [ ] Guru mendapat `403`
+- [x] Tagihan yang sudah lunas tidak muncul
+- [x] Tagihan yang jatuh tempo hari ini tidak muncul (belum terlambat)
+- [x] Sisa tunggakan sama dengan `total_amount` dikurangi pembayaran aktif, diuji dengan data contoh
+- [x] Pembayaran yang dibatalkan dan belum disetujui tetap menghitung sebagai pembayaran aktif (sesuai T39)
+- [x] Filter kelas dan jenis tagihan bekerja
+- [x] Data sekolah lain tidak muncul
+- [x] Guru mendapat `403`
 
 ## Catatan
 - Daftar ini adalah bahan untuk laporan tunggakan (T48), jadi query dan angka harus sama persis.

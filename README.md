@@ -322,6 +322,15 @@ Halaman `/keuangan/tagihan-massal` (hanya `bendahara`), fungsi di [bulk_service.
 - Tagihan menyimpan `bulk_run_id`. Audit: satu baris `billing.bulk_create` berisi ringkasan, tidak ada `invoice.create` per tagihan.
 - Worker ada di [bulk_job.go](internal/billing/bulk_job.go) (bukan subpaket `jobs/`) karena memakai fungsi internal paket `billing`.
 
+### Daftar tunggakan
+
+[arrears.go](internal/billing/arrears.go), halaman **`/keuangan/tunggakan`** untuk `bendahara`, `admin_tu`, `kepala_sekolah` (guru dan orang tua `403`).
+
+- Tagihan **belum lunas**, **tidak dibatalkan**, dan **jatuh tempo sebelum hari ini** (Asia/Jakarta, dari handler; jatuh tempo hari ini belum terlambat). Semua tahun ajaran ikut.
+- Sisa = total − pembayaran aktif. Pembayaran aktif memakai `billing.ActivePaidSQL`, ekspresi yang sama dengan halaman pembayaran (dan laporan T48), sehingga angkanya sama persis: pembatalan yang belum disetujui tetap dihitung sebagai pembayaran.
+- Filter: kelas (pilihan dari tahun ajaran aktif), jenis tagihan (termasuk yang nonaktif), rentang jatuh tempo. Urut kelas, nama siswa, jatuh tempo. Ringkasan di atas: total sisa, jumlah siswa menunggak, jumlah tagihan.
+- Index `invoices (school_id, due_date)` dan `payment_voids (payment_id) WHERE status = 'approved'` (migrasi 000024).
+
 ### Pembayaran
 
 Tabel `payments` (migrasi 000020), paket [internal/payments](internal/payments/service.go). Form pencatatan menyusul di T35.
@@ -412,7 +421,7 @@ err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 
 - `Record` wajib dipanggil di **transaksi yang sama** dengan perubahan datanya, sehingga audit ikut di-rollback bila aksi gagal.
 - `school_id`, `action`, `entity_type`, dan `entity_id` wajib. `user_id` kosong berarti aksi sistem.
-- `Before`/`After` di-encode ke JSON. Kunci yang mengandung `password`, `token`, `secret`, atau `api_key` ditolak agar rahasia tidak masuk ke jejak audit.
+- `Before`/`After` di-encode ke JSON. Kunci yang mengandung `password`, `token`, `secret`, atau `api_key` ditolak agar rahasia tidak masuk ke jejak audit. Kunci yang mengandung `address` atau `alamat` dengan nilai **teks** juga ditolak (alamat adalah data pribadi siswa/wali); tanda boolean seperti `has_address` boleh. Audit wali mencatat `has_address`, bukan alamatnya; baris audit lama sudah diredaksi oleh migrasi 000025 (satu-satunya pengecualian append-only, khusus penghapusan data pribadi).
 - **Append-only:** trigger database menolak `UPDATE`, `DELETE`, dan `TRUNCATE` pada `audit_logs` untuk semua user, termasuk superuser.
 
 Batasan: aplikasi dan migrasi saat ini memakai user database yang sama (`postgres`, superuser di lokal dan Railway). `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` di migrasi tidak berpengaruh untuk pemilik tabel atau superuser, jadi perlindungan yang berlaku sekarang adalah trigger. Superuser masih bisa menonaktifkan trigger secara sengaja (`ALTER TABLE ... DISABLE TRIGGER`); itu tindakan administrasi database, bukan lewat aplikasi. Untuk production, sebaiknya aplikasi memakai role terpisah tanpa hak DDL. Migrasi `down` untuk tabel ini menghapus seluruh jejak audit, jadi hanya untuk development.
