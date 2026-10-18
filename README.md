@@ -176,7 +176,7 @@ Halaman dirender di server dengan `html/template` lewat [internal/platform/rende
 ```
 web/templates/
 ├── layout.html          kerangka halaman: define "layout", memanggil blok "title" dan "content"
-├── partials/            template bersama (logo, flash, app_header)
+├── partials/            template bersama (logo, icons, flash, app_header, auth_aside)
 ├── auth/login.html      halaman "auth/login"
 └── home.html            halaman "home"
 web/static/
@@ -193,6 +193,17 @@ web/static/
 - Tidak ada aset dari CDN; semua dimuat dari `/static/`. Uji `TestTemplates_NoExternalResources` gagal jika template atau CSS memuat URL eksternal.
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
+
+### Sistem desain
+
+Mengikuti [doc/brand-identity.md](doc/brand-identity.md): clean dan modern, navy `#0B3D91`, biru `#2563EB` untuk tombol utama, teal `#10B981` untuk status sukses, latar `#F8FAFC`, card putih membulat (14px), ikon outline. Token warna, jarak, radius, dan bayangan ada di `:root` [app.css](web/static/css/app.css).
+
+- **Kerangka per ukuran layar** ([partials/app_header.html](web/templates/partials/app_header.html)):
+  - desktop (>= 1024px): sidebar tetap di kiri (logo, sekolah, menu ber-ikon, kartu pengguna + tombol keluar);
+  - tablet dan HP (< 1024px): top bar dengan tombol menu yang membuka sidebar sebagai drawer (latar redup, tutup dengan tombol, klik latar, atau Esc). Tanpa JavaScript, menu tampil biasa di atas konten.
+- **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html), dipasang sekali di layout; pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
+- **Komponen**: tombol (`btn-primary`, `btn-ghost`, `btn-danger`, `btn-sm`, `btn-lg`, tinggi minimal 44px), input dan select setinggi 44px, card, tabel (header kecil berhuruf kapital, baris hover), badge pill dengan titik warna, alert, tile statistik (`stat-grid`), kartu dashboard (`dash-card` + `icon-chip`).
+- **Login**: di layar >= 900px tampil dua kolom (panel brand navy dengan tagline dan poin fitur, lalu form); di HP hanya form.
 
 ## Tahun Ajaran
 

@@ -1,12 +1,14 @@
 {{define "title"}}Masuk{{end}}
 {{define "bodyClass"}}page-auth{{end}}
 {{define "content"}}
+<div class="auth-layout">
+{{template "auth_aside"}}
 <section class="card auth-card">
 <div class="auth-brand">
 {{template "logo"}}
 <div>
 <h1 class="brand-name">AKRA</h1>
-<p class="muted">Satu Sistem, Banyak Cerita.</p>
+<p class="muted">Masuk ke akun sekolah Anda</p>
 </div>
 </div>
 
@@ -42,4 +44,5 @@
 
 <p class="auth-footer"><a href="/lupa-password">Lupa password?</a></p>
 </section>
+</div>
 {{end}}

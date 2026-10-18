@@ -198,7 +198,7 @@ func TestPortalPage(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Belum ada data anak yang terhubung. Hubungi sekolah.") {
 		t.Errorf("no children: status = %d", rec.Code)
 	}
-	if body := f.get(f.userRina, f.schoolA, "orang_tua").Body.String(); !strings.Contains(body, "Belum ditempatkan di kelas tahun ajaran aktif.") || strings.Contains(body, "6A") {
+	if body := f.get(f.userRina, f.schoolA, "orang_tua").Body.String(); !strings.Contains(body, "Belum ditempatkan di kelas tahun ajaran aktif.") || strings.Contains(mainContent(body), "6A") {
 		t.Error("child enrolled only last year must not show last year's class")
 	}
 	for _, roles := range []string{"admin_tu", "bendahara", "guru", "kepala_sekolah"} {
@@ -206,4 +206,13 @@ func TestPortalPage(t *testing.T) {
 			t.Errorf("%s: status = %d, want 403", roles, rec.Code)
 		}
 	}
+}
+
+// mainContent mengembalikan isi <main> (tanpa header dan sprite ikon).
+func mainContent(body string) string {
+	i, j := strings.Index(body, "<main"), strings.Index(body, "</main>")
+	if i < 0 || j < i {
+		return body
+	}
+	return body[i:j]
 }

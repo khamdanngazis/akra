@@ -1,8 +1,11 @@
 {{define "title"}}Beranda{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+<div class="welcome">
+<p class="eyebrow">{{.Today}}{{with .YearName}} · Tahun ajaran {{.}}{{end}}</p>
 <h1>Halo, {{.User.FullName}}</h1>
-<p class="muted">{{.User.SchoolName}} · {{.Today}}{{with .YearName}} · tahun ajaran {{.}}{{end}}</p>
+<p class="muted">Selamat datang di {{.User.SchoolName}}.</p>
+</div>
 {{template "flash" .}}
 
 {{if .NoYear}}
@@ -11,8 +14,8 @@
 
 <div class="home-grid">
 {{with .Treasurer}}
-<section class="card stat-card">
-<h2 class="section-title">Keuangan</h2>
+<section class="card dash-card">
+<div class="dash-head"><span class="icon-chip chip-blue">{{template "icon" "wallet"}}</span><h2>Keuangan</h2></div>
 <div class="stat-grid stat-grid-money">
 <div><span class="stat-value">{{.ArrearsTotal}}</span><span class="stat-label">total sisa tunggakan ({{.ArrearsStudents}} siswa)</span></div>
 <div><span class="stat-value">{{.PaymentsToday}}</span><span class="stat-label">pembayaran dicatat hari ini · {{.PaidToday}}</span></div>
@@ -22,8 +25,8 @@
 {{end}}
 
 {{if .IsTeacher}}
-<section class="card">
-<h2 class="section-title">Absensi hari ini</h2>
+<section class="card dash-card">
+<div class="dash-head"><span class="icon-chip chip-green">{{template "icon" "attendance"}}</span><h2>Absensi hari ini</h2></div>
 {{if .Teacher}}
 <ul class="result-list">
 {{range .Teacher}}<li><a href="/absensi?kelas={{.ID}}"><span><strong>Kelas {{.Name}}</strong></span>{{if .Filled}}<span class="badge badge-success">Sudah diisi</span>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</a></li>
@@ -36,8 +39,8 @@
 {{end}}
 
 {{with .Admin}}
-<section class="card stat-card">
-<h2 class="section-title">Data sekolah</h2>
+<section class="card dash-card">
+<div class="dash-head"><span class="icon-chip chip-navy">{{template "icon" "users"}}</span><h2>Data sekolah</h2></div>
 <div class="stat-grid">
 <div><span class="stat-value">{{.ActiveStudents}}</span><span class="stat-label">siswa aktif</span></div>
 <div><span class="stat-value">{{or $.YearName "–"}}</span><span class="stat-label">tahun ajaran aktif</span></div>
@@ -47,9 +50,9 @@
 {{end}}
 
 {{with .Principal}}
-<section class="card stat-card">
-<h2 class="section-title">Kehadiran minggu ini</h2>
-<p class="muted">{{.Range}}</p>
+<section class="card dash-card">
+<div class="dash-head"><span class="icon-chip chip-teal">{{template "icon" "chart"}}</span><h2>Kehadiran minggu ini</h2></div>
+<p class="muted small">{{.Range}}</p>
 <div class="stat-grid">
 <div><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
 <div><span class="stat-value">{{.Counts.Hadir}}</span><span class="stat-label">hadir</span></div>
