@@ -252,8 +252,14 @@ Migrasi 000013 menambah `users.guardian_id` (unik, foreign key komposit ke `guar
 - Akun dibuat **nonaktif tanpa password** dengan peran `orang_tua`; `school_id` diambil dari wali. Satu wali satu akun. Email yang sudah dipakai akun lain di sekolah yang sama ditolak.
 - Email aktivasi (lewat `MAIL_DRIVER`) berisi tautan `/aktivasi?token=…` yang berlaku **7 hari**, sekali pakai, dan memuat **kode sekolah** untuk login. Token disimpan sebagai SHA-256. Kirim ulang membatalkan tautan lama.
 - Orang tua membuat password sendiri di `/aktivasi` ([activation.go](internal/auth/activation.go)). Sebelum aktivasi, login selalu gagal dengan pesan yang sama seperti kredensial salah.
-- Setelah login, orang tua diarahkan ke `/portal` (parameter `next` ke halaman admin diabaikan). `/portal` hanya untuk peran `orang_tua`; semua halaman admin menolak orang tua dengan `403`, dan `/` mengalihkan orang tua ke `/portal`. Isi portal dikerjakan di T43–T46.
+- Setelah login, orang tua diarahkan ke `/portal` (parameter `next` ke halaman admin diabaikan). `/portal` hanya untuk peran `orang_tua`; semua halaman admin menolak orang tua dengan `403`, dan `/` mengalihkan orang tua ke `/portal`. Isi portal: lihat [Portal Orang Tua](#portal-orang-tua).
 - Audit: `guardian_account.create`, `guardian_account.resend_activation`, `guardian_account.activate`.
+
+## Portal Orang Tua
+
+Paket [internal/portal](internal/portal/service.go). Semua route `/portal` hanya untuk `orang_tua` (staf `403`).
+
+- **Daftar anak** (`GET /portal`, T43): anak yang terhubung lewat `student_guardians` dengan wali akun yang login. Wali dicari dari `users.guardian_id` berdasarkan user dan sekolah di sesi pada setiap request, tidak dari parameter atau sesi, sehingga perubahan hubungan wali langsung berlaku. Satu anak tampil sebagai ringkasan, lebih dari satu sebagai kartu. Kelas hanya dari enrollment aktif di **tahun ajaran aktif**; anak yang belum ditempatkan ditandai. Tanpa anak: "Belum ada data anak yang terhubung. Hubungi sekolah." Satu anak bisa punya dua wali; keduanya melihat anak yang sama.
 
 ## Absensi
 

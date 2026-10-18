@@ -1,8 +1,9 @@
-// Package portal menyediakan halaman untuk orang tua. Isi portal (anak,
-// absensi, tagihan) dikerjakan di T43–T46.
+// Package portal menyediakan halaman untuk orang tua: daftar anak (T43),
+// detail siswa (T44), tagihan dan riwayat (T45), kuitansi (T46).
 package portal
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
@@ -12,16 +13,20 @@ import (
 	"akra/internal/platform/page"
 )
 
+const pageChildren = "portal/children"
+
 // Handler melayani route /portal.
 type Handler struct {
+	svc      *Service
 	sessions *scs.SessionManager
 	render   page.Renderer
+	logger   *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(sessions *scs.SessionManager, render page.Renderer) *Handler {
-	return &Handler{sessions: sessions, render: render}
+func NewHandler(svc *Service, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route portal. Hanya akun orang tua yang boleh masuk;
@@ -30,17 +35,37 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Route(auth.PortalPath, func(r chi.Router) {
 		r.Use(auth.RequireRole(auth.RoleOrangTua))
 		// Peran: orang_tua.
-		r.Get("/", h.index)
+		r.Get("/", h.children)
 	})
 }
 
-type indexView struct {
-	User  auth.Identity
-	Flash string
-	Error string
+var relationshipLabels = map[string]string{"ayah": "Ayah", "ibu": "Ibu", "wali": "Wali", "lainnya": "Keluarga"}
+
+type childCard struct {
+	ID, Name, NIS, Status, Relationship, ClassName, YearName string
 }
 
-func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
+type childrenView struct {
+	User     auth.Identity
+	Children []childCard
+	Single   bool
+	Flash    string
+	Error    string
+}
+
+func (h *Handler) children(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	h.render.Render(w, r, http.StatusOK, "portal/index", indexView{User: id, Flash: auth.PopFlash(r.Context(), h.sessions)})
+	list, err := h.svc.ListChildren(r.Context(), id.SchoolID, id.UserID)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "list children", err)
+		return
+	}
+	v := childrenView{User: id, Single: len(list) == 1, Flash: auth.PopFlash(r.Context(), h.sessions)}
+	for _, c := range list {
+		v.Children = append(v.Children, childCard{
+			ID: c.ID, Name: c.FullName, NIS: c.NIS, Status: c.Status, Relationship: relationshipLabels[c.Relationship],
+			ClassName: c.ClassName, YearName: c.YearName,
+		})
+	}
+	h.render.Render(w, r, http.StatusOK, pageChildren, v)
 }

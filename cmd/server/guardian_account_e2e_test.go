@@ -250,8 +250,9 @@ func TestGuardianAccount_EndToEnd(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/portal" {
 		t.Fatalf("parent login: status = %d, location = %q", rec.Code, rec.Header().Get("Location"))
 	}
-	if rec := parent.get("/portal"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Halo, Ibu Sari") {
-		t.Errorf("portal: status = %d", rec.Code)
+	if rec := parent.get("/portal"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Halo, Ibu Sari") ||
+		!strings.Contains(rec.Body.String(), "Budi") || !strings.Contains(rec.Body.String(), "NIS 001") {
+		t.Errorf("portal: status = %d; want the linked child Budi", rec.Code)
 	}
 	if rec := parent.get("/"); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/portal" {
 		t.Errorf("parent at /: status = %d, location = %q", rec.Code, rec.Header().Get("Location"))

@@ -83,7 +83,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
 			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),
 		activation:  auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
-		portal:      portal.NewHandler(sessions, rd),
+		portal:      portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
 		attendance:  attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
 		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(nil, nil), sessions, rd, logger),

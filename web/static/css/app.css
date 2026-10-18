@@ -1130,3 +1130,9 @@ fieldset.field > legend {
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-4);
 }
+
+/* Portal */
+
+.child-name {
+  font-size: var(--text-lg);
+}

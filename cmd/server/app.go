@@ -70,7 +70,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianService(d.db),
 			students.NewGuardianAccountService(d.db, activation, d.logger),
 			d.sessions, d.render, d.logger),
-		portal:      portal.NewHandler(d.sessions, d.render),
+		portal:      portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:         devRoutes(d),
 		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
