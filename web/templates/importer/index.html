@@ -9,16 +9,33 @@
 </div>
 </div>
 
-{{template "flash" .}}
+{{if .Flash}}{{template "flash" .}}{{end}}
 
 <div class="import-grid">
 <aside class="import-side">
+<section class="card" aria-labelledby="upload-title">
+<h2 id="upload-title" class="card-title">Unggah data siswa</h2>
+<p class="mt-1 mb-4 text-sm text-slate-500">File .xlsx dari template, maksimal 5 MB dan 5.000 baris.</p>
+<form method="post" action="/impor/siswa" enctype="multipart/form-data" data-max="{{.MaxBytes}}"
+  x-data="{ err: '', submitting: false }"
+  @submit="const f = $refs.file.files[0]; err = !f ? 'Pilih file Excel yang akan diimpor.' : (f.size > Number($el.dataset.max) ? 'File terlalu besar. Maksimal 5 MB.' : ''); if (err) $event.preventDefault(); else submitting = true">
+{{ csrfField }}
+<div class="field">
+<label for="import-file">File Excel</label>
+<input id="import-file" type="file" name="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" x-ref="file" required{{if .Error}} aria-invalid="true" aria-describedby="import-file-error"{{end}}>
+{{with .Error}}<p id="import-file-error" class="field-error" x-show="!err">{{.}}</p>{{end}}
+<p class="field-error" x-show="err" x-text="err" x-cloak></p>
+</div>
+<button type="submit" class="btn btn-primary mt-4 w-full" :disabled="submitting">{{template "icon" "upload"}}<span x-text="submitting ? 'Mengunggah…' : 'Unggah file'">Unggah file</span></button>
+</form>
+</section>
+
 <section class="card">
 <div class="flex items-center gap-3">
 <span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "spreadsheet"}}</span>
-<div class="min-w-0"><strong class="block truncate">{{.Filename}}</strong><span class="block text-sm text-slate-500">Excel · {{len .Columns}} kolom</span></div>
+<div class="min-w-0"><strong class="block truncate">{{.Filename}}</strong><span class="block text-sm text-slate-500">Template Excel · {{len .Columns}} kolom</span></div>
 </div>
-<a class="btn btn-primary mt-4 w-full" href="/impor/siswa/template.xlsx" download>{{template "icon" "download"}}Unduh template</a>
+<a class="btn btn-ghost mt-4 w-full" href="/impor/siswa/template.xlsx" download>{{template "icon" "download"}}Unduh template</a>
 </section>
 
 <section class="card" aria-labelledby="import-rules">

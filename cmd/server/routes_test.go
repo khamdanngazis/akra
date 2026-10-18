@@ -97,7 +97,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		reports:     reports.NewHandler(nil, nil, nil, rd, logger),
 		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
 		home:        home.NewHandler(nil, rd, sessions, logger),
-		importer:    importer.NewHandler(rd, logger),
+		importer:    importer.NewHandler(importer.NewService(nil), sessions, rd, logger),
 	})
 }
 

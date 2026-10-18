@@ -1,31 +1,42 @@
 package importer
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
+	"path"
 	"strconv"
+	"strings"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
+	"akra/internal/school"
 )
 
 const (
 	studentPath      = "/impor/siswa"
+	batchPath        = "/impor/batch"
 	templateFilename = "template-impor-siswa.xlsx"
+	// maxUpload adalah batas body unggahan: file plus field form lain.
+	maxUpload = MaxFileSize + 64<<10
 )
 
 // Handler melayani halaman impor.
 type Handler struct {
-	render page.Renderer
-	logger *slog.Logger
+	svc      *Service
+	sessions *scs.SessionManager
+	render   page.Renderer
+	logger   *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{render: render, logger: logger}
+func NewHandler(svc *Service, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route impor.
@@ -36,6 +47,10 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get(studentPath, h.index)
 		// Peran: admin_tu.
 		r.Get(studentPath+"/template.xlsx", h.template)
+		// Peran: admin_tu.
+		r.Post(studentPath, h.upload)
+		// Peran: admin_tu.
+		r.Get(batchPath+"/{id}", h.batch)
 	})
 }
 
@@ -43,17 +58,140 @@ type indexView struct {
 	User     auth.Identity
 	Columns  []columnRow
 	Filename string
+	MaxBytes int
 	Flash    string
 	Error    string
 }
 
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
+	h.renderIndex(w, r, id, http.StatusOK, "")
+}
+
+func (h *Handler) renderIndex(w http.ResponseWriter, r *http.Request, id auth.Identity, status int, errMsg string) {
 	rows := make([]columnRow, len(StudentColumns))
 	for i, c := range StudentColumns {
 		rows[i] = columnRow{Letter: string(rune('A' + i)), Column: c}
 	}
-	h.render.Render(w, r, http.StatusOK, "importer/index", indexView{User: id, Columns: rows, Filename: templateFilename})
+	v := indexView{User: id, Columns: rows, Filename: templateFilename, MaxBytes: MaxFileSize, Error: errMsg}
+	if errMsg == "" {
+		v.Flash = auth.PopFlash(r.Context(), h.sessions)
+	}
+	h.render.Render(w, r, status, "importer/index", v)
+}
+
+// parseErrors adalah pesan untuk file yang ditolak.
+var parseErrors = map[error]string{
+	ErrFileEmpty:    "Pilih file Excel yang akan diimpor.",
+	ErrFileTooLarge: "File terlalu besar. Maksimal 5 MB.",
+	ErrNotXLSX:      "File harus berformat Excel .xlsx. Buka file di Excel, simpan sebagai .xlsx tanpa password, lalu unggah lagi.",
+	ErrNoHeader:     "Sheet pertama kosong. Isi data di sheet pertama dengan judul kolom di baris pertama.",
+	ErrNoData:       "Belum ada data siswa di file. Isi data mulai baris kedua.",
+	ErrTooManyRows:  "File berisi lebih dari 5.000 baris data. Bagi menjadi beberapa file, lalu unggah satu per satu.",
+}
+
+// parseMessage mengembalikan pesan untuk pengguna, atau "" jika err bukan
+// kesalahan isi file.
+func parseMessage(err error) string {
+	var missing *MissingColumnsError
+	if errors.As(err, &missing) {
+		return missing.Message() + ". Gunakan judul kolom sesuai template."
+	}
+	var dup *DuplicateColumnError
+	if errors.As(err, &dup) {
+		return dup.Message() + ". Hapus salah satunya."
+	}
+	for target, msg := range parseErrors {
+		if errors.Is(err, target) {
+			return msg
+		}
+	}
+	return ""
+}
+
+// upload membaca file unggahan, menolak file yang salah format, lalu
+// menyimpan hasil parsing sebagai batch berstatus diunggah.
+func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
+	file, hdr, err := r.FormFile("file")
+	var (
+		mbe  *http.MaxBytesError
+		rows Rows
+	)
+	switch {
+	case errors.As(err, &mbe):
+		err = ErrFileTooLarge
+	case errors.Is(err, http.ErrMissingFile):
+		err = ErrFileEmpty
+	case err != nil:
+		h.renderIndex(w, r, id, http.StatusBadRequest, "Unggahan tidak bisa dibaca. Coba lagi.")
+		return
+	default:
+		defer file.Close()
+		switch {
+		case hdr.Size > MaxFileSize:
+			err = ErrFileTooLarge
+		case !strings.EqualFold(path.Ext(strings.TrimSpace(hdr.Filename)), ".xlsx"):
+			err = ErrNotXLSX
+		default:
+			rows, err = ParseFile(file)
+		}
+	}
+	if err != nil {
+		if msg := parseMessage(err); msg != "" {
+			h.logger.InfoContext(r.Context(), "import file rejected", "school_id", id.SchoolID, "user_id", id.UserID, "reason", err.Error())
+			h.renderIndex(w, r, id, http.StatusUnprocessableEntity, msg)
+			return
+		}
+		page.ServerError(h.render, h.logger, w, r, id, "parse import file", err)
+		return
+	}
+	batchID, err := h.svc.CreateBatch(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, rows)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "create import batch", err)
+		return
+	}
+	auth.SetFlash(r.Context(), h.sessions, "File berhasil diunggah.")
+	http.Redirect(w, r, batchPath+"/"+batchID, http.StatusSeeOther)
+}
+
+// maxSkippedShown adalah jumlah baris dilewati yang dirinci di halaman batch.
+const maxSkippedShown = 20
+
+type batchView struct {
+	User        auth.Identity
+	Batch       Batch
+	Columns     [NumColumns]Column
+	Uploaded    string
+	StatusLabel string
+	Skipped     []Skip
+	SkippedMore int
+	Flash       string
+	Error       string
+}
+
+var statusLabels = map[string]string{
+	StatusUploaded: "Diunggah", StatusValidated: "Divalidasi", StatusRunning: "Berjalan", StatusDone: "Selesai", StatusFailed: "Gagal",
+}
+
+func (h *Handler) batch(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	b, err := h.svc.GetBatch(r.Context(), id.SchoolID, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrBatchNotFound) {
+		page.NotFound(h.render, w, r, id, "Batch impor tidak ditemukan.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "get import batch", err)
+		return
+	}
+	v := batchView{User: id, Batch: b, Columns: StudentColumns, StatusLabel: statusLabels[b.Status], Skipped: b.Skipped, Flash: auth.PopFlash(r.Context(), h.sessions),
+		Uploaded: clock.FormatDateID(clock.DateOf(b.CreatedAt)) + " " + b.CreatedAt.In(clock.Jakarta).Format("15.04") + " WIB"}
+	if n := len(v.Skipped); n > maxSkippedShown {
+		v.Skipped, v.SkippedMore = v.Skipped[:maxSkippedShown], n-maxSkippedShown
+	}
+	h.render.Render(w, r, http.StatusOK, "importer/batch", v)
 }
 
 // columnRow adalah satu kolom template beserta huruf kolomnya di Excel.
