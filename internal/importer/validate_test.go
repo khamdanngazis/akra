@@ -181,7 +181,7 @@ func TestValidateBatch_200Rows(t *testing.T) {
 		t.Fatalf("upload: status = %d", rec.Code)
 	}
 	batchID := strings.TrimPrefix(rec.Header().Get("Location"), "/impor/batch/")
-	svc := NewService(f.tx)
+	svc := NewService(f.tx, nil)
 	b, err := svc.GetBatch(ctx, f.schoolA, batchID)
 	if err != nil {
 		t.Fatal(err)
@@ -253,7 +253,7 @@ func TestValidateBatch_OldYearClassNotMatched(t *testing.T) {
 	r[ColClass] = "6A"
 	rec := f.do(uploadRequest(t, "a.xlsx", buildXLSX(t, [][]any{header(), r})), f.schoolA, f.adminA, auth.RoleAdminTU)
 	batchID := strings.TrimPrefix(rec.Header().Get("Location"), "/impor/batch/")
-	b, err := NewService(f.tx).GetBatch(context.Background(), f.schoolA, batchID)
+	b, err := NewService(f.tx, nil).GetBatch(context.Background(), f.schoolA, batchID)
 	if err != nil || b.ErrorRows != 1 {
 		t.Errorf("batch = %+v, %v", b, err)
 	}

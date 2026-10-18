@@ -2,6 +2,7 @@ package importer
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"path"
@@ -53,6 +54,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post(studentPath, h.upload)
 		// Peran: admin_tu.
 		r.Get(batchPath+"/{id}", h.batch)
+		// Peran: admin_tu.
+		r.Post(batchPath+"/{id}/simpan", h.run)
 	})
 }
 
@@ -178,6 +181,9 @@ type batchView struct {
 	SkippedMore int
 	Errors      []ErrorRow
 	ErrorsMore  int
+	Failed      []ErrorRow
+	FailedMore  int
+	SyncLimit   int
 	Flash       string
 	Error       string
 }
@@ -188,7 +194,11 @@ var statusLabels = map[string]string{
 
 func (h *Handler) batch(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	b, err := h.svc.GetBatch(r.Context(), id.SchoolID, chi.URLParam(r, "id"))
+	h.renderBatch(w, r, id, chi.URLParam(r, "id"), http.StatusOK, "")
+}
+
+func (h *Handler) renderBatch(w http.ResponseWriter, r *http.Request, id auth.Identity, batchID string, status int, errMsg string) {
+	b, err := h.svc.GetBatch(r.Context(), id.SchoolID, batchID)
 	if errors.Is(err, ErrBatchNotFound) {
 		page.NotFound(h.render, w, r, id, "Batch impor tidak ditemukan.")
 		return
@@ -197,8 +207,12 @@ func (h *Handler) batch(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, id, "get import batch", err)
 		return
 	}
-	v := batchView{User: id, Batch: b, Columns: StudentColumns, StatusLabel: statusLabels[b.Status], Skipped: b.Skipped, Flash: auth.PopFlash(r.Context(), h.sessions),
-		Uploaded: clock.FormatDateID(clock.DateOf(b.CreatedAt)) + " " + b.CreatedAt.In(clock.Jakarta).Format("15.04") + " WIB"}
+	v := batchView{User: id, Batch: b, Columns: StudentColumns, StatusLabel: statusLabels[b.Status], Skipped: b.Skipped,
+		Uploaded:  clock.FormatDateID(clock.DateOf(b.CreatedAt)) + " " + b.CreatedAt.In(clock.Jakarta).Format("15.04") + " WIB",
+		SyncLimit: SyncLimit, Error: errMsg}
+	if errMsg == "" {
+		v.Flash = auth.PopFlash(r.Context(), h.sessions)
+	}
 	if b.ErrorRows > 0 {
 		if v.Errors, err = h.svc.ErrorRows(r.Context(), id.SchoolID, b.ID, maxErrorsShown); err != nil {
 			page.ServerError(h.render, h.logger, w, r, id, "list import error rows", err)
@@ -206,10 +220,52 @@ func (h *Handler) batch(w http.ResponseWriter, r *http.Request) {
 		}
 		v.ErrorsMore = b.ErrorRows - len(v.Errors)
 	}
+	if b.FailedCount > 0 {
+		if v.Failed, err = h.svc.FailedRows(r.Context(), id.SchoolID, b.ID, maxErrorsShown); err != nil {
+			page.ServerError(h.render, h.logger, w, r, id, "list import failed rows", err)
+			return
+		}
+		v.FailedMore = b.FailedCount - len(v.Failed)
+	}
 	if n := len(v.Skipped); n > maxSkippedShown {
 		v.Skipped, v.SkippedMore = v.Skipped[:maxSkippedShown], n-maxSkippedShown
 	}
-	h.render.Render(w, r, http.StatusOK, "importer/batch", v)
+	h.render.Render(w, r, status, "importer/batch", v)
+}
+
+// run menyimpan baris valid batch ke data siswa.
+func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	batchID := chi.URLParam(r, "id")
+	err := h.svc.Run(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, batchID, h.today())
+	switch {
+	case errors.Is(err, ErrBatchNotFound):
+		page.NotFound(h.render, w, r, id, "Batch impor tidak ditemukan.")
+		return
+	case errors.Is(err, ErrNotRunnable):
+		h.renderBatch(w, r, id, batchID, http.StatusConflict, "Batch ini sudah disimpan atau sedang berjalan. Untuk mengimpor lagi, unggah file sebagai batch baru.")
+		return
+	case errors.Is(err, ErrNothingToImport):
+		h.renderBatch(w, r, id, batchID, http.StatusUnprocessableEntity, "Tidak ada baris yang siap disimpan. Perbaiki file, lalu unggah lagi.")
+		return
+	case err != nil:
+		page.ServerError(h.render, h.logger, w, r, id, "run import batch", err)
+		return
+	}
+	b, err := h.svc.GetBatch(r.Context(), id.SchoolID, batchID)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "get import batch", err)
+		return
+	}
+	msg := "Impor berjalan di latar belakang. Halaman ini diperbarui otomatis."
+	if b.Status == StatusDone {
+		msg = fmt.Sprintf("Impor selesai: %d siswa baru, %d diperbarui.", b.CreatedCount, b.UpdatedCount)
+		if b.FailedCount > 0 {
+			msg += fmt.Sprintf(" %d baris gagal disimpan.", b.FailedCount)
+		}
+	}
+	auth.SetFlash(r.Context(), h.sessions, msg)
+	http.Redirect(w, r, batchPath+"/"+batchID, http.StatusSeeOther)
 }
 
 // columnRow adalah satu kolom template beserta huruf kolomnya di Excel.

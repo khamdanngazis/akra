@@ -336,3 +336,31 @@ func (s *Service) ErrorRows(ctx context.Context, schoolID, batchID string, limit
 	}
 	return out, rows.Err()
 }
+
+// FailedRows mengembalikan paling banyak limit baris valid yang gagal
+// disimpan (T55), urut nomor baris.
+func (s *Service) FailedRows(ctx context.Context, schoolID, batchID string, limit int) ([]ErrorRow, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT line, raw, coalesce(result_error, '') FROM import_rows
+		WHERE school_id = $1 AND batch_id = $2 AND result = 'gagal'
+		ORDER BY line LIMIT $3`, schoolID, batchID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("importer: list failed rows: %w", err)
+	}
+	defer rows.Close()
+	var out []ErrorRow
+	for rows.Next() {
+		var (
+			e   ErrorRow
+			raw [NumColumns]string
+			msg string
+		)
+		if err := rows.Scan(&e.Line, &raw, &msg); err != nil {
+			return nil, fmt.Errorf("importer: scan failed row: %w", err)
+		}
+		e.NIS, e.Name, e.Class = raw[ColNIS], raw[ColFullName], raw[ColClass]
+		e.Errors = []RowError{{Message: msg}}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}

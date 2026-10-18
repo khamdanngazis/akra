@@ -1,17 +1,25 @@
 {{define "title"}}Hasil Unggahan{{end}}
+{{define "head"}}{{if .Batch.Running}}<meta http-equiv="refresh" content="3">{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 <p class="breadcrumb"><a href="/impor/siswa">← Impor siswa</a></p>
 <div class="page-header">
 <div class="min-w-0">
-<div class="flex flex-wrap items-center gap-3"><h1 class="m-0">Hasil unggahan</h1><span class="badge badge-info">{{.StatusLabel}}</span></div>
+<div class="flex flex-wrap items-center gap-3"><h1 class="m-0">Hasil unggahan</h1><span class="badge {{if eq .Batch.Status "selesai"}}badge-success{{else if eq .Batch.Status "gagal"}}badge-danger{{else if eq .Batch.Status "berjalan"}}badge-warning{{else}}badge-info{{end}}">{{.StatusLabel}}</span></div>
 <p class="muted break-words">{{.Batch.FileName}} · diunggah {{.Uploaded}} oleh {{.Batch.UploadedBy}}</p>
 </div>
 </div>
 
 {{template "flash" .}}
 
-{{if .Batch.Validated}}
+{{if .Batch.Finished}}
+<section class="kpi-grid" aria-label="Ringkasan">
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Siswa baru</span><span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "user-check"}}</span></span><span class="kpi-value">{{.Batch.CreatedCount}}</span><span class="kpi-hint">Tersimpan dan masuk kelas</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Diperbarui</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "users"}}</span></span><span class="kpi-value">{{.Batch.UpdatedCount}}</span><span class="kpi-hint">Siswa yang NIS-nya sudah ada</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Gagal disimpan</span><span class="kpi-icon bg-red-50 text-red-600">{{template "icon" "error"}}</span></span><span class="kpi-value">{{.Batch.FailedCount}}</span><span class="kpi-hint">{{if .Batch.FailedCount}}Lihat alasannya di bawah{{else}}Semua baris valid tersimpan{{end}}</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Tidak diimpor</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.ErrorRows}}</span><span class="kpi-hint">Baris yang perlu diperbaiki</span></div>
+</section>
+{{else if .Batch.Validated}}
 <section class="kpi-grid" aria-label="Ringkasan">
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Siswa baru</span><span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "user-check"}}</span></span><span class="kpi-value">{{.Batch.NewRows}}</span><span class="kpi-hint">Baris valid, NIS belum terdaftar</span></div>
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Akan diperbarui</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "users"}}</span></span><span class="kpi-value">{{.Batch.UpdateRows}}</span><span class="kpi-hint">NIS sudah terdaftar di sekolah</span></div>
@@ -22,6 +30,52 @@
 <section class="kpi-grid kpi-grid-2" aria-label="Ringkasan">
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Baris data</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "spreadsheet"}}</span></span><span class="kpi-value">{{.Batch.TotalRows}}</span><span class="kpi-hint">Belum diperiksa</span></div>
 <div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Dilewati</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.SkippedRows}}</span><span class="kpi-hint">Baris kosong atau baris contoh</span></div>
+</section>
+{{end}}
+
+{{if eq .Batch.Status "divalidasi"}}
+<section class="card run-card mb-4 desktop:mb-6" aria-labelledby="run-title">
+<div class="min-w-0">
+<h2 id="run-title" class="card-title">Simpan ke data siswa</h2>
+{{if .Batch.ValidRows}}
+<p class="m-0 mt-1 text-sm text-slate-500">{{.Batch.NewRows}} siswa baru dan {{.Batch.UpdateRows}} siswa yang sudah ada akan disimpan beserta kelas dan walinya.{{if .Batch.ErrorRows}} {{.Batch.ErrorRows}} baris yang perlu diperbaiki tidak ikut disimpan.{{end}}{{if gt .Batch.ValidRows .SyncLimit}} Proses berjalan di latar belakang.{{end}}</p>
+{{else}}
+<p class="m-0 mt-1 text-sm text-slate-500">Tidak ada baris yang siap disimpan. Perbaiki file, lalu unggah lagi.</p>
+{{end}}
+</div>
+{{if .Batch.ValidRows}}
+<form method="post" action="/impor/batch/{{.Batch.ID}}/simpan" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<button type="submit" class="btn btn-primary w-full sm:w-auto" :disabled="submitting">{{template "icon" "check"}}<span x-text="submitting ? 'Menyimpan…' : 'Simpan {{.Batch.ValidRows}} siswa'">Simpan {{.Batch.ValidRows}} siswa</span></button>
+</form>
+{{end}}
+</section>
+{{else if .Batch.Running}}
+<section class="card mb-4 desktop:mb-6" aria-labelledby="run-title">
+<h2 id="run-title" class="card-title">Menyimpan data siswa…</h2>
+<p class="m-0 mt-1 mb-4 text-sm text-slate-500">Halaman ini diperbarui otomatis. Anda boleh meninggalkan halaman ini; proses tetap berjalan.</p>
+<div class="meter" role="progressbar" aria-label="Progres impor" aria-valuenow="{{.Batch.Percent}}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{.Batch.Percent}}%"></span></div>
+<p class="m-0 mt-2 text-sm text-slate-600">{{.Batch.ProcessedRows}} dari {{.Batch.ValidRows}} baris diproses ({{.Batch.Percent}}%).</p>
+</section>
+{{else if eq .Batch.Status "selesai"}}
+<div class="mb-4 flex flex-wrap gap-2 desktop:mb-6"><a class="btn btn-primary" href="/siswa">{{template "icon" "users"}}Lihat daftar siswa</a><a class="btn btn-ghost" href="/impor/siswa">{{template "icon" "upload"}}Impor file lain</a></div>
+{{else if eq .Batch.Status "gagal"}}
+<div class="alert alert-error" role="alert">{{or .Batch.Error "Impor berhenti karena gangguan sistem."}} {{.Batch.ProcessedRows}} dari {{.Batch.ValidRows}} baris sempat diproses. Unggah ulang file untuk melengkapi sisanya; siswa yang sudah tersimpan akan diperbarui, bukan dibuat ganda.</div>
+{{end}}
+
+{{if .Failed}}
+<section class="card mb-4 desktop:mb-6" aria-labelledby="failed-title">
+<div class="card-head"><div><h2 id="failed-title" class="card-title">Baris yang gagal disimpan</h2><p class="m-0 text-sm text-slate-500">Data ini lolos pemeriksaan tetapi tidak bisa disimpan.</p></div></div>
+<ul class="error-list">
+{{range .Failed}}<li>
+<span class="column-letter" aria-hidden="true">{{.Line}}</span>
+<div class="min-w-0 flex-1">
+<strong class="block">Baris {{.Line}}{{with .NIS}} · NIS {{.}}{{end}}{{with .Name}} · {{.}}{{end}}</strong>
+<ul class="error-messages">{{range .Errors}}<li>{{.Message}}</li>{{end}}</ul>
+</div>
+</li>
+{{end}}</ul>
+{{with .FailedMore}}<p class="muted mt-4 mb-0 text-sm">dan {{.}} baris lainnya.</p>{{end}}
 </section>
 {{end}}
 
@@ -51,7 +105,11 @@
 {{else}}
 <li class="step"><span class="step-num">2</span><div><strong>Periksa data per baris</strong><p>NIS, kelas, tanggal lahir, dan data wali diperiksa sebelum disimpan.</p></div></li>
 {{end}}
+{{if eq .Batch.Status "selesai"}}
+<li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Simpan ke data siswa</strong><p>{{.Batch.CreatedCount}} siswa baru, {{.Batch.UpdatedCount}} diperbarui{{if .Batch.FailedCount}}, {{.Batch.FailedCount}} gagal{{end}}.</p></div></li>
+{{else}}
 <li class="step"><span class="step-num">3</span><div><strong>Simpan ke data siswa</strong><p>Hanya baris yang benar yang disimpan. Siswa yang NIS-nya sudah ada akan diperbarui.</p></div></li>
+{{end}}
 </ol>
 </section>
 

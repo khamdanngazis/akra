@@ -481,7 +481,14 @@ Paket [internal/importer](internal/importer). Akses: `admin_tu`. Menu "Siswa" te
   - validasi tidak menulis ke `students`, `guardians`, atau `enrollments`.
 - Halaman batch menampilkan jumlah siswa baru, akan diperbarui, perlu diperbaiki, dan dilewati, serta daftar 50 baris error pertama beserta pesannya.
 - File uji 200 baris (3 salah) ada di [internal/importer/testdata](internal/importer/testdata); buat ulang dengan `go test ./internal/importer -run TestTestdata200UpToDate -update`.
-- Berikutnya: simpan sebagai job (T55), laporan kesalahan (T56).
+- Simpan (T55, [run.go](internal/importer/run.go)): tombol "Simpan" di halaman batch (`POST /impor/batch/{id}/simpan`, hanya batch `divalidasi`):
+  - baris valid 50 atau kurang disimpan langsung di request itu; di atas 50 dijalankan sebagai job River `import_students` (`ImportStudentsWorker`, maks. 5 percobaan) dan halaman batch menampilkan progres serta memuat ulang diri setiap 3 detik;
+  - per baris: upsert `students` berdasarkan (`school_id`, `nis`) (kolom kosong tidak menghapus data lama), penempatan kelas lewat `students.Place` dengan tanggal saat "Simpan" ditekan (siswa di kelas lain dipindah, satu enrollment aktif), lalu wali jika nama wali diisi;
+  - wali dipakai ulang jika siswa sudah punya wali dengan nama sama, atau ada wali di sekolah dengan nama dan telepon sama; jika tidak, wali baru dibuat dan ditautkan sebagai `wali` (utama jika siswa belum punya wali utama);
+  - diproses 100 baris per transaksi; setiap baris ditandai `processed_at` dan `result` (`baru`, `diperbarui`, `gagal`), jadi job yang diulang melanjutkan baris yang belum diproses dan hitungan dihitung ulang dari `import_rows`;
+  - kegagalan satu baris (mis. kelas dihapus setelah validasi) dibatalkan lewat savepoint dan dicatat `gagal` dengan pesannya, baris lain tetap tersimpan;
+  - setelah selesai: satu audit `import.run` berisi ringkasan jumlah (tanpa data pribadi). Batch yang selesai tidak bisa dijalankan ulang; unggah file lagi sebagai batch baru (aman karena upsert).
+- Berikutnya: laporan kesalahan (T56).
 
 ## Job Latar Belakang (River)
 

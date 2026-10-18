@@ -7,6 +7,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"akra/internal/billing"
+	"akra/internal/importer"
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/storage"
 	"akra/internal/reports"
@@ -18,6 +19,7 @@ func registerWorkers(workers *jobs.Workers, pool *pgxpool.Pool, store storage.St
 	river.AddWorker(workers, billing.NewBulkInvoiceWorker(pool, logger))
 	river.AddWorker(workers, reports.NewExportWorker(pool, store, logger))
 	river.AddWorker(workers, reports.NewCleanupWorker(pool, store, logger))
+	river.AddWorker(workers, importer.NewImportStudentsWorker(pool, logger))
 }
 
 // periodicJobs adalah job terjadwal.

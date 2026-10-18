@@ -46,6 +46,27 @@ type Batch struct {
 	ValidRows  int // termasuk yang akan diperbarui
 	ErrorRows  int
 	UpdateRows int
+	// Hasil penyimpanan (T55).
+	Mode          string
+	ProcessedRows int
+	CreatedCount  int
+	UpdatedCount  int
+	FailedCount   int
+	Error         string
+}
+
+// Running melaporkan apakah penyimpanan sedang berjalan.
+func (b Batch) Running() bool { return b.Status == StatusRunning }
+
+// Finished melaporkan apakah penyimpanan sudah berakhir (selesai atau gagal).
+func (b Batch) Finished() bool { return b.Status == StatusDone || b.Status == StatusFailed }
+
+// Percent adalah progres penyimpanan 0–100.
+func (b Batch) Percent() int {
+	if b.ValidRows == 0 {
+		return 0
+	}
+	return min(100, b.ProcessedRows*100/b.ValidRows)
 }
 
 // NewRows adalah jumlah baris valid yang akan menjadi siswa baru.
@@ -56,12 +77,14 @@ func (b Batch) Validated() bool { return b.Status != StatusUploaded }
 
 // Service menyimpan dan membaca batch impor.
 type Service struct {
-	db database.DB
+	db   database.DB
+	jobs JobInserter
 }
 
-// NewService mengembalikan Service.
-func NewService(db database.DB) *Service {
-	return &Service{db: db}
+// NewService mengembalikan Service. jobs boleh nil jika impor besar tidak
+// dijalankan (mis. di uji).
+func NewService(db database.DB, jobs JobInserter) *Service {
+	return &Service{db: db, jobs: jobs}
 }
 
 // Upload menyimpan hasil parsing sebagai batch lalu langsung memvalidasi
@@ -131,12 +154,14 @@ func (s *Service) GetBatch(ctx context.Context, schoolID, id string) (Batch, err
 		                       ORDER BY line LIMIT `+fmt.Sprint(previewRows)+`) p),
 		                '[]'),
 		       u.full_name, b.created_at,
-		       coalesce(b.valid_rows, 0), coalesce(b.error_rows, 0), coalesce(b.update_rows, 0)
+		       coalesce(b.valid_rows, 0), coalesce(b.error_rows, 0), coalesce(b.update_rows, 0),
+		       coalesce(b.mode, ''), b.processed_rows, b.created_count, b.updated_count, b.failed_count, coalesce(b.error, '')
 		FROM import_batches b
 		JOIN users u ON u.school_id = b.school_id AND u.id = b.uploaded_by
 		WHERE b.school_id = $1 AND b.id = $2`, schoolID, id).
 		Scan(&b.ID, &b.FileName, &b.Status, &b.TotalRows, &b.SkippedRows, &skipped, &preview, &b.UploadedBy, &b.CreatedAt,
-			&b.ValidRows, &b.ErrorRows, &b.UpdateRows)
+			&b.ValidRows, &b.ErrorRows, &b.UpdateRows,
+			&b.Mode, &b.ProcessedRows, &b.CreatedCount, &b.UpdatedCount, &b.FailedCount, &b.Error)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Batch{}, ErrBatchNotFound
 	}
