@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -305,3 +306,13 @@ func checkXML(t *testing.T, data []byte) {
 		rc.Close()
 	}
 }
+
+func mustQuery(q string) url.Values {
+	v, err := url.ParseQuery(strings.TrimPrefix(q, "?"))
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func writePDF(w io.Writer, t export.Table) error { return export.WritePDF(w, t) }

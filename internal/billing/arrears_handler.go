@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -56,25 +55,18 @@ type arrearsView struct {
 	StudentCount   int
 	InvoiceCount   int
 	Filtered       bool
+	Query          string // filter untuk tautan unduhan
 	Error          string
 	Flash          string
 }
 
 func (h *ArrearsHandler) index(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	q := r.URL.Query()
 	today := clock.Today()
-	f := ArrearsFilter{ClassID: q.Get("kelas"), FeeTypeID: q.Get("jenis")}
-	v := arrearsView{User: id, From: q.Get("dari"), To: q.Get("sampai"), Today: clock.FormatDateID(today)}
-	if d, ok := parseDate(v.From); ok {
-		f.DueFrom = d
-	} else if v.From != "" {
-		v.Error, v.From = "Tanggal tidak valid.", ""
-	}
-	if d, ok := parseDate(v.To); ok {
-		f.DueTo = d
-	} else if v.To != "" {
-		v.Error, v.To = "Tanggal tidak valid.", ""
+	f, from, to, badDate := ParseArrearsQuery(r.URL.Query())
+	v := arrearsView{User: id, From: from, To: to, Today: clock.FormatDateID(today), Query: f.Query()}
+	if badDate {
+		v.Error = "Tanggal tidak valid."
 	}
 	v.Filtered = f.ClassID != "" || f.FeeTypeID != "" || !f.DueFrom.IsZero() || !f.DueTo.IsZero()
 
@@ -125,9 +117,4 @@ func (h *ArrearsHandler) index(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	h.render.Render(w, r, http.StatusOK, pageArrears, v)
-}
-
-func parseDate(s string) (time.Time, bool) {
-	d, err := time.Parse("2006-01-02", s)
-	return d, err == nil
 }

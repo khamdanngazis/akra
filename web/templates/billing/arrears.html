@@ -11,6 +11,7 @@
 <div><span class="stat-value">{{.StudentCount}}</span><span class="stat-label">siswa menunggak</span></div>
 <div><span class="stat-value">{{.InvoiceCount}}</span><span class="stat-label">tagihan</span></div>
 </div>
+<div class="action-row"><a class="btn btn-ghost btn-sm" href="/laporan/tunggakan.xlsx{{with .Query}}?{{.}}{{end}}">Unduh Excel</a><a class="btn btn-ghost btn-sm" href="/laporan/tunggakan.pdf{{with .Query}}?{{.}}{{end}}">Unduh PDF</a></div>
 </section>
 
 <form method="get" action="/keuangan/tunggakan" class="card filter-bar stack">

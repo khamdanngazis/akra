@@ -46,4 +46,17 @@ type Table struct {
 	Landscape bool
 	// Uncompressed hanya untuk uji: teks PDF bisa dicari di isi file.
 	Uncompressed bool
+	// Groups (opsional) sejajar dengan Rows: label kelompok tiap baris, mis.
+	// kelas. PDF mencetak judul kelompok saat label berganti dan subtotal
+	// kolom Money di akhir tiap kelompok. Excel tetap datar.
+	Groups []string
+	// Summary (opsional) ditulis ke sheet "Ringkasan" di Excel dan di bawah
+	// tabel PDF.
+	Summary []SummaryItem
+}
+
+// SummaryItem adalah satu baris ringkasan, mis. "Total sisa": Money(…).
+type SummaryItem struct {
+	Label string
+	Value any
 }

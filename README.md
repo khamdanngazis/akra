@@ -414,6 +414,10 @@ Paket [internal/reports](internal/reports/attendance.go); ekspor di [internal/re
   - Rentang maksimal satu tahun ajaran: tahun ajaran kelas, atau untuk "semua kelas" tahun ajaran yang memuat seluruh rentang. Tanpa tanggal: awal tahun ajaran sampai hari ini.
   - Excel: sheet **Rekap** (header bold dan dibekukan, angka sebagai angka, persentase format `0.0%`, baris total) dan sheet **Info** (judul, sekolah, filter, tanggal cetak). PDF A4: judul, sekolah, tahun ajaran, kelas, periode, tabel dengan header berulang, total, tanggal cetak, nomor halaman.
   - Ekspor langsung maksimal 5.000 baris (`reports.MaxSyncRows`); lebih dari itu ditolak dengan saran mempersempit filter (ekspor di server: T49).
+- **Laporan tunggakan** (T48, [arrears.go](internal/reports/arrears.go)): `GET /laporan/tunggakan.xlsx` dan `.pdf` dengan filter yang sama dengan `/keuangan/tunggakan` (tombol unduh ada di halaman itu), untuk `bendahara`, `admin_tu`, `kepala_sekolah` (guru dan orang tua `403`).
+  - Data hanya dari `billing.ListArrears` (tanpa query kedua); filter dibaca dengan `billing.ParseArrearsQuery` yang sama dengan halaman. Hari terlambat dihitung dari jatuh tempo ke tanggal cetak.
+  - Excel: sheet **Tunggakan** (NIS, nama, kelas, jenis tagihan, periode, jatuh tempo, total, sudah dibayar, sisa, hari terlambat; nominal sebagai angka berformat rupiah; baris total), **Ringkasan** (total sisa, jumlah siswa menunggak, jumlah tagihan, per tanggal), dan **Info**.
+  - PDF A4 mendatar: judul, nama sekolah, tanggal per, filter, tabel dikelompokkan per kelas dengan subtotal, total, ringkasan, tanggal cetak di setiap halaman. 500 baris diekspor sekitar 0,07 detik (uji).
 
 ## Job Latar Belakang (River)
 

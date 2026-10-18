@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 
 	"akra/internal/attendance"
 	"akra/internal/auth"
+	"akra/internal/billing"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
@@ -23,6 +25,7 @@ import (
 
 const (
 	attendancePath = "/laporan/kehadiran"
+	arrearsPath    = "/laporan/tunggakan"
 	pageAttendance = "reports/attendance"
 	dateLayout     = "2006-01-02"
 )
@@ -54,6 +57,14 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get(attendancePath+".xlsx", h.attendanceExcel)
 		// Peran: admin_tu, kepala_sekolah.
 		r.Get(attendancePath+".pdf", h.attendancePDF)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah))
+		// Peran: bendahara, admin_tu, kepala_sekolah. Halaman layarnya di
+		// /keuangan/tunggakan (T42).
+		r.Get(arrearsPath+".xlsx", h.arrearsExcel)
+		// Peran: bendahara, admin_tu, kepala_sekolah.
+		r.Get(arrearsPath+".pdf", h.arrearsPDF)
 	})
 }
 
@@ -270,22 +281,86 @@ func (h *Handler) attendanceExport(w http.ResponseWriter, r *http.Request, forma
 		return
 	}
 	t := attendanceTable(rep, id.SchoolName, h.today())
+	name := fmt.Sprintf("rekap-kehadiran-%s-%s.%s", rep.From.Format(dateLayout), rep.To.Format(dateLayout), format)
+	h.writeExport(w, r, id, t, format, "Rekap", name)
+}
+
+func (h *Handler) arrearsExcel(w http.ResponseWriter, r *http.Request) { h.arrearsExport(w, r, "xlsx") }
+
+func (h *Handler) arrearsPDF(w http.ResponseWriter, r *http.Request) { h.arrearsExport(w, r, "pdf") }
+
+func (h *Handler) arrearsExport(w http.ResponseWriter, r *http.Request, format string) {
+	id, _ := auth.CurrentUser(r.Context())
+	f, _, _, badDate := billing.ParseArrearsQuery(r.URL.Query())
+	if badDate {
+		page.BadRequest(h.render, w, r, id, "Filter tidak valid", "Periksa tanggal jatuh tempo.")
+		return
+	}
+	labels, err := h.arrearsFilterLabels(r, id.SchoolID, f)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "arrears filter labels", err)
+		return
+	}
+	today := h.today()
+	t, a, err := ArrearsReport(r.Context(), h.db, id.SchoolID, id.SchoolName, f, labels, today)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "arrears report", err)
+		return
+	}
+	if len(a.Items) > h.maxRows {
+		page.BadRequest(h.render, w, r, id, "Data terlalu besar", fmt.Sprintf("Laporan berisi lebih dari %d baris. Persempit filter (mis. per kelas).", h.maxRows))
+		return
+	}
+	h.writeExport(w, r, id, t, format, "Tunggakan", fmt.Sprintf("tunggakan-%s.%s", today.Format(dateLayout), format))
+}
+
+// arrearsFilterLabels menjelaskan filter aktif untuk kepala laporan.
+func (h *Handler) arrearsFilterLabels(r *http.Request, schoolID string, f billing.ArrearsFilter) ([]string, error) {
+	class, fee := "Semua kelas", "Semua jenis"
+	if database.IsUUID(f.ClassID) {
+		if err := h.db.QueryRow(r.Context(), `SELECT c.name || ' · ' || y.name FROM classes c
+			JOIN academic_years y ON y.school_id = c.school_id AND y.id = c.academic_year_id
+			WHERE c.school_id = $1 AND c.id = $2`, schoolID, f.ClassID).Scan(&class); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	}
+	if database.IsUUID(f.FeeTypeID) {
+		if err := h.db.QueryRow(r.Context(), `SELECT name FROM fee_types WHERE school_id = $1 AND id = $2`, schoolID, f.FeeTypeID).Scan(&fee); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	}
+	labels := []string{"Kelas: " + class, "Jenis tagihan: " + fee}
+	if !f.DueFrom.IsZero() || !f.DueTo.IsZero() {
+		from, to := "awal", "akhir"
+		if !f.DueFrom.IsZero() {
+			from = clock.FormatDateID(f.DueFrom)
+		}
+		if !f.DueTo.IsZero() {
+			to = clock.FormatDateID(f.DueTo)
+		}
+		labels = append(labels, "Jatuh tempo: "+from+" – "+to)
+	}
+	return labels, nil
+}
+
+// writeExport menulis t sebagai unduhan Excel atau PDF.
+func (h *Handler) writeExport(w http.ResponseWriter, r *http.Request, id auth.Identity, t export.Table, format, sheet, filename string) {
 	var buf bytes.Buffer
+	var err error
 	contentType := "application/pdf"
 	if format == "xlsx" {
 		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-		err = export.WriteExcel(&buf, t, "Rekap")
+		err = export.WriteExcel(&buf, t, sheet)
 	} else {
 		err = export.WritePDF(&buf, t)
 	}
 	if err != nil {
-		page.ServerError(h.render, h.logger, w, r, id, "export attendance report", err)
+		page.ServerError(h.render, h.logger, w, r, id, "export report", err)
 		return
 	}
-	name := fmt.Sprintf("rekap-kehadiran-%s-%s.%s", rep.From.Format(dateLayout), rep.To.Format(dateLayout), format)
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType)
-	hdr.Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	hdr.Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	hdr.Set("Cache-Control", "private, no-store")
 	hdr.Set("Content-Length", strconv.Itoa(buf.Len()))
 	_, _ = buf.WriteTo(w)

@@ -125,6 +125,28 @@ func WriteExcel(w io.Writer, t Table, dataSheet string) error {
 		return err
 	}
 
+	if len(t.Summary) > 0 {
+		if _, err := f.NewSheet("Ringkasan"); err != nil {
+			return err
+		}
+		for i, s := range t.Summary {
+			row := i + 1
+			if err := f.SetCellValue("Ringkasan", fmt.Sprintf("A%d", row), s.Label); err != nil {
+				return err
+			}
+			cell := fmt.Sprintf("B%d", row)
+			switch x := s.Value.(type) {
+			case Money:
+				_ = f.SetCellValue("Ringkasan", cell, int64(x))
+				_ = f.SetCellStyle("Ringkasan", cell, cell, moneyStyle)
+			default:
+				_ = f.SetCellValue("Ringkasan", cell, x)
+			}
+		}
+		_ = f.SetColWidth("Ringkasan", "A", "A", 28)
+		_ = f.SetColWidth("Ringkasan", "B", "B", 20)
+	}
+
 	if _, err := f.NewSheet("Info"); err != nil {
 		return err
 	}
