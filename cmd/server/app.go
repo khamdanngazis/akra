@@ -80,7 +80,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
 		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
-		reports:     reports.NewHandler(d.db, d.render, d.logger),
+		reports:     reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger),
 	}), nil
 }
 
@@ -91,4 +91,13 @@ func localStorageHandler(store storage.Store) http.Handler {
 		return l.Handler()
 	}
 	return nil
+}
+
+// reportJobs mengembalikan inserter job laporan, atau nil (interface nil,
+// bukan pointer nil) jika antrean job tidak tersedia.
+func reportJobs(c *jobs.Client) reports.JobInserter {
+	if c == nil {
+		return nil
+	}
+	return c
 }

@@ -114,12 +114,16 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.h = NewHandler(tx, rd, logger)
+	f.h = NewHandler(tx, nil, nil, rd, logger)
 	f.h.today = func() time.Time { return day("2026-10-18") }
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id := auth.Identity{UserID: teacher, SchoolID: f.schoolA, Roles: strings.Split(r.Header.Get("X-Roles"), ","), FullName: "Uji", SchoolName: "SD Laporan"}
+			user := teacher
+			if u := r.Header.Get("X-User"); u != "" {
+				user = u
+			}
+			id := auth.Identity{UserID: user, SchoolID: f.schoolA, Roles: strings.Split(r.Header.Get("X-Roles"), ","), FullName: "Uji", SchoolName: "SD Laporan"}
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})
@@ -129,8 +133,13 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (f *fixture) get(path, roles string) *httptest.ResponseRecorder {
+	return f.getAs("", path, roles)
+}
+
+func (f *fixture) getAs(user, path, roles string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	req.Header.Set("X-Roles", roles)
+	req.Header.Set("X-User", user)
 	rec := httptest.NewRecorder()
 	f.router.ServeHTTP(rec, req)
 	return rec

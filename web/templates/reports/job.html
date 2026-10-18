@@ -1,0 +1,24 @@
+{{define "title"}}Laporan di Server{{end}}
+{{define "head"}}{{if .Pending}}<meta http-equiv="refresh" content="3">{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>{{.TypeLabel}}</h1>
+<p class="muted">Laporan besar dibuat di server. Halaman ini diperbarui otomatis sampai selesai.</p>
+{{template "flash" .}}
+<section class="card">
+<dl class="data-list">
+<dt>Status</dt><dd>{{if eq .Job.Status "selesai"}}<span class="badge badge-success">Selesai</span>{{else if eq .Job.Status "gagal"}}<span class="badge badge-danger">Gagal</span>{{else if eq .Job.Status "berjalan"}}<span class="badge badge-info">Sedang dibuat</span>{{else}}<span class="badge">Menunggu antrean</span>{{end}}</dd>
+<dt>Format</dt><dd>{{if eq .Job.Format "xlsx"}}Excel{{else}}PDF{{end}}</dd>
+<dt>Jumlah baris</dt><dd>{{.Job.RowCount}}</dd>
+<dt>Diminta</dt><dd>{{.Created}}</dd>
+{{with .Finished}}<dt>Selesai</dt><dd>{{.}}</dd>{{end}}
+</dl>
+{{if eq .Job.Status "selesai"}}
+{{if .Job.FileDeleted}}<p class="hint">File sudah dihapus otomatis (disimpan 7 hari). Buat laporan lagi dari halaman laporan.</p>
+{{else}}<div class="action-row"><a class="btn btn-primary" href="/laporan/jobs/{{.Job.ID}}/unduh">Unduh {{.Job.FileName}}</a></div>
+<p class="hint">Tautan unduhan berlaku 5 menit setiap kali tombol ditekan. File disimpan 7 hari.</p>{{end}}
+{{else if eq .Job.Status "gagal"}}
+<div class="alert alert-error" role="alert">{{.Job.Error}}</div>
+{{end}}
+</section>
+{{end}}
