@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+# Image service backup harian (T62): akra-backup + pg_dump/pg_restore 18,
+# sesuai versi Postgres di Railway. pg_dump harus sama atau lebih baru dari
+# server; naikkan tag postgres jika server dinaikkan.
+
+FROM golang:1.22.2-alpine AS build
+WORKDIR /src
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -trimpath -ldflags="-s -w" -o /out/akra-backup ./cmd/backup
+
+FROM postgres:18-alpine
+COPY --from=build /out/akra-backup /usr/local/bin/akra-backup
+COPY --chmod=0755 scripts/backup.sh scripts/restore.sh /usr/local/bin/
+USER postgres
+WORKDIR /tmp
+# Tanpa entrypoint bawaan image postgres (yang menyalakan server).
+ENTRYPOINT []
+CMD ["/usr/local/bin/backup.sh"]

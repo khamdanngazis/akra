@@ -681,6 +681,10 @@ Mitigasi utama risiko kebocoran data antar sekolah:
 
 Data uji dari [cmd/loadseed](cmd/loadseed/main.go) (tiga sekolah, 5.400 tagihan per sekolah, 10.000 pembayaran) dan skenario k6 di [loadtest/](loadtest/README.md). Hasil, versi alat, dan batas kasar kapasitas dicatat di [loadtest/README.md](loadtest/README.md). Hash dan verifikasi password argon2id dibatasi 4 bersamaan per proses agar login serentak tidak memakan memori berlebih.
 
+### Backup dan pemulihan (T62)
+
+Backup harian `pg_dump -Fc` ke R2 (`backups/{tanggal}/schoolos.dump`, retensi 14 hari) lewat `akra-backup` ([cmd/backup](cmd/backup/main.go), image [Dockerfile.backup](Dockerfile.backup), service cron Railway). Cara menyiapkan, menguji pemulihan bulanan, dan memulihkan produksi ada di [doc/restore.md](doc/restore.md). Uji `internal/backup` memulihkan database uji ke database baru dan membandingkan jumlah baris (dilewati jika `pg_dump` tidak ada atau versinya lebih lama dari server).
+
 ### CI
 
 [.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
