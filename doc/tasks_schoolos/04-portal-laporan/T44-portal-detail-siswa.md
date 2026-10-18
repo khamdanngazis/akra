@@ -24,11 +24,11 @@ Orang tua melihat profil anaknya, kelas aktif, dan rekap absensi. Akses ke siswa
 - `web/templates/portal/child_detail.html`
 
 ## Kriteria selesai
-- [ ] Orang tua membuka anaknya dan melihat data benar
-- [ ] Mengubah `studentID` di URL ke siswa lain menghasilkan `404`
-- [ ] Mengubah `studentID` ke siswa yang berasal dari sekolah lain menghasilkan `404`
-- [ ] Rekap absensi di portal sama dengan rekap di T27 untuk siswa yang sama
-- [ ] Tidak ada tombol ubah data di halaman ini
+- [x] Orang tua membuka anaknya dan melihat data benar
+- [x] Mengubah `studentID` di URL ke siswa lain menghasilkan `404`
+- [x] Mengubah `studentID` ke siswa yang berasal dari sekolah lain menghasilkan `404`
+- [x] Rekap absensi di portal sama dengan rekap di T27 untuk siswa yang sama
+- [x] Tidak ada tombol ubah data di halaman ini
 
 ## Catatan
 - Respons `404` yang sama untuk semua kasus mencegah orang tua menebak id siswa lain (enumerasi).

@@ -161,17 +161,17 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "summary by class", err)
 		return
 	}
-	view.Percent = formatPercent(view.Summary.PresentPercent())
+	view.Percent = FormatPercent(view.Summary.PresentPercent())
 	view.Range = clock.FormatDateID(from) + " – " + clock.FormatDateID(to)
 	for _, s := range students {
-		view.Rows = append(view.Rows, reportRow{NIS: s.NIS, FullName: s.FullName, Counts: s.Counts, Percent: formatPercent(s.PresentPercent())})
+		view.Rows = append(view.Rows, reportRow{NIS: s.NIS, FullName: s.FullName, Counts: s.Counts, Percent: FormatPercent(s.PresentPercent())})
 	}
 	h.render.Render(w, r, http.StatusOK, "attendance/rekap", view)
 }
 
-// formatPercent memformat persepuluhan persen sebagai "92,5%", atau "–"
+// FormatPercent memformat persepuluhan persen sebagai "92,5%", atau "–"
 // jika belum ada catatan.
-func formatPercent(tenths int) string {
+func FormatPercent(tenths int) string {
 	if tenths < 0 {
 		return "–"
 	}
