@@ -644,4 +644,22 @@ Uji yang butuh database hanya berjalan jika `TEST_DATABASE_URL` diisi:
 TEST_DATABASE_URL=postgres://akra:akra@localhost:5432/akra?sslmode=disable go test ./...
 ```
 
+Jalankan dengan `-p 1` jika memakai database: beberapa uji memakai kode sekolah tetap sehingga paket perlu berjalan bergantian.
+
+### Uji otorisasi lintas sekolah (T58)
+
+Mitigasi utama risiko kebocoran data antar sekolah:
+
+- [internal/testutil/fixtures.go](internal/testutil/fixtures.go): `SeedTwoSchools` membuat sekolah A dan B dengan isi setara (lima peran, kelas, siswa, wali dengan akun, tagihan, pembayaran, bukti, pengajuan pembatalan, pengumuman, sesi absensi, tagihan massal, job laporan, batch impor). Setiap data diberi penanda `RAHASIA-A`/`RAHASIA-B`.
+- [internal/testutil/routes.go](internal/testutil/routes.go): daftar semua route dengan jenis uji (`KindByID`, `KindPage`, `KindFormRef`, `KindOwn`, `KindPublic`), peran yang diizinkan, dan request yang menunjuk data sekolah lain.
+- [cmd/server/cross_tenant_test.go](cmd/server/cross_tenant_test.go) (di paket `main` karena butuh router lengkap):
+  - `TestCrossTenant_EveryRouteListed` gagal jika ada route terdaftar tanpa entri di `routes.go` (atau entri tanpa route). Tidak butuh database;
+  - `TestCrossTenant_NoAccessToOtherSchool` login sebagai setiap pengguna sekolah A (lalu B) dan membuka setiap route dengan ID sekolah lain: peran yang diizinkan harus mendapat 404 (form dengan ID sekolah lain: 4xx), peran lain 403, respons tidak boleh memuat penanda sekolah lain (termasuk isi file .xlsx), dan ringkasan md5 semua tabel ber-`school_id` milik sekolah lain tidak boleh berubah;
+  - kontrol positif: request yang sama dengan ID sekolah sendiri harus sampai ke handler (bukan 404/403), agar 404 tidak berasal dari path yang salah.
+- **Setiap route baru wajib ditambahkan ke `routes.go`.**
+
+### CI
+
+[.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
+
 Catatan: dependensi dipilih agar tetap kompatibel dengan Go 1.22. Jika `go get` mencoba menaikkan versi Go, jalankan dengan `GOTOOLCHAIN=local`.
