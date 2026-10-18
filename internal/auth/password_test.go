@@ -3,6 +3,7 @@ package auth
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // testParams membuat hashing cepat saat pengujian.
@@ -45,5 +46,41 @@ func TestHashPassword_UniqueSalt(t *testing.T) {
 func TestVerifyPassword_MalformedHash(t *testing.T) {
 	if _, err := VerifyPassword("x", "not-a-hash"); err == nil {
 		t.Error("VerifyPassword(malformed) error = nil, want error")
+	}
+}
+
+// Jika semua slot terpakai, hash dan verifikasi menunggu sampai ada slot
+// yang dilepas (batas memori saat login serentak, T61).
+func TestPassword_ConcurrencyLimit(t *testing.T) {
+	h := NewHasher(PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1})
+	hash, err := h.HashPassword("rahasia")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var releases []func()
+	for range maxConcurrentHashes {
+		releases = append(releases, acquireHashSlot())
+	}
+	done := make(chan bool)
+	go func() {
+		ok, _ := VerifyPassword("rahasia", hash)
+		done <- ok
+	}()
+	select {
+	case <-done:
+		t.Fatal("verification ran while all slots were taken")
+	case <-time.After(100 * time.Millisecond):
+	}
+	releases[0]()
+	select {
+	case ok := <-done:
+		if !ok {
+			t.Error("verification failed")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("verification did not run after a slot was released")
+	}
+	for _, r := range releases[1:] {
+		r()
 	}
 }

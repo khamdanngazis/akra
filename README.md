@@ -677,6 +677,10 @@ Mitigasi utama risiko kebocoran data antar sekolah:
 - [internal/platform/money/nofloat_test.go](internal/platform/money/nofloat_test.go) memeriksa kode (AST) paket keuangan (`money`, `billing`, `payments`, `portal`, `home`, `reports`): tidak boleh ada `float32/float64`, fungsi paket `math`, `strconv.*Float`, literal desimal (kecuali koordinat tata letak kuitansi PDF), format `%f/%g/%e`, atau cast pecahan di SQL; migrasi tidak boleh punya kolom `float/real/numeric/decimal`.
 - Aturan pembatalan (bulan berjalan, ambang persetujuan, pengaju tidak boleh menyetujui atau menolak sendiri) dan tagihan massal tanpa duplikat diuji di `void_test.go` dan `bulk_test.go`.
 
+### Uji beban ringan (T61)
+
+Data uji dari [cmd/loadseed](cmd/loadseed/main.go) (tiga sekolah, 5.400 tagihan per sekolah, 10.000 pembayaran) dan skenario k6 di [loadtest/](loadtest/README.md). Hasil, versi alat, dan batas kasar kapasitas dicatat di [loadtest/README.md](loadtest/README.md). Hash dan verifikasi password argon2id dibatasi 4 bersamaan per proses agar login serentak tidak memakan memori berlebih.
+
 ### CI
 
 [.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
