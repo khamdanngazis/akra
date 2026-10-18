@@ -179,8 +179,9 @@ web/templates/
 ├── partials/            template bersama (logo, icons, flash, app_header, auth_aside)
 ├── auth/login.html      halaman "auth/login"
 └── home.html            halaman "home"
+web/tailwind/app.css     sumber CSS Tailwind v4: tema brand (@theme), base, komponen (@layer components)
 web/static/
-├── css/app.css          CSS variables di :root (warna brand, jarak, font), tanpa Tailwind
+├── css/app.css          hasil build Tailwind (minified, di-commit; jangan diedit langsung)
 ├── js/alpine.min.js     Alpine.js 3.17.4 (dist/cdn.min.js dari npm alpinejs@3.17.4)
 ├── fonts/               Plus Jakarta Sans variable, subset latin (@fontsource-variable/plus-jakarta-sans@5.3.0, lisensi OFL)
 └── img/favicon.svg
@@ -194,16 +195,16 @@ web/static/
 - Pesan sekali tampil memakai `auth.SetFlash` / `auth.PopFlash` (disimpan di sesi), bukan query string.
 - Tabel lebar dibungkus `<div class="table-wrap">` agar halaman tidak scroll horizontal di layar 360px.
 
-### Sistem desain
+### Sistem desain (Tailwind CSS)
 
-Mengikuti [doc/brand-identity.md](doc/brand-identity.md): clean dan modern, navy `#0B3D91`, biru `#2563EB` untuk tombol utama, teal `#10B981` untuk status sukses, latar `#F8FAFC`, card putih membulat (14px), ikon outline. Token warna, jarak, radius, dan bayangan ada di `:root` [app.css](web/static/css/app.css).
+Styling memakai **Tailwind CSS v4 standalone CLI** (binary, tanpa Node), sesuai opsi di [software-architecture.md](doc/software-architecture.md). Sumber di [web/tailwind/app.css](web/tailwind/app.css); hasil build `web/static/css/app.css` di-commit, jadi `go build` dan Docker tidak butuh Tailwind.
 
-- **Kerangka per ukuran layar** ([partials/app_header.html](web/templates/partials/app_header.html)):
-  - desktop (>= 1024px): sidebar tetap di kiri (logo, sekolah, menu ber-ikon, kartu pengguna + tombol keluar);
-  - tablet dan HP (< 1024px): top bar dengan tombol menu yang membuka sidebar sebagai drawer (latar redup, tutup dengan tombol, klik latar, atau Esc). Tanpa JavaScript, menu tampil biasa di atas konten.
-- **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html), dipasang sekali di layout; pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
-- **Komponen**: tombol (`btn-primary`, `btn-ghost`, `btn-danger`, `btn-sm`, `btn-lg`, tinggi minimal 44px), input dan select setinggi 44px, card, tabel (header kecil berhuruf kapital, baris hover), badge pill dengan titik warna, alert, tile statistik (`stat-grid`), kartu dashboard (`dash-card` + `icon-chip`).
-- **Login**: di layar >= 900px tampil dua kolom (panel brand navy dengan tagline dan poin fitur, lalu form); di HP hanya form.
+- `make css`: build CSS (binary v4.3.3 diunduh ke `bin/` dengan checksum terkunci). `make css-watch` saat mengubah template. `make css-check` gagal jika CSS yang di-commit tidak sesuai sumber. **Setiap mengubah template atau sumber CSS, jalankan `make css` dan commit hasilnya**: Tailwind hanya menghasilkan class yang dipakai di `web/templates`.
+- Tema mengikuti [doc/brand-identity.md](doc/brand-identity.md): palet `navy` (`navy-900` = `#0B3D91`), biru `blue-600` (= `#2563EB`) untuk tombol utama, `emerald-500` (= `#10B981`) untuk sukses, latar `slate-50`, card putih `rounded-2xl` dengan ring halus, ikon outline, font Plus Jakarta Sans.
+- Komponen yang dipakai banyak halaman (`btn`, `card`, `badge`, `field`, `stat-grid`, `pay-item`, dan lain-lain) ditulis dengan `@apply` di `@layer components`; tata letak halaman memakai utility class langsung di template (mis. shell, beranda, login).
+- **Kerangka per ukuran layar** ([partials/app_header.html](web/templates/partials/app_header.html)): desktop (>= 1024px) sidebar navy tetap di kiri (logo, sekolah, menu ber-ikon, kartu pengguna + keluar); tablet dan HP top bar dengan tombol menu yang membuka sidebar sebagai drawer (tutup dengan tombol, klik latar, atau Esc). Tanpa JavaScript menu tampil biasa.
+- **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html); pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
+- **Login**: di layar >= 56rem dua kolom (panel brand navy dengan tagline dan poin fitur, lalu form); di HP hanya form.
 
 ## Tahun Ajaran
 
