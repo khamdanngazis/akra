@@ -117,6 +117,8 @@ func funcs(versions map[string]string) template.FuncMap {
 	}
 	// menu mengembalikan item navigasi untuk peran pengguna (T51).
 	m["menu"] = nav.MenuFor
+	m["roleLabel"] = nav.RoleLabel
+	m["initials"] = nav.Initials
 	// currentMenu mengembalikan Path item menu yang aktif untuk request ini.
 	m["currentMenu"] = func([]nav.MenuItem) string { return "" }
 	for k, v := range csrf.PlaceholderFuncs {

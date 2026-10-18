@@ -1,0 +1,15 @@
+{{/* auth_aside adalah panel brand di halaman masuk (tampil di layar lebar). */}}
+{{define "auth_aside" -}}
+<aside class="auth-aside" aria-hidden="true">
+<div class="auth-aside-brand">{{template "logo"}}<span class="brand-name">AKRA</span></div>
+<div class="auth-aside-body">
+<p class="auth-tagline">Satu Sistem, Banyak Cerita.</p>
+<p>Data siswa, absensi, tagihan, dan portal orang tua dalam satu aplikasi sekolah.</p>
+<ul class="auth-points">
+<li>{{template "icon" "attendance"}}<span>Absensi harian dari HP guru</span></li>
+<li>{{template "icon" "wallet"}}<span>Tagihan, pembayaran, dan kuitansi tercatat rapi</span></li>
+<li>{{template "icon" "child"}}<span>Orang tua memantau anak lewat portal</span></li>
+</ul>
+</div>
+</aside>
+{{- end}}
