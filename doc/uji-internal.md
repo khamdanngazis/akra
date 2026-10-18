@@ -65,8 +65,9 @@ Uji ini dijalankan oleh pembuat fitur. Catatan T63 menyarankan penguji lain, jad
 | Langkah | Hasil |
 |---|---|
 | Pasang email wali Siswa 002 (1A) lewat impor ulang satu baris | ✓ baris *diperbarui*; email wali terisi tanpa membuat wali ganda |
-| Admin membuat akun orang tua dari halaman siswa | ✓ status *Menunggu aktivasi*; email aktivasi terkirim ke alamat penguji |
-| Aktivasi dari email, login, lihat anak, absensi, tagihan, unduh kuitansi | menunggu aktivasi oleh penguji |
+| Admin membuat akun orang tua dari halaman siswa | ✓ akun dibuat, status *Menunggu aktivasi* |
+| Email aktivasi | ✗ **tidak terkirim**: Resend menolak (`403 The akra.id domain is not verified`). Admin mendapat pesan "email aktivasi … gagal dikirim. Coba kirim ulang." (K-7) |
+| Aktivasi dari email, login, lihat anak, absensi, tagihan, unduh kuitansi | tertunda sampai K-7 selesai |
 
 Kepemilikan data portal sudah diuji otomatis di T59 (setiap push di CI): anak sendiri 200; anak lain, sekolah lain, dan ID acak 404 dengan respons identik; route staf 403.
 
@@ -100,6 +101,7 @@ Fitur MVP 1 (rencana 3.1) yang diperiksa terhadap aplikasi:
 
 | No | Skenario | Langkah | Hasil | Prioritas |
 |---|---|---|---|---|
+| K-7 | Portal, akun | Email aktivasi orang tua (dan semua email aplikasi) | Resend menolak pengiriman dari `no-reply@akra.id` karena domain `akra.id` belum diverifikasi. **Semua email gagal**: aktivasi orang tua dan reset password. Aplikasi menangani kegagalan dengan benar (pesan ke admin, log error), tapi tanpa email orang tua tidak bisa memakai portal dan pengguna yang lupa password tidak bisa masuk | **Kritis** (konfigurasi, terbuka) |
 | K-1 | Absensi | Rekap Absensi, tombol *Unduh Excel* | Tombol nonaktif bertuliskan "Unduh Excel (segera)" dengan keterangan "dikerjakan di T47". Ekspornya sudah ada di menu Laporan, tapi tombol ini tidak disambungkan. Pengguna bisa mengira fitur belum ada | **Sedang** |
 | K-2 | Fitur 3.1 | Ekspor data siswa ke Excel | Tidak ada di aplikasi dan tidak ada task-nya. Tercantum di fitur MVP 1, tapi bukan kriteria selesai 3.2 | **Tinggi** |
 | K-3 | Pembayaran | Halaman Audit Keuangan | Rincian memakai nama field teknis (`void_id`, `requires_approval`, `status pending`, UUID). Bisa dibaca, tapi tidak ramah untuk kepala sekolah | Rendah |
@@ -107,10 +109,11 @@ Fitur MVP 1 (rencana 3.1) yang diperiksa terhadap aplikasi:
 | K-5 | Data | Data wali | Tidak ada halaman untuk mengubah data wali (nama, telepon, email). Satu-satunya cara adalah impor ulang (T57 melengkapi email yang kosong) | Sedang |
 | K-6 | Awal tahun ajaran | Riwayat kelas siswa hasil impor | Tanggal masuk kelas tercatat sebagai tanggal impor (18 Oktober), bukan awal tahun ajaran (13 Juli). Tagihan tidak terpengaruh, karena tagihan massal memakai kelas aktif. Tapi untuk sekolah yang mulai memakai AKRA di tengah tahun, riwayat kelas tampak seolah siswa baru masuk | Rendah |
 
-Tidak ada kendala **kritis**.
+Satu kendala **kritis** masih terbuka: K-7 (email). Penyebabnya konfigurasi, bukan kode. Harus selesai sebelum pilot.
 
 ## Daftar perbaikan (backlog, urut prioritas)
 
+1. **Kritis.** Verifikasi domain pengirim di Resend (DNS SPF/DKIM untuk `akra.id` atau domain lain milik sekolah/proyek) dan sesuaikan `MAIL_FROM` (K-7). Setelah itu, uji ulang aktivasi orang tua dan reset password di staging.
 1. **Tinggi.** Ekspor data siswa ke Excel (K-2): daftar siswa sesuai filter, kolom sama dengan template impor agar bisa dipakai ulang. Perlu task baru (mis. T64).
 2. **Sedang.** Sambungkan tombol *Unduh Excel* di Rekap Absensi ke `/laporan/kehadiran.xlsx` dengan filter yang sama (K-1). Perubahan kecil.
 3. **Sedang.** Cadangan aktivasi akun orang tua tanpa email (K-4).
