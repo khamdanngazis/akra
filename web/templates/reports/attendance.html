@@ -1,0 +1,45 @@
+{{define "title"}}Rekap Kehadiran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Rekap Kehadiran</h1>
+<p class="muted">Rekap per siswa, sama dengan rekap kelas. Rentang maksimal satu tahun ajaran. Persentase kehadiran = hadir dibagi semua catatan (hadir, sakit, izin, alpa).</p>
+{{template "flash" .}}
+
+<form method="get" action="/laporan/kehadiran" class="card filter-bar stack">
+<div class="field"><label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field-grid">
+<div class="field"><label for="dari">Dari tanggal</label><input id="dari" type="date" name="dari" value="{{.From}}"></div>
+<div class="field"><label for="sampai">Sampai tanggal</label><input id="sampai" type="date" name="sampai" value="{{.To}}"></div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tampilkan</button></div>
+</form>
+
+{{if .Query}}
+<section class="card stat-card">
+<p class="muted">{{with .Report.ClassName}}Kelas {{.}}{{else}}Semua kelas{{end}} · tahun ajaran {{.Report.YearName}} · {{.Range}}</p>
+<div class="stat-grid">
+<div><span class="stat-value">{{len .Rows}}</span><span class="stat-label">siswa</span></div>
+<div><span class="stat-value">{{.Total.Percent}}</span><span class="stat-label">kehadiran</span></div>
+</div>
+<div class="action-row"><a class="btn btn-ghost btn-sm" href="/laporan/kehadiran.xlsx?{{.Query}}">Unduh Excel</a><a class="btn btn-ghost btn-sm" href="/laporan/kehadiran.pdf?{{.Query}}">Unduh PDF</a></div>
+</section>
+
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th class="num">Hadir</th><th class="num">Sakit</th><th class="num">Izin</th><th class="num">Alpa</th><th class="num">Kehadiran</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr><td class="nowrap">{{.NIS}}</td><td>{{.Name}}</td><td class="nowrap">{{.Class}}</td><td class="num">{{.Hadir}}</td><td class="num">{{.Sakit}}</td><td class="num">{{.Izin}}</td><td class="num">{{.Alpa}}</td><td class="num">{{.Percent}}</td></tr>
+{{end}}
+<tr class="total-row"><td></td><td>Total</td><td></td><td class="num">{{.Total.Hadir}}</td><td class="num">{{.Total.Sakit}}</td><td class="num">{{.Total.Izin}}</td><td class="num">{{.Total.Alpa}}</td><td class="num">{{.Total.Percent}}</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Tidak ada catatan absensi untuk filter ini.</p></section>
+{{end}}
+{{end}}
+{{end}}
