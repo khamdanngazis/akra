@@ -17,6 +17,7 @@ import (
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
@@ -92,6 +93,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		payments:    payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), payments.NewVoidService(nil), sessions, rd, logger),
 		auditLog:    auditview.NewHandler(nil, rd, logger),
 		reports:     reports.NewHandler(nil, nil, nil, rd, logger),
+		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
 	})
 }
 

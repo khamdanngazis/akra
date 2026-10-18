@@ -405,6 +405,14 @@ Tabel `payment_voids` dan `school_settings` (migrasi 000022), [void_service.go](
 - Trigger `payment_voids_guard`: baris tidak bisa dihapus; update hanya untuk memutuskan pengajuan `pending` (kolom selain keputusan tidak boleh berubah).
 - Audit: `payment.void_request`, `payment.void_approve`, `payment.void_reject` (`entity_id` = id pembayaran).
 
+## Pengumuman
+
+Paket [internal/announcements](internal/announcements/service.go), tabel `announcements` (migrasi 000027).
+
+- `/pengumuman`: daftar untuk `admin_tu`, `kepala_sekolah`, `bendahara`, `guru` (baca); `/pengumuman/baru` dan `POST /pengumuman` hanya `admin_tu` dan `kepala_sekolah` (lainnya `403`). Audit `announcement.create`.
+- Pengumuman ditujukan ke **semua kelas** atau **satu kelas** di tahun ajaran aktif saat dibuat (foreign key komposit memastikan kelas milik sekolah dan tahun ajaran itu). Judul maks. 150 karakter, isi maks. 5.000 karakter (juga constraint database). Teks biasa: tidak ada HTML, semua di-escape `html/template`, baris baru dipertahankan.
+- Portal **`/portal/pengumuman`**: pengumuman tahun ajaran aktif untuk semua kelas, ditambah pengumuman untuk kelas tempat anak-anaknya terdaftar (enrollment aktif) di tahun ajaran aktif; terbaru di atas. Pengumuman tahun ajaran lalu tidak tampil lagi. Tidak ada notifikasi WhatsApp/email.
+
 ## Laporan
 
 Paket [internal/reports](internal/reports/attendance.go); ekspor di [internal/reports/export](internal/reports/export/export.go) (`WriteExcel` dengan [excelize](https://github.com/xuri/excelize) v2.9.0, versi terakhir untuk Go 1.22; `WritePDF` dengan fpdf). Kedua format menerima `export.Table` yang sama dengan isi layar.

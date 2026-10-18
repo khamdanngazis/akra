@@ -1151,3 +1151,16 @@ tr.total-row td {
   font-weight: 700;
   border-top: 2px solid var(--color-border);
 }
+
+/* Pengumuman */
+
+.announcement-title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.announcement-body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

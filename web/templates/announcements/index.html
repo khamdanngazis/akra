@@ -1,0 +1,25 @@
+{{define "title"}}Pengumuman{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Pengumuman</h1>
+<p class="muted">Pengumuman tampil di portal orang tua: untuk semua kelas, atau hanya orang tua siswa di kelas yang dipilih.</p>
+</div>
+{{if .CanWrite}}<a class="btn btn-primary" href="/pengumuman/baru">Buat pengumuman</a>{{end}}
+</div>
+{{template "flash" .}}
+{{if .Items}}
+<div class="pay-list">
+{{range .Items}}
+<article class="pay-item announcement">
+<h2 class="announcement-title">{{.Title}}</h2>
+<p class="pay-item-meta">{{.Audience}} · {{.Published}}{{with .Author}} · {{.}}{{end}}</p>
+<p class="announcement-body">{{.Body}}</p>
+</article>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada pengumuman.</p></section>
+{{end}}
+{{end}}

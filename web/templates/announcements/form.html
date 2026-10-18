@@ -1,0 +1,31 @@
+{{define "title"}}Buat Pengumuman{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pengumuman">← Pengumuman</a></p>
+<section class="card form-card">
+<h1>Buat Pengumuman</h1>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+{{if .YearName}}
+<form method="post" action="/pengumuman" class="stack" novalidate x-data="{ submitting: false, len: $refs.body ? $refs.body.value.length : 0 }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field{{if .Errors.title}} has-error{{end}}">
+<label for="title">Judul</label>
+<input id="title" name="title" value="{{.Form.Title}}" maxlength="150" required{{if .Errors.title}} aria-invalid="true" aria-describedby="title-error"{{end}}>
+{{with .Errors.title}}<p class="field-error" id="title-error">{{.}}</p>{{else}}<p class="hint">Maksimal 150 karakter.</p>{{end}}
+</div>
+<div class="field">
+<label for="class_id">Untuk</label>
+<select id="class_id" name="class_id">{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<p class="hint">Kelas di tahun ajaran {{.YearName}}.</p>
+</div>
+<div class="field{{if .Errors.body}} has-error{{end}}">
+<label for="body">Isi</label>
+<textarea id="body" name="body" rows="8" maxlength="5000" required x-ref="body" @input="len = $el.value.length"{{if .Errors.body}} aria-invalid="true" aria-describedby="body-error"{{end}}>{{.Form.Body}}</textarea>
+{{with .Errors.body}}<p class="field-error" id="body-error">{{.}}</p>{{else}}<p class="hint">Teks biasa, tanpa format. <span x-text="len"></span>/5000 karakter.</p>{{end}}
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Terbitkan</button><a class="btn btn-ghost" href="/pengumuman">Batal</a></div>
+</form>
+{{end}}
+</section>
+{{end}}

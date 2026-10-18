@@ -55,6 +55,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/siswa/{id}/tagihan", h.childBilling)
 		// Peran: orang_tua (hanya pembayaran anak sendiri; selain itu 404).
 		r.Get("/pembayaran/{id}/kuitansi", h.receipt)
+		// Peran: orang_tua.
+		r.Get("/pengumuman", h.announcementsPage)
 	})
 }
 
