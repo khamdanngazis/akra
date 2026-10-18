@@ -140,6 +140,9 @@ func TestVoid_AboveThresholdNeedsApproval(t *testing.T) {
 	if err := f.try(t, func(s *VoidService) error { _, err := s.Approve(ctx, f.actor, v.ID); return err }); !errors.Is(err, ErrSelfApproval) {
 		t.Errorf("self approval: error = %v", err)
 	}
+	if err := f.try(t, func(s *VoidService) error { _, err := s.Reject(ctx, f.actor, v.ID); return err }); !errors.Is(err, ErrSelfApproval) {
+		t.Errorf("self rejection: error = %v", err)
+	}
 	pending, err := f.voids.ListPending(ctx, f.schoolA)
 	if err != nil || len(pending) != 1 || pending[0].Amount != 150000 || pending[0].NIS != "001" || pending[0].RequesterName != "Bendahara" {
 		t.Errorf("ListPending = %+v, %v", pending, err)
