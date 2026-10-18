@@ -71,7 +71,7 @@ Uji ini dijalankan oleh pembuat fitur. Catatan T63 menyarankan penguji lain, jad
 | Kirim ulang aktivasi | ✓ terkirim ("Tautan aktivasi baru dikirim ke …") |
 | Aktivasi dari email | ✓ email masuk; akun aktif (log `account activated`, 18 Okt 10.51 UTC) |
 | Login portal, lihat anak, absensi, tagihan | ✓ dicoba penguji dan dinyatakan sesuai |
-| Unduh kuitansi dari portal | belum tercatat di audit (`receipt.download_parent`); perlu dicoba sekali lagi |
+| Unduh kuitansi dari portal | ✓ kuitansi KW/2026/000002 diunduh oleh Wali 002, tercatat di audit (18 Okt 17.53 WIB) |
 
 Kepemilikan data portal sudah diuji otomatis di T59 (setiap push di CI): anak sendiri 200; anak lain, sekolah lain, dan ID acak 404 dengan respons identik; route staf 403.
 
@@ -130,11 +130,7 @@ Satu kendala **kritis** masih terbuka: K-7 (email). Penyebabnya konfigurasi, buk
 
 ## Yang masih perlu dicoba manusia
 
-1. **Portal orang tua di staging.** Akun wali Siswa 002 sudah dibuat dan email aktivasinya terkirim. Langkah berikutnya:
-   - aktifkan dari email;
-   - login dengan kode sekolah `uji-internal`;
-   - pastikan hanya Siswa 002 yang tampil;
-   - buka absensi (hari ini tercatat), tagihan Oktober (*Lunas*), dan unduh kuitansinya.
+1. ~~Portal orang tua di staging~~: selesai 18 Oktober. Ulangi aktivasi dan reset password setelah domain email diverifikasi (K-7).
 2. **Waktu isi absensi oleh guru sungguhan** di HP, untuk kelas berisi sekitar 30 siswa (target di bawah 2 menit).
 3. **Tampilan di HP dan tablet sungguhan** (sisa kriteria redesain).
 4. **Hasil uji ini dibahas dan disetujui** sebelum pilot (kriteria terakhir T63).
