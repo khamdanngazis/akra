@@ -163,6 +163,12 @@ func TestArrearsReportPerformance(t *testing.T) {
 		SELECT $1, academic_year_id, id, '2026-09', '2026-09-10', 150000 FROM e`, f.schoolA, f.c1B); err != nil {
 		t.Fatal(err)
 	}
+	// Statistik tabel seperti di produksi (autovacuum). Tanpa ini, di database
+	// baru (CI) planner mengira invoices berisi 1 baris dan memilih nested
+	// loop yang mencocokkan setiap tagihan dengan semua siswa (500 x 500).
+	if _, err := f.tx.Exec(ctx, `ANALYZE students, enrollments, invoices, invoice_items, academic_years, classes`); err != nil {
+		t.Fatal(err)
+	}
 	for _, p := range []string{"/laporan/tunggakan.xlsx", "/laporan/tunggakan.pdf"} {
 		start := time.Now()
 		rec := f.get(p, "bendahara")
