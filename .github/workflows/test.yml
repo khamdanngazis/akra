@@ -1,0 +1,72 @@
+# Uji setiap push dan pull request: format, vet, migrasi, seluruh go test
+# (termasuk uji otorisasi lintas sekolah T58 yang butuh database), dan CSS
+# hasil build yang sesuai sumbernya. Jadikan job "test" status check wajib
+# di branch protection main agar merge terhalang jika gagal.
+name: test
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: akra
+          POSTGRES_PASSWORD: akra
+          POSTGRES_DB: akra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U akra -d akra_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Hanya database uji sementara di runner; bukan rahasia.
+      DATABASE_URL: postgres://akra:akra@localhost:5432/akra_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://akra:akra@localhost:5432/akra_test?sslmode=disable
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install golang-migrate
+        run: |
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar -xz -C /usr/local/bin migrate
+          migrate -version
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Migrate up
+        run: make migrate-up
+
+      - name: Migrate down and up again
+        run: |
+          migrate -path db/migrations -database "$DATABASE_URL" down -all
+          make migrate-up
+
+      - name: go test
+        # -p 1: uji database memakai data uji dengan kode sekolah tetap, jadi
+        # paket dijalankan bergantian.
+        run: go test -p 1 -count=1 ./...
+
+      - name: CSS up to date
+        run: make css-check
