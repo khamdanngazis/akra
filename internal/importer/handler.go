@@ -7,6 +7,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -31,12 +32,13 @@ type Handler struct {
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
+	today    func() time.Time
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(svc *Service, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger}
+	return &Handler{svc: svc, sessions: sessions, render: render, logger: logger, today: clock.Today}
 }
 
 // Routes mendaftarkan route impor.
@@ -147,17 +149,24 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, id, "parse import file", err)
 		return
 	}
-	batchID, err := h.svc.CreateBatch(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, rows)
-	if err != nil {
-		page.ServerError(h.render, h.logger, w, r, id, "create import batch", err)
+	batchID, err := h.svc.Upload(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, rows, h.today())
+	if errors.Is(err, ErrNoActiveYear) {
+		h.renderIndex(w, r, id, http.StatusUnprocessableEntity, "Belum ada tahun ajaran aktif, jadi kelas tidak bisa dicocokkan. Aktifkan tahun ajaran di menu Tahun Ajaran, lalu unggah lagi.")
 		return
 	}
-	auth.SetFlash(r.Context(), h.sessions, "File berhasil diunggah.")
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "upload import batch", err)
+		return
+	}
+	auth.SetFlash(r.Context(), h.sessions, "File berhasil diunggah dan diperiksa.")
 	http.Redirect(w, r, batchPath+"/"+batchID, http.StatusSeeOther)
 }
 
 // maxSkippedShown adalah jumlah baris dilewati yang dirinci di halaman batch.
 const maxSkippedShown = 20
+
+// maxErrorsShown adalah jumlah baris error yang dirinci di halaman batch.
+const maxErrorsShown = 50
 
 type batchView struct {
 	User        auth.Identity
@@ -167,6 +176,8 @@ type batchView struct {
 	StatusLabel string
 	Skipped     []Skip
 	SkippedMore int
+	Errors      []ErrorRow
+	ErrorsMore  int
 	Flash       string
 	Error       string
 }
@@ -188,6 +199,13 @@ func (h *Handler) batch(w http.ResponseWriter, r *http.Request) {
 	}
 	v := batchView{User: id, Batch: b, Columns: StudentColumns, StatusLabel: statusLabels[b.Status], Skipped: b.Skipped, Flash: auth.PopFlash(r.Context(), h.sessions),
 		Uploaded: clock.FormatDateID(clock.DateOf(b.CreatedAt)) + " " + b.CreatedAt.In(clock.Jakarta).Format("15.04") + " WIB"}
+	if b.ErrorRows > 0 {
+		if v.Errors, err = h.svc.ErrorRows(r.Context(), id.SchoolID, b.ID, maxErrorsShown); err != nil {
+			page.ServerError(h.render, h.logger, w, r, id, "list import error rows", err)
+			return
+		}
+		v.ErrorsMore = b.ErrorRows - len(v.Errors)
+	}
 	if n := len(v.Skipped); n > maxSkippedShown {
 		v.Skipped, v.SkippedMore = v.Skipped[:maxSkippedShown], n-maxSkippedShown
 	}
