@@ -1,9 +1,64 @@
 {{define "title"}}Beranda{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "flash" .}}
-<section class="card">
 <h1>Halo, {{.User.FullName}}</h1>
-<p class="muted">Anda masuk di <strong>{{.User.SchoolName}}</strong>.</p>
+<p class="muted">{{.User.SchoolName}} · {{.Today}}{{with .YearName}} · tahun ajaran {{.}}{{end}}</p>
+{{template "flash" .}}
+
+{{if .NoYear}}
+<div class="alert alert-info" role="note">Belum ada tahun ajaran aktif. Kelas, absensi, dan tagihan memakai tahun ajaran aktif.{{if .CanSetYear}} <a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a>.{{else}} Hubungi admin/TU.{{end}}</div>
+{{end}}
+
+<div class="home-grid">
+{{with .Treasurer}}
+<section class="card stat-card">
+<h2 class="section-title">Keuangan</h2>
+<div class="stat-grid stat-grid-money">
+<div><span class="stat-value">{{.ArrearsTotal}}</span><span class="stat-label">total sisa tunggakan ({{.ArrearsStudents}} siswa)</span></div>
+<div><span class="stat-value">{{.PaymentsToday}}</span><span class="stat-label">pembayaran dicatat hari ini · {{.PaidToday}}</span></div>
+</div>
+<div class="action-row"><a class="btn btn-primary btn-sm" href="/keuangan/pembayaran/baru">Catat pembayaran</a><a class="btn btn-ghost btn-sm" href="/keuangan/tunggakan">Lihat tunggakan</a></div>
 </section>
+{{end}}
+
+{{if .IsTeacher}}
+<section class="card">
+<h2 class="section-title">Absensi hari ini</h2>
+{{if .Teacher}}
+<ul class="result-list">
+{{range .Teacher}}<li><a href="/absensi?kelas={{.ID}}"><span><strong>Kelas {{.Name}}</strong></span>{{if .Filled}}<span class="badge badge-success">Sudah diisi</span>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</a></li>
+{{end}}
+</ul>
+{{else}}
+<p class="muted">Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
+{{end}}
+</section>
+{{end}}
+
+{{with .Admin}}
+<section class="card stat-card">
+<h2 class="section-title">Data sekolah</h2>
+<div class="stat-grid">
+<div><span class="stat-value">{{.ActiveStudents}}</span><span class="stat-label">siswa aktif</span></div>
+<div><span class="stat-value">{{or $.YearName "–"}}</span><span class="stat-label">tahun ajaran aktif</span></div>
+</div>
+<div class="action-row"><a class="btn btn-ghost btn-sm" href="/siswa">Siswa</a><a class="btn btn-ghost btn-sm" href="/kelas">Kelas</a></div>
+</section>
+{{end}}
+
+{{with .Principal}}
+<section class="card stat-card">
+<h2 class="section-title">Kehadiran minggu ini</h2>
+<p class="muted">{{.Range}}</p>
+<div class="stat-grid">
+<div><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
+<div><span class="stat-value">{{.Counts.Hadir}}</span><span class="stat-label">hadir</span></div>
+<div><span class="stat-value">{{.Counts.Sakit}}</span><span class="stat-label">sakit</span></div>
+<div><span class="stat-value">{{.Counts.Izin}}</span><span class="stat-label">izin</span></div>
+<div><span class="stat-value">{{.Counts.Alpa}}</span><span class="stat-label">alpa</span></div>
+</div>
+<div class="action-row"><a class="btn btn-ghost btn-sm" href="/laporan/kehadiran">Laporan kehadiran</a></div>
+</section>
+{{end}}
+</div>
 {{end}}

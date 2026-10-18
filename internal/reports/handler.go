@@ -52,6 +52,8 @@ func NewHandler(db database.DB, jobs JobInserter, store storage.Store, render pa
 
 // Routes mendaftarkan route laporan.
 func (h *Handler) Routes(r chi.Router) {
+	// Peran: admin_tu, bendahara, kepala_sekolah. Daftar laporan sesuai peran.
+	r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleBendahara, auth.RoleKepalaSekolah)).Get("/laporan", h.hub)
 	r.Group(func(r chi.Router) {
 		// Guru melihat rekap kelasnya lewat /absensi/rekap (T27).
 		r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))

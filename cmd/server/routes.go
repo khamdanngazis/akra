@@ -17,6 +17,7 @@ import (
 	"akra/internal/payments"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
+	"akra/internal/platform/page"
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/reports"
@@ -28,7 +29,7 @@ type routerDeps struct {
 	pinger       health.Pinger
 	csrf         func(http.Handler) http.Handler
 	sessions     *scs.SessionManager
-	render       home.Renderer
+	render       page.Renderer
 	static       fs.FS
 	authHandler  *auth.Handler
 	resetHandler *auth.ResetHandler
@@ -45,6 +46,7 @@ type routerDeps struct {
 	auditLog     *auditview.Handler
 	reports      *reports.Handler
 	announce     *announcements.Handler
+	home         *home.Handler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -96,7 +98,7 @@ func newRouter(d routerDeps) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireLogin(d.sessions))
 			// Peran: semua peran.
-			r.Get("/", home.Handler(d.render, d.sessions))
+			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
 			d.classes.Routes(r)
 			d.students.Routes(r)

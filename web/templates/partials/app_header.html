@@ -1,26 +1,12 @@
-{{/* app_header adalah header halaman yang butuh login. Argumen: auth.Identity. */}}
+{{/* app_header adalah header halaman yang butuh login. Argumen: auth.Identity. Menu dari nav.MenuFor (per peran). */}}
 {{define "app_header" -}}
-<header class="app-header">
-<a class="brand" href="/">{{template "logo"}}<span class="brand-name">AKRA</span></a>
-<nav class="app-nav" aria-label="Menu utama">
-{{if .HasRole "orang_tua"}}<a href="/portal">Portal</a>
-<a href="/portal/pengumuman">Pengumuman</a>{{else}}<a href="/">Beranda</a>
-<a href="/pengumuman">Pengumuman</a>{{end}}
-{{if .HasRole "guru"}}<a href="/absensi">Absensi</a>{{end}}
-{{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/siswa">Siswa</a>
-<a href="/kelas">Kelas</a>
-<a href="/absensi/rekap">Rekap Absensi</a>{{end}}
-{{if .HasRole "bendahara"}}<a href="/keuangan/pembayaran/baru">Pembayaran</a>
-<a href="/keuangan/tagihan-massal">Tagihan Massal</a>{{end}}
-{{if or (.HasRole "bendahara") (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}<a href="/keuangan/tunggakan">Tunggakan</a>
-<a href="/keuangan/jenis-tagihan">Jenis Tagihan</a>{{end}}
-{{if .HasRole "kepala_sekolah"}}<a href="/keuangan/pembatalan">Pembatalan</a>{{end}}
-{{if or (.HasRole "kepala_sekolah") (.HasRole "admin_tu")}}<a href="/laporan/kehadiran">Laporan</a>
-<a href="/keuangan/audit">Audit</a>{{end}}
-{{if or (.HasRole "bendahara") (.HasRole "kepala_sekolah")}}<a href="/pengaturan/keuangan">Pengaturan Keuangan</a>{{end}}
-{{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}
-<a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a>{{end}}
-</nav>
+{{- $items := menu .Roles}}{{$current := currentMenu $items -}}
+<header class="app-header" x-data="{ open: false }">
+<a class="brand" href="{{if .HasRole "orang_tua"}}/portal{{else}}/{{end}}">{{template "logo"}}<span class="brand-name">AKRA</span></a>
+<button type="button" class="btn btn-ghost btn-sm nav-toggle" x-cloak @click="open = !open" :aria-expanded="open.toString()" aria-controls="app-nav">Menu</button>
+<nav id="app-nav" class="app-nav" :class="{ 'is-open': open }" aria-label="Menu utama">
+{{range $items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{.Label}}</a>
+{{end}}</nav>
 <div class="app-header-user">
 <span class="app-header-school">{{.SchoolName}}</span>
 <form method="post" action="/logout">

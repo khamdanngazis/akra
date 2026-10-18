@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"akra/internal/platform/csrf"
+	"akra/internal/platform/nav"
 )
 
 const (
@@ -114,6 +115,10 @@ func funcs(versions map[string]string) template.FuncMap {
 			return "/static/" + p + "?v=" + v, nil
 		},
 	}
+	// menu mengembalikan item navigasi untuk peran pengguna (T51).
+	m["menu"] = nav.MenuFor
+	// currentMenu mengembalikan Path item menu yang aktif untuk request ini.
+	m["currentMenu"] = func([]nav.MenuItem) string { return "" }
 	for k, v := range csrf.PlaceholderFuncs {
 		m[k] = v
 	}
@@ -153,7 +158,9 @@ func (rd *Renderer) execute(w http.ResponseWriter, r *http.Request, status int, 
 		return err
 	}
 	var buf bytes.Buffer
-	if err := t.Funcs(csrf.FuncMap(r)).ExecuteTemplate(&buf, block, data); err != nil {
+	reqFuncs := csrf.FuncMap(r)
+	reqFuncs["currentMenu"] = func(items []nav.MenuItem) string { return nav.Current(items, r.URL.Path) }
+	if err := t.Funcs(reqFuncs).ExecuteTemplate(&buf, block, data); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

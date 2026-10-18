@@ -1,0 +1,30 @@
+{{define "title"}}Laporan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<h1>Laporan</h1>
+{{template "flash" .}}
+<div class="home-grid">
+{{if .CanAttendance}}
+<section class="card">
+<h2 class="section-title">Rekap kehadiran</h2>
+<p class="muted">Per siswa dan kelas, maksimal satu tahun ajaran. Unduh Excel atau PDF.</p>
+<div class="action-row"><a class="btn btn-primary btn-sm" href="/laporan/kehadiran">Buka rekap kehadiran</a></div>
+</section>
+{{end}}
+{{if .CanArrears}}
+<section class="card">
+<h2 class="section-title">Laporan tunggakan</h2>
+<p class="muted">Tagihan yang lewat jatuh tempo per hari ini, dikelompokkan per kelas.</p>
+<div class="action-row"><a class="btn btn-primary btn-sm" href="/keuangan/tunggakan">Lihat dan filter</a><a class="btn btn-ghost btn-sm" href="/laporan/tunggakan.xlsx">Unduh Excel</a><a class="btn btn-ghost btn-sm" href="/laporan/tunggakan.pdf">Unduh PDF</a></div>
+</section>
+{{end}}
+</div>
+{{if .Jobs}}
+<h2 class="section-title">Ekspor di server terakhir</h2>
+<div class="pay-list">
+{{range .Jobs}}
+<a class="pay-item job-link" href="/laporan/jobs/{{.ID}}"><span class="pay-row"><strong>{{.TypeLabel}} · {{.Format}}</strong>{{if eq .Status "selesai"}}<span class="badge badge-success">Selesai</span>{{else if eq .Status "gagal"}}<span class="badge badge-danger">Gagal</span>{{else}}<span class="badge badge-info">Diproses</span>{{end}}</span><span class="pay-item-meta">{{.Created}}</span></a>
+{{end}}
+</div>
+{{end}}
+{{end}}
