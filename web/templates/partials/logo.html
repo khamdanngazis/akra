@@ -1,7 +1,16 @@
-{{/* Logo AKRA: huruf A geometris dua warna. Konsep awal, bukan aset final. */}}
+{{/* Logo AKRA (doc/tasks_schoolos/000-redesign/AKRA_Brand_Design_Guide.md):
+     simbol A pita biru-teal (img/akra-mark.png, dari aset logo yang disetujui)
+     dan wordmark AKRA (SVG goresan bulat, warna mengikuti currentColor: navy
+     di latar terang, putih di sidebar). */}}
 {{define "logo" -}}
-<svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-<path d="M16 3 29 29h-6.5L16 15.5 9.5 29H3z" fill="#0b3d91"/>
-<path d="M12.2 23.5h7.6L22.3 29H9.7z" fill="#10b981"/>
-</svg>
+<img class="logo-mark" src="{{ asset "img/akra-mark.png" }}" alt="" width="32" height="32">
+{{- end}}
+
+{{define "wordmark" -}}
+<svg class="wordmark" viewBox="0 0 146 40" fill="none" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="AKRA" focusable="false"><path d="M4 36 18 4l14 32M46 4v32M66 4 47 21l21 15M82 36V4h11a8 8 0 0 1 0 16H82m11 0 11 16M114 36l14-32 14 32"/></svg>
+{{- end}}
+
+{{/* brand: simbol + wordmark (tanpa tagline), untuk header dan sidebar. */}}
+{{define "brand" -}}
+{{template "logo"}}{{template "wordmark"}}
 {{- end}}

@@ -88,7 +88,7 @@
   input,
   select,
   textarea {
-    @apply block min-h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[15px] text-slate-900 shadow-xs transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-600 focus:ring-3 focus:ring-blue-600/20 focus:outline-none;
+    @apply block min-h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 shadow-xs transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:ring-3 focus:ring-blue-600/20 focus:outline-none;
   }
 
   select {
@@ -122,11 +122,11 @@
 
   th,
   td {
-    @apply border-b border-slate-100 px-3 py-3 text-left align-middle;
+    @apply border-b border-slate-200/70 px-3 py-3 text-left align-middle;
   }
 
   th {
-    @apply bg-slate-50/80 text-xs font-bold tracking-wide whitespace-nowrap text-slate-500 uppercase;
+    @apply bg-slate-50 text-[13px] font-semibold whitespace-nowrap text-slate-500;
   }
 
   tbody tr {
@@ -194,7 +194,7 @@
   }
 
   .card {
-    @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-900/5 sm:p-6;
+    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgb(15_23_42/0.04),0_2px_8px_-2px_rgb(15_23_42/0.06)] sm:p-6;
   }
 
   .page > .card + .card,
@@ -208,6 +208,10 @@
 
   .card-flush {
     @apply overflow-hidden p-0 sm:p-0;
+  }
+
+  .card-title {
+    @apply m-0 text-base font-semibold text-slate-900 sm:text-lg;
   }
 
   .card-flush th:first-child,
@@ -257,7 +261,7 @@
   }
 
   .empty-state {
-    @apply border border-dashed border-slate-300 bg-white/60 py-10 text-center text-slate-500 shadow-none ring-0;
+    @apply border border-dashed border-slate-300 bg-white/60 py-10 text-center text-slate-500 shadow-none;
   }
 
   .empty-state p {
@@ -327,15 +331,19 @@
 
   /* Tombol */
   .btn {
-    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2 text-sm leading-tight font-semibold whitespace-nowrap no-underline transition select-none focus-visible:ring-3 focus-visible:ring-blue-600/30 focus-visible:outline-none active:translate-y-px disabled:cursor-progress disabled:opacity-60;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm leading-tight font-semibold whitespace-nowrap no-underline transition select-none focus-visible:ring-3 focus-visible:ring-blue-600/30 focus-visible:outline-none active:translate-y-px disabled:cursor-progress disabled:opacity-60;
   }
 
   .btn-primary {
-    @apply bg-blue-600 text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700 hover:text-white;
+    @apply bg-blue-600 text-white shadow-xs hover:bg-blue-700 hover:text-white;
   }
 
   .btn-ghost {
-    @apply border-slate-300 bg-white text-slate-800 shadow-xs hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900;
+    @apply border-blue-600/70 bg-white text-blue-700 hover:border-blue-600 hover:bg-blue-50 hover:text-blue-700;
+  }
+
+  .btn-success {
+    @apply bg-emerald-500 text-white shadow-sm shadow-emerald-500/30 hover:bg-emerald-600 hover:text-white;
   }
 
   .btn-danger {
@@ -389,7 +397,7 @@
 
   /* Badge */
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs leading-5 font-semibold whitespace-nowrap text-slate-600 ring-1 ring-slate-500/10 ring-inset;
+    @apply inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-0.5 text-xs leading-5 font-semibold whitespace-nowrap text-slate-600 ring-1 ring-slate-300 ring-inset;
   }
 
   .badge::before {
@@ -398,19 +406,19 @@
   }
 
   .badge-success {
-    @apply bg-emerald-50 text-emerald-700 ring-emerald-600/20;
+    @apply bg-emerald-50 text-emerald-700 ring-emerald-300;
   }
 
   .badge-info {
-    @apply bg-blue-50 text-blue-700 ring-blue-600/20;
+    @apply bg-blue-50 text-blue-700 ring-blue-300;
   }
 
   .badge-warning {
-    @apply bg-amber-50 text-amber-700 ring-amber-600/20;
+    @apply bg-amber-50 text-amber-700 ring-amber-300;
   }
 
   .badge-danger {
-    @apply bg-red-50 text-red-700 ring-red-600/20;
+    @apply bg-red-50 text-red-700 ring-red-300;
   }
 
   /* Filter */
@@ -542,7 +550,7 @@
   }
 
   .attendance-list {
-    @apply m-0 list-none overflow-hidden rounded-2xl bg-white p-0 shadow-sm ring-1 ring-slate-900/5;
+    @apply m-0 list-none overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-xs;
   }
 
   .attendance-row {
@@ -635,7 +643,7 @@
   }
 
   .stat-grid > div {
-    @apply flex flex-col rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-900/5;
+    @apply flex flex-col rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3;
   }
 
   .stat-value {
@@ -684,7 +692,7 @@
   }
 
   .pay-item {
-    @apply grid gap-2 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-slate-900/5 transition sm:p-5;
+    @apply grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition sm:p-5;
   }
 
   .pay-item > p {
@@ -794,57 +802,125 @@
     @apply m-0 whitespace-pre-line break-words;
   }
 
-  /* Beranda */
+  /* Beranda (AKRA_Brand_Design_Guide.md bagian 5 dan 7) */
+  .kpi-grid {
+    @apply mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4;
+  }
+
+  .kpi-card {
+    @apply flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 sm:p-5 no-underline shadow-[0_1px_2px_rgb(15_23_42/0.04),0_4px_16px_-8px_rgb(15_23_42/0.08)];
+  }
+
+  a.kpi-card {
+    @apply transition hover:border-blue-200 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+  }
+
+  .kpi-head {
+    @apply mb-2 flex items-start justify-between gap-3;
+  }
+
+  .kpi-icon {
+    @apply inline-flex size-9 flex-none items-center justify-center rounded-xl sm:size-11 [&_svg]:size-5 sm:[&_svg]:size-5.5;
+  }
+
+  .kpi-label {
+    @apply block pt-1 text-sm font-medium text-slate-500;
+  }
+
+  .kpi-value {
+    @apply block text-xl leading-tight font-bold tracking-tight break-words text-slate-900 sm:text-[1.625rem];
+  }
+
+  .kpi-hint {
+    @apply mt-1 block text-xs text-slate-500;
+  }
+
   .home-grid {
-    @apply grid gap-4 md:grid-cols-2;
+    @apply grid grid-cols-1 items-start gap-4 desktop:grid-cols-[minmax(0,1fr)_22rem] desktop:gap-6;
+  }
+
+  .home-main {
+    @apply grid min-w-0 grid-cols-1 gap-4 desktop:gap-6;
+  }
+
+  .home-side {
+    @apply grid min-w-0 grid-cols-1 gap-4;
+  }
+
+  .card-head {
+    @apply mb-4 flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .link-more {
+    @apply inline-flex items-center gap-1 text-sm font-semibold text-blue-600 no-underline hover:underline [&_svg]:size-4;
+  }
+
+  .activity-list {
+    @apply m-0 list-none divide-y divide-slate-100 p-0;
+  }
+
+  .activity-list > li {
+    @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
+  }
+
+  .activity-icon {
+    @apply inline-flex size-10 flex-none items-center justify-center rounded-xl [&_svg]:size-5;
+  }
+
+  .attendance-meter {
+    @apply mb-4 grid gap-2;
+  }
+
+  .meter {
+    @apply h-2.5 overflow-hidden rounded-full bg-slate-100;
+  }
+
+  .meter > span {
+    @apply block h-full rounded-full bg-emerald-500;
+  }
+
+  .stat-grid-4 {
+    @apply grid-cols-2 sm:grid-cols-4;
+  }
+
+  .shortcut-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .shortcut {
+    @apply flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 no-underline transition hover:border-blue-200 hover:bg-blue-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
   }
 
   .eyebrow {
-    @apply text-xs font-bold tracking-widest text-blue-600 uppercase;
-  }
-
-  .dash-card {
-    @apply flex flex-col gap-4;
-  }
-
-  .dash-card > * {
-    @apply m-0;
-  }
-
-  .dash-card .action-row {
-    @apply mt-auto;
-  }
-
-  .icon-chip {
-    @apply inline-flex size-11 flex-none items-center justify-center rounded-xl;
+    @apply text-sm font-semibold text-blue-600;
   }
 }
 
 /* ---------- Shell aplikasi ---------- */
 
 @layer components {
-  .app-topbar {
-    @apply sticky top-0 z-30 flex h-15 items-center gap-2 border-b border-slate-200/80 bg-white/90 px-3 backdrop-blur-md desktop:hidden;
+  .wordmark {
+    @apply h-[1.15rem] w-auto flex-none;
   }
 
-  .app-sidebar {
-    @apply flex flex-col gap-5 bg-navy-950 bg-linear-to-b from-navy-900 to-navy-950 px-3 py-5 text-navy-100;
+  .brand .logo-mark {
+    @apply size-8;
   }
 
-  .app-sidebar .brand {
+  .brand-on-dark {
     @apply text-white hover:text-white;
   }
 
-  .app-sidebar .logo-mark path:first-child {
-    fill: #fff;
+  .app-sidebar {
+    @apply flex flex-col gap-5 bg-navy-900 px-3 py-5;
   }
 
   .app-nav a {
-    @apply flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-navy-100 no-underline transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none;
+    @apply flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-white/80 no-underline transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none;
   }
 
   .app-nav a .icon {
-    @apply text-navy-300 transition;
+    @apply text-white/70 transition;
   }
 
   .app-nav a:hover .icon {
@@ -852,20 +928,71 @@
   }
 
   .app-nav a[aria-current="page"] {
-    @apply bg-white text-navy-900 shadow-sm;
+    @apply bg-blue-600 font-semibold text-white shadow-sm shadow-navy-950/40;
   }
 
   .app-nav a[aria-current="page"] .icon {
-    @apply text-blue-600;
+    @apply text-white;
   }
 
   .app-sidebar .icon-btn {
-    @apply text-navy-200 hover:bg-white/10 hover:text-white;
+    @apply text-white/70 hover:bg-white/10 hover:text-white;
+  }
+
+  /* Header putih: pencarian dan profil. */
+  .app-header {
+    @apply sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md sm:px-6 desktop:ml-66 desktop:px-8;
+  }
+
+  .header-search {
+    @apply relative hidden max-w-md flex-1 md:block;
+  }
+
+  .header-search .icon {
+    @apply pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-slate-400;
+  }
+
+  .header-search input {
+    @apply min-h-10 rounded-xl border-slate-200 bg-slate-50 pl-10 text-sm hover:bg-white focus:bg-white;
+  }
+
+  .avatar {
+    @apply inline-flex size-9 flex-none items-center justify-center rounded-full bg-linear-to-br from-blue-600 to-emerald-500 text-sm font-bold text-white;
+  }
+
+  .user-chip {
+    @apply flex max-w-64 cursor-pointer items-center gap-2.5 rounded-xl border-0 bg-transparent p-1 pr-2 transition hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-blue-600/30 focus-visible:outline-none;
+  }
+
+  .user-menu {
+    @apply absolute top-full right-0 z-40 mt-2 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-900/10;
+  }
+
+  .user-menu-item {
+    @apply flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700;
+  }
+
+  /* Bottom navigation (HP). */
+  .bottom-nav {
+    @apply fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden;
+  }
+
+  .bottom-nav a,
+  .bottom-nav button {
+    @apply flex min-h-15 cursor-pointer flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 text-[11px] font-medium text-slate-500 no-underline;
+  }
+
+  .bottom-nav a[aria-current="page"] {
+    @apply font-semibold text-blue-600;
+  }
+
+  .bottom-nav span {
+    @apply max-w-full truncate;
   }
 
   /* Tablet dan HP: sidebar menjadi drawer. Tanpa JavaScript (data-js belum
      diisi Alpine.js) sidebar tampil biasa di atas konten agar menu tetap
-     bisa dipakai. */
+     bisa dipakai, dan bottom navigation disembunyikan. */
   @media (width < 64rem) {
     .app-chrome[data-js] .app-sidebar {
       @apply fixed inset-y-0 left-0 z-50 w-[min(17rem,86vw)] overflow-y-auto shadow-2xl transition-transform duration-200;
@@ -877,8 +1004,13 @@
     }
 
     .app-chrome:not([data-js]) .nav-toggle,
-    .app-chrome:not([data-js]) .sidebar-head {
+    .app-chrome:not([data-js]) .sidebar-head,
+    .app-chrome:not([data-js]) .bottom-nav {
       @apply hidden;
+    }
+
+    .app-chrome[data-js] ~ .page {
+      @apply pb-28 md:pb-12;
     }
   }
 
@@ -903,99 +1035,68 @@
   .page-auth {
     @apply bg-slate-50;
     background-image:
-      radial-gradient(60rem 30rem at -10% -10%, rgb(37 99 235 / 0.12), transparent 60%),
-      radial-gradient(40rem 24rem at 110% 110%, rgb(16 185 129 / 0.12), transparent 60%);
+      radial-gradient(40rem 22rem at 100% 100%, rgb(16 185 129 / 0.10), transparent 65%),
+      radial-gradient(40rem 22rem at 0% 0%, rgb(37 99 235 / 0.08), transparent 65%);
   }
 
   .page-auth .page {
-    @apply flex min-h-screen items-center justify-center px-4 py-6;
+    @apply flex min-h-screen flex-col items-center justify-center px-4 py-8;
   }
 
-  .auth-layout {
-    @apply flex w-full max-w-md;
+  .auth-logo {
+    @apply mb-6 flex flex-col items-center gap-2 text-navy-900;
   }
 
-  .auth-aside {
-    @apply hidden;
+  .auth-logo .brand-row {
+    @apply flex items-center gap-3;
   }
 
-  .auth-card {
-    @apply w-full px-6 py-8 shadow-xl shadow-slate-900/10;
-  }
-
-  .auth-brand {
-    @apply mb-6 flex items-center gap-3;
-  }
-
-  .auth-brand .logo-mark {
+  .auth-logo .logo-mark {
     @apply size-12;
   }
 
-  .auth-brand .brand-name {
-    @apply text-2xl text-navy-900;
+  .auth-logo .wordmark {
+    @apply h-7;
   }
 
-  .auth-brand p {
-    @apply m-0 text-sm;
+  .auth-logo p {
+    @apply m-0 text-sm text-slate-500;
+  }
+
+  .auth-card {
+    @apply w-full max-w-md px-6 py-7 sm:px-8 sm:py-8;
+  }
+
+  .auth-card h1 {
+    @apply mb-1 text-xl sm:text-2xl;
+  }
+
+  .auth-sub {
+    @apply mb-6 text-sm text-slate-500;
+  }
+
+  .input-icon {
+    @apply relative;
+  }
+
+  .input-icon > .icon {
+    @apply pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-slate-400;
+  }
+
+  .input-icon > input {
+    @apply pl-10;
+  }
+
+  .input-icon > .reveal {
+    @apply absolute top-1/2 right-1 size-9 -translate-y-1/2;
+  }
+
+  .input-icon > input.has-reveal {
+    @apply pr-11;
   }
 
   .auth-footer {
-    @apply mt-6 mb-0 text-center text-sm;
-  }
-
-  @media (width >= 56rem) {
-    .auth-layout {
-      @apply min-h-[34rem] max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl shadow-slate-900/15 ring-1 ring-slate-900/5;
-    }
-
-    .auth-aside {
-      @apply relative flex flex-1 flex-col justify-between overflow-hidden bg-navy-900 p-10 text-navy-100;
-      background-image:
-        radial-gradient(28rem 18rem at 100% 0%, rgb(37 99 235 / 0.6), transparent 70%),
-        radial-gradient(22rem 16rem at 0% 100%, rgb(16 185 129 / 0.4), transparent 70%);
-    }
-
-    .auth-aside::after {
-      @apply pointer-events-none absolute -right-24 -bottom-24 size-72 rounded-full border-[3rem] border-white/5;
-      content: "";
-    }
-
-    .auth-aside-brand {
-      @apply flex items-center gap-2 text-white;
-    }
-
-    .auth-aside .logo-mark path:first-child {
-      fill: #fff;
-    }
-
-    .auth-tagline {
-      @apply mb-3 text-3xl leading-tight font-extrabold tracking-tight text-white;
-    }
-
-    .auth-points {
-      @apply mt-6 mb-0 grid list-none gap-3 p-0 text-sm;
-    }
-
-    .auth-points li {
-      @apply flex items-center gap-3;
-    }
-
-    .auth-points .icon {
-      @apply size-9 rounded-xl bg-white/10 p-2 text-emerald-300;
-    }
-
-    .auth-layout .auth-card {
-      @apply max-w-[27rem] flex-[0_0_27rem] self-center rounded-none px-10 shadow-none ring-0;
-    }
-
-    .auth-layout .auth-brand .logo-mark,
-    .auth-layout .auth-brand .brand-name {
-      @apply hidden;
-    }
-
-    .auth-layout .auth-brand p {
-      @apply text-2xl font-extrabold tracking-tight text-slate-900;
-    }
+    @apply mt-6 mb-0 text-center text-sm text-slate-500;
   }
 }
 

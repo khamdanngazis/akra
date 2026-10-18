@@ -1,68 +1,98 @@
 {{define "title"}}Beranda{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<section class="relative mb-6 overflow-hidden rounded-3xl bg-navy-900 bg-linear-to-br from-navy-900 via-navy-800 to-blue-700 px-6 py-7 text-white shadow-lg shadow-navy-900/20 sm:px-8">
-<div class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-white/10 blur-2xl"></div>
-<div class="pointer-events-none absolute -bottom-20 left-1/3 size-48 rounded-full bg-emerald-400/20 blur-2xl"></div>
-<p class="relative mb-1 text-xs font-bold tracking-widest text-navy-200 uppercase">{{.Today}}{{with .YearName}} · Tahun ajaran {{.}}{{end}}</p>
-<h1 class="relative mb-1 text-white">Halo, {{.User.FullName}}</h1>
-<p class="relative m-0 text-navy-100">Selamat datang di {{.User.SchoolName}}.</p>
-</section>
+{{- $items := menu .User.Roles -}}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+<div class="min-w-0">
+<h1 class="mb-1">Selamat datang kembali, {{.User.FullName}}!</h1>
+<p class="m-0 text-slate-500">Berikut ringkasan aktivitas di {{.User.SchoolName}} hari ini.</p>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+{{if .Treasurer}}<a class="btn btn-primary" href="/keuangan/pembayaran/baru">{{template "icon" "wallet"}}Catat pembayaran</a>{{end}}
+<span class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-xs">{{template "icon" "calendar"}}{{.Today}}{{with .YearName}}<span class="text-slate-300" aria-hidden="true">·</span><span>TA {{.}}</span>{{end}}</span>
+</div>
+</div>
 {{template "flash" .}}
 
 {{if .NoYear}}
 <div class="alert alert-info" role="note">Belum ada tahun ajaran aktif. Kelas, absensi, dan tagihan memakai tahun ajaran aktif.{{if .CanSetYear}} <a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a>.{{else}} Hubungi admin/TU.{{end}}</div>
 {{end}}
 
+{{with .KPIs}}
+<section class="kpi-grid" aria-label="Ringkasan">
+{{range .}}{{if .Href}}<a class="kpi-card" href="{{.Href}}">{{else}}<div class="kpi-card">{{end}}
+<span class="kpi-head"><span class="kpi-label">{{.Label}}</span><span class="kpi-icon {{if eq .Tone "teal"}}bg-emerald-50 text-emerald-600{{else if eq .Tone "amber"}}bg-amber-50 text-amber-600{{else if eq .Tone "navy"}}bg-navy-50 text-navy-900{{else}}bg-blue-50 text-blue-600{{end}}">{{template "icon" .Icon}}</span></span>
+<span class="kpi-value">{{.Value}}</span><span class="kpi-hint">{{.Hint}}</span>
+{{if .Href}}</a>{{else}}</div>{{end}}
+{{end}}</section>
+{{end}}
+
 <div class="home-grid">
-{{with .Treasurer}}
-<section class="card dash-card">
-<div class="flex items-center gap-3"><span class="icon-chip bg-blue-50 text-blue-600">{{template "icon" "wallet"}}</span><div><h2 class="m-0">Keuangan</h2><p class="m-0 text-sm text-slate-500">Ringkasan hari ini</p></div></div>
-<div class="stat-grid stat-grid-money">
-<div><span class="stat-value">{{.ArrearsTotal}}</span><span class="stat-label">total sisa tunggakan ({{.ArrearsStudents}} siswa)</span></div>
-<div><span class="stat-value">{{.PaymentsToday}}</span><span class="stat-label">pembayaran dicatat hari ini · {{.PaidToday}}</span></div>
-</div>
-<div class="action-row"><a class="btn btn-primary btn-sm" href="/keuangan/pembayaran/baru">{{template "icon" "wallet"}}Catat pembayaran</a><a class="btn btn-ghost btn-sm" href="/keuangan/tunggakan">Lihat tunggakan</a></div>
+<div class="home-main">
+{{if .Treasurer}}
+<section class="card">
+<div class="card-head"><h2 class="card-title">Pembayaran terbaru</h2><a class="link-more" href="/keuangan/tunggakan">Lihat tunggakan{{template "icon" "arrow-right"}}</a></div>
+{{if .Payments}}
+<ul class="activity-list">
+{{range .Payments}}<li><span class="activity-icon bg-emerald-50 text-emerald-600">{{template "icon" "receipt"}}</span><span class="min-w-0 flex-1"><strong class="block truncate">{{.Student}}</strong><span class="block truncate text-sm text-slate-500">{{or .Fees "Tagihan"}} · {{.Period}}</span></span><span class="text-right"><strong class="block{{if .Voided}} text-slate-400 line-through{{end}}">{{.Amount}}</strong><span class="block text-xs text-slate-500">{{if .Voided}}Dibatalkan · {{end}}{{.Time}}</span></span></li>
+{{end}}</ul>
+{{else}}
+<p class="muted m-0">Belum ada data untuk ditampilkan.</p>
+{{end}}
 </section>
 {{end}}
 
 {{if .IsTeacher}}
-<section class="card dash-card">
-<div class="flex items-center gap-3"><span class="icon-chip bg-emerald-50 text-emerald-600">{{template "icon" "attendance"}}</span><div><h2 class="m-0">Absensi hari ini</h2><p class="m-0 text-sm text-slate-500">Kelas yang Anda walikan</p></div></div>
+<section class="card">
+<div class="card-head"><div><h2 class="card-title">Absensi hari ini</h2><p class="m-0 text-sm text-slate-500">Kelas yang Anda walikan</p></div></div>
 {{if .Teacher}}
 <ul class="result-list">
 {{range .Teacher}}<li><a href="/absensi?kelas={{.ID}}"><span class="flex items-center gap-2"><strong>Kelas {{.Name}}</strong></span>{{if .Filled}}<span class="badge badge-success">Sudah diisi</span>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</a></li>
 {{end}}
 </ul>
 {{else}}
-<p class="muted">Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
+<p class="muted m-0">Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
 {{end}}
-</section>
-{{end}}
-
-{{with .Admin}}
-<section class="card dash-card">
-<div class="flex items-center gap-3"><span class="icon-chip bg-navy-50 text-navy-900">{{template "icon" "users"}}</span><div><h2 class="m-0">Data sekolah</h2><p class="m-0 text-sm text-slate-500">Siswa dan tahun ajaran</p></div></div>
-<div class="stat-grid">
-<div><span class="stat-value">{{.ActiveStudents}}</span><span class="stat-label">siswa aktif</span></div>
-<div><span class="stat-value">{{or $.YearName "–"}}</span><span class="stat-label">tahun ajaran aktif</span></div>
-</div>
-<div class="action-row"><a class="btn btn-ghost btn-sm" href="/siswa">{{template "icon" "users"}}Siswa</a><a class="btn btn-ghost btn-sm" href="/kelas">{{template "icon" "school"}}Kelas</a></div>
 </section>
 {{end}}
 
 {{with .Principal}}
-<section class="card dash-card md:col-span-2">
-<div class="flex items-center gap-3"><span class="icon-chip bg-cyan-50 text-cyan-700">{{template "icon" "chart"}}</span><div><h2 class="m-0">Kehadiran minggu ini</h2><p class="m-0 text-sm text-slate-500">{{.Range}}</p></div></div>
-<div class="stat-grid">
-<div class="bg-navy-50!"><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
+<section class="card">
+<div class="card-head"><div><h2 class="card-title">Kehadiran minggu ini</h2><p class="m-0 text-sm text-slate-500">{{.Range}}</p></div><a class="link-more" href="/laporan/kehadiran">Laporan{{template "icon" "arrow-right"}}</a></div>
+<div class="attendance-meter">
+<div class="flex items-baseline justify-between gap-3"><span class="text-3xl font-bold text-slate-900">{{.Percent}}</span><span class="text-sm text-slate-500">rata-rata kehadiran</span></div>
+{{if ge .Meter 0}}<div class="meter" aria-hidden="true"><span style="width: {{.Meter}}%"></span></div>{{end}}
+</div>
+<div class="stat-grid stat-grid-4">
 <div><span class="stat-value">{{.Counts.Hadir}}</span><span class="stat-label">hadir</span></div>
 <div><span class="stat-value">{{.Counts.Sakit}}</span><span class="stat-label">sakit</span></div>
 <div><span class="stat-value">{{.Counts.Izin}}</span><span class="stat-label">izin</span></div>
 <div><span class="stat-value">{{.Counts.Alpa}}</span><span class="stat-label">alpa</span></div>
 </div>
-<div class="action-row"><a class="btn btn-ghost btn-sm" href="/laporan/kehadiran">{{template "icon" "report"}}Laporan kehadiran</a></div>
 </section>
 {{end}}
 </div>
+
+<aside class="home-side">
+<section class="card">
+<div class="card-head"><h2 class="card-title">Pengumuman terbaru</h2><a class="link-more" href="/pengumuman">Lihat semua{{template "icon" "arrow-right"}}</a></div>
+{{if .News}}
+<ul class="activity-list">
+{{range .News}}<li><span class="activity-icon bg-blue-50 text-blue-600">{{template "icon" "megaphone"}}</span><span class="min-w-0 flex-1"><strong class="block line-clamp-2">{{.Title}}</strong><span class="block text-sm text-slate-500">{{.Audience}} · {{.Published}}</span></span></li>
+{{end}}</ul>
+{{else}}
+<p class="muted m-0">Belum ada pengumuman untuk ditampilkan.</p>
+{{end}}
+</section>
+</aside>
+</div>
+
+{{with shortcuts $items}}
+<section class="mt-6" aria-labelledby="shortcut-title">
+<h2 id="shortcut-title" class="card-title mb-3">Akses cepat</h2>
+<div class="shortcut-grid">
+{{range .}}<a class="shortcut" href="{{.Path}}"><span class="kpi-icon bg-navy-50 text-navy-900">{{template "icon" .Icon}}</span><span class="min-w-0"><strong class="block">{{.Label}}</strong><span class="block text-sm text-slate-500">{{.Desc}}</span></span><span class="ml-auto text-slate-300">{{template "icon" "chevron"}}</span></a>
+{{end}}</div>
+</section>
+{{end}}
 {{end}}

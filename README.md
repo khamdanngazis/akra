@@ -176,7 +176,7 @@ Halaman dirender di server dengan `html/template` lewat [internal/platform/rende
 ```
 web/templates/
 ├── layout.html          kerangka halaman: define "layout", memanggil blok "title" dan "content"
-├── partials/            template bersama (logo, icons, flash, app_header, auth_aside)
+├── partials/            template bersama (logo, icons, flash, app_header, auth_logo)
 ├── auth/login.html      halaman "auth/login"
 └── home.html            halaman "home"
 web/tailwind/app.css     sumber CSS Tailwind v4: tema brand (@theme), base, komponen (@layer components)
@@ -184,7 +184,7 @@ web/static/
 ├── css/app.css          hasil build Tailwind (minified, di-commit; jangan diedit langsung)
 ├── js/alpine.min.js     Alpine.js 3.17.4 (dist/cdn.min.js dari npm alpinejs@3.17.4)
 ├── fonts/               Plus Jakarta Sans variable, subset latin (@fontsource-variable/plus-jakarta-sans@5.3.0, lisensi OFL)
-└── img/favicon.svg
+└── img/                 akra-mark.png (simbol A, 512px) dan favicon.png (64px), dari logo resmi di doc/tasks_schoolos/000-redesign/
 ```
 
 - Halaman baru: buat `web/templates/<nama>.html` yang mendefinisikan blok `title` dan `content`, lalu panggil `rd.Render(w, r, http.StatusOK, "<nama>", data)`.
@@ -200,11 +200,18 @@ web/static/
 Styling memakai **Tailwind CSS v4 standalone CLI** (binary, tanpa Node), sesuai opsi di [software-architecture.md](doc/software-architecture.md). Sumber di [web/tailwind/app.css](web/tailwind/app.css); hasil build `web/static/css/app.css` di-commit, jadi `go build` dan Docker tidak butuh Tailwind.
 
 - `make css`: build CSS (binary v4.3.3 diunduh ke `bin/` dengan checksum terkunci). `make css-watch` saat mengubah template. `make css-check` gagal jika CSS yang di-commit tidak sesuai sumber. **Setiap mengubah template atau sumber CSS, jalankan `make css` dan commit hasilnya**: Tailwind hanya menghasilkan class yang dipakai di `web/templates`.
-- Tema mengikuti [doc/brand-identity.md](doc/brand-identity.md): palet `navy` (`navy-900` = `#0B3D91`), biru `blue-600` (= `#2563EB`) untuk tombol utama, `emerald-500` (= `#10B981`) untuk sukses, latar `slate-50`, card putih `rounded-2xl` dengan ring halus, ikon outline, font Plus Jakarta Sans.
+- Tema mengikuti [AKRA_Brand_Design_Guide.md](doc/tasks_schoolos/000-redesign/AKRA_Brand_Design_Guide.md): palet `navy` (`navy-900` = `#0B3D91`) untuk sidebar, biru `blue-600` (= `#2563EB`) untuk tombol utama, tautan, dan item menu aktif, `emerald-500` (= `#10B981`) untuk sukses, latar `slate-50`, card putih `rounded-2xl` dengan border `slate-200` dan bayangan lembut, ikon outline, font Plus Jakarta Sans, tanpa huruf kapital penuh.
+- **Logo**: simbol A pita biru-teal (PNG dari logo resmi) plus wordmark SVG `currentColor` (navy di latar terang, putih di sidebar). Partial `logo`, `wordmark`, `brand` di [partials/logo.html](web/templates/partials/logo.html).
 - Komponen yang dipakai banyak halaman (`btn`, `card`, `badge`, `field`, `stat-grid`, `pay-item`, dan lain-lain) ditulis dengan `@apply` di `@layer components`; tata letak halaman memakai utility class langsung di template (mis. shell, beranda, login).
-- **Kerangka per ukuran layar** ([partials/app_header.html](web/templates/partials/app_header.html)): desktop (>= 1024px) sidebar navy tetap di kiri (logo, sekolah, menu ber-ikon, kartu pengguna + keluar); tablet dan HP top bar dengan tombol menu yang membuka sidebar sebagai drawer (tutup dengan tombol, klik latar, atau Esc). Tanpa JavaScript menu tampil biasa.
+- **Kerangka per ukuran layar** ([partials/app_header.html](web/templates/partials/app_header.html)):
+  - desktop (>= 1024px): sidebar navy tetap di kiri (logo, menu ber-ikon, kartu sekolah dan peran);
+  - header putih di semua ukuran: kotak pencarian sesuai peran (admin/kepala ke `/siswa?q=`, bendahara ke `/keuangan/pembayaran/baru?q=`) dan menu profil (nama, peran, sekolah, Keluar);
+  - tablet (768–1023px): tombol menu membuka sidebar sebagai drawer (tutup dengan tombol, klik latar, atau Esc);
+  - HP (< 768px): bottom navigation berisi 4 menu pertama (`nav.Bottom`, label pendek `Short`) dan tombol "Menu" yang membuka drawer bila menu lebih dari 4.
+  - Tanpa JavaScript menu tampil biasa di atas konten dan bottom navigation disembunyikan.
+- **Beranda** ([home.html](web/templates/home.html)): sapaan "Selamat datang kembali", kartu ringkasan per peran (`home.KPI`: siswa aktif, guru, kelas, pengumuman; tunggakan dan pembayaran hari ini; kelas wali dan absensi), kehadiran minggu ini, pembayaran terbaru (bendahara), pengumuman terbaru, dan "Akses cepat" dari `nav.Shortcuts` (maks. 6 item menu yang punya `Desc`). Semua angka dari data sebenarnya; tidak ada grafik atau notifikasi contoh.
 - **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html); pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
-- **Login**: di layar >= 56rem dua kolom (panel brand navy dengan tagline dan poin fitur, lalu form); di HP hanya form.
+- **Login** dan halaman akun lain: latar terang, logo dengan tagline, satu card form dengan ikon di input dan tombol lihat password (partial `auth_logo` dan `password_field`, dipanggil dengan `dict`).
 
 ## Tahun Ajaran
 

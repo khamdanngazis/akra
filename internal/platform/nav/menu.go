@@ -18,30 +18,42 @@ type MenuItem struct {
 	Label string
 	Path  string
 	// Icon adalah nama ikon di sprite (partials/icons.html).
-	Icon  string
+	Icon string
+	// Short adalah label bottom navigation di HP (kosong = Label).
+	Short string
+	// Desc adalah keterangan singkat di kartu pintasan beranda.
+	Desc  string
 	Roles []string
+}
+
+// ShortLabel mengembalikan label pendek item (untuk bottom navigation).
+func (m MenuItem) ShortLabel() string {
+	if m.Short != "" {
+		return m.Short
+	}
+	return m.Label
 }
 
 // Items adalah seluruh menu dalam urutan tampil. Satu Path hanya muncul
 // sekali; peran yang boleh membukanya tercantum di Roles.
 var Items = []MenuItem{
-	{Label: "Beranda", Path: "/", Icon: "home", Roles: []string{adminTU, bendahara, guru, kepala}},
-	{Label: "Anak Saya", Path: "/portal", Icon: "child", Roles: []string{orangTua}},
-	{Label: "Absensi", Path: "/absensi", Icon: "attendance", Roles: []string{guru}},
-	{Label: "Rekap Absensi", Path: "/absensi/rekap", Icon: "chart", Roles: []string{adminTU, kepala}},
-	{Label: "Siswa", Path: "/siswa", Icon: "users", Roles: []string{adminTU, kepala}},
-	{Label: "Kelas", Path: "/kelas", Icon: "school", Roles: []string{adminTU, kepala}},
-	{Label: "Pembayaran", Path: "/keuangan/pembayaran/baru", Icon: "wallet", Roles: []string{bendahara}},
-	{Label: "Tagihan Massal", Path: "/keuangan/tagihan-massal", Icon: "receipt", Roles: []string{bendahara}},
-	{Label: "Tunggakan", Path: "/keuangan/tunggakan", Icon: "arrears", Roles: []string{bendahara, adminTU, kepala}},
-	{Label: "Jenis Tagihan", Path: "/keuangan/jenis-tagihan", Icon: "tags", Roles: []string{bendahara, adminTU, kepala}},
-	{Label: "Pembatalan", Path: "/keuangan/pembatalan", Icon: "undo", Roles: []string{kepala}},
-	{Label: "Laporan", Path: "/laporan", Icon: "report", Roles: []string{adminTU, bendahara, kepala}},
-	{Label: "Pengumuman", Path: "/pengumuman", Icon: "megaphone", Roles: []string{adminTU, kepala, bendahara, guru}},
-	{Label: "Pengumuman", Path: "/portal/pengumuman", Icon: "megaphone", Roles: []string{orangTua}},
-	{Label: "Audit", Path: "/keuangan/audit", Icon: "shield", Roles: []string{kepala, adminTU}},
-	{Label: "Pengaturan Keuangan", Path: "/pengaturan/keuangan", Icon: "settings", Roles: []string{bendahara, kepala}},
-	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Roles: []string{adminTU, kepala}},
+	{Label: "Beranda", Path: "/", Icon: "dashboard", Roles: []string{adminTU, bendahara, guru, kepala}},
+	{Label: "Anak Saya", Path: "/portal", Icon: "child", Short: "Anak", Desc: "Profil, absensi, dan tagihan anak", Roles: []string{orangTua}},
+	{Label: "Absensi", Path: "/absensi", Icon: "attendance", Desc: "Isi absensi kelas hari ini", Roles: []string{guru}},
+	{Label: "Rekap Absensi", Path: "/absensi/rekap", Icon: "chart", Short: "Rekap", Desc: "Rekap kehadiran per kelas", Roles: []string{adminTU, kepala}},
+	{Label: "Siswa", Path: "/siswa", Icon: "users", Desc: "Kelola data siswa dan wali", Roles: []string{adminTU, kepala}},
+	{Label: "Kelas", Path: "/kelas", Icon: "school", Desc: "Kelas dan wali kelas", Roles: []string{adminTU, kepala}},
+	{Label: "Pembayaran", Path: "/keuangan/pembayaran/baru", Icon: "wallet", Short: "Bayar", Desc: "Catat pembayaran siswa", Roles: []string{bendahara}},
+	{Label: "Tagihan Massal", Path: "/keuangan/tagihan-massal", Icon: "receipt", Short: "Tagihan", Desc: "Buat tagihan untuk satu kelas", Roles: []string{bendahara}},
+	{Label: "Tunggakan", Path: "/keuangan/tunggakan", Icon: "arrears", Desc: "Tagihan yang lewat jatuh tempo", Roles: []string{bendahara, adminTU, kepala}},
+	{Label: "Jenis Tagihan", Path: "/keuangan/jenis-tagihan", Icon: "tags", Short: "Jenis", Desc: "SPP dan jenis biaya lain", Roles: []string{bendahara, adminTU, kepala}},
+	{Label: "Pembatalan", Path: "/keuangan/pembatalan", Icon: "undo", Desc: "Persetujuan pembatalan pembayaran", Roles: []string{kepala}},
+	{Label: "Laporan", Path: "/laporan", Icon: "report", Desc: "Unduh laporan Excel dan PDF", Roles: []string{adminTU, bendahara, kepala}},
+	{Label: "Pengumuman", Path: "/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Pengumuman untuk orang tua", Roles: []string{adminTU, kepala, bendahara, guru}},
+	{Label: "Pengumuman", Path: "/portal/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Informasi dari sekolah", Roles: []string{orangTua}},
+	{Label: "Audit", Path: "/keuangan/audit", Icon: "shield", Desc: "Jejak setiap aksi keuangan", Roles: []string{kepala, adminTU}},
+	{Label: "Pengaturan Keuangan", Path: "/pengaturan/keuangan", Icon: "settings", Short: "Atur", Desc: "Ambang persetujuan pembatalan", Roles: []string{bendahara, kepala}},
+	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Short: "Tahun", Desc: "Atur tahun ajaran aktif", Roles: []string{adminTU, kepala}},
 }
 
 // MenuFor mengembalikan item menu untuk pengguna dengan peran roles, dalam
@@ -64,6 +76,33 @@ func MenuFor(roles []string) []MenuItem {
 				seen[it.Path] = true
 				break
 			}
+		}
+	}
+	return out
+}
+
+// Bottom mengembalikan item bottom navigation di HP: maksimal empat item
+// pertama menu. Sisanya ada di drawer (tombol "Menu").
+func Bottom(items []MenuItem) []MenuItem {
+	if len(items) > 4 {
+		return items[:4]
+	}
+	return items
+}
+
+// MaxShortcuts adalah jumlah kartu pintasan maksimal di beranda.
+const MaxShortcuts = 6
+
+// Shortcuts mengembalikan item untuk kartu pintasan beranda: item yang punya
+// keterangan, tanpa Beranda, paling banyak MaxShortcuts sesuai urutan menu.
+func Shortcuts(items []MenuItem) []MenuItem {
+	var out []MenuItem
+	for _, it := range items {
+		if len(out) == MaxShortcuts {
+			break
+		}
+		if it.Desc != "" && it.Path != "/" {
+			out = append(out, it)
 		}
 	}
 	return out

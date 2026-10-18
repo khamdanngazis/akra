@@ -169,6 +169,13 @@ func TestTreasurerSummaryMatchesArrears(t *testing.T) {
 	if !strings.Contains(body, "Rp260.000") || !strings.Contains(body, "pembayaran dicatat hari ini") {
 		t.Error("treasurer home page")
 	}
+	recent, err := RecentPaymentsFor(ctx, f.tx, f.schoolA, f.today, 5)
+	if err != nil || len(recent) == 0 || recent[0].Amount != "Rp40.000" || !strings.Contains(body, "Pembayaran terbaru") || !strings.Contains(body, recent[0].Student) {
+		t.Errorf("recent payments = %+v, %v", recent, err)
+	}
+	if other, err := RecentPaymentsFor(ctx, f.tx, f.schoolB, f.today, 5); err != nil || len(other) != 0 {
+		t.Errorf("school B recent payments = %+v, %v", other, err)
+	}
 	if n := nav(body); strings.Contains(n, "/absensi") || !strings.Contains(n, `href="/keuangan/pembayaran/baru"`) || !strings.Contains(n, `href="/" aria-current="page"`) {
 		t.Errorf("treasurer menu: %s", n)
 	}
@@ -200,9 +207,23 @@ func TestTeacherHome(t *testing.T) {
 func TestAdminAndPrincipalHome(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
+	y := mustYear(t, f)
+	if _, err := f.tx.Exec(ctx, `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE code = 'guru'`, f.guru1A); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.tx.Exec(ctx, `INSERT INTO announcements (school_id, academic_year_id, title, body, created_by) VALUES ($1, $2, 'Libur semester', 'Isi', $3)`, f.schoolA, y.ID, f.guru1A); err != nil {
+		t.Fatal(err)
+	}
 	body := f.home(f.admin, f.schoolA, "admin_tu").Body.String()
-	if !strings.Contains(body, `<span class="stat-value">3</span><span class="stat-label">siswa aktif</span>`) || !strings.Contains(body, "2026/2027") {
+	if !strings.Contains(body, "Libur semester") || !strings.Contains(body, "Pengumuman terbaru") {
+		t.Error("admin home misses recent announcements")
+	}
+	if !strings.Contains(body, `<span class="kpi-value">3</span><span class="kpi-hint">Semua tingkat</span>`) || !strings.Contains(body, "2026/2027") {
 		t.Error("admin summary: 3 active students and the active year")
+	}
+	sum, err := SchoolSummaryFor(ctx, f.tx, f.schoolA)
+	if err != nil || sum != (AdminSummary{ActiveStudents: 3, Teachers: 1, Classes: 2, Announcements: 1}) {
+		t.Errorf("school summary = %+v, %v", sum, err)
 	}
 	ps, err := PrincipalFor(ctx, f.tx, f.schoolA, mustYear(t, f), f.today)
 	if err != nil || ps == nil {
