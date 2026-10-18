@@ -1,0 +1,35 @@
+{{define "title"}}Impor Siswa{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Impor Siswa</h1>
+<p class="muted">Unduh template Excel, lalu isi dengan data siswa dan wali yang sudah ada.</p>
+</div>
+<a class="btn btn-primary" href="/impor/siswa/template.xlsx">Unduh template</a>
+</div>
+
+{{template "flash" .}}
+
+<section class="card">
+<h2 class="section-title">Cara mengisi</h2>
+<ul>
+<li>Jangan mengubah urutan atau judul kolom di baris pertama.</li>
+<li>Baris kedua berwarna abu-abu adalah contoh. Hapus baris itu sebelum mengunggah.</li>
+<li>Satu baris untuk satu siswa. Kolom bertanda wajib harus diisi.</li>
+</ul>
+</section>
+
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kolom</th><th>Wajib</th><th>Format</th></tr></thead>
+<tbody>
+{{range .Columns}}
+<tr><td class="nowrap"><strong>{{.Header}}</strong></td><td>{{if .Required}}<span class="badge badge-info">Wajib</span>{{else}}<span class="muted">Tidak</span>{{end}}</td><td>{{.Format}}</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{end}}
