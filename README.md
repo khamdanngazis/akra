@@ -667,6 +667,16 @@ Mitigasi utama risiko kebocoran data antar sekolah:
 - sesi: setelah logout, halaman portal mengalihkan ke `/login`;
 - enumerasi: 404 untuk anak orang lain, data sekolah lain, ID acak, dan ID bukan UUID identik (status, jenis konten, dan isi setelah token CSRF disamakan).
 
+### Uji aturan keuangan (T60)
+
+- [internal/payments/concurrency_test.go](internal/payments/concurrency_test.go) memakai transaksi sungguhan (di-commit) dengan sekolah uji berkode acak yang dihapus di akhir (`session_replication_role = replica`, butuh superuser seperti di CI). Setiap skenario diulang 50 kali dalam satu uji:
+  - dua pembayaran bersamaan yang totalnya melebihi sisa: tepat satu berhasil, yang lain `ErrOverpayment` (tagihan dikunci `FOR UPDATE`);
+  - pelunasan dan pembatalan bersamaan: kedua urutan valid, status tersimpan selalu sama dengan `billing.ComputeStatus` dari pembayaran aktif;
+  - 20 pembayaran paralel: nomor kuitansi `KW/<tahun>/000001` sampai `000020` tanpa duplikat dan tanpa celah.
+- Stabil dengan `go test -count=50 -run Concurrency ./internal/payments/`.
+- [internal/platform/money/nofloat_test.go](internal/platform/money/nofloat_test.go) memeriksa kode (AST) paket keuangan (`money`, `billing`, `payments`, `portal`, `home`, `reports`): tidak boleh ada `float32/float64`, fungsi paket `math`, `strconv.*Float`, literal desimal (kecuali koordinat tata letak kuitansi PDF), format `%f/%g/%e`, atau cast pecahan di SQL; migrasi tidak boleh punya kolom `float/real/numeric/decimal`.
+- Aturan pembatalan (bulan berjalan, ambang persetujuan, pengaju tidak boleh menyetujui atau menolak sendiri) dan tagihan massal tanpa duplikat diuji di `void_test.go` dan `bulk_test.go`.
+
 ### CI
 
 [.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
