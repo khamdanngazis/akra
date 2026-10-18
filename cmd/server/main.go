@@ -94,8 +94,8 @@ func run(logger *slog.Logger) error {
 	// client dibuat; client berhenti setelah server HTTP berhenti dan sebelum
 	// pool ditutup (urutan defer).
 	workers := jobs.NewWorkers()
-	registerWorkers(workers, pool, logger)
-	jobClient, err := jobs.NewClient(pool, workers, jobs.Config{Workers: cfg.RiverWorkers}, logger)
+	registerWorkers(workers, pool, store, logger)
+	jobClient, err := jobs.NewClient(pool, workers, jobs.Config{Workers: cfg.RiverWorkers, PeriodicJobs: periodicJobs()}, logger)
 	if err != nil {
 		return err
 	}

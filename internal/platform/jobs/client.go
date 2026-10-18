@@ -35,6 +35,8 @@ type Config struct {
 	Workers int
 	// JobTimeout membatasi lama satu job berjalan.
 	JobTimeout time.Duration
+	// PeriodicJobs dijalankan terjadwal (mis. pembersihan file laporan).
+	PeriodicJobs []*river.PeriodicJob
 }
 
 // DefaultJobTimeout membatasi lama satu job (mis. tagihan massal ratusan
@@ -57,6 +59,7 @@ func NewClient(pool *pgxpool.Pool, workers *Workers, cfg Config, logger *slog.Lo
 		}
 		rc.Workers = workers
 		rc.Queues = map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: cfg.Workers}}
+		rc.PeriodicJobs = cfg.PeriodicJobs
 	}
 	client, err := river.NewClient(riverpgxv5.New(pool), rc)
 	if err != nil {

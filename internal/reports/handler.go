@@ -1,7 +1,7 @@
 package reports
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,12 +19,14 @@ import (
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
+	"akra/internal/platform/storage"
 	"akra/internal/reports/export"
 	"akra/internal/school"
 )
 
 const (
 	attendancePath = "/laporan/kehadiran"
+	jobsPath       = "/laporan/jobs"
 	arrearsPath    = "/laporan/tunggakan"
 	pageAttendance = "reports/attendance"
 	dateLayout     = "2006-01-02"
@@ -32,7 +34,9 @@ const (
 
 // Handler melayani halaman dan unduhan laporan.
 type Handler struct {
-	db     database.DBTX
+	db     database.DB
+	jobs   JobInserter   // nil: ekspor besar ditolak (tanpa job)
+	store  storage.Store // file hasil job
 	render page.Renderer
 	logger *slog.Logger
 	today  func() time.Time
@@ -42,8 +46,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(db database.DBTX, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, render: render, logger: logger, today: clock.Today, maxRows: MaxSyncRows}
+func NewHandler(db database.DB, jobs JobInserter, store storage.Store, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, jobs: jobs, store: store, render: render, logger: logger, today: clock.Today, maxRows: MaxSyncRows}
 }
 
 // Routes mendaftarkan route laporan.
@@ -65,6 +69,10 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get(arrearsPath+".xlsx", h.arrearsExcel)
 		// Peran: bendahara, admin_tu, kepala_sekolah.
 		r.Get(arrearsPath+".pdf", h.arrearsPDF)
+		// Peran: pemilik job, atau kepala_sekolah (semua job sekolah).
+		r.Get(jobsPath+"/{id}", h.jobStatus)
+		// Peran: pemilik job, atau kepala_sekolah. Redirect ke URL 5 menit.
+		r.Get(jobsPath+"/{id}/unduh", h.jobDownload)
 	})
 }
 
@@ -267,7 +275,8 @@ func (h *Handler) attendanceExport(w http.ResponseWriter, r *http.Request, forma
 		page.BadRequest(h.render, w, r, id, "Filter tidak valid", "Periksa kelas dan tanggal laporan.")
 		return
 	}
-	rep, err := BuildAttendanceReport(r.Context(), h.db, id.SchoolID, f)
+	today := h.today()
+	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeAttendance, jobParamsFromAttendance(f, today))
 	if msg, ok := rangeMessage(err); ok {
 		page.BadRequest(h.render, w, r, id, "Rentang tidak valid", msg)
 		return
@@ -276,13 +285,7 @@ func (h *Handler) attendanceExport(w http.ResponseWriter, r *http.Request, forma
 		page.ServerError(h.render, h.logger, w, r, id, "attendance report", err)
 		return
 	}
-	if len(rep.Rows) > h.maxRows {
-		page.BadRequest(h.render, w, r, id, "Data terlalu besar", fmt.Sprintf("Laporan berisi lebih dari %d baris. Persempit filter (mis. per kelas).", h.maxRows))
-		return
-	}
-	t := attendanceTable(rep, id.SchoolName, h.today())
-	name := fmt.Sprintf("rekap-kehadiran-%s-%s.%s", rep.From.Format(dateLayout), rep.To.Format(dateLayout), format)
-	h.writeExport(w, r, id, t, format, "Rekap", name)
+	h.deliver(w, r, id, t, rows, TypeAttendance, format, jobParamsFromAttendance(f, today))
 }
 
 func (h *Handler) arrearsExcel(w http.ResponseWriter, r *http.Request) { h.arrearsExport(w, r, "xlsx") }
@@ -296,36 +299,53 @@ func (h *Handler) arrearsExport(w http.ResponseWriter, r *http.Request, format s
 		page.BadRequest(h.render, w, r, id, "Filter tidak valid", "Periksa tanggal jatuh tempo.")
 		return
 	}
-	labels, err := h.arrearsFilterLabels(r, id.SchoolID, f)
-	if err != nil {
-		page.ServerError(h.render, h.logger, w, r, id, "arrears filter labels", err)
-		return
-	}
 	today := h.today()
-	t, a, err := ArrearsReport(r.Context(), h.db, id.SchoolID, id.SchoolName, f, labels, today)
+	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeArrears, jobParamsFromArrears(f, today))
 	if err != nil {
 		page.ServerError(h.render, h.logger, w, r, id, "arrears report", err)
 		return
 	}
-	if len(a.Items) > h.maxRows {
+	h.deliver(w, r, id, t, rows, TypeArrears, format, jobParamsFromArrears(f, today))
+}
+
+// deliver mengirim file langsung jika baris laporan tidak melebihi maxRows;
+// selain itu membuat job ekspor di server dan mengalihkan ke halaman
+// statusnya (T49). Datanya sudah dihitung dengan fungsi yang sama dengan
+// job, jadi tidak ada COUNT terpisah yang bisa berbeda.
+func (h *Handler) deliver(w http.ResponseWriter, r *http.Request, id auth.Identity, t export.Table, rows int, reportType, format string, p JobParams) {
+	if rows <= h.maxRows {
+		data, err := renderTable(t, reportType, format)
+		if err != nil {
+			page.ServerError(h.render, h.logger, w, r, id, "export report", err)
+			return
+		}
+		h.sendFile(w, data, format, exportFilename(ReportJob{Type: reportType, Format: format, Params: p}, t.PrintedAt))
+		return
+	}
+	if h.jobs == nil {
 		page.BadRequest(h.render, w, r, id, "Data terlalu besar", fmt.Sprintf("Laporan berisi lebih dari %d baris. Persempit filter (mis. per kelas).", h.maxRows))
 		return
 	}
-	h.writeExport(w, r, id, t, format, "Tunggakan", fmt.Sprintf("tunggakan-%s.%s", today.Format(dateLayout), format))
+	jobID, err := enqueueExport(r.Context(), h.db, h.jobs, school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, reportType, format, p, rows)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "enqueue report export", err)
+		return
+	}
+	http.Redirect(w, r, jobsPath+"/"+jobID, http.StatusSeeOther)
 }
 
 // arrearsFilterLabels menjelaskan filter aktif untuk kepala laporan.
-func (h *Handler) arrearsFilterLabels(r *http.Request, schoolID string, f billing.ArrearsFilter) ([]string, error) {
+func arrearsFilterLabels(ctx context.Context, q database.DBTX, schoolID string, f billing.ArrearsFilter) ([]string, error) {
 	class, fee := "Semua kelas", "Semua jenis"
 	if database.IsUUID(f.ClassID) {
-		if err := h.db.QueryRow(r.Context(), `SELECT c.name || ' · ' || y.name FROM classes c
+		if err := q.QueryRow(ctx, `SELECT c.name || ' · ' || y.name FROM classes c
 			JOIN academic_years y ON y.school_id = c.school_id AND y.id = c.academic_year_id
 			WHERE c.school_id = $1 AND c.id = $2`, schoolID, f.ClassID).Scan(&class); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
 		}
 	}
 	if database.IsUUID(f.FeeTypeID) {
-		if err := h.db.QueryRow(r.Context(), `SELECT name FROM fee_types WHERE school_id = $1 AND id = $2`, schoolID, f.FeeTypeID).Scan(&fee); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		if err := q.QueryRow(ctx, `SELECT name FROM fee_types WHERE school_id = $1 AND id = $2`, schoolID, f.FeeTypeID).Scan(&fee); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
 		}
 	}
@@ -343,25 +363,16 @@ func (h *Handler) arrearsFilterLabels(r *http.Request, schoolID string, f billin
 	return labels, nil
 }
 
-// writeExport menulis t sebagai unduhan Excel atau PDF.
-func (h *Handler) writeExport(w http.ResponseWriter, r *http.Request, id auth.Identity, t export.Table, format, sheet, filename string) {
-	var buf bytes.Buffer
-	var err error
+// sendFile mengirim file laporan sebagai unduhan.
+func (h *Handler) sendFile(w http.ResponseWriter, data []byte, format, filename string) {
 	contentType := "application/pdf"
 	if format == "xlsx" {
 		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-		err = export.WriteExcel(&buf, t, sheet)
-	} else {
-		err = export.WritePDF(&buf, t)
-	}
-	if err != nil {
-		page.ServerError(h.render, h.logger, w, r, id, "export report", err)
-		return
 	}
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType)
 	hdr.Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	hdr.Set("Cache-Control", "private, no-store")
-	hdr.Set("Content-Length", strconv.Itoa(buf.Len()))
-	_, _ = buf.WriteTo(w)
+	hdr.Set("Content-Length", strconv.Itoa(len(data)))
+	_, _ = w.Write(data)
 }

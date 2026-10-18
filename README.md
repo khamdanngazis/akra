@@ -413,11 +413,15 @@ Paket [internal/reports](internal/reports/attendance.go); ekspor di [internal/re
   - Angka per siswa dari `attendance.SummaryByStudent` (T27) per kelas; persentase dari `attendance.Counts.PresentPercent` (satu tempat untuk definisi).
   - Rentang maksimal satu tahun ajaran: tahun ajaran kelas, atau untuk "semua kelas" tahun ajaran yang memuat seluruh rentang. Tanpa tanggal: awal tahun ajaran sampai hari ini.
   - Excel: sheet **Rekap** (header bold dan dibekukan, angka sebagai angka, persentase format `0.0%`, baris total) dan sheet **Info** (judul, sekolah, filter, tanggal cetak). PDF A4: judul, sekolah, tahun ajaran, kelas, periode, tabel dengan header berulang, total, tanggal cetak, nomor halaman.
-  - Ekspor langsung maksimal 5.000 baris (`reports.MaxSyncRows`); lebih dari itu ditolak dengan saran mempersempit filter (ekspor di server: T49).
+  - Ekspor langsung maksimal 5.000 baris (`reports.MaxSyncRows`); lebih dari itu dijalankan di server (lihat di bawah).
 - **Laporan tunggakan** (T48, [arrears.go](internal/reports/arrears.go)): `GET /laporan/tunggakan.xlsx` dan `.pdf` dengan filter yang sama dengan `/keuangan/tunggakan` (tombol unduh ada di halaman itu), untuk `bendahara`, `admin_tu`, `kepala_sekolah` (guru dan orang tua `403`).
   - Data hanya dari `billing.ListArrears` (tanpa query kedua); filter dibaca dengan `billing.ParseArrearsQuery` yang sama dengan halaman. Hari terlambat dihitung dari jatuh tempo ke tanggal cetak.
   - Excel: sheet **Tunggakan** (NIS, nama, kelas, jenis tagihan, periode, jatuh tempo, total, sudah dibayar, sisa, hari terlambat; nominal sebagai angka berformat rupiah; baris total), **Ringkasan** (total sisa, jumlah siswa menunggak, jumlah tagihan, per tanggal), dan **Info**.
   - PDF A4 mendatar: judul, nama sekolah, tanggal per, filter, tabel dikelompokkan per kelas dengan subtotal, total, ringkasan, tanggal cetak di setiap halaman. 500 baris diekspor sekitar 0,07 detik (uji).
+- **Ekspor di server** (T49, [job.go](internal/reports/job.go), migrasi 000026 `report_jobs`): jika laporan lebih dari 5.000 baris (`reports.MaxSyncRows`), unduhan tidak dibuat di request. Baris `report_jobs` (status `antrean`) dan job River `report_export` dibuat dalam satu transaksi, lalu pengguna diarahkan ke **`/laporan/jobs/{id}`** (refresh otomatis). Jumlah baris dihitung dengan fungsi data yang sama dengan job (`buildTable`), bukan COUNT terpisah.
+  - Job menyusun file dengan fungsi yang sama dengan ekspor langsung (filter dan tanggal "per" disimpan di `params` saat diminta), mengunggahnya ke storage privat `schools/{school_id}/reports/{job_id}.{xlsx|pdf}`, lalu status `selesai`. Maksimal 3 percobaan; setelah gagal terakhir status `gagal` dengan pesan aman (detail hanya di log).
+  - Unduh (`/laporan/jobs/{id}/unduh`): redirect ke URL bertanda tangan 5 menit, sama dengan bukti transfer. Hanya pemilik job atau kepala sekolah; selain itu `404`.
+  - Job periodik `report_cleanup` (setiap jam dan saat start) menghapus file yang selesai lebih dari 7 hari; baris job tetap ada dengan `file_deleted_at`.
 
 ## Job Latar Belakang (River)
 
