@@ -16,6 +16,8 @@ const (
 	ActionVoidApprove       = "payment.void_approve"
 	ActionVoidReject        = "payment.void_reject"
 	ActionSettingsUpdate    = "settings.update"
+	// ActionReceiptDownloadParent dicatat portal orang tua (T46).
+	ActionReceiptDownloadParent = "receipt.download_parent"
 )
 
 // FinanceActions adalah semua aksi keuangan, urut tampil di filter.
@@ -23,22 +25,23 @@ var FinanceActions = []string{
 	ActionPaymentCreate, ActionVoidRequest, ActionVoidApprove, ActionVoidReject,
 	ActionProofUpload, ActionProofView, ActionInvoiceCreate, ActionBulkCreate,
 	ActionFeeTypeCreate, ActionFeeTypeUpdate, ActionFeeTypeDeactivate, ActionFeeTypeActivate,
-	ActionSettingsUpdate,
+	ActionSettingsUpdate, ActionReceiptDownloadParent,
 }
 
 // ActionLabels adalah nama aksi untuk ditampilkan.
 var ActionLabels = map[string]string{
-	ActionFeeTypeCreate:     "Jenis tagihan dibuat",
-	ActionFeeTypeUpdate:     "Jenis tagihan diubah",
-	ActionFeeTypeDeactivate: "Jenis tagihan dinonaktifkan",
-	ActionFeeTypeActivate:   "Jenis tagihan diaktifkan",
-	ActionInvoiceCreate:     "Tagihan dibuat",
-	ActionBulkCreate:        "Tagihan massal",
-	ActionPaymentCreate:     "Pembayaran dicatat",
-	ActionProofUpload:       "Bukti transfer diunggah",
-	ActionProofView:         "Bukti transfer dibuka",
-	ActionVoidRequest:       "Pembatalan diajukan",
-	ActionVoidApprove:       "Pembatalan disetujui",
-	ActionVoidReject:        "Pembatalan ditolak",
-	ActionSettingsUpdate:    "Pengaturan keuangan diubah",
+	ActionFeeTypeCreate:         "Jenis tagihan dibuat",
+	ActionFeeTypeUpdate:         "Jenis tagihan diubah",
+	ActionFeeTypeDeactivate:     "Jenis tagihan dinonaktifkan",
+	ActionFeeTypeActivate:       "Jenis tagihan diaktifkan",
+	ActionInvoiceCreate:         "Tagihan dibuat",
+	ActionBulkCreate:            "Tagihan massal",
+	ActionPaymentCreate:         "Pembayaran dicatat",
+	ActionProofUpload:           "Bukti transfer diunggah",
+	ActionProofView:             "Bukti transfer dibuka",
+	ActionVoidRequest:           "Pembatalan diajukan",
+	ActionVoidApprove:           "Pembatalan disetujui",
+	ActionVoidReject:            "Pembatalan ditolak",
+	ActionSettingsUpdate:        "Pengaturan keuangan diubah",
+	ActionReceiptDownloadParent: "Kuitansi diunduh orang tua",
 }

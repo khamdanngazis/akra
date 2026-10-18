@@ -87,6 +87,12 @@ func WriteReceiptPDF(w io.Writer, r Receipt, compress bool) error {
 	pdf.SetCompression(compress)
 	pdf.SetTitle("Kuitansi "+r.Number, true)
 	pdf.SetCreator("AKRA", true)
+	// Tanggal dokumen = tanggal cetak, sehingga kuitansi yang sama dicetak di
+	// hari yang sama (bendahara atau portal orang tua) identik byte per byte.
+	pdf.SetCreationDate(r.PrintedAt)
+	pdf.SetModificationDate(r.PrintedAt)
+	// Urutan katalog (font, dll.) tetap; tanpa ini fpdf mengikuti urutan map.
+	pdf.SetCatalogSort(true)
 	pdf.SetMargins(14, 12, 14)
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.AddPage()

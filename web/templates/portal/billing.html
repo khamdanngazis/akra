@@ -35,6 +35,7 @@
 <section class="pay-item{{if .Voided}} is-voided{{end}}">
 <div class="pay-row"><strong class="pay-amount">{{.Amount}}</strong><span class="muted">{{.PaidOn}} · {{.Method}}</span></div>
 <p class="pay-item-meta">{{.Fees}} · {{.Period}} · No. {{.Receipt}}</p>
+<p class="pay-item-meta"><a href="/portal/pembayaran/{{.ID}}/kuitansi">Unduh kuitansi{{if .Voided}} (dibatalkan){{end}}</a></p>
 {{if .Voided}}<p><span class="badge badge-danger">Dibatalkan</span> <span class="muted">{{.VoidReason}}</span></p>{{end}}
 </section>
 {{end}}

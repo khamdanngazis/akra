@@ -106,3 +106,22 @@ func TestReceiptHandler(t *testing.T) {
 		t.Error("principal must not get the receipt link")
 	}
 }
+
+func TestReceiptPDF_Deterministic(t *testing.T) {
+	rc := Receipt{Number: "KW/2026/000001", SchoolName: "SD Uji", StudentName: "Ani", NIS: "001", ClassName: "1A", YearName: "2026/2027",
+		FeeNames: "SPP", Period: "2026-09", Amount: 150000, PaidOn: time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC), Method: MethodCash,
+		Treasurer: "Bendahara", Voided: true, VoidReason: "uji", PrintedAt: time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC)}
+	var first bytes.Buffer
+	if err := WriteReceiptPDF(&first, rc, true); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 20; i++ {
+		var b bytes.Buffer
+		if err := WriteReceiptPDF(&b, rc, true); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b.Bytes(), first.Bytes()) {
+			t.Fatalf("render %d differs: receipt PDF must be reproducible", i)
+		}
+	}
+}

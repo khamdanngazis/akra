@@ -24,11 +24,11 @@ type Child struct {
 
 // Service membaca data portal orang tua.
 type Service struct {
-	db database.DBTX
+	db database.DB
 }
 
 // NewService mengembalikan Service.
-func NewService(db database.DBTX) *Service {
+func NewService(db database.DB) *Service {
 	return &Service{db: db}
 }
 
