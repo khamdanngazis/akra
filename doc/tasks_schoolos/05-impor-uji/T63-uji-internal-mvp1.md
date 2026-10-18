@@ -25,11 +25,13 @@ Tim menjalankan alur kerja utama dari awal sampai akhir, lalu memeriksa setiap k
 - Perbaikan kecil di kode (jika ditemukan kendala) dibuat sebagai task baru
 
 ## Kriteria selesai
-- [ ] Semua skenario di langkah 2 selesai dijalankan minimal sekali
-- [ ] Semua kriteria selesai MVP 1 dicek, masing-masing lulus atau punya catatan
-- [ ] Tidak ada kendala kritis yang terbuka
-- [ ] Daftar perbaikan tinggi dan sedang sudah masuk backlog
-- [ ] Hasil uji dibahas dan disetujui sebelum pilot dengan sekolah
+- [x] Semua skenario di langkah 2 selesai dijalankan minimal sekali
+- [x] Semua kriteria selesai MVP 1 dicek, masing-masing lulus atau punya catatan
+- [ ] Tidak ada kendala kritis yang terbuka: K-7 (domain email Resend belum diverifikasi) masih terbuka. Masalahnya di konfigurasi, bukan kode. Atas keputusan pemilik proyek, K-7 dipindah menjadi syarat wajib sebelum pilot
+- [x] Daftar perbaikan tinggi dan sedang sudah masuk backlog (`doc/uji-internal.md`, bagian Daftar perbaikan)
+- [x] Hasil uji dibahas dan disetujui: T63 ditutup oleh pemilik proyek pada 18 Oktober 2026
+
+Hasil: [doc/uji-internal.md](../../uji-internal.md). File itu ada di `doc/`, bukan `docs/`, mengikuti struktur repo.
 
 ## Catatan
 - Uji ini dilakukan oleh orang yang tidak menulis fiturnya, jika memungkinkan. Itu membantu menemukan asumsi yang tersembunyi.
