@@ -29,11 +29,11 @@ Rekap kehadiran bisa difilter dan diunduh sebagai Excel dan PDF. Angka di file s
 - `internal/reports/handler.go`
 
 ## Kriteria selesai
-- [ ] Angka di file Excel sama dengan tabel di layar untuk filter yang sama
-- [ ] File Excel terbuka di Excel dan Google Sheets tanpa peringatan perbaikan
-- [ ] PDF terbuka dan menampilkan judul, periode, dan tabel
-- [ ] Rentang lebih dari satu tahun ajaran ditolak
-- [ ] Guru mendapat `403` pada route laporan
+- [x] Angka di file Excel sama dengan tabel di layar untuk filter yang sama
+- [ ] File Excel terbuka di Excel dan Google Sheets tanpa peringatan perbaikan (XML divalidasi dan file dibaca ulang dengan excelize di uji; belum dicoba di Excel/Google Sheets asli)
+- [x] PDF terbuka dan menampilkan judul, periode, dan tabel
+- [x] Rentang lebih dari satu tahun ajaran ditolak
+- [x] Guru mendapat `403` pada route laporan
 
 ## Catatan
 - Persentase menggunakan definisi di T27 (pembagi semua sesi). Jika sekolah memakai definisi lain, ubah di satu tempat saja.

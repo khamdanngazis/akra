@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
+	"akra/internal/reports"
 	"akra/internal/school"
 	"akra/internal/students"
 )
@@ -79,6 +80,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
 		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
+		reports:     reports.NewHandler(d.db, d.render, d.logger),
 	}), nil
 }
 

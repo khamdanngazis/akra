@@ -27,6 +27,7 @@ import (
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/internal/portal"
+	"akra/internal/reports"
 	"akra/internal/school"
 	"akra/internal/students"
 	"akra/web"
@@ -90,6 +91,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		arrears:     billing.NewArrearsHandler(nil, rd, logger),
 		payments:    payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), payments.NewVoidService(nil), sessions, rd, logger),
 		auditLog:    auditview.NewHandler(nil, rd, logger),
+		reports:     reports.NewHandler(nil, rd, logger),
 	})
 }
 

@@ -405,6 +405,16 @@ Tabel `payment_voids` dan `school_settings` (migrasi 000022), [void_service.go](
 - Trigger `payment_voids_guard`: baris tidak bisa dihapus; update hanya untuk memutuskan pengajuan `pending` (kolom selain keputusan tidak boleh berubah).
 - Audit: `payment.void_request`, `payment.void_approve`, `payment.void_reject` (`entity_id` = id pembayaran).
 
+## Laporan
+
+Paket [internal/reports](internal/reports/attendance.go); ekspor di [internal/reports/export](internal/reports/export/export.go) (`WriteExcel` dengan [excelize](https://github.com/xuri/excelize) v2.9.0, versi terakhir untuk Go 1.22; `WritePDF` dengan fpdf). Kedua format menerima `export.Table` yang sama dengan isi layar.
+
+- **Rekap kehadiran** (T47): `GET /laporan/kehadiran?kelas=&dari=&sampai=` (layar), `.xlsx`, dan `.pdf`, untuk `admin_tu` dan `kepala_sekolah` (guru memakai rekap kelasnya di `/absensi/rekap`; guru, bendahara, orang tua `403`).
+  - Angka per siswa dari `attendance.SummaryByStudent` (T27) per kelas; persentase dari `attendance.Counts.PresentPercent` (satu tempat untuk definisi).
+  - Rentang maksimal satu tahun ajaran: tahun ajaran kelas, atau untuk "semua kelas" tahun ajaran yang memuat seluruh rentang. Tanpa tanggal: awal tahun ajaran sampai hari ini.
+  - Excel: sheet **Rekap** (header bold dan dibekukan, angka sebagai angka, persentase format `0.0%`, baris total) dan sheet **Info** (judul, sekolah, filter, tanggal cetak). PDF A4: judul, sekolah, tahun ajaran, kelas, periode, tabel dengan header berulang, total, tanggal cetak, nomor halaman.
+  - Ekspor langsung maksimal 5.000 baris (`reports.MaxSyncRows`); lebih dari itu ditolak dengan saran mempersempit filter (ekspor di server: T49).
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).

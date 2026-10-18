@@ -1144,3 +1144,10 @@ fieldset.field > legend {
 .stat-value.text-danger {
   color: var(--color-error);
 }
+
+/* Laporan */
+
+tr.total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--color-border);
+}

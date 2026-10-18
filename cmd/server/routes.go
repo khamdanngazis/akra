@@ -18,6 +18,7 @@ import (
 	"akra/internal/platform/httpserver"
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
+	"akra/internal/reports"
 	"akra/internal/school"
 	"akra/internal/students"
 )
@@ -41,6 +42,7 @@ type routerDeps struct {
 	arrears      *billing.ArrearsHandler
 	payments     *payments.Handler
 	auditLog     *auditview.Handler
+	reports      *reports.Handler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -103,6 +105,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.arrears.Routes(r)
 			d.payments.Routes(r)
 			d.auditLog.Routes(r)
+			d.reports.Routes(r)
 		})
 	})
 
