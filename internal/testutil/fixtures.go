@@ -38,28 +38,38 @@ type School struct {
 	// tidak boleh memuat teks ini.
 	Marker string
 
-	Admin, Treasurer, Teacher, Principal, Parent User
+	Admin, Treasurer, Teacher, Principal User
+	// Parent adalah wali StudentIDs[0] (anak X); Parent2 wali StudentIDs[1]
+	// (anak Y) di kelas lain (T59).
+	Parent, Parent2 User
 
-	YearID, ClassID     string
-	ClassName           string // tanpa Marker, karena form bisa menampilkan ulang isian
-	StudentIDs          [2]string
-	EnrollmentIDs       [2]string
-	GuardianID          string
-	FeeTypeID           string
-	InvoiceID           string
-	PaymentID           string
-	ProofID             string
-	VoidID              string
-	AnnouncementID      string
-	AttendanceSessionID string
-	BulkRunID           string
-	ReportJobID         string
-	ImportBatchID       string
+	YearID, ClassID string
+	ClassName       string // tanpa Marker, karena form bisa menampilkan ulang isian
+	// Class2ID adalah kelas StudentIDs[1]; StudentIDs[0] di ClassID.
+	Class2ID    string
+	Guardian2ID string
+	Invoice2ID  string // tagihan StudentIDs[1]
+	Payment2ID  string // pembayaran tunai Invoice2ID
+	// Class2AnnouncementTitle adalah judul pengumuman khusus Class2ID.
+	Class2AnnouncementTitle string
+	StudentIDs              [2]string
+	EnrollmentIDs           [2]string
+	GuardianID              string
+	FeeTypeID               string
+	InvoiceID               string
+	PaymentID               string
+	ProofID                 string
+	VoidID                  string
+	AnnouncementID          string
+	AttendanceSessionID     string
+	BulkRunID               string
+	ReportJobID             string
+	ImportBatchID           string
 }
 
 // Users mengembalikan semua pengguna sekolah.
 func (s *School) Users() []User {
-	return []User{s.Admin, s.Treasurer, s.Teacher, s.Principal, s.Parent}
+	return []User{s.Admin, s.Treasurer, s.Teacher, s.Principal, s.Parent, s.Parent2}
 }
 
 // SeedTwoSchools membuat sekolah A dan B dengan isi yang setara: admin/TU,
@@ -103,6 +113,9 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 
 	user := func(role, name string, guardianID any) User {
 		email := role + "@" + key + ".uji"
+		if name == "Wali Kedua" {
+			email = "orang_tua2@" + key + ".uji"
+		}
 		id := one(`INSERT INTO users (school_id, email, password_hash, full_name, guardian_id, is_active) VALUES ($1, $2, $3, $4, $5, true) RETURNING id`,
 			s.ID, email, hash, name+" "+marker, guardianID)
 		exec(`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE code = $2`, id, role)
@@ -118,17 +131,24 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	s.ClassName = "Kelas " + strings.ToUpper(key)
 	s.ClassID = one(`INSERT INTO classes (school_id, academic_year_id, name, grade_level, homeroom_teacher_id) VALUES ($1, $2, $3, 1, $4) RETURNING id`,
 		s.ID, s.YearID, s.ClassName, s.Teacher.ID)
-	for i := range s.StudentIDs {
+	s.Class2ID = one(`INSERT INTO classes (school_id, academic_year_id, name, grade_level) VALUES ($1, $2, $3, 2) RETURNING id`,
+		s.ID, s.YearID, s.ClassName+"2")
+	for i, class := range []string{s.ClassID, s.Class2ID} {
 		s.StudentIDs[i] = one(`INSERT INTO students (school_id, nis, full_name) VALUES ($1, $2, $3) RETURNING id`,
 			s.ID, fmt.Sprintf("%s-%03d", key, i+1), fmt.Sprintf("Siswa %s %d", marker, i+1))
 		s.EnrollmentIDs[i] = one(`INSERT INTO enrollments (school_id, student_id, class_id, academic_year_id, start_date) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			s.ID, s.StudentIDs[i], s.ClassID, s.YearID, start)
+			s.ID, s.StudentIDs[i], class, s.YearID, start)
 	}
 	s.GuardianID = one(`INSERT INTO guardians (school_id, full_name, phone, email) VALUES ($1, $2, '+6281200000001', $3) RETURNING id`,
 		s.ID, "Wali "+marker, "orang_tua@"+key+".uji")
 	exec(`INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship, is_primary) VALUES ($1, $2, $3, 'ibu', true)`,
 		s.ID, s.StudentIDs[0], s.GuardianID)
 	s.Parent = user("orang_tua", "Wali", s.GuardianID)
+	s.Guardian2ID = one(`INSERT INTO guardians (school_id, full_name, phone, email) VALUES ($1, $2, '+6281200000002', $3) RETURNING id`,
+		s.ID, "Wali Kedua "+marker, "orang_tua2@"+key+".uji")
+	exec(`INSERT INTO student_guardians (school_id, student_id, guardian_id, relationship, is_primary) VALUES ($1, $2, $3, 'ayah', true)`,
+		s.ID, s.StudentIDs[1], s.Guardian2ID)
+	s.Parent2 = user("orang_tua", "Wali Kedua", s.Guardian2ID)
 
 	treasurer := school.Actor{SchoolID: s.ID, UserID: s.Treasurer.ID}
 	ft, err := billing.CreateFeeType(ctx, tx, s.ID, billing.FeeTypeInput{Name: "SPP " + marker, DefaultAmount: 300000, DefaultDueDay: 10})
@@ -141,6 +161,13 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		PaidOn: time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC), Method: payments.MethodTransfer, BankAccount: "BCA " + marker, Note: "Catatan " + marker})
 	check(err)
 	s.PaymentID = pay.ID
+	inv2, err := billing.CreateInvoice(ctx, tx, treasurer, billing.InvoiceRequest{EnrollmentID: s.EnrollmentIDs[1], Period: "2026-09", Items: []billing.ItemRequest{{FeeTypeID: ft.ID}}})
+	check(err)
+	s.Invoice2ID = inv2.ID
+	pay2, err := payments.RecordPayment(ctx, tx, treasurer, payments.Request{InvoiceID: inv2.ID, Amount: 50000,
+		PaidOn: time.Date(2026, 9, 6, 0, 0, 0, 0, time.UTC), Method: payments.MethodCash})
+	check(err)
+	s.Payment2ID = pay2.ID
 	sum := make([]byte, 32)
 	_, _ = rand.Read(sum)
 	s.ProofID = one(`INSERT INTO payment_proofs (school_id, payment_id, storage_key, sha256, size_bytes, content_type, uploaded_by)
@@ -153,6 +180,10 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		announcements.Form{Title: "Pengumuman " + marker, Body: "Isi pengumuman " + marker})
 	check(err)
 	s.AnnouncementID = ann.ID
+	s.Class2AnnouncementTitle = "Khusus kelas " + s.ClassName + "2 " + marker
+	_, err = announcements.NewService(tx).Create(ctx, school.Actor{SchoolID: s.ID, UserID: s.Admin.ID},
+		announcements.Form{Title: s.Class2AnnouncementTitle, Body: "Isi " + marker, ClassID: s.Class2ID})
+	check(err)
 
 	s.AttendanceSessionID = one(`INSERT INTO attendance_sessions (school_id, academic_year_id, class_id, session_date, created_by) VALUES ($1, $2, $3, '2026-10-16', $4) RETURNING id`,
 		s.ID, s.YearID, s.ClassID, s.Teacher.ID)

@@ -658,6 +658,15 @@ Mitigasi utama risiko kebocoran data antar sekolah:
   - kontrol positif: request yang sama dengan ID sekolah sendiri harus sampai ke handler (bukan 404/403), agar 404 tidak berasal dari path yang salah.
 - **Setiap route baru wajib ditambahkan ke `routes.go`.**
 
+### Uji otorisasi orang tua (T59)
+
+[cmd/server/parent_auth_test.go](cmd/server/parent_auth_test.go) memakai data T58 (setiap sekolah punya dua orang tua: orang tua 1 untuk anak X, orang tua 2 untuk anak Y di kelas lain):
+
+- kepemilikan: orang tua 1 membuka detail, tagihan, dan kuitansi anak X (200); untuk anak Y semuanya 404, sedangkan orang tua 2 mendapat 200. Pengumuman kelas anak Y tidak muncul untuk orang tua 1;
+- peran: setiap route staf di `routes.go` (dengan ID sekolah orang tua itu sendiri) menghasilkan 403; path `/portal/*` yang tidak ada menghasilkan 404;
+- sesi: setelah logout, halaman portal mengalihkan ke `/login`;
+- enumerasi: 404 untuk anak orang lain, data sekolah lain, ID acak, dan ID bukan UUID identik (status, jenis konten, dan isi setelah token CSRF disamakan).
+
 ### CI
 
 [.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.

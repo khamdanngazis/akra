@@ -66,7 +66,11 @@ func TestCrossTenant_EveryRouteListed(t *testing.T) {
 
 // Pengguna sekolah A tidak bisa membaca atau mengubah data sekolah B, dan
 // sebaliknya, di setiap route utama.
-func TestCrossTenant_NoAccessToOtherSchool(t *testing.T) {
+// newTenantApp membuat aplikasi lengkap di atas transaksi uji yang berisi
+// dua sekolah dari testutil.SeedTwoSchools. Uji dilewati tanpa
+// TEST_DATABASE_URL.
+func newTenantApp(t *testing.T) (http.Handler, pgx.Tx, *testutil.School, *testutil.School) {
+	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -106,6 +110,11 @@ func TestCrossTenant_NoAccessToOtherSchool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return app, tx, a, b
+}
+
+func TestCrossTenant_NoAccessToOtherSchool(t *testing.T) {
+	app, tx, a, b := newTenantApp(t)
 
 	for _, dir := range []struct {
 		name       string
@@ -263,6 +272,11 @@ func checkOwnRoute(t *testing.T, c *client, r testutil.Route, u testutil.User, o
 		roles = r.Roles
 	}
 	if r.Kind != testutil.KindByID || !slices.Contains(roles, u.Role) {
+		return
+	}
+	// Data portal di daftar route milik anak orang tua pertama; kepemilikan
+	// per orang tua diuji di parent_auth_test.go (T59).
+	if u.ID == own.Parent2.ID {
 		return
 	}
 	for _, req := range r.Requests(own, own) {
