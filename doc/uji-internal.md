@@ -69,7 +69,9 @@ Uji ini dijalankan oleh pembuat fitur. Catatan T63 menyarankan penguji lain, jad
 | Email aktivasi | ✗ **tidak terkirim**: Resend menolak (`403 The akra.id domain is not verified`). Admin mendapat pesan "email aktivasi … gagal dikirim. Coba kirim ulang." (K-7) |
 | Sementara: `MAIL_FROM=Akra <onboarding@resend.dev>` di staging | Resend hanya mengirim ke email pemilik akun Resend; email wali uji diganti ke alamat itu |
 | Kirim ulang aktivasi | ✓ terkirim ("Tautan aktivasi baru dikirim ke …") |
-| Aktivasi dari email, login, lihat anak, absensi, tagihan, unduh kuitansi | menunggu penguji |
+| Aktivasi dari email | ✓ email masuk; akun aktif (log `account activated`, 18 Okt 10.51 UTC) |
+| Login portal, lihat anak, absensi, tagihan | ✓ dicoba penguji dan dinyatakan sesuai |
+| Unduh kuitansi dari portal | belum tercatat di audit (`receipt.download_parent`); perlu dicoba sekali lagi |
 
 Kepemilikan data portal sudah diuji otomatis di T59 (setiap push di CI): anak sendiri 200; anak lain, sekolah lain, dan ID acak 404 dengan respons identik; route staf 403.
 
@@ -88,7 +90,7 @@ Kepemilikan data portal sudah diuji otomatis di T59 (setiap push di CI): anak se
 | Guru mengisi absensi satu kelas dalam kurang dari 2 menit | ✓ sebagian | Server: 160 ms. Satu halaman, semua siswa bawaan *Hadir*, ada tombol *Tandai semua hadir*; guru cukup mengubah yang tidak hadir. **Waktu nyata oleh guru belum diukur** (lihat langkah manual) |
 | Bendahara membuat tagihan massal untuk satu kelas dan mencatat pembayaran dengan bukti transfer | ✓ | |
 | Kuitansi bisa dicetak sebagai PDF | ✓ | |
-| Orang tua hanya bisa melihat data anaknya sendiri | ✓ otomatis | Diuji otomatis di T59. Uji manual di staging menunggu alamat email |
+| Orang tua hanya bisa melihat data anaknya sendiri | ✓ | Diuji otomatis di T59; di staging, akun wali Siswa 002 hanya melihat anaknya |
 | Pembayaran tidak bisa dihapus, hanya dibatalkan dengan catatan | ✓ | Pembatalan wajib alasan; tercatat di audit |
 
 Fitur MVP 1 (rencana 3.1) yang diperiksa terhadap aplikasi:
