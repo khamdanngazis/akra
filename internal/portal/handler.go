@@ -12,13 +12,17 @@ import (
 
 	"akra/internal/attendance"
 	"akra/internal/auth"
+	"akra/internal/billing"
+	"akra/internal/payments"
 	"akra/internal/platform/clock"
+	"akra/internal/platform/money"
 	"akra/internal/platform/page"
 )
 
 const (
 	pageChildren    = "portal/children"
 	pageChildDetail = "portal/child_detail"
+	pageBilling     = "portal/billing"
 )
 
 // Handler melayani route /portal.
@@ -44,6 +48,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/", h.children)
 		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
 		r.Get("/siswa/{id}", h.childDetail)
+		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
+		r.Get("/siswa/{id}/tagihan", h.childBilling)
 	})
 }
 
@@ -111,4 +117,62 @@ func (h *Handler) childDetail(w http.ResponseWriter, r *http.Request) {
 		v.Range = clock.FormatDateID(d.RecapFrom) + " – " + clock.FormatDateID(d.RecapTo)
 	}
 	h.render.Render(w, r, http.StatusOK, pageChildDetail, v)
+}
+
+var statusLabels = map[billing.Status]string{billing.StatusUnpaid: "Belum bayar", billing.StatusPartial: "Sebagian", billing.StatusPaid: "Lunas"}
+
+var methodLabels = map[payments.Method]string{payments.MethodCash: "Tunai", payments.MethodTransfer: "Transfer"}
+
+type invoiceRow struct {
+	Fees, Period, Class, DueDate, Total, Paid, Remaining, Status string
+	Paid0, Overdue, IsPaid                                       bool
+}
+
+type paymentRow struct {
+	ID, PaidOn, Amount, Method, Receipt, Fees, Period, VoidReason string
+	Voided                                                        bool
+}
+
+type billingView struct {
+	User             auth.Identity
+	Child            ChildDetail
+	Invoices         []invoiceRow
+	Payments         []paymentRow
+	TotalRemaining   string
+	OverdueRemaining string
+	HasOverdue       bool
+	Flash            string
+	Error            string
+}
+
+func (h *Handler) childBilling(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	b, err := h.svc.GetChildBilling(r.Context(), id.SchoolID, id.UserID, chi.URLParam(r, "id"), clock.Today())
+	if errors.Is(err, ErrNotFound) {
+		page.NotFound(h.render, w, r, id, "Data siswa tidak ditemukan.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "child billing", err)
+		return
+	}
+	v := billingView{
+		User: id, Child: b.Child, TotalRemaining: money.FormatRupiah(b.TotalRemaining),
+		OverdueRemaining: money.FormatRupiah(b.OverdueRemaining), HasOverdue: b.OverdueRemaining > 0,
+	}
+	for _, inv := range b.Invoices {
+		v.Invoices = append(v.Invoices, invoiceRow{
+			Fees: inv.FeeNames, Period: billing.PeriodLabel(inv.Period), Class: inv.ClassName + " · " + inv.YearName,
+			DueDate: clock.FormatDateID(inv.DueDate), Total: money.FormatRupiah(inv.Total), Paid: money.FormatRupiah(inv.Paid),
+			Remaining: money.FormatRupiah(inv.Remaining), Status: statusLabels[inv.Status],
+			Paid0: inv.Paid == 0, Overdue: inv.Overdue, IsPaid: inv.Status == billing.StatusPaid,
+		})
+	}
+	for _, p := range b.Payments {
+		v.Payments = append(v.Payments, paymentRow{
+			ID: p.ID, PaidOn: clock.FormatDateID(p.PaidOn), Amount: money.FormatRupiah(p.Amount), Method: methodLabels[p.Method],
+			Receipt: p.ReceiptNumber, Fees: p.FeeNames, Period: billing.PeriodLabel(p.Period), Voided: p.Voided, VoidReason: p.VoidReason,
+		})
+	}
+	h.render.Render(w, r, http.StatusOK, pageBilling, v)
 }

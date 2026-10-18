@@ -1140,3 +1140,7 @@ fieldset.field > legend {
 .card > .section-title:first-child {
   margin-top: 0;
 }
+
+.stat-value.text-danger {
+  color: var(--color-error);
+}

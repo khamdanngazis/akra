@@ -3,7 +3,7 @@
 {{define "content"}}
 <p class="breadcrumb"><a href="/portal">← Daftar anak</a></p>
 <h1>{{.Child.FullName}}</h1>
-<p class="muted">NIS {{.Child.NIS}}</p>
+<p class="muted">NIS {{.Child.NIS}} · <a href="/portal/siswa/{{.Child.ID}}/tagihan">Tagihan dan pembayaran</a></p>
 {{template "flash" .}}
 
 <section class="card">
