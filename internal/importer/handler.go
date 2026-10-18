@@ -40,15 +40,26 @@ func (h *Handler) Routes(r chi.Router) {
 }
 
 type indexView struct {
-	User    auth.Identity
-	Columns []Column
-	Flash   string
-	Error   string
+	User     auth.Identity
+	Columns  []columnRow
+	Filename string
+	Flash    string
+	Error    string
 }
 
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	h.render.Render(w, r, http.StatusOK, "importer/index", indexView{User: id, Columns: StudentColumns})
+	rows := make([]columnRow, len(StudentColumns))
+	for i, c := range StudentColumns {
+		rows[i] = columnRow{Letter: string(rune('A' + i)), Column: c}
+	}
+	h.render.Render(w, r, http.StatusOK, "importer/index", indexView{User: id, Columns: rows, Filename: templateFilename})
+}
+
+// columnRow adalah satu kolom template beserta huruf kolomnya di Excel.
+type columnRow struct {
+	Letter string
+	Column
 }
 
 func (h *Handler) template(w http.ResponseWriter, r *http.Request) {

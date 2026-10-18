@@ -1103,36 +1103,29 @@
 /* ---------- Impor ---------- */
 
 @layer components {
-  .callout-warning {
-    @apply mb-4 rounded-2xl border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 p-5 sm:p-6;
+  /* HP: unduh dan cara mengisi dulu; desktop: kolom di kiri, panel di kanan */
+  .import-grid {
+    @apply grid grid-cols-1 items-start gap-4 desktop:grid-cols-[minmax(0,1fr)_22rem] desktop:gap-6;
   }
 
-  .callout-head {
-    @apply mb-4 flex items-start gap-3;
+  .import-side {
+    @apply grid min-w-0 grid-cols-1 gap-4 desktop:col-start-2 desktop:row-start-1;
   }
 
-  .callout-head > .icon {
-    @apply mt-0.5 size-6 text-amber-600;
-  }
-
-  .callout-head h2 {
-    @apply m-0 text-base font-bold text-amber-900 sm:text-lg;
-  }
-
-  .callout-head p {
-    @apply m-0 mt-0.5 text-sm text-amber-800;
+  .import-main {
+    @apply min-w-0 desktop:col-start-1 desktop:row-start-1;
   }
 
   .steps {
-    @apply m-0 grid list-none gap-3 p-0 sm:grid-cols-3;
+    @apply m-0 mt-4 grid list-none gap-4 p-0;
   }
 
   .step {
-    @apply flex gap-3 rounded-xl border border-amber-200 bg-white p-4;
+    @apply flex gap-3;
   }
 
   .step-num {
-    @apply flex size-7 flex-none items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white;
+    @apply flex size-7 flex-none items-center justify-center rounded-full bg-navy-50 text-sm font-bold text-navy-900;
   }
 
   .step strong {
@@ -1140,11 +1133,27 @@
   }
 
   .step p {
-    @apply m-0 mt-1 text-sm text-slate-600;
+    @apply m-0 mt-0.5 text-sm text-slate-500;
   }
 
   .example-chip {
-    @apply rounded bg-slate-200 px-1.5 py-0.5 font-medium text-slate-700 italic;
+    @apply rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 box-decoration-clone;
+  }
+
+  .import-note {
+    @apply m-0 mt-4 flex gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600 [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:flex-none [&_svg]:text-blue-600;
+  }
+
+  .column-list {
+    @apply m-0 list-none divide-y divide-slate-100 p-0;
+  }
+
+  .column-list > li {
+    @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
+  }
+
+  .column-letter {
+    @apply inline-flex size-9 flex-none items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-600;
   }
 }
 
