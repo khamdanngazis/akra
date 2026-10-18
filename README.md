@@ -461,6 +461,19 @@ Paket [internal/reports](internal/reports/attendance.go); ekspor di [internal/re
   - Unduh (`/laporan/jobs/{id}/unduh`): redirect ke URL bertanda tangan 5 menit, sama dengan bukti transfer. Hanya pemilik job atau kepala sekolah; selain itu `404`.
   - Job periodik `report_cleanup` (setiap jam dan saat start) menghapus file yang selesai lebih dari 7 hari; baris job tetap ada dengan `file_deleted_at`.
 
+## Impor Siswa
+
+Paket [internal/importer](internal/importer). Akses: `admin_tu`. Menu "Siswa" tetap aktif di halaman impor.
+
+- `GET /impor/siswa`: halaman impor (kolom template, cara mengisi, form unggah). `GET /impor/siswa/template.xlsx`: template Excel 8 kolom ([template.go](internal/importer/template.go), T52).
+- `POST /impor/siswa`: unggah file. [parser.go](internal/importer/parser.go) (`ParseFile`) menolak file sebelum diproses jika:
+  - lebih dari 5 MB, nama file bukan `.xlsx`, atau isinya bukan ZIP (`PK\x03\x04`), jadi CSV yang diganti nama, `.xls` lama, dan file berpassword ditolak;
+  - judul kolom tidak lengkap, dengan pesan yang menyebut kolomnya, mis. `Kolom "NIS" tidak ditemukan`; urutan kolom boleh berbeda, kolom tambahan diabaikan;
+  - lebih dari 5.000 baris data.
+- Hanya sheet pertama yang dibaca. Baris pertama yang berisi adalah header. Baris kosong di tengah dan baris contoh template dilewati dan dicatat; baris kosong di akhir tidak dicatat. Isi sel di-trim; tanggal yang diubah Excel menjadi angka seri dikembalikan ke `YYYY-MM-DD`.
+- Hasil parsing disimpan di `import_batches.parsed_rows` (migrasi 000028) dengan status `diunggah`; file aslinya tidak disimpan. Belum ada data yang ditulis ke `students`. Halaman `GET /impor/batch/{id}` menampilkan jumlah baris, baris yang dilewati, dan pratinjau 5 baris pertama.
+- Berikutnya: validasi per baris (T54), simpan sebagai job (T55), laporan kesalahan (T56).
+
 ## Job Latar Belakang (River)
 
 Antrean job memakai [River](https://riverqueue.com) v0.18.0 di Postgres yang sama (tanpa Redis), dengan client dan worker dalam proses server yang sama ([internal/platform/jobs](internal/platform/jobs/client.go)). Dipakai untuk tagihan massal (T32), impor (T55), dan ekspor besar (T49).

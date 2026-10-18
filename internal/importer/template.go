@@ -26,10 +26,12 @@ const (
 	ColGuardianName
 	ColGuardianPhone
 	ColGuardianEmail
+	// NumColumns adalah jumlah kolom baku.
+	NumColumns
 )
 
 // StudentColumns adalah kolom template impor siswa (dipakai juga parser T53).
-var StudentColumns = []Column{
+var StudentColumns = [NumColumns]Column{
 	ColNIS:           {Header: "NIS", Required: true, Format: "Teks, misalnya 007"},
 	ColFullName:      {Header: "Nama lengkap", Required: true, Format: "Teks"},
 	ColBirthDate:     {Header: "Tanggal lahir", Format: "YYYY-MM-DD, misalnya 2019-05-02"},

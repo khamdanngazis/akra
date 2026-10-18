@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
 	"github.com/xuri/excelize/v2"
 
@@ -114,8 +115,10 @@ func newRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
 	r := chi.NewRouter()
-	NewHandler(rd, logger).Routes(r)
+	r.Use(sm.LoadAndSave)
+	NewHandler(NewService(nil), sm, rd, logger).Routes(r)
 	return r
 }
 

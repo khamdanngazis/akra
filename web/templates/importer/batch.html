@@ -1,0 +1,53 @@
+{{define "title"}}Hasil Unggahan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/impor/siswa">← Impor siswa</a></p>
+<div class="page-header">
+<div class="min-w-0">
+<div class="flex flex-wrap items-center gap-3"><h1 class="m-0">Hasil unggahan</h1><span class="badge badge-info">{{.StatusLabel}}</span></div>
+<p class="muted break-words">{{.Batch.FileName}} · diunggah {{.Uploaded}} oleh {{.Batch.UploadedBy}}</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<section class="kpi-grid kpi-grid-2" aria-label="Ringkasan">
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Baris data</span><span class="kpi-icon bg-blue-50 text-blue-600">{{template "icon" "spreadsheet"}}</span></span><span class="kpi-value">{{.Batch.TotalRows}}</span><span class="kpi-hint">Belum disimpan ke data siswa</span></div>
+<div class="kpi-card"><span class="kpi-head"><span class="kpi-label">Dilewati</span><span class="kpi-icon bg-slate-100 text-slate-500">{{template "icon" "inbox"}}</span></span><span class="kpi-value">{{.Batch.SkippedRows}}</span><span class="kpi-hint">Baris kosong atau baris contoh</span></div>
+</section>
+
+<div class="batch-grid">
+<section class="card" aria-labelledby="next-title">
+<h2 id="next-title" class="card-title">Langkah impor</h2>
+<ol class="steps">
+<li class="step"><span class="step-num is-done">{{template "icon" "check"}}<span class="visually-hidden">Selesai:</span></span><div><strong>Unggah file</strong><p>File terbaca dan judul kolom sesuai template.</p></div></li>
+<li class="step"><span class="step-num">2</span><div><strong>Periksa data per baris</strong><p>NIS, kelas, tanggal lahir, dan data wali diperiksa sebelum disimpan.</p></div></li>
+<li class="step"><span class="step-num">3</span><div><strong>Simpan ke data siswa</strong><p>Hanya baris yang benar yang disimpan.</p></div></li>
+</ol>
+</section>
+
+<section class="card" aria-labelledby="skipped-title">
+<h2 id="skipped-title" class="card-title">Baris dilewati</h2>
+{{if .Skipped}}
+<ul class="activity-list mt-3">
+{{range .Skipped}}<li><span class="column-letter">{{.Line}}</span><span>Baris {{.Line}} · {{if eq .Reason "baris contoh"}}baris contoh template{{else}}{{.Reason}}{{end}}</span></li>
+{{end}}</ul>
+{{with .SkippedMore}}<p class="muted mt-3 mb-0 text-sm">dan {{.}} baris lainnya.</p>{{end}}
+{{else}}
+<p class="muted mt-2 mb-0">Tidak ada baris yang dilewati.</p>
+{{end}}
+</section>
+</div>
+
+<section class="card card-flush mt-4 desktop:mt-6" aria-labelledby="preview-title">
+<div class="px-5 pt-5 sm:px-6 sm:pt-6"><h2 id="preview-title" class="card-title">Pratinjau data</h2><p class="m-0 text-sm text-slate-500">{{len .Batch.Preview}} baris pertama dari {{.Batch.TotalRows}}.</p></div>
+<div class="table-wrap mt-4">
+<table>
+<thead><tr><th>Baris</th>{{range .Columns}}<th class="nowrap">{{.Header}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Batch.Preview}}<tr><td class="text-slate-500">{{.Line}}</td>{{range .Values}}<td class="nowrap">{{if .}}{{.}}{{else}}<span class="text-slate-300">–</span>{{end}}</td>{{end}}</tr>
+{{end}}</tbody>
+</table>
+</div>
+</section>
+{{end}}
