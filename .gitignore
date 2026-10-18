@@ -46,3 +46,7 @@ tmp/
 
 # Storage lokal (STORAGE_DRIVER=local)
 /data/
+
+# Uji beban (T61): data dan hasil lokal
+/loadtest/data.json
+/loadtest/results/
