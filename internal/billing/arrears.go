@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -108,4 +109,43 @@ func ListArrears(ctx context.Context, q database.DBTX, schoolID string, f Arrear
 	}
 	out.StudentCount = len(students)
 	return out, nil
+}
+
+// ParseArrearsQuery membaca filter tunggakan dari query string (kelas,
+// jenis, dari, sampai). Dipakai halaman tunggakan dan unduhan laporan agar
+// filter yang sama menghasilkan data yang sama. badDate true jika tanggal
+// tidak valid (tanggal itu diabaikan).
+func ParseArrearsQuery(q url.Values) (f ArrearsFilter, from, to string, badDate bool) {
+	f = ArrearsFilter{ClassID: q.Get("kelas"), FeeTypeID: q.Get("jenis")}
+	from, to = q.Get("dari"), q.Get("sampai")
+	if d, err := time.Parse("2006-01-02", from); err == nil {
+		f.DueFrom = d
+	} else if from != "" {
+		badDate, from = true, ""
+	}
+	if d, err := time.Parse("2006-01-02", to); err == nil {
+		f.DueTo = d
+	} else if to != "" {
+		badDate, to = true, ""
+	}
+	return f, from, to, badDate
+}
+
+// Query mengembalikan filter sebagai query string (kebalikan
+// ParseArrearsQuery), untuk tautan unduhan.
+func (f ArrearsFilter) Query() string {
+	v := url.Values{}
+	if f.ClassID != "" {
+		v.Set("kelas", f.ClassID)
+	}
+	if f.FeeTypeID != "" {
+		v.Set("jenis", f.FeeTypeID)
+	}
+	if !f.DueFrom.IsZero() {
+		v.Set("dari", f.DueFrom.Format("2006-01-02"))
+	}
+	if !f.DueTo.IsZero() {
+		v.Set("sampai", f.DueTo.Format("2006-01-02"))
+	}
+	return v.Encode()
 }

@@ -25,11 +25,11 @@ Daftar tunggakan bisa diunduh sebagai Excel dan PDF dengan angka yang sama seper
 - `internal/reports/handler.go`
 
 ## Kriteria selesai
-- [ ] Total sisa di file sama dengan total di halaman T42 untuk filter yang sama
-- [ ] Jumlah baris di file sama dengan jumlah tagihan yang muncul di T42
-- [ ] Hari terlambat dihitung dari jatuh tempo ke tanggal cetak
-- [ ] Guru mendapat `403`
-- [ ] Ekspor 500 baris selesai di bawah 2 detik
+- [x] Total sisa di file sama dengan total di halaman T42 untuk filter yang sama
+- [x] Jumlah baris di file sama dengan jumlah tagihan yang muncul di T42
+- [x] Hari terlambat dihitung dari jatuh tempo ke tanggal cetak
+- [x] Guru mendapat `403`
+- [x] Ekspor 500 baris selesai di bawah 2 detik
 
 ## Catatan
 - Laporan ini sering dibawa ke rapat yayasan. Pastikan nama sekolah dan tanggal cetak selalu tampil di PDF.
