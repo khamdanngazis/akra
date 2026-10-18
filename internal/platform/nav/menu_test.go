@@ -74,15 +74,17 @@ func TestMenuFor_TwoRolesMergedWithoutDuplicates(t *testing.T) {
 func TestCurrent(t *testing.T) {
 	items := MenuFor([]string{"admin_tu", "guru"})
 	for path, want := range map[string]string{
-		"/":                        "/",
-		"/siswa":                   "/siswa",
-		"/siswa/123/ubah":          "/siswa",
-		"/absensi":                 "/absensi",
-		"/absensi/rekap":           "/absensi/rekap",
-		"/keuangan/tagihan/1":      "",
-		"/laporan/kehadiran":       "/laporan",
-		"/pengaturan/tahun-ajaran": "/pengaturan/tahun-ajaran",
-		"/siswax":                  "",
+		"/":                          "/",
+		"/siswa":                     "/siswa",
+		"/siswa/123/ubah":            "/siswa",
+		"/absensi":                   "/absensi",
+		"/absensi/rekap":             "/absensi/rekap",
+		"/keuangan/tagihan/1":        "",
+		"/laporan/kehadiran":         "/laporan",
+		"/pengaturan/tahun-ajaran":   "/pengaturan/tahun-ajaran",
+		"/siswax":                    "",
+		"/impor/siswa":               "/siswa",
+		"/impor/siswa/template.xlsx": "/siswa",
 	} {
 		if got := Current(items, path); got != want {
 			t.Errorf("Current(%q) = %q, want %q", path, got, want)

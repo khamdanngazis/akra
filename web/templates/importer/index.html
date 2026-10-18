@@ -1,41 +1,42 @@
 {{define "title"}}Impor Siswa{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+<p class="breadcrumb"><a href="/siswa">← Siswa</a></p>
 <div class="page-header">
 <div>
-<h1>Impor Siswa</h1>
+<h1>Impor siswa</h1>
 <p class="muted">Unduh template Excel, lalu isi dengan data siswa dan wali yang sudah ada.</p>
 </div>
-<a class="btn btn-primary" href="/impor/siswa/template.xlsx">Unduh template</a>
 </div>
 
 {{template "flash" .}}
 
-<section class="callout-warning" aria-labelledby="import-rules">
-<div class="callout-head">
-{{template "icon" "warning"}}
-<div>
-<h2 id="import-rules">Perhatikan sebelum mengisi template</h2>
-<p>Data yang tidak mengikuti aturan ini tidak dapat diimpor.</p>
+<div class="import-grid">
+<aside class="import-side">
+<section class="card">
+<div class="flex items-center gap-3">
+<span class="kpi-icon bg-emerald-50 text-emerald-600">{{template "icon" "spreadsheet"}}</span>
+<div class="min-w-0"><strong class="block truncate">{{.Filename}}</strong><span class="block text-sm text-slate-500">Excel · {{len .Columns}} kolom</span></div>
 </div>
-</div>
-<ol class="steps">
-<li class="step"><span class="step-num">1</span><div><strong>Jangan ubah baris pertama</strong><p>Urutan dan judul kolom harus tetap sama seperti di template.</p></div></li>
-<li class="step"><span class="step-num">2</span><div><strong>Hapus baris contoh</strong><p>Baris kedua berwarna abu-abu bertanda <span class="example-chip">contoh, hapus baris ini</span>.</p></div></li>
-<li class="step"><span class="step-num">3</span><div><strong>Satu baris, satu siswa</strong><p>Kolom bertanda <span class="badge badge-info">Wajib</span> harus diisi.</p></div></li>
-</ol>
+<a class="btn btn-primary mt-4 w-full" href="/impor/siswa/template.xlsx" download>{{template "icon" "download"}}Unduh template</a>
 </section>
 
-<div class="card card-flush">
-<div class="table-wrap">
-<table>
-<thead><tr><th>Kolom</th><th>Wajib</th><th>Format</th></tr></thead>
-<tbody>
-{{range .Columns}}
-<tr><td class="nowrap"><strong>{{.Header}}</strong></td><td>{{if .Required}}<span class="badge badge-info">Wajib</span>{{else}}<span class="muted">Tidak</span>{{end}}</td><td>{{.Format}}</td></tr>
-{{end}}
-</tbody>
-</table>
-</div>
+<section class="card" aria-labelledby="import-rules">
+<h2 id="import-rules" class="card-title">Cara mengisi template</h2>
+<ol class="steps">
+<li class="step"><span class="step-num">1</span><div><strong>Jangan ubah baris pertama</strong><p>Urutan dan judul kolom harus tetap sama seperti di template.</p></div></li>
+<li class="step"><span class="step-num">2</span><div><strong>Hapus baris contoh</strong><p>Baris kedua berwarna abu-abu dan bertanda <span class="example-chip">contoh, hapus baris ini</span>.</p></div></li>
+<li class="step"><span class="step-num">3</span><div><strong>Satu baris, satu siswa</strong><p>Kolom bertanda <span class="badge badge-info">Wajib</span> harus diisi.</p></div></li>
+</ol>
+<p class="import-note">{{template "icon" "info"}}<span>Data yang tidak mengikuti aturan ini tidak dapat diimpor.</span></p>
+</section>
+</aside>
+
+<section class="card import-main" aria-labelledby="import-columns">
+<div class="card-head"><div><h2 id="import-columns" class="card-title">Kolom template</h2><p class="m-0 text-sm text-slate-500">Huruf menunjukkan posisi kolom di Excel.</p></div></div>
+<ol class="column-list">
+{{range .Columns}}<li><span class="column-letter" aria-hidden="true">{{.Letter}}</span><span class="min-w-0 flex-1"><strong class="block">{{.Header}}</strong><span class="block text-sm text-slate-500">{{.Format}}</span></span>{{if .Required}}<span class="badge badge-info">Wajib</span>{{else}}<span class="text-sm text-slate-400">Opsional</span>{{end}}</li>
+{{end}}</ol>
+</section>
 </div>
 {{end}}

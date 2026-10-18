@@ -22,7 +22,10 @@ type MenuItem struct {
 	// Short adalah label bottom navigation di HP (kosong = Label).
 	Short string
 	// Desc adalah keterangan singkat di kartu pintasan beranda.
-	Desc  string
+	Desc string
+	// Also adalah path lain yang juga mengaktifkan item ini, untuk halaman
+	// di luar prefix Path (mis. /impor/siswa milik menu Siswa).
+	Also  []string
 	Roles []string
 }
 
@@ -41,7 +44,7 @@ var Items = []MenuItem{
 	{Label: "Anak Saya", Path: "/portal", Icon: "child", Short: "Anak", Desc: "Profil, absensi, dan tagihan anak", Roles: []string{orangTua}},
 	{Label: "Absensi", Path: "/absensi", Icon: "attendance", Desc: "Isi absensi kelas hari ini", Roles: []string{guru}},
 	{Label: "Rekap Absensi", Path: "/absensi/rekap", Icon: "chart", Short: "Rekap", Desc: "Rekap kehadiran per kelas", Roles: []string{adminTU, kepala}},
-	{Label: "Siswa", Path: "/siswa", Icon: "users", Desc: "Kelola data siswa dan wali", Roles: []string{adminTU, kepala}},
+	{Label: "Siswa", Path: "/siswa", Icon: "users", Desc: "Kelola data siswa dan wali", Also: []string{"/impor/siswa"}, Roles: []string{adminTU, kepala}},
 	{Label: "Kelas", Path: "/kelas", Icon: "school", Desc: "Kelas dan wali kelas", Roles: []string{adminTU, kepala}},
 	{Label: "Pembayaran", Path: "/keuangan/pembayaran/baru", Icon: "wallet", Short: "Bayar", Desc: "Catat pembayaran siswa", Roles: []string{bendahara}},
 	{Label: "Tagihan Massal", Path: "/keuangan/tagihan-massal", Icon: "receipt", Short: "Tagihan", Desc: "Buat tagihan untuk satu kelas", Roles: []string{bendahara}},
@@ -112,15 +115,18 @@ func Shortcuts(items []MenuItem) []MenuItem {
 // persis, atau path berada di bawahnya (prefix terpanjang menang). Beranda
 // hanya aktif di halamannya sendiri. Kosong jika tidak ada.
 func Current(items []MenuItem, path string) string {
-	best := ""
+	best, bestLen := "", 0
 	for _, it := range items {
-		switch {
-		case it.Path == path:
+		if it.Path == path {
 			return it.Path
-		case it.Path == "/":
+		}
+		if it.Path == "/" {
 			continue
-		case len(path) > len(it.Path) && path[:len(it.Path)] == it.Path && path[len(it.Path)] == '/' && len(it.Path) > len(best):
-			best = it.Path
+		}
+		for _, p := range append([]string{it.Path}, it.Also...) {
+			if (path == p || strings.HasPrefix(path, p+"/")) && len(p) > bestLen {
+				best, bestLen = it.Path, len(p)
+			}
 		}
 	}
 	return best
