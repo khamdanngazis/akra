@@ -63,6 +63,15 @@
 <div class="alert alert-error" role="alert">{{or .Batch.Error "Impor berhenti karena gangguan sistem."}} {{.Batch.ProcessedRows}} dari {{.Batch.ValidRows}} baris sempat diproses. Unggah ulang file untuk melengkapi sisanya; siswa yang sudah tersimpan akan diperbarui, bukan dibuat ganda.</div>
 {{end}}
 
+{{with .Summary}}
+<section class="card mb-4 desktop:mb-6" aria-labelledby="summary-title">
+<div class="card-head"><div><h2 id="summary-title" class="card-title">Ringkasan kesalahan</h2><p class="m-0 text-sm text-slate-500">Unduh daftarnya, perbaiki di Excel, lalu unggah lagi file yang sama.</p></div><a class="btn btn-ghost btn-sm" href="/impor/batch/{{$.Batch.ID}}/kesalahan.xlsx" download>{{template "icon" "download"}}Unduh baris yang salah</a></div>
+<ul class="kind-list">
+{{range .}}<li><strong>{{.Rows}}</strong> {{.Label}}</li>{{end}}
+</ul>
+</section>
+{{end}}
+
 {{if .Failed}}
 <section class="card mb-4 desktop:mb-6" aria-labelledby="failed-title">
 <div class="card-head"><div><h2 id="failed-title" class="card-title">Baris yang gagal disimpan</h2><p class="m-0 text-sm text-slate-500">Data ini lolos pemeriksaan tetapi tidak bisa disimpan.</p></div></div>
