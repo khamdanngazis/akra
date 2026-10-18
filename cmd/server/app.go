@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
@@ -80,6 +81,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
 		storage:     localStorageHandler(d.store),
 		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
+		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
 		reports:     reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger),
 	}), nil
 }

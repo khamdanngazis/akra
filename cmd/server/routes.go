@@ -7,6 +7,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
@@ -43,6 +44,7 @@ type routerDeps struct {
 	payments     *payments.Handler
 	auditLog     *auditview.Handler
 	reports      *reports.Handler
+	announce     *announcements.Handler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -106,6 +108,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.payments.Routes(r)
 			d.auditLog.Routes(r)
 			d.reports.Routes(r)
+			d.announce.Routes(r)
 		})
 	})
 

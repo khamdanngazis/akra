@@ -24,11 +24,11 @@ Admin atau kepala sekolah bisa membuat pengumuman untuk satu kelas atau semua ke
 - `web/templates/announcements/*.html`, `web/templates/portal/announcements.html`
 
 ## Kriteria selesai
-- [ ] Pengumuman untuk kelas A tidak tampil di portal orang tua kelas B
-- [ ] Pengumuman untuk semua kelas tampil di semua portal orang tua sekolah itu
-- [ ] Pengumuman sekolah lain tidak tampil
-- [ ] Judul dengan tag `<script>` ditampilkan sebagai teks biasa
-- [ ] Bendahara mendapat `403` pada form pengumuman
+- [x] Pengumuman untuk kelas A tidak tampil di portal orang tua kelas B
+- [x] Pengumuman untuk semua kelas tampil di semua portal orang tua sekolah itu
+- [x] Pengumuman sekolah lain tidak tampil
+- [x] Judul dengan tag `<script>` ditampilkan sebagai teks biasa
+- [x] Bendahara mendapat `403` pada form pengumuman
 
 ## Catatan
 - Notifikasi WhatsApp dan email tidak dikerjakan di sini. Pengumuman hanya muncul ketika orang tua membuka portal.

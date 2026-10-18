@@ -1,0 +1,20 @@
+{{define "title"}}Pengumuman{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/portal">← Portal</a></p>
+<h1>Pengumuman</h1>
+{{template "flash" .}}
+{{if .Items}}
+<div class="pay-list">
+{{range .Items}}
+<article class="pay-item announcement">
+<h2 class="announcement-title">{{.Title}}</h2>
+<p class="pay-item-meta">{{.Audience}} · {{.Published}}</p>
+<p class="announcement-body">{{.Body}}</p>
+</article>
+{{end}}
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada pengumuman.</p></section>
+{{end}}
+{{end}}
