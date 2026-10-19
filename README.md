@@ -237,6 +237,16 @@ Tabel `classes` (migrasi 000009), fungsi di [internal/classes/repo.go](internal/
 - Wali kelas dipilih dari guru **aktif** sekolah yang sama (`classes.ListTeachers`); service menolak pengguna lain. Wali kelas lama yang sudah dinonaktifkan tetap tampil di form ubah (bertanda "nonaktif") agar menyimpan perubahan nama tidak diam-diam menghapusnya.
 - Audit: `class.create`, `class.update` (nama/tingkat), `class.assign_teacher` (wali kelas). Menyimpan tanpa perubahan tidak menambah audit.
 
+## Mata Pelajaran
+
+Tabel `subjects` (migrasi 000031), fungsi di [internal/academic](internal/academic/subject_repo.go): `CreateSubject`, `UpdateSubject`, `SetSubjectActive`, `GetSubjectByID`, `ListActiveSubjects`, `ListAllSubjects`. Daftar mapel dipakai penugasan guru (T65), jadwal (T66), dan nilai.
+
+- Nama unik per sekolah tanpa membedakan huruf besar/kecil (`IPA` = `ipa`), maksimal 60 karakter. Kode opsional (maksimal 20 karakter), juga unik per sekolah tanpa membedakan huruf besar/kecil; banyak mapel tanpa kode diizinkan. Kode kosong disimpan sebagai `NULL`.
+- Mapel **tidak dihapus**, hanya dinonaktifkan. Pilihan di penugasan dan jadwal harus memakai `ListActiveSubjects`, yang tidak mengembalikan mapel nonaktif. `GetSubjectByID` tetap menemukan mapel nonaktif, supaya penugasan dan nilai lama tetap bisa merujuknya.
+- `UNIQUE (school_id, id)` disediakan sebagai target foreign key komposit untuk tabel penugasan dan jadwal (pola yang sama dengan `fee_types`).
+- Halaman `/pengaturan/mapel` (satu halaman: daftar, form tambah, dan form ubah per baris). Hanya `admin_tu`; guru dan peran lain `403`, termasuk kepala sekolah. `POST /pengaturan/mapel` menambah, `POST /pengaturan/mapel/{id}` mengubah nama, kode, dan status (`aktif`/`nonaktif`). Isian status yang hilang atau tidak dikenal ditolak, tidak dianggap nonaktif. Mapel sekolah lain atau ID yang bukan UUID `404`, apa pun isi form-nya.
+- Audit: `subject.create`, `subject.update` (nama/kode berubah), `subject.deactivate`, dan `subject.activate`. Menyimpan tanpa perubahan tidak menambah audit.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

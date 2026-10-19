@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	"akra/internal/academic"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -69,6 +70,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		activation:   auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
 		classes:      classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

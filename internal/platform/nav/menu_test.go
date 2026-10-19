@@ -15,7 +15,7 @@ func paths(items []MenuItem) string {
 
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran",
+		"admin_tu":       "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/mapel",
 		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
 		"guru":           "/ /absensi /pengumuman",
 		"kepala_sekolah": "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran",
