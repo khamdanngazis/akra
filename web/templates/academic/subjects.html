@@ -1,0 +1,95 @@
+{{define "title"}}Mata Pelajaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Mata Pelajaran</h1>
+<p class="muted">Daftar mata pelajaran sekolah, dipakai untuk penugasan guru, jadwal, dan nilai. Mata pelajaran nonaktif tidak muncul di pilihan penugasan dan jadwal. Mata pelajaran tidak dihapus.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<section class="card form-card">
+<h2>Tambah mata pelajaran</h2>
+{{if .NewErrors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="/pengaturan/mapel" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .NewErrors.name}} has-error{{end}}">
+<label for="new-name">Nama</label>
+<input id="new-name" name="name" value="{{.New.Name}}" maxlength="60" placeholder="Matematika" required{{if .NewErrors.name}} aria-invalid="true" aria-describedby="new-name-error"{{end}}>
+{{with .NewErrors.name}}<p class="field-error" id="new-name-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .NewErrors.code}} has-error{{end}}">
+<label for="new-code">Kode <span class="muted">(opsional)</span></label>
+<input id="new-code" name="code" value="{{.New.Code}}" maxlength="20" placeholder="MTK" autocomplete="off"{{if .NewErrors.code}} aria-invalid="true" aria-describedby="new-code-error"{{end}}>
+{{with .NewErrors.code}}<p class="field-error" id="new-code-error">{{.}}</p>{{else}}<p class="hint">Singkatan, mis. MTK. Tidak boleh sama dengan kode lain.</p>{{end}}
+</div>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Tambah</button>
+</div>
+</form>
+</section>
+
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nama</th><th>Kode</th><th>Status</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
+{{range .Rows}}{{$id := .ID}}
+<tbody x-data="{ editing: {{if .Open}}true{{else}}false{{end}} }">
+<tr{{if not .IsActive}} class="row-inactive"{{end}}>
+<td><strong>{{.Name}}</strong></td>
+<td>{{if .Code}}{{.Code}}{{else}}<span class="muted">–</span>{{end}}</td>
+<td>{{if .IsActive}}<span class="badge badge-success">Aktif</span>{{else}}<span class="badge">Nonaktif</span>{{end}}</td>
+<td class="actions">
+<div class="action-row">
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = !editing" :aria-expanded="editing">Ubah</button>
+</div>
+</td>
+</tr>
+<tr x-show="editing" x-cloak>
+<td colspan="4">
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="/pengaturan/mapel/{{.ID}}" class="stack" novalidate>
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name-{{.ID}}">Nama</label>
+<input id="name-{{.ID}}" name="name" value="{{.Form.Name}}" maxlength="60" required{{if .Errors.name}} aria-invalid="true" aria-describedby="name-error-{{.ID}}"{{end}}>
+{{with .Errors.name}}<p class="field-error" id="name-error-{{$id}}">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.code}} has-error{{end}}">
+<label for="code-{{.ID}}">Kode <span class="muted">(opsional)</span></label>
+<input id="code-{{.ID}}" name="code" value="{{.Form.Code}}" maxlength="20" autocomplete="off"{{if .Errors.code}} aria-invalid="true" aria-describedby="code-error-{{.ID}}"{{end}}>
+{{with .Errors.code}}<p class="field-error" id="code-error-{{$id}}">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.status}} has-error{{end}}">
+<label for="status-{{.ID}}">Status</label>
+<select id="status-{{.ID}}" name="status">
+<option value="aktif"{{if eq .Form.Status "aktif"}} selected{{end}}>Aktif</option>
+<option value="nonaktif"{{if eq .Form.Status "nonaktif"}} selected{{end}}>Nonaktif</option>
+</select>
+{{with .Errors.status}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Nonaktif: tidak muncul di pilihan penugasan dan jadwal baru.</p>{{end}}
+</div>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Simpan</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button>
+</div>
+</form>
+</td>
+</tr>
+</tbody>
+{{end}}
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada mata pelajaran. Tambahkan yang pertama dengan form di atas.</p>
+</section>
+{{end}}
+{{end}}

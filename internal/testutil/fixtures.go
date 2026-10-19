@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"akra/internal/academic"
 	"akra/internal/announcements"
 	"akra/internal/billing"
 	"akra/internal/importer"
@@ -33,7 +34,7 @@ type User struct {
 type School struct {
 	ID   string
 	Code string // kode sekolah untuk login
-	// Marker ada di nama sekolah, pengguna, siswa, wali, jenis tagihan,
+	// Marker ada di nama sekolah, pengguna, siswa, wali, jenis tagihan, mapel,
 	// pengumuman, dan catatan pembayaran. Respons untuk pengguna sekolah lain
 	// tidak boleh memuat teks ini.
 	Marker string
@@ -56,6 +57,7 @@ type School struct {
 	EnrollmentIDs           [2]string
 	GuardianID              string
 	FeeTypeID               string
+	SubjectID               string
 	InvoiceID               string
 	PaymentID               string
 	ProofID                 string
@@ -154,6 +156,9 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	ft, err := billing.CreateFeeType(ctx, tx, s.ID, billing.FeeTypeInput{Name: "SPP " + marker, DefaultAmount: 300000, DefaultDueDay: 10})
 	check(err)
 	s.FeeTypeID = ft.ID
+	subject, err := academic.CreateSubject(ctx, tx, s.ID, academic.SubjectInput{Name: "Mapel " + marker, Code: "M" + strings.ToUpper(key)})
+	check(err)
+	s.SubjectID = subject.ID
 	inv, err := billing.CreateInvoice(ctx, tx, treasurer, billing.InvoiceRequest{EnrollmentID: s.EnrollmentIDs[0], Period: "2026-09", Items: []billing.ItemRequest{{FeeTypeID: ft.ID}}})
 	check(err)
 	s.InvoiceID = inv.ID

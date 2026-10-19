@@ -7,6 +7,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/academic"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -36,6 +37,7 @@ type routerDeps struct {
 	resetHandler *auth.ResetHandler
 	academicYear *school.AcademicYearHandler
 	classes      *classes.Handler
+	subjects     *academic.SubjectHandler
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
@@ -103,6 +105,7 @@ func newRouter(d routerDeps) http.Handler {
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
 			d.classes.Routes(r)
+			d.subjects.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)

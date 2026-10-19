@@ -274,6 +274,17 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/pengaturan/tahun-ajaran/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/pengaturan/tahun-ajaran/" + o.YearID + "/ubah"} })},
 
+	// Mata pelajaran (T64): hanya admin/TU.
+	{Method: "GET", Pattern: "/pengaturan/mapel/", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pengaturan/mapel/", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/mapel/" }, func(*School) url.Values {
+			return url.Values{"name": {"Uji lintas"}, "code": {"UJI"}}
+		})},
+	{Method: "POST", Pattern: "/pengaturan/mapel/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pengaturan/mapel/" + o.SubjectID }, func(*School) url.Values {
+			return url.Values{"name": {"Diubah"}, "code": {"UBH"}, "status": {"nonaktif"}}
+		})},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,
