@@ -1,0 +1,21 @@
+{{define "title"}}Jadwal Mengajar{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Jadwal Mengajar</h1>
+<p class="muted">Jadwal mengajar Anda di tahun ajaran aktif. Jadwal diatur oleh admin/TU.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .Week.NonEmpty}}
+{{template "schedule_week" .Week}}
+{{else}}
+<section class="card empty-state">
+<p>Belum ada jadwal mengajar untuk Anda.</p>
+<p class="muted">Hubungi admin/TU jika ini keliru.</p>
+</section>
+{{end}}
+{{end}}

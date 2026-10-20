@@ -1,0 +1,28 @@
+{{/* Jadwal mingguan. Dot: schedule.WeekView. Di layar sempit satu hari per
+     tampilan dengan tab hari (Alpine.js); tanpa JavaScript semua hari tampil. */}}
+{{define "schedule_week"}}
+<div x-data="{ day: {{.Today}} }">
+<div class="day-tabs" role="tablist" aria-label="Pilih hari" hidden x-init="$el.hidden = false">
+{{range .Days}}<button type="button" role="tab" id="tab-{{.Day}}" aria-controls="day-{{.Day}}" :aria-selected="day === {{.Day}}" :class="{ 'is-active': day === {{.Day}} }" @click="day = {{.Day}}"><span>{{.Short}}</span>{{with .Slots}}<span class="day-tab-count">{{len .}}</span>{{end}}</button>{{end}}
+</div>
+<div class="week-grid">
+{{range .Days}}
+<section class="card day-card" id="day-{{.Day}}" aria-labelledby="day-title-{{.Day}}" :class="{ 'day-off': day !== {{.Day}} }">
+<h2 id="day-title-{{.Day}}" class="card-title">{{.Name}}</h2>
+{{if .Slots}}
+<ul class="slot-list">
+{{range .Slots}}<li>
+<span class="slot-time">{{.Start}}–{{.End}}</span>
+<span class="min-w-0 flex-1"><strong class="block">{{.SubjectName}}</strong>{{if $.ShowClass}}<span class="block text-sm text-slate-500">Kelas {{.ClassName}}</span>{{end}}{{if $.ShowTeacher}}<span class="block text-sm text-slate-500">{{.TeacherName}}</span>{{end}}</span>
+{{if $.CanEdit}}<a class="btn btn-ghost btn-sm" href="/jadwal/slot/{{.ID}}/ubah" aria-label="Ubah {{.SubjectName}} {{.Start}}">Ubah</a>{{end}}
+</li>{{end}}
+</ul>
+{{else}}
+<p class="muted m-0 mt-2 text-sm">Tidak ada pelajaran.</p>
+{{end}}
+</section>
+{{end}}
+</div>
+<p class="muted mt-3 text-sm">Jam dalam WIB (Asia/Jakarta).</p>
+</div>
+{{end}}

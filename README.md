@@ -284,6 +284,11 @@ Tabel `schedule_slots` (migrasi 000033), kode di [internal/schedule](internal/sc
   - `POST /jadwal/slot/{id}/hapus` menghapus slot.
 - Akses: `admin_tu` mengubah, `kepala_sekolah` hanya melihat, peran lain 403. Kelas, mapel, atau slot sekolah lain 404. Hanya kelas tahun ajaran aktif yang bisa diatur.
 - Audit: `schedule.create`, `schedule.update` (dengan isi sebelum dan sesudah), dan `schedule.delete`. Menyimpan tanpa perubahan tidak menambah audit.
+- Tampilan jadwal (T67), semuanya memakai partial `schedule_week` dari [view.go](internal/schedule/view.go) (`ClassWeek`, `TeacherWeek`):
+  - `/jadwal?kelas=`: jadwal kelas untuk admin/TU dan kepala sekolah;
+  - `/jadwal/saya`: jadwal mengajar guru yang login, hanya slot miliknya di tahun ajaran aktif (ID guru dari sesi, tanpa parameter);
+  - `/portal/siswa/{id}/jadwal`: jadwal kelas aktif anak untuk orang tua. Kepemilikan diperiksa seperti halaman portal lain (T44), sehingga anak lain, anak sekolah lain, atau ID acak memberi `404` yang identik.
+- Di layar sempit (< 768px), jadwal tampil satu hari per layar dengan tab hari (Alpine.js); tab hari ini (WIB) terbuka lebih dulu, dan Minggu dibuka sebagai Senin. Tanpa JavaScript, semua hari tampil berurutan. Jam slot adalah jam dinding sekolah dan ditampilkan sebagai WIB (Asia/Jakarta).
 
 ## Siswa
 

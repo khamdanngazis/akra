@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -40,13 +41,15 @@ func NewHandler(svc *Service, db database.DBTX, sessions *scs.SessionManager, re
 }
 
 // Routes mendaftarkan route jadwal. Melihat jadwal kelas: admin_tu dan
-// kepala_sekolah. Mengubah: admin_tu.
+// kepala_sekolah. Mengubah: admin_tu. Jadwal mengajar sendiri: guru.
 func (h *Handler) Routes(r chi.Router) {
 	r.Route(schedulePath, func(r chi.Router) {
 		view := auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah)
 		write := auth.RequireRole(auth.RoleAdminTU)
 		// Peran: admin_tu, kepala_sekolah.
 		r.With(view).Get("/", h.class)
+		// Peran: guru (hanya jadwal mengajarnya sendiri).
+		r.With(auth.RequireRole(auth.RoleGuru)).Get("/saya", h.mine)
 		// Peran: admin_tu.
 		r.With(write).Post("/kelas/{classID}", h.create)
 		// Peran: admin_tu.
@@ -56,28 +59,6 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: admin_tu.
 		r.With(write).Post("/slot/{id}/hapus", h.delete)
 	})
-}
-
-// DayView adalah slot satu hari untuk tampilan mingguan.
-type DayView struct {
-	Day   int
-	Name  string
-	Slots []Slot
-}
-
-// GroupByDay mengelompokkan slot (sudah urut hari dan jam) per hari Senin–Sabtu.
-func GroupByDay(slots []Slot) []DayView {
-	days := make([]DayView, 0, 6)
-	for _, d := range Days() {
-		dv := DayView{Day: d, Name: DayName(d)}
-		for _, s := range slots {
-			if s.Day == d {
-				dv.Slots = append(dv.Slots, s)
-			}
-		}
-		days = append(days, dv)
-	}
-	return days
 }
 
 type dayOption struct {
@@ -92,7 +73,7 @@ type classView struct {
 	YearName string
 	Classes  []classes.Class
 	Page     ClassPage
-	Week     []DayView
+	Week     WeekView
 	DayOpts  []dayOption
 	Form     Form
 	Errors   map[string]string
@@ -149,8 +130,28 @@ func (h *Handler) showClass(w http.ResponseWriter, r *http.Request, id auth.Iden
 			return
 		}
 	}
-	v.Week = GroupByDay(v.Page.Slots)
+	v.Week = WeekView{Days: GroupByDay(v.Page.Slots), Today: TodayTab(time.Now()), ShowTeacher: true, CanEdit: v.CanEdit}
 	h.render.Render(w, r, status, "schedule/class", v)
+}
+
+type mineView struct {
+	User  auth.Identity
+	Week  WeekView
+	Flash string
+	Error string
+}
+
+// mine menampilkan jadwal mengajar guru yang login di tahun ajaran aktif.
+// ID guru selalu dari sesi, jadi guru tidak bisa melihat jadwal guru lain.
+func (h *Handler) mine(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	days, err := TeacherWeek(r.Context(), h.db, id.SchoolID, id.UserID)
+	if err != nil {
+		h.serverError(w, r, "teacher schedule", err)
+		return
+	}
+	h.render.Render(w, r, http.StatusOK, "schedule/week", mineView{User: id, Week: WeekView{Days: days, Today: TodayTab(time.Now()), ShowClass: true},
+		Flash: auth.PopFlash(r.Context(), h.sessions)})
 }
 
 func parseForm(w http.ResponseWriter, r *http.Request, id auth.Identity, rd page.Renderer) (Form, bool) {
