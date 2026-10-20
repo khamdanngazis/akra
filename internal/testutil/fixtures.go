@@ -58,6 +58,7 @@ type School struct {
 	GuardianID              string
 	FeeTypeID               string
 	SubjectID               string
+	SlotID                  string // slot jadwal ClassID untuk SubjectID (T66)
 	InvoiceID               string
 	PaymentID               string
 	ProofID                 string
@@ -159,6 +160,10 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	subject, err := academic.CreateSubject(ctx, tx, s.ID, academic.SubjectInput{Name: "Mapel " + marker, Code: "M" + strings.ToUpper(key)})
 	check(err)
 	s.SubjectID = subject.ID
+	exec(`INSERT INTO teaching_assignments (school_id, academic_year_id, class_id, subject_id, teacher_id) VALUES ($1, $2, $3, $4, $5)`,
+		s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
+	s.SlotID = one(`INSERT INTO schedule_slots (school_id, academic_year_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time)
+		VALUES ($1, $2, $3, $4, $5, 1, '07:00', '07:40') RETURNING id`, s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
 	inv, err := billing.CreateInvoice(ctx, tx, treasurer, billing.InvoiceRequest{EnrollmentID: s.EnrollmentIDs[0], Period: "2026-09", Items: []billing.ItemRequest{{FeeTypeID: ft.ID}}})
 	check(err)
 	s.InvoiceID = inv.ID

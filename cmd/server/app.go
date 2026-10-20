@@ -26,6 +26,7 @@ import (
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/reports"
+	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
 )
@@ -72,6 +73,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		classes:      classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
 		assignments:  academic.NewAssignmentHandler(academic.NewAssignmentService(d.db), d.db, d.sessions, d.render, d.logger),
+		schedule:     schedule.NewHandler(schedule.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

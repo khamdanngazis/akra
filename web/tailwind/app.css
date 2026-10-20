@@ -1100,6 +1100,26 @@
   }
 }
 
+/* ---------- Jadwal ---------- */
+
+@layer components {
+  .week-grid {
+    @apply grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3;
+  }
+
+  .slot-list {
+    @apply m-0 mt-3 list-none divide-y divide-slate-100 p-0;
+  }
+
+  .slot-list > li {
+    @apply flex items-center gap-3 py-2.5 first:pt-0 last:pb-0;
+  }
+
+  .slot-time {
+    @apply w-24 flex-none text-sm font-semibold text-navy-900 tabular-nums;
+  }
+}
+
 /* ---------- Impor ---------- */
 
 @layer components {

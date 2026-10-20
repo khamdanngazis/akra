@@ -1,0 +1,88 @@
+{{define "title"}}Jadwal Pelajaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Jadwal Pelajaran</h1>
+<p class="muted">Jadwal mingguan per kelas{{with .YearName}}, tahun ajaran {{.}}{{end}}. Guru setiap slot adalah guru pengampu mapel di kelas itu (Penugasan Guru). Slot yang bentrok di kelas yang sama atau untuk guru yang sama ditolak.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .NoYear}}
+<section class="card empty-state"><p>Belum ada tahun ajaran aktif.</p>{{if .CanEdit}}<p class="muted"><a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a> lebih dulu.</p>{{end}}</section>
+{{else if not .Classes}}
+<section class="card empty-state"><p>Belum ada kelas di tahun ajaran aktif.</p>{{if .CanEdit}}<p class="muted"><a href="/kelas/baru">Buat kelas</a> lebih dulu.</p>{{end}}</section>
+{{else}}
+<form method="get" action="/jadwal" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">
+{{range .Classes}}<option value="{{.ID}}"{{if eq .ID $.Page.Class.ID}} selected{{end}}>{{.Name}}{{with .HomeroomTeacherName}} · wali: {{.}}{{end}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+<div class="week-grid">
+{{range .Week}}
+<section class="card day-card" aria-labelledby="day-{{.Day}}">
+<h2 id="day-{{.Day}}" class="card-title">{{.Name}}</h2>
+{{if .Slots}}
+<ul class="slot-list">
+{{range .Slots}}<li>
+<span class="slot-time">{{.Start}}–{{.End}}</span>
+<span class="min-w-0 flex-1"><strong class="block">{{.SubjectName}}</strong><span class="block text-sm text-slate-500">{{.TeacherName}}</span></span>
+{{if $.CanEdit}}<a class="btn btn-ghost btn-sm" href="/jadwal/slot/{{.ID}}/ubah" aria-label="Ubah {{.SubjectName}} {{.Start}}">Ubah</a>{{end}}
+</li>{{end}}
+</ul>
+{{else}}
+<p class="muted m-0 mt-2 text-sm">Tidak ada pelajaran.</p>
+{{end}}
+</section>
+{{end}}
+</div>
+
+{{if .CanEdit}}
+<section class="card form-card mt-6" aria-labelledby="add-title">
+<h2 id="add-title" class="card-title">Tambah slot kelas {{.Page.Class.Name}}</h2>
+{{if .Page.Options}}
+<form method="post" action="/jadwal/kelas/{{.Page.Class.ID}}" class="stack mt-4" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .Errors.subject}} has-error{{end}}">
+<label for="subject">Mata pelajaran</label>
+<select id="subject" name="subject_id"{{if .Errors.subject}} aria-invalid="true" aria-describedby="subject-error"{{end}}>
+<option value="">Pilih mata pelajaran</option>
+{{range .Page.Options}}<option value="{{.SubjectID}}"{{if eq .SubjectID $.Form.SubjectID}} selected{{end}}>{{.SubjectName}} · {{.TeacherName}}</option>{{end}}
+</select>
+{{with .Errors.subject}}<p class="field-error" id="subject-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.day}} has-error{{end}}">
+<label for="day">Hari</label>
+<select id="day" name="day">
+{{range .DayOpts}}<option value="{{.Value}}"{{if eq (print .Value) $.Form.Day}} selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+{{with .Errors.day}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.start}} has-error{{end}}">
+<label for="start">Jam mulai</label>
+<input id="start" name="start" type="time" step="300" value="{{.Form.Start}}" placeholder="07:00"{{if .Errors.start}} aria-invalid="true" aria-describedby="start-error"{{end}}>
+{{with .Errors.start}}<p class="field-error" id="start-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.end}} has-error{{end}}">
+<label for="end">Jam selesai</label>
+<input id="end" name="end" type="time" step="300" value="{{.Form.End}}" placeholder="07:40"{{if .Errors.end}} aria-invalid="true" aria-describedby="end-error"{{end}}>
+{{with .Errors.end}}<p class="field-error" id="end-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Tambah slot</button></div>
+</form>
+{{else}}
+<p class="muted mt-2">Belum ada mata pelajaran dengan guru di kelas ini. <a href="/pengaturan/penugasan?kelas={{.Page.Class.ID}}">Atur penugasan guru</a> lebih dulu.</p>
+{{end}}
+</section>
+{{end}}
+{{end}}
+{{end}}

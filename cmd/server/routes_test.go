@@ -32,6 +32,7 @@ import (
 	"akra/internal/platform/render"
 	"akra/internal/portal"
 	"akra/internal/reports"
+	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
 	"akra/web"
@@ -86,6 +87,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
 		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(nil), sessions, rd, logger),
 		assignments:  academic.NewAssignmentHandler(academic.NewAssignmentService(nil), nil, sessions, rd, logger),
+		schedule:     schedule.NewHandler(schedule.NewService(nil), nil, sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
 			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),

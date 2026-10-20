@@ -262,6 +262,28 @@ Tabel `teaching_assignments` (migrasi 000032), kode di [internal/academic](inter
   - admin/TU memilih kelas (`?kelas=`), lalu satu baris per mapel dengan pilihan guru; simpan lewat `POST /pengaturan/penugasan/{classID}`;
   - guru melihat daftar penugasannya sendiri (baca saja);
   - peran lain 403; kelas atau mapel sekolah lain 404.
+- Guru mapel yang sudah ada di jadwal (T66) tidak bisa diganti atau dilepas. Ubah atau hapus slot jadwalnya dulu.
+
+## Jadwal Pelajaran
+
+Tabel `schedule_slots` (migrasi 000033), kode di [internal/schedule](internal/schedule/service.go). Satu slot berisi kelas, mapel, guru, hari (1 = Senin sampai 6 = Sabtu), jam mulai, dan jam selesai.
+
+- Guru slot **tidak dipilih bebas**. Guru diambil dari penugasan mapel itu di kelas tersebut (T65). Mapel tanpa guru di kelas itu ditolak dengan pesan "Atur di Penugasan Guru"; mapel nonaktif juga ditolak.
+- Rentang jam berbentuk `[mulai, selesai)`, sehingga slot yang bersebelahan (selesai 08.00, mulai 08.00) tidak dianggap bentrok. Slot ditolak jika berpotongan dengan:
+  - slot lain di **kelas yang sama**, atau
+  - slot lain dari **guru yang sama** di kelas mana pun.
+
+  Pesan penolakan menyebut slot yang bentrok, misalnya "Guru Bu Sari sudah mengajar Matematika di kelas 1A pada Rabu 09.00–10.00."
+- Bentrok dicegah dua lapis:
+  1. Service mengunci baris kelas lalu baris guru (`FOR UPDATE`, selalu dalam urutan ini agar tidak deadlock), kemudian memeriksa slot yang berpotongan. Dua permintaan bersamaan yang bentrok diproses bergantian; permintaan kedua melihat slot yang pertama.
+  2. Constraint `EXCLUDE USING gist` (ekstensi `btree_gist`) per kelas dan per guru menjadi pengaman terakhir di database (`ErrOverlap`).
+- Halaman `/jadwal?kelas=`:
+  - jadwal mingguan per hari untuk satu kelas, dengan form tambah slot;
+  - `POST /jadwal/kelas/{classID}` menambah slot;
+  - `GET /jadwal/slot/{id}/ubah` dan `POST /jadwal/slot/{id}` mengubah mapel, hari, dan jam (kelas slot tetap);
+  - `POST /jadwal/slot/{id}/hapus` menghapus slot.
+- Akses: `admin_tu` mengubah, `kepala_sekolah` hanya melihat, peran lain 403. Kelas, mapel, atau slot sekolah lain 404. Hanya kelas tahun ajaran aktif yang bisa diatur.
+- Audit: `schedule.create`, `schedule.update` (dengan isi sebelum dan sesudah), dan `schedule.delete`. Menyimpan tanpa perubahan tidak menambah audit.
 
 ## Siswa
 
