@@ -25,6 +25,7 @@ const (
 	maxAttendForm     = 64 << 10
 	statusFieldPrefix = "s_"
 	msgNoAccess       = "Absensi kelas ini hanya bisa diisi oleh wali kelasnya."
+	msgNoSubject      = "Absensi mapel ini hanya bisa diisi oleh guru pengampunya di kelas ini."
 )
 
 // Handler melayani form absensi guru.
@@ -56,6 +57,8 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: admin_tu, kepala_sekolah (semua kelas), guru (kelas perwaliannya).
 		r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru)).Get("/rekap", h.report)
 	})
+	// Peran: admin_tu.
+	r.With(auth.RequireRole(auth.RoleAdminTU)).Post(settingsPath, h.saveSettings)
 }
 
 type classesView struct {
@@ -65,9 +68,16 @@ type classesView struct {
 	Error   string
 }
 
+// modeOption adalah pilihan jenis absensi di form: harian atau satu mapel.
+type modeOption struct {
+	Label, URL string
+	Active     bool
+}
+
 type formView struct {
 	User      auth.Identity
 	Session   Session
+	Modes     []modeOption // kosong jika absensi per mapel nonaktif
 	Records   []Record
 	Summary   Summary
 	Statuses  []statusOption
@@ -103,7 +113,7 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(classes) == 1 {
-			http.Redirect(w, r, formURL(classes[0].ID, today), http.StatusSeeOther)
+			http.Redirect(w, r, formURL(classes[0].ID, "", today), http.StatusSeeOther)
 			return
 		}
 		h.render.Render(w, r, http.StatusOK, "attendance/index", classesView{User: id, Classes: classes, Flash: auth.PopFlash(r.Context(), h.sessions)})
@@ -124,23 +134,30 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok, err := CanEditClass(r.Context(), h.db, id, classID)
+	perSubject, err := PerSubjectEnabled(r.Context(), h.db, id.SchoolID)
 	if err != nil {
-		h.serverError(w, r, "check class access", err)
+		h.serverError(w, r, "attendance settings", err)
 		return
 	}
-	if !ok {
-		page.Forbidden(h.render, w, r, id, msgNoAccess)
+	subjectID := q.Get("mapel")
+	if subjectID != "" && !perSubject {
+		page.BadRequest(h.render, w, r, id, "Absensi per mapel nonaktif", "Sekolah belum mengaktifkan absensi per mapel. Isi absensi harian.")
+		return
+	}
+	if !h.canEdit(w, r, id, classID, subjectID) {
 		return
 	}
 
-	session, records, err := h.svc.OpenSession(r.Context(), actorFrom(r, id), classID, date)
+	session, records, err := h.svc.OpenSession(r.Context(), actorFrom(r, id), classID, subjectID, date)
 	switch {
 	case errors.Is(err, ErrDateOutsideYear):
 		page.BadRequest(h.render, w, r, id, "Di luar tahun ajaran", "Tanggal tersebut di luar tahun ajaran kelas ini.")
 		return
 	case errors.Is(err, ErrClassNotFound):
 		page.NotFound(h.render, w, r, id, "Kelas tidak ditemukan.")
+		return
+	case errors.Is(err, ErrSubjectNotFound):
+		page.NotFound(h.render, w, r, id, "Mata pelajaran tidak ditemukan.")
 		return
 	case err != nil:
 		h.serverError(w, r, "open attendance session", err)
@@ -150,11 +167,17 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 	view := formView{
 		User: id, Session: session, Records: records, Summary: Summarize(records), Statuses: statusOptions,
 		Date: date.Format(dateLayout), DateLabel: clock.FormatDateID(date), Today: today.Format(dateLayout),
-		IsToday: date.Equal(today), PrevURL: formURL(classID, date.AddDate(0, 0, -1)), ReportURL: reportURL(classID),
+		IsToday: date.Equal(today), PrevURL: formURL(classID, subjectID, date.AddDate(0, 0, -1)), ReportURL: reportURL(classID, subjectID),
 		Flash: auth.PopFlash(r.Context(), h.sessions),
 	}
 	if next := date.AddDate(0, 0, 1); !next.After(today) {
-		view.NextURL = formURL(classID, next)
+		view.NextURL = formURL(classID, subjectID, next)
+	}
+	if perSubject {
+		if view.Modes, err = h.modes(r, id, classID, subjectID, date); err != nil {
+			h.serverError(w, r, "attendance modes", err)
+			return
+		}
 	}
 	h.render.Render(w, r, http.StatusOK, "attendance/form", view)
 }
@@ -176,13 +199,7 @@ func (h *Handler) save(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "get session", err)
 		return
 	}
-	ok, err := CanEditClass(r.Context(), h.db, id, session.ClassID)
-	if err != nil {
-		h.serverError(w, r, "check class access", err)
-		return
-	}
-	if !ok {
-		page.Forbidden(h.render, w, r, id, msgNoAccess)
+	if !h.canEdit(w, r, id, session.ClassID, session.SubjectID) {
 		return
 	}
 	if err := CheckDate(session.SessionDate, h.today()); err != nil {
@@ -205,9 +222,50 @@ func (h *Handler) save(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "save attendance", err)
 		return
 	}
-	auth.SetFlash(r.Context(), h.sessions, fmt.Sprintf("Absensi %s tersimpan: %d hadir, %d sakit, %d izin, %d alpa.",
-		clock.FormatDateID(session.SessionDate), sum.Hadir, sum.Sakit, sum.Izin, sum.Alpa))
-	http.Redirect(w, r, formURL(session.ClassID, session.SessionDate), http.StatusSeeOther)
+	what := "Absensi"
+	if session.SubjectName != "" {
+		what = "Absensi " + session.SubjectName
+	}
+	auth.SetFlash(r.Context(), h.sessions, fmt.Sprintf("%s %s tersimpan: %d hadir, %d sakit, %d izin, %d alpa.",
+		what, clock.FormatDateID(session.SessionDate), sum.Hadir, sum.Sakit, sum.Izin, sum.Alpa))
+	http.Redirect(w, r, formURL(session.ClassID, session.SubjectID, session.SessionDate), http.StatusSeeOther)
+}
+
+// canEdit memeriksa hak guru atas absensi harian (subjectID kosong: wali
+// kelas atau guru yang mengajar di kelas itu) atau absensi mapel subjectID
+// (hanya guru pengampu mapel itu di kelas itu). Menulis 403 jika ditolak.
+func (h *Handler) canEdit(w http.ResponseWriter, r *http.Request, id auth.Identity, classID, subjectID string) bool {
+	var ok bool
+	var err error
+	msg := msgNoAccess
+	if subjectID == "" {
+		ok, err = CanEditClass(r.Context(), h.db, id, classID)
+	} else {
+		ok, err = CanEditSubject(r.Context(), h.db, id, classID, subjectID)
+		msg = msgNoSubject
+	}
+	if err != nil {
+		h.serverError(w, r, "check class access", err)
+		return false
+	}
+	if !ok {
+		page.Forbidden(h.render, w, r, id, msg)
+	}
+	return ok
+}
+
+// modes menyusun pilihan jenis absensi: harian lalu mapel yang diajar guru
+// di kelas ini.
+func (h *Handler) modes(r *http.Request, id auth.Identity, classID, subjectID string, date time.Time) ([]modeOption, error) {
+	subjects, err := TeacherSubjects(r.Context(), h.db, id.SchoolID, id.UserID, classID)
+	if err != nil {
+		return nil, err
+	}
+	out := []modeOption{{Label: "Harian", URL: formURL(classID, "", date), Active: subjectID == ""}}
+	for _, s := range subjects {
+		out = append(out, modeOption{Label: s.Name, URL: formURL(classID, s.ID, date), Active: s.ID == subjectID})
+	}
+	return out, nil
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, op string, err error) {
@@ -215,8 +273,11 @@ func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, op string,
 	page.ServerError(h.render, h.logger, w, r, id, op, err)
 }
 
-func formURL(classID string, date time.Time) string {
+func formURL(classID, subjectID string, date time.Time) string {
 	v := url.Values{"kelas": {classID}, "tanggal": {date.Format(dateLayout)}}
+	if subjectID != "" {
+		v.Set("mapel", subjectID)
+	}
 	return attendancePath + "?" + v.Encode()
 }
 

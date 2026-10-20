@@ -1100,6 +1100,31 @@
   }
 }
 
+/* ---------- Absensi per mapel ---------- */
+
+@layer components {
+  /* Pilihan jenis absensi di form: harian lalu mapel. Bisa digeser di layar sempit. */
+  .mode-tabs {
+    @apply -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0;
+  }
+
+  .mode-tabs > a {
+    @apply flex min-h-11 flex-none items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 no-underline;
+  }
+
+  .mode-tabs > a.is-active {
+    @apply border-blue-600 bg-blue-600 text-white;
+  }
+
+  .choice-row {
+    @apply m-0 flex flex-col gap-2 border-0 p-0 sm:flex-row sm:gap-6;
+  }
+
+  .choice {
+    @apply flex min-h-11 items-center gap-2 text-sm text-slate-700;
+  }
+}
+
 /* ---------- Jadwal ---------- */
 
 @layer components {

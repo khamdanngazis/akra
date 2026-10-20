@@ -154,7 +154,7 @@ func TestBuildAttendanceReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, _ := attendance.SummaryByStudent(ctx, f.tx, f.schoolA, f.c1A, from, to)
+	want, _ := attendance.SummaryByStudent(ctx, f.tx, f.schoolA, f.c1A, "", from, to)
 	if len(rep.Rows) != len(want) || rep.ClassName != "1A" || rep.YearName != "2026/2027" {
 		t.Fatalf("report = %+v", rep)
 	}

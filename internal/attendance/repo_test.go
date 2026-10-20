@@ -118,7 +118,7 @@ func names(records []Record) string {
 func TestSessions_DatabaseConstraints(t *testing.T) {
 	tx, f := txFixture(t)
 	ctx := context.Background()
-	s, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, day("2026-09-15"), f.teacher)
+	s, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, "", day("2026-09-15"), f.teacher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestSessions_DatabaseConstraints(t *testing.T) {
 			f.schoolA, f.year, f.class1A, f.teacher)
 		return err
 	})
-	if err == nil || !strings.Contains(err.Error(), "attendance_sessions_class_date_key") {
+	if err == nil || !strings.Contains(err.Error(), "attendance_sessions_class_date_subject_key") {
 		t.Errorf("second session for the same class and date: error = %v", err)
 	}
 
@@ -168,7 +168,7 @@ func TestEnsureRecords_FollowsEnrollmentDates(t *testing.T) {
 	for _, tc := range cases {
 		var records []Record
 		err := sp(t, tx, func(q pgx.Tx) error {
-			s, err := GetOrCreateSession(ctx, q, f.schoolA, tc.class, day(tc.date), f.teacher)
+			s, err := GetOrCreateSession(ctx, q, f.schoolA, tc.class, "", day(tc.date), f.teacher)
 			if err != nil {
 				return err
 			}
@@ -195,7 +195,7 @@ func TestEnsureRecords_FollowsEnrollmentDates(t *testing.T) {
 func TestEnsureRecords_KeepsExistingRecords(t *testing.T) {
 	tx, f := txFixture(t)
 	ctx := context.Background()
-	s, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, day("2026-09-15"), f.teacher)
+	s, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, "", day("2026-09-15"), f.teacher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,11 +231,11 @@ func TestGetOrCreateSession_Rules(t *testing.T) {
 	tx, f := txFixture(t)
 	ctx := context.Background()
 
-	a, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, day("2026-09-15"), f.teacher)
+	a, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, "", day("2026-09-15"), f.teacher)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, day("2026-09-15"), f.teacher)
+	b, err := GetOrCreateSession(ctx, tx, f.schoolA, f.class1A, "", day("2026-09-15"), f.teacher)
 	if err != nil || a.ID != b.ID || a.ClassName != "1A" || a.CreatedBy != f.teacher {
 		t.Errorf("second call returned %+v, %v; want the same session", b, err)
 	}
@@ -250,7 +250,7 @@ func TestGetOrCreateSession_Rules(t *testing.T) {
 		"after academic year":     {f.schoolA, f.class1A, "2027-06-26", ErrDateOutsideYear},
 	} {
 		err := sp(t, tx, func(q pgx.Tx) error {
-			_, err := GetOrCreateSession(ctx, q, tc.school, tc.class, day(tc.date), f.teacher)
+			_, err := GetOrCreateSession(ctx, q, tc.school, tc.class, "", day(tc.date), f.teacher)
 			return err
 		})
 		if !errors.Is(err, tc.want) {
@@ -269,7 +269,7 @@ func TestService_OpenSession(t *testing.T) {
 	tx, f := txFixture(t)
 	svc := NewService(tx)
 	actor := school.Actor{SchoolID: f.schoolA, UserID: f.teacher, IP: netip.MustParseAddr("192.0.2.1")}
-	s, records, err := svc.OpenSession(context.Background(), actor, f.class1B, day("2026-10-05"))
+	s, records, err := svc.OpenSession(context.Background(), actor, f.class1B, "", day("2026-10-05"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestGetOrCreateSession_Concurrent(t *testing.T) {
 			wg.Add(1)
 			go func(g int) {
 				defer wg.Done()
-				s, _, err := svc.OpenSession(ctx, actor, f.class1A, date)
+				s, _, err := svc.OpenSession(ctx, actor, f.class1A, "", date)
 				ids[g], errs[g] = s.ID, err
 			}(g)
 		}

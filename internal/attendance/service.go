@@ -12,7 +12,7 @@ import (
 	"akra/internal/school"
 )
 
-// Service menjalankan aturan absensi harian.
+// Service menjalankan aturan absensi harian dan per mapel.
 type Service struct {
 	db database.DB
 }
@@ -23,15 +23,16 @@ func NewService(db database.DB) *Service {
 }
 
 // OpenSession mengambil atau membuat sesi kelas classID pada tanggal date
-// (tanggal lokal Asia/Jakarta), memastikan setiap siswa yang terdaftar pada
+// (tanggal lokal Asia/Jakarta) untuk mapel subjectID (kosong = harian),
+// memastikan setiap siswa yang terdaftar pada
 // tanggal itu punya catatan, lalu mengembalikan sesi beserta catatannya.
 // Pemeriksaan hak akses guru dan tanggal masa depan dilakukan pemanggil
 // (T26).
-func (s *Service) OpenSession(ctx context.Context, actor school.Actor, classID string, date time.Time) (Session, []Record, error) {
+func (s *Service) OpenSession(ctx context.Context, actor school.Actor, classID, subjectID string, date time.Time) (Session, []Record, error) {
 	var session Session
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		var err error
-		if session, err = GetOrCreateSession(ctx, tx, actor.SchoolID, classID, date, actor.UserID); err != nil {
+		if session, err = GetOrCreateSession(ctx, tx, actor.SchoolID, classID, subjectID, date, actor.UserID); err != nil {
 			return err
 		}
 		_, err = EnsureRecords(ctx, tx, actor.SchoolID, session.ID)

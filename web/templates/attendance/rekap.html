@@ -19,6 +19,12 @@
 {{range .Classes}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
 </select>
 </div>
+{{if .Subjects}}<div class="field">
+<label for="mapel">Absensi</label>
+<select id="mapel" name="mapel">
+{{range .Subjects}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>{{end}}
 <div class="field">
 <label for="dari">Dari</label>
 <input id="dari" type="date" name="dari" value="{{.From}}">
@@ -35,7 +41,7 @@
 
 {{if and .Class (not .Error)}}
 <section class="card stat-card">
-<p class="muted small">{{.Range}} · {{.Summary.Sessions}} sesi absensi</p>
+<p class="muted small">{{if .SubjectName}}Absensi {{.SubjectName}}{{else if .Subjects}}Absensi harian{{end}}{{if .Subjects}} · {{end}}{{.Range}} · {{.Summary.Sessions}} sesi absensi</p>
 <div class="stat-grid">
 <div><span class="stat-value">{{.Percent}}</span><span class="stat-label">kehadiran</span></div>
 <div><span class="stat-value">{{.Summary.Hadir}}</span><span class="stat-label">hadir</span></div>

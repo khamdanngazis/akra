@@ -66,3 +66,69 @@ func TeacherClasses(ctx context.Context, q database.DBTX, schoolID, userID strin
 	}
 	return list, rows.Err()
 }
+
+// CanEditSubject melaporkan apakah id boleh membuka dan mengisi absensi mapel
+// subjectID di kelas classID: hanya guru yang punya penugasan mapel itu di
+// kelas itu (T65). Wali kelas tanpa penugasan mapel tersebut tidak boleh.
+func CanEditSubject(ctx context.Context, q database.DBTX, id auth.Identity, classID, subjectID string) (bool, error) {
+	if !id.HasRole(auth.RoleGuru) || !database.IsUUID(classID) || !database.IsUUID(subjectID) {
+		return false, nil
+	}
+	var ok bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM teaching_assignments
+		WHERE school_id = $1 AND class_id = $2 AND subject_id = $3 AND teacher_id = $4)`,
+		id.SchoolID, classID, subjectID, id.UserID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("attendance: check subject access: %w", err)
+	}
+	return ok, nil
+}
+
+// SubjectOption adalah mapel untuk pilihan absensi atau filter rekap.
+type SubjectOption struct {
+	ID, Name string
+}
+
+// TeacherSubjects mengembalikan mapel aktif yang diajar userID di kelas
+// classID, urut nama: pilihan absensi per mapel di form.
+func TeacherSubjects(ctx context.Context, q database.DBTX, schoolID, userID, classID string) ([]SubjectOption, error) {
+	if !database.IsUUID(classID) || !database.IsUUID(userID) {
+		return nil, nil
+	}
+	return listSubjects(ctx, q, `
+		SELECT s.id, s.name FROM teaching_assignments ta
+		JOIN subjects s ON s.school_id = ta.school_id AND s.id = ta.subject_id
+		WHERE ta.school_id = $1 AND ta.class_id = $2 AND ta.teacher_id = $3 AND s.is_active
+		ORDER BY lower(s.name)`, schoolID, classID, userID)
+}
+
+// ClassSubjects mengembalikan mapel yang punya penugasan atau sesi absensi
+// di kelas classID, urut nama: pilihan filter rekap.
+func ClassSubjects(ctx context.Context, q database.DBTX, schoolID, classID string) ([]SubjectOption, error) {
+	if !database.IsUUID(classID) {
+		return nil, nil
+	}
+	return listSubjects(ctx, q, `
+		SELECT s.id, s.name FROM subjects s
+		WHERE s.school_id = $1 AND (
+			EXISTS (SELECT 1 FROM teaching_assignments ta WHERE ta.school_id = s.school_id AND ta.class_id = $2 AND ta.subject_id = s.id)
+			OR EXISTS (SELECT 1 FROM attendance_sessions a WHERE a.school_id = s.school_id AND a.class_id = $2 AND a.subject_id = s.id))
+		ORDER BY lower(s.name)`, schoolID, classID)
+}
+
+func listSubjects(ctx context.Context, q database.DBTX, sql string, args ...any) ([]SubjectOption, error) {
+	rows, err := q.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("attendance: list subjects: %w", err)
+	}
+	defer rows.Close()
+	var list []SubjectOption
+	for rows.Next() {
+		var s SubjectOption
+		if err := rows.Scan(&s.ID, &s.Name); err != nil {
+			return nil, fmt.Errorf("attendance: list subjects: %w", err)
+		}
+		list = append(list, s)
+	}
+	return list, rows.Err()
+}

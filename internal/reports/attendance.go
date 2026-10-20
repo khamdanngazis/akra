@@ -91,7 +91,7 @@ func BuildAttendanceReport(ctx context.Context, q database.DBTX, schoolID string
 		}
 	}
 	for _, c := range classes {
-		list, err := attendance.SummaryByStudent(ctx, q, schoolID, c.id, f.From, f.To)
+		list, err := attendance.SummaryByStudent(ctx, q, schoolID, c.id, "", f.From, f.To)
 		if err != nil {
 			return AttendanceReport{}, err
 		}
