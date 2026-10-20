@@ -6,12 +6,12 @@
 {{if .Classes}}
 <p class="muted">Pilih kelas yang akan diisi absensinya.</p>
 <ul class="class-picker">
-{{range .Classes}}<li><a class="btn btn-ghost btn-block" href="/absensi?kelas={{.ID}}">{{.Name}} <span class="muted">· {{.YearName}}</span></a></li>{{end}}
+{{range .Classes}}<li><a class="btn btn-ghost btn-block" href="/absensi?kelas={{.ID}}">{{.Name}} <span class="muted">· {{if .Homeroom}}Wali kelas{{if .Subjects}}, {{.Subjects}}{{end}}{{else}}{{.Subjects}}{{end}}</span></a></li>{{end}}
 </ul>
 {{else}}
 <section class="card empty-state">
-<p>Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
-<p class="muted">Absensi diisi oleh wali kelas. Hubungi admin/TU jika ini keliru.</p>
+<p>Anda belum menjadi wali kelas atau guru mapel di kelas mana pun pada tahun ajaran aktif.</p>
+<p class="muted">Absensi diisi oleh wali kelas atau guru mapel kelas itu. Hubungi admin/TU jika ini keliru.</p>
 </section>
 {{end}}
 {{end}}

@@ -220,7 +220,7 @@ func kpis(v *view) []KPI {
 			}
 		}
 		out = append(out,
-			KPI{Icon: "school", Value: strconv.Itoa(len(v.Teacher)), Label: "Kelas wali", Hint: "Tahun ajaran aktif", Tone: "navy", Href: "/absensi"},
+			KPI{Icon: "school", Value: strconv.Itoa(len(v.Teacher)), Label: "Kelas Anda", Hint: "Wali kelas dan kelas yang Anda ajar", Tone: "navy", Href: "/absensi"},
 			KPI{Icon: "attendance", Value: strconv.Itoa(pending), Label: "Absensi belum diisi", Hint: "Hari ini", Tone: "blue", Href: "/absensi"},
 		)
 	}
@@ -301,11 +301,12 @@ func TreasurerFor(ctx context.Context, q database.DBTX, schoolID string, today t
 	return TreasurerSummary{ArrearsTotal: money.FormatRupiah(a.TotalRemaining), ArrearsStudents: a.StudentCount, PaymentsToday: n, PaidToday: money.FormatRupiah(sum)}, nil
 }
 
-// TeacherClassesFor mengembalikan kelas wali guru di tahun ajaran aktif dan
+// TeacherClassesFor mengembalikan kelas yang diwalikan atau diajar guru di
+// tahun ajaran aktif (attendance.TeacherClasses) dan
 // apakah absensi hari ini sudah disimpan (ada catatan yang diubah lewat
 // form, bukan hanya sesi yang dibuka).
 func TeacherClassesFor(ctx context.Context, q database.DBTX, schoolID, userID string, today time.Time) ([]TeacherClass, error) {
-	classes, err := attendance.HomeroomClasses(ctx, q, schoolID, userID)
+	classes, err := attendance.TeacherClasses(ctx, q, schoolID, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
 
+	"akra/internal/academic"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -83,6 +84,8 @@ func newTestRouter(t *testing.T) http.Handler {
 			sessions, rd, logger),
 		// Service tanpa database: uji di paket ini tidak sampai ke handler tahun ajaran.
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
+		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(nil), sessions, rd, logger),
+		assignments:  academic.NewAssignmentHandler(academic.NewAssignmentService(nil), nil, sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
 			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),

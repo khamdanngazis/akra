@@ -38,6 +38,7 @@ type routerDeps struct {
 	academicYear *school.AcademicYearHandler
 	classes      *classes.Handler
 	subjects     *academic.SubjectHandler
+	assignments  *academic.AssignmentHandler
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
@@ -106,6 +107,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.academicYear.Routes(r)
 			d.classes.Routes(r)
 			d.subjects.Routes(r)
+			d.assignments.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)

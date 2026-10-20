@@ -15,9 +15,9 @@ func paths(items []MenuItem) string {
 
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/mapel",
+		"admin_tu":       "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/penugasan /pengaturan/mapel",
 		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
-		"guru":           "/ /absensi /pengumuman",
+		"guru":           "/ /absensi /pengumuman /pengaturan/penugasan",
 		"kepala_sekolah": "/ /absensi/rekap /siswa /kelas /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran",
 		"orang_tua":      "/portal /portal/pengumuman",
 	} {
@@ -62,7 +62,7 @@ func TestMenuFor_TwoRolesMergedWithoutDuplicates(t *testing.T) {
 			t.Errorf("merged menu misses %s", p)
 		}
 	}
-	if len(got) != len(MenuFor([]string{"bendahara"}))+1 { // + /absensi
+	if len(got) != len(MenuFor([]string{"bendahara"}))+2 { // + /absensi, /pengaturan/penugasan
 		t.Errorf("merged menu = %s", paths(got))
 	}
 	// Urutan mengikuti Items, bukan urutan peran.

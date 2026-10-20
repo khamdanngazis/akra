@@ -1,0 +1,106 @@
+{{define "title"}}Penugasan Guru{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .Admin}}
+<div class="page-header">
+<div>
+<h1>Penugasan Guru</h1>
+<p class="muted">Guru pengampu setiap mata pelajaran per kelas{{with .YearName}}, tahun ajaran {{.}}{{end}}. Satu mata pelajaran di satu kelas diampu satu guru. Guru yang ditugaskan bisa mengisi absensi kelas itu.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .NoYear}}
+<section class="card empty-state">
+<p>Belum ada tahun ajaran aktif.</p>
+<p class="muted"><a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a> lebih dulu.</p>
+</section>
+{{else if not .Classes}}
+<section class="card empty-state">
+<p>Belum ada kelas di tahun ajaran aktif.</p>
+<p class="muted"><a href="/kelas/baru">Buat kelas</a> lebih dulu.</p>
+</section>
+{{else}}
+<form method="get" action="/pengaturan/penugasan" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">
+{{range .Classes}}<option value="{{.ID}}"{{if eq .ID $.Plan.Class.ID}} selected{{end}}>{{.Name}}{{with .HomeroomTeacherName}} · wali: {{.}}{{end}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+{{if .Plan.Rows}}
+<form method="post" action="/pengaturan/penugasan/{{.Plan.Class.ID}}" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mata pelajaran</th><th>Guru pengampu</th></tr></thead>
+<tbody>
+{{range .Plan.Rows}}{{$sid := .Subject.ID}}{{$chosen := index $.Values $sid}}
+<tr{{if not .Subject.IsActive}} class="row-inactive"{{end}}>
+<td>
+<strong>{{.Subject.Name}}</strong>{{with .Subject.Code}} <span class="muted">· {{.}}</span>{{end}}
+{{if not .Subject.IsActive}}<br><span class="badge">Mapel nonaktif</span>{{end}}
+</td>
+<td>
+<div class="field{{if index $.Errors $sid}} has-error{{end}}">
+<label class="visually-hidden" for="t-{{$sid}}">Guru untuk {{.Subject.Name}}</label>
+<select id="t-{{$sid}}" name="t_{{$sid}}"{{if index $.Errors $sid}} aria-invalid="true" aria-describedby="t-err-{{$sid}}"{{end}}>
+<option value="">— Belum ada guru —</option>
+{{range $.Plan.Teachers}}<option value="{{.ID}}"{{if eq .ID $chosen}} selected{{end}}>{{.FullName}}</option>{{end}}
+{{if and .TeacherID (not .TeacherActive)}}<option value="{{.TeacherID}}"{{if eq .TeacherID $chosen}} selected{{end}}>{{.TeacherName}} (nonaktif)</option>{{end}}
+</select>
+{{with index $.Errors $sid}}<p class="field-error" id="t-err-{{$sid}}">{{.}}</p>{{end}}
+</div>
+</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+<div class="action-row mt-4">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan penugasan</button>
+</div>
+</form>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada mata pelajaran aktif.</p>
+<p class="muted"><a href="/pengaturan/mapel">Tambah mata pelajaran</a> lebih dulu.</p>
+</section>
+{{end}}
+{{end}}
+
+{{else}}
+<div class="page-header">
+<div>
+<h1>Penugasan Saya</h1>
+<p class="muted">Mata pelajaran yang Anda ampu di tahun ajaran aktif. Penugasan diatur oleh admin/TU.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .Mine}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kelas</th><th>Mata pelajaran</th></tr></thead>
+<tbody>
+{{range .Mine}}<tr><td><strong>{{.ClassName}}</strong></td><td>{{.SubjectName}}{{with .SubjectCode}} <span class="muted">· {{.}}</span>{{end}}{{if not .SubjectActive}} <span class="badge">nonaktif</span>{{end}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Anda belum punya penugasan mata pelajaran di tahun ajaran aktif.</p>
+<p class="muted">Hubungi admin/TU jika ini keliru.</p>
+</section>
+{{end}}
+{{end}}
+{{end}}
