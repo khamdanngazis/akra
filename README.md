@@ -247,6 +247,22 @@ Tabel `subjects` (migrasi 000031), fungsi di [internal/academic](internal/academ
 - Halaman `/pengaturan/mapel` (satu halaman: daftar, form tambah, dan form ubah per baris). Hanya `admin_tu`; guru dan peran lain `403`, termasuk kepala sekolah. `POST /pengaturan/mapel` menambah, `POST /pengaturan/mapel/{id}` mengubah nama, kode, dan status (`aktif`/`nonaktif`). Isian status yang hilang atau tidak dikenal ditolak, tidak dianggap nonaktif. Mapel sekolah lain atau ID yang bukan UUID `404`, apa pun isi form-nya.
 - Audit: `subject.create`, `subject.update` (nama/kode berubah), `subject.deactivate`, dan `subject.activate`. Menyimpan tanpa perubahan tidak menambah audit.
 
+## Penugasan Guru Mapel
+
+Tabel `teaching_assignments` (migrasi 000032), kode di [internal/academic](internal/academic/assignment_service.go). Setiap kelas punya satu guru per mapel pada tahun ajaran kelas itu.
+
+- `UNIQUE (class_id, subject_id)`: dua guru untuk mapel yang sama di kelas yang sama ditolak database. Foreign key komposit dengan `school_id` ke kelas (beserta tahun ajarannya), mapel, dan guru menjamin semuanya dari sekolah yang sama.
+- `AssignmentService.Save` menyimpan satu kelas sekaligus, dalam satu transaksi (semua atau tidak sama sekali):
+  - guru harus pengguna aktif berperan guru di sekolah yang sama;
+  - kelas harus di tahun ajaran aktif;
+  - mapel nonaktif tidak bisa diberi guru baru, tetapi penugasan lamanya tetap tampil agar bisa dilepas.
+- Audit: `teaching.assign` (penugasan baru atau ganti guru, dengan guru sebelumnya) dan `teaching.unassign`. Tanpa perubahan tidak ada audit.
+- `attendance.CanEditClass` sekarang bernilai benar untuk wali kelas **atau** guru yang punya penugasan di kelas itu. `attendance.TeacherClasses` (pengganti `HomeroomClasses`) dipakai di daftar kelas absensi, rekap, dan beranda guru; setiap kelas diberi keterangan wali kelas atau mapel yang diajar.
+- Halaman `/pengaturan/penugasan`:
+  - admin/TU memilih kelas (`?kelas=`), lalu satu baris per mapel dengan pilihan guru; simpan lewat `POST /pengaturan/penugasan/{classID}`;
+  - guru melihat daftar penugasannya sendiri (baca saja);
+  - peran lain 403; kelas atau mapel sekolah lain 404.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

@@ -44,14 +44,14 @@
 
 {{if .IsTeacher}}
 <section class="card">
-<div class="card-head"><div><h2 class="card-title">Absensi hari ini</h2><p class="m-0 text-sm text-slate-500">Kelas yang Anda walikan</p></div></div>
+<div class="card-head"><div><h2 class="card-title">Absensi hari ini</h2><p class="m-0 text-sm text-slate-500">Kelas yang Anda walikan atau ajar</p></div></div>
 {{if .Teacher}}
 <ul class="result-list">
 {{range .Teacher}}<li><a href="/absensi?kelas={{.ID}}"><span class="flex items-center gap-2"><strong>Kelas {{.Name}}</strong></span>{{if .Filled}}<span class="badge badge-success">Sudah diisi</span>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</a></li>
 {{end}}
 </ul>
 {{else}}
-<p class="muted m-0">Anda belum menjadi wali kelas di tahun ajaran aktif.</p>
+<p class="muted m-0">Anda belum menjadi wali kelas atau guru mapel di tahun ajaran aktif.</p>
 {{end}}
 </section>
 {{end}}

@@ -331,3 +331,56 @@ func TestAttendanceHandler_PartialFailureRollsBack(t *testing.T) {
 		t.Errorf("partial save left data: %v", got)
 	}
 }
+
+// Guru mapel yang punya penugasan di kelas boleh mengisi absensinya (T65);
+// guru tanpa penugasan dan bukan wali kelas tetap 403.
+func TestAttendanceHandler_SubjectTeacherFillsAttendance(t *testing.T) {
+	e := newHEnv(t)
+	ctx := context.Background()
+	var subject, guru3, year string
+	if err := e.tx.QueryRow(ctx, `SELECT academic_year_id FROM classes WHERE id = $1`, e.class1A).Scan(&year); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.tx.QueryRow(ctx, `INSERT INTO subjects (school_id, name) VALUES ($1, 'Matematika') RETURNING id`, e.schoolA).Scan(&subject); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.tx.QueryRow(ctx, `INSERT INTO users (school_id, email, password_hash, full_name) VALUES ($1, 'guru3@a.id', 'x', 'Guru 3') RETURNING id`, e.schoolA).Scan(&guru3); err != nil {
+		t.Fatal(err)
+	}
+	date := e.today.Format("2006-01-02")
+	// Sebelum penugasan: guru2 (wali 1B) tidak boleh membuka 1A.
+	if rec := e.do(http.MethodGet, "/absensi?kelas="+e.class1A+"&tanggal="+date, e.guru2, "guru", nil); rec.Code != http.StatusForbidden {
+		t.Fatalf("before assignment: status = %d, want 403", rec.Code)
+	}
+	if _, err := e.tx.Exec(ctx, `INSERT INTO teaching_assignments (school_id, academic_year_id, class_id, subject_id, teacher_id) VALUES ($1, $2, $3, $4, $5)`,
+		e.schoolA, year, e.class1A, subject, e.guru2); err != nil {
+		t.Fatal(err)
+	}
+	sessionID, enrollments := e.open(e.class1A, date, e.guru2)
+	form := url.Values{"s_" + enrollments[0]: {"sakit"}}
+	if rec := e.do(http.MethodPost, "/absensi/"+sessionID, e.guru2, "guru", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("subject teacher save: status = %d", rec.Code)
+	}
+	if got := e.counts(sessionID); got["sakit"] != 1 {
+		t.Errorf("counts = %v", got)
+	}
+	// Daftar kelas guru2: 1A (guru mapel) dan 1B (wali kelas).
+	body := e.do(http.MethodGet, "/absensi", e.guru2, "guru", nil).Body.String()
+	if !strings.Contains(body, "1A") || !strings.Contains(body, "Matematika") || !strings.Contains(body, "1B") || !strings.Contains(body, "Wali kelas") {
+		t.Error("teacher class list misses the subject class or the homeroom class")
+	}
+	// Guru tanpa penugasan dan bukan wali kelas.
+	if rec := e.do(http.MethodGet, "/absensi?kelas="+e.class1A+"&tanggal="+date, guru3, "guru", nil); rec.Code != http.StatusForbidden {
+		t.Errorf("unassigned teacher: status = %d, want 403", rec.Code)
+	}
+	if rec := e.do(http.MethodPost, "/absensi/"+sessionID, guru3, "guru", url.Values{"s_" + enrollments[0]: {"alpa"}}); rec.Code != http.StatusForbidden {
+		t.Errorf("unassigned teacher save: status = %d, want 403", rec.Code)
+	}
+	if got := e.counts(sessionID); got["alpa"] != 0 {
+		t.Error("forbidden POST changed data")
+	}
+	// Rekap: guru mapel boleh melihat rekap kelas yang diajarnya.
+	if rec := e.do(http.MethodGet, "/absensi/rekap?kelas="+e.class1A, e.guru2, "guru", nil); rec.Code == http.StatusForbidden {
+		t.Errorf("subject teacher report: status = %d", rec.Code)
+	}
+}

@@ -50,9 +50,9 @@ func (h *Handler) canViewReport(ctx context.Context, id auth.Identity, classID s
 
 // reportClasses menyusun pilihan kelas: semua kelas tahun aktif untuk
 // admin/kepala sekolah, kelas perwalian untuk guru.
-func (h *Handler) reportClasses(ctx context.Context, id auth.Identity) ([]HomeroomClass, error) {
+func (h *Handler) reportClasses(ctx context.Context, id auth.Identity) ([]TeacherClass, error) {
 	if !id.HasRole(auth.RoleAdminTU) && !id.HasRole(auth.RoleKepalaSekolah) {
-		return HomeroomClasses(ctx, h.db, id.SchoolID, id.UserID)
+		return TeacherClasses(ctx, h.db, id.SchoolID, id.UserID)
 	}
 	rows, err := h.db.Query(ctx, `
 		SELECT c.id, c.name, y.name
@@ -63,9 +63,9 @@ func (h *Handler) reportClasses(ctx context.Context, id auth.Identity) ([]Homero
 		return nil, fmt.Errorf("attendance: list report classes: %w", err)
 	}
 	defer rows.Close()
-	var list []HomeroomClass
+	var list []TeacherClass
 	for rows.Next() {
-		var c HomeroomClass
+		var c TeacherClass
 		if err := rows.Scan(&c.ID, &c.Name, &c.YearName); err != nil {
 			return nil, err
 		}

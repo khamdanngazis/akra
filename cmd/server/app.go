@@ -71,6 +71,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		academicYear: school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
 		classes:      classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
+		assignments:  academic.NewAssignmentHandler(academic.NewAssignmentService(d.db), d.db, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

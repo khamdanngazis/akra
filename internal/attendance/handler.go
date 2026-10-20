@@ -60,7 +60,7 @@ func (h *Handler) Routes(r chi.Router) {
 
 type classesView struct {
 	User    auth.Identity
-	Classes []HomeroomClass
+	Classes []TeacherClass
 	Flash   string
 	Error   string
 }
@@ -97,7 +97,7 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 	today := h.today()
 
 	if classID == "" {
-		classes, err := HomeroomClasses(r.Context(), h.db, id.SchoolID, id.UserID)
+		classes, err := TeacherClasses(r.Context(), h.db, id.SchoolID, id.UserID)
 		if err != nil {
 			h.serverError(w, r, "list homeroom classes", err)
 			return

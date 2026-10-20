@@ -285,6 +285,21 @@ var Routes = []Route{
 			return url.Values{"name": {"Diubah"}, "code": {"UBH"}, "status": {"nonaktif"}}
 		})},
 
+	// Penugasan guru mapel (T65): admin/TU mengatur, guru melihat penugasannya.
+	{Method: "GET", Pattern: "/pengaturan/penugasan/", Kind: KindPage, Roles: []string{Admin, Teacher},
+		Requests: paths(func(o *School) []string {
+			return []string{"/pengaturan/penugasan/", "/pengaturan/penugasan/?kelas=" + o.ClassID}
+		})},
+	{Method: "POST", Pattern: "/pengaturan/penugasan/{classID}", Kind: KindByID, Roles: adminTU,
+		Requests: func(own, o *School) []Request {
+			return []Request{
+				// Kelas sekolah lain.
+				{Path: "/pengaturan/penugasan/" + o.ClassID, Form: url.Values{"t_" + o.SubjectID: {o.Teacher.ID}}},
+				// Kelas sendiri dengan mapel sekolah lain.
+				{Path: "/pengaturan/penugasan/" + own.ClassID, Form: url.Values{"t_" + o.SubjectID: {own.Teacher.ID}}},
+			}
+		}},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,
