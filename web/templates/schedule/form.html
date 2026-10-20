@@ -1,0 +1,55 @@
+{{define "title"}}Ubah Slot Jadwal{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/jadwal?kelas={{.Slot.ClassID}}">← Jadwal kelas {{.Slot.ClassName}}</a></p>
+<div class="page-header">
+<div>
+<h1>Ubah slot</h1>
+<p class="muted">Kelas {{.Slot.ClassName}} · {{.Slot.SubjectName}} · guru {{.Slot.TeacherName}}</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<section class="card form-card">
+<form method="post" action="/jadwal/slot/{{.Slot.ID}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .Errors.subject}} has-error{{end}}">
+<label for="subject">Mata pelajaran</label>
+<select id="subject" name="subject_id"{{if .Errors.subject}} aria-invalid="true" aria-describedby="subject-error"{{end}}>
+{{range .Options}}<option value="{{.SubjectID}}"{{if eq .SubjectID $.Form.SubjectID}} selected{{end}}>{{.SubjectName}} · {{.TeacherName}}</option>{{end}}
+</select>
+{{with .Errors.subject}}<p class="field-error" id="subject-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.day}} has-error{{end}}">
+<label for="day">Hari</label>
+<select id="day" name="day">
+{{range .DayOpts}}<option value="{{.Value}}"{{if eq (print .Value) $.Form.Day}} selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+{{with .Errors.day}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.start}} has-error{{end}}">
+<label for="start">Jam mulai</label>
+<input id="start" name="start" type="time" step="300" value="{{.Form.Start}}"{{if .Errors.start}} aria-invalid="true" aria-describedby="start-error"{{end}}>
+{{with .Errors.start}}<p class="field-error" id="start-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.end}} has-error{{end}}">
+<label for="end">Jam selesai</label>
+<input id="end" name="end" type="time" step="300" value="{{.Form.End}}"{{if .Errors.end}} aria-invalid="true" aria-describedby="end-error"{{end}}>
+{{with .Errors.end}}<p class="field-error" id="end-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button><a class="btn btn-ghost" href="/jadwal?kelas={{.Slot.ClassID}}">Batal</a></div>
+</form>
+</section>
+
+<section class="card mt-4" aria-labelledby="delete-title">
+<h2 id="delete-title" class="card-title">Hapus slot</h2>
+<p class="muted mt-1">Slot {{.Slot.SubjectName}} {{.Slot.Start}}–{{.Slot.End}} dihapus dari jadwal kelas. Tercatat di audit.</p>
+<form method="post" action="/jadwal/slot/{{.Slot.ID}}/hapus" x-data @submit="if (!confirm('Hapus slot ini dari jadwal?')) $event.preventDefault()">
+{{ csrfField }}
+<button type="submit" class="btn btn-danger">Hapus slot</button>
+</form>
+</section>
+{{end}}

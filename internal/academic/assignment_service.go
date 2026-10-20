@@ -123,6 +123,9 @@ type SaveResult struct {
 //     untuk mapel aktif;
 //   - guru harus pengguna aktif berperan guru di sekolah yang sama.
 //
+// Guru mapel yang sudah ada di jadwal (T66) tidak bisa diganti atau dilepas
+// sebelum slot jadwalnya diubah.
+//
 // Audit teaching.assign untuk penugasan baru atau pergantian guru, dan
 // teaching.unassign untuk penugasan yang dilepas. Baris yang tidak berubah
 // tidak menambah audit.
@@ -141,6 +144,12 @@ func (s *AssignmentService) Save(ctx context.Context, actor school.Actor, classI
 				return err
 			}
 			if teacherID == "" {
+				if scheduled, err := hasSchedule(ctx, tx, actor.SchoolID, c.ID, sub.ID); err != nil {
+					return err
+				} else if scheduled {
+					fields[sub.ID] = msgScheduled
+					continue
+				}
 				prev, err := unassignTeacher(ctx, tx, actor.SchoolID, c.ID, sub.ID)
 				if err != nil {
 					return err
@@ -175,6 +184,14 @@ func (s *AssignmentService) Save(ctx context.Context, actor school.Actor, classI
 				fields[sub.ID] = "Mata pelajaran nonaktif tidak bisa diberi guru baru."
 				continue
 			}
+			if current != "" {
+				if scheduled, err := hasSchedule(ctx, tx, actor.SchoolID, c.ID, sub.ID); err != nil {
+					return err
+				} else if scheduled {
+					fields[sub.ID] = msgScheduled
+					continue
+				}
+			}
 			prev, err := assignTeacher(ctx, tx, actor.SchoolID, c.AcademicYearID, c.ID, sub.ID, teacherID)
 			if err != nil {
 				return err
@@ -200,6 +217,22 @@ func (s *AssignmentService) Save(ctx context.Context, actor school.Actor, classI
 		return SaveResult{}, err
 	}
 	return res, nil
+}
+
+// msgScheduled: guru mapel yang sudah dijadwalkan tidak diganti diam-diam,
+// karena slot jadwal (T66) menyimpan guru itu dan harus dicek bentroknya.
+const msgScheduled = "Mapel ini sudah ada di jadwal kelas. Ubah atau hapus slot jadwalnya dulu."
+
+// hasSchedule melaporkan apakah mapel subjectID sudah punya slot jadwal di
+// kelas classID.
+func hasSchedule(ctx context.Context, q database.DBTX, schoolID, classID, subjectID string) (bool, error) {
+	var ok bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM schedule_slots WHERE school_id = $1 AND class_id = $2 AND subject_id = $3)`,
+		schoolID, classID, subjectID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("academic: check schedule: %w", err)
+	}
+	return ok, nil
 }
 
 func assignmentAudit(actor school.Actor, action string, c classes.Class, sub Subject, before, after map[string]any) audit.Entry {

@@ -300,6 +300,27 @@ var Routes = []Route{
 			}
 		}},
 
+	// Jadwal pelajaran (T66): admin/TU mengatur, kepala sekolah melihat.
+	{Method: "GET", Pattern: "/jadwal/", Kind: KindPage, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/jadwal/", "/jadwal/?kelas=" + o.ClassID} })},
+	{Method: "POST", Pattern: "/jadwal/kelas/{classID}", Kind: KindByID, Roles: adminTU,
+		Requests: func(own, o *School) []Request {
+			return []Request{
+				// Kelas sekolah lain.
+				{Path: "/jadwal/kelas/" + o.ClassID, Form: url.Values{"subject_id": {o.SubjectID}, "day": {"2"}, "start": {"09:00"}, "end": {"09:40"}}},
+				// Kelas sendiri dengan mapel sekolah lain.
+				{Path: "/jadwal/kelas/" + own.ClassID, Form: url.Values{"subject_id": {o.SubjectID}, "day": {"2"}, "start": {"09:00"}, "end": {"09:40"}}},
+			}
+		}},
+	{Method: "GET", Pattern: "/jadwal/slot/{id}/ubah", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/jadwal/slot/" + o.SlotID + "/ubah"} })},
+	{Method: "POST", Pattern: "/jadwal/slot/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/jadwal/slot/" + o.SlotID }, func(o *School) url.Values {
+			return url.Values{"subject_id": {o.SubjectID}, "day": {"3"}, "start": {"10:00"}, "end": {"10:40"}}
+		})},
+	{Method: "POST", Pattern: "/jadwal/slot/{id}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/jadwal/slot/" + o.SlotID + "/hapus" }, nil)},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,
