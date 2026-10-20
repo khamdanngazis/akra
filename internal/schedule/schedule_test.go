@@ -375,6 +375,10 @@ func newEnv(t *testing.T) *env {
 }
 
 func (e *env) do(method, path, roles string, form url.Values) *httptest.ResponseRecorder {
+	return e.doAs(method, path, e.actor.UserID, roles, form)
+}
+
+func (e *env) doAs(method, path, user, roles string, form url.Values) *httptest.ResponseRecorder {
 	var body io.Reader
 	if form != nil {
 		body = strings.NewReader(form.Encode())
@@ -383,7 +387,7 @@ func (e *env) do(method, path, roles string, form url.Values) *httptest.Response
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	req.Header.Set("X-Test-User", e.actor.UserID+"|"+roles)
+	req.Header.Set("X-Test-User", user+"|"+roles)
 	rec := httptest.NewRecorder()
 	e.router.ServeHTTP(rec, req)
 	return rec

@@ -303,6 +303,7 @@ var Routes = []Route{
 	// Jadwal pelajaran (T66): admin/TU mengatur, kepala sekolah melihat.
 	{Method: "GET", Pattern: "/jadwal/", Kind: KindPage, Roles: []string{Admin, Principal},
 		Requests: paths(func(o *School) []string { return []string{"/jadwal/", "/jadwal/?kelas=" + o.ClassID} })},
+	{Method: "GET", Pattern: "/jadwal/saya", Kind: KindPage, Roles: []string{Teacher}},
 	{Method: "POST", Pattern: "/jadwal/kelas/{classID}", Kind: KindByID, Roles: adminTU,
 		Requests: func(own, o *School) []Request {
 			return []Request{
@@ -336,6 +337,8 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0]} })},
 	{Method: "GET", Pattern: "/portal/siswa/{id}/tagihan", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/tagihan"} })},
+	{Method: "GET", Pattern: "/portal/siswa/{id}/jadwal", Kind: KindByID, Roles: parent,
+		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/jadwal"} })},
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 

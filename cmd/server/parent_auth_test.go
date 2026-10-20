@@ -33,11 +33,13 @@ func TestParentAuth_Ownership(t *testing.T) {
 	own := map[string]string{
 		"detail":   "/portal/siswa/" + a.StudentIDs[0],
 		"tagihan":  "/portal/siswa/" + a.StudentIDs[0] + "/tagihan",
+		"jadwal":   "/portal/siswa/" + a.StudentIDs[0] + "/jadwal",
 		"kuitansi": "/portal/pembayaran/" + a.PaymentID + "/kuitansi",
 	}
 	sibling := map[string]string{
 		"detail":   "/portal/siswa/" + a.StudentIDs[1],
 		"tagihan":  "/portal/siswa/" + a.StudentIDs[1] + "/tagihan",
+		"jadwal":   "/portal/siswa/" + a.StudentIDs[1] + "/jadwal",
 		"kuitansi": "/portal/pembayaran/" + a.Payment2ID + "/kuitansi",
 	}
 	for name, path := range own {
@@ -74,6 +76,14 @@ func TestParentAuth_Ownership(t *testing.T) {
 	}
 	if !strings.Contains(ann1, "Pengumuman "+a.Marker) || !strings.Contains(ann2, "Pengumuman "+a.Marker) {
 		t.Error("school-wide announcement is missing")
+	}
+	// Jadwal anak X (kelas ClassID) berisi slot fixture; jadwal anak Y
+	// (kelas lain) tidak.
+	if !strings.Contains(p1.get(own["jadwal"]).Body.String(), "Mapel "+a.Marker) {
+		t.Error("parent 1 does not see the slot in their child's schedule")
+	}
+	if strings.Contains(p2.get(sibling["jadwal"]).Body.String(), "Mapel "+a.Marker) {
+		t.Error("parent 2 sees a slot from another class")
 	}
 	// Daftar anak hanya berisi anak sendiri.
 	list := p1.get("/portal/").Body.String()
@@ -173,6 +183,7 @@ func TestParentAuth_NoEnumeration(t *testing.T) {
 	for _, tc := range []struct{ name, notMine, otherSchool, missing string }{
 		{"detail", "/portal/siswa/" + a.StudentIDs[1], "/portal/siswa/" + b.StudentIDs[0], "/portal/siswa/" + random},
 		{"tagihan", "/portal/siswa/" + a.StudentIDs[1] + "/tagihan", "/portal/siswa/" + b.StudentIDs[0] + "/tagihan", "/portal/siswa/" + random + "/tagihan"},
+		{"jadwal", "/portal/siswa/" + a.StudentIDs[1] + "/jadwal", "/portal/siswa/" + b.StudentIDs[0] + "/jadwal", "/portal/siswa/" + random + "/jadwal"},
 		{"kuitansi", "/portal/pembayaran/" + a.Payment2ID + "/kuitansi", "/portal/pembayaran/" + b.PaymentID + "/kuitansi", "/portal/pembayaran/" + random + "/kuitansi"},
 		{"bukan uuid", "/portal/siswa/" + a.StudentIDs[1], "/portal/siswa/" + b.StudentIDs[0], "/portal/siswa/123"},
 	} {

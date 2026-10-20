@@ -47,6 +47,7 @@ var Items = []MenuItem{
 	{Label: "Siswa", Path: "/siswa", Icon: "users", Desc: "Kelola data siswa dan wali", Also: []string{"/impor/siswa"}, Roles: []string{adminTU, kepala}},
 	{Label: "Kelas", Path: "/kelas", Icon: "school", Desc: "Kelas dan wali kelas", Roles: []string{adminTU, kepala}},
 	{Label: "Jadwal", Path: "/jadwal", Icon: "schedule", Desc: "Jadwal pelajaran mingguan per kelas", Roles: []string{adminTU, kepala}},
+	{Label: "Jadwal Saya", Path: "/jadwal/saya", Icon: "schedule", Short: "Jadwal", Desc: "Jadwal mengajar minggu ini", Roles: []string{guru}},
 	{Label: "Pembayaran", Path: "/keuangan/pembayaran/baru", Icon: "wallet", Short: "Bayar", Desc: "Catat pembayaran siswa", Roles: []string{bendahara}},
 	{Label: "Tagihan Massal", Path: "/keuangan/tagihan-massal", Icon: "receipt", Short: "Tagihan", Desc: "Buat tagihan untuk satu kelas", Roles: []string{bendahara}},
 	{Label: "Tunggakan", Path: "/keuangan/tunggakan", Icon: "arrears", Desc: "Tagihan yang lewat jatuh tempo", Roles: []string{bendahara, adminTU, kepala}},

@@ -1115,6 +1115,27 @@
     @apply flex items-center gap-3 py-2.5 first:pt-0 last:pb-0;
   }
 
+  /* Tab hari jadwal: hanya di layar sempit; hari lain disembunyikan. */
+  .day-tabs {
+    @apply mb-3 flex gap-0.5 rounded-xl bg-slate-100 p-1 md:hidden;
+  }
+
+  .day-tabs > button {
+    @apply flex min-h-11 min-w-0 flex-1 items-center justify-center gap-0.5 rounded-lg px-0.5 text-sm font-semibold text-slate-600;
+  }
+
+  .day-tabs > button.is-active {
+    @apply bg-white text-navy-900 shadow-sm;
+  }
+
+  .day-tab-count {
+    @apply rounded-full bg-blue-100 px-1 text-[11px] leading-4 text-blue-700;
+  }
+
+  .day-off {
+    @apply max-md:hidden;
+  }
+
   .slot-time {
     @apply w-24 flex-none text-sm font-semibold text-navy-900 tabular-nums;
   }

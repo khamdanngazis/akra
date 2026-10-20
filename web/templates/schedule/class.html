@@ -25,24 +25,7 @@
 <noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
 </form>
 
-<div class="week-grid">
-{{range .Week}}
-<section class="card day-card" aria-labelledby="day-{{.Day}}">
-<h2 id="day-{{.Day}}" class="card-title">{{.Name}}</h2>
-{{if .Slots}}
-<ul class="slot-list">
-{{range .Slots}}<li>
-<span class="slot-time">{{.Start}}–{{.End}}</span>
-<span class="min-w-0 flex-1"><strong class="block">{{.SubjectName}}</strong><span class="block text-sm text-slate-500">{{.TeacherName}}</span></span>
-{{if $.CanEdit}}<a class="btn btn-ghost btn-sm" href="/jadwal/slot/{{.ID}}/ubah" aria-label="Ubah {{.SubjectName}} {{.Start}}">Ubah</a>{{end}}
-</li>{{end}}
-</ul>
-{{else}}
-<p class="muted m-0 mt-2 text-sm">Tidak ada pelajaran.</p>
-{{end}}
-</section>
-{{end}}
-</div>
+{{template "schedule_week" .Week}}
 
 {{if .CanEdit}}
 <section class="card form-card mt-6" aria-labelledby="add-title">

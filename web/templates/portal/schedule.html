@@ -1,0 +1,16 @@
+{{define "title"}}Jadwal {{.Child.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/portal/siswa/{{.Child.ID}}">← {{.Child.FullName}}</a></p>
+<h1>Jadwal Pelajaran</h1>
+<p class="muted">{{.Child.FullName}} · NIS {{.Child.NIS}}{{if .Has}} · kelas {{.Child.ClassName}}, tahun ajaran {{.Child.YearName}}{{end}}</p>
+{{template "flash" .}}
+
+{{if not .Has}}
+<section class="card empty-state"><p>Anak belum terdaftar di kelas pada tahun ajaran aktif.</p></section>
+{{else if .Week.NonEmpty}}
+<div class="mt-4">{{template "schedule_week" .Week}}</div>
+{{else}}
+<section class="card empty-state"><p>Jadwal kelas {{.Child.ClassName}} belum diisi sekolah.</p></section>
+{{end}}
+{{end}}
