@@ -128,14 +128,15 @@ var Routes = []Route{
 	// Absensi.
 	{Method: "GET", Pattern: "/absensi/", Kind: KindPage, Roles: []string{Teacher},
 		Requests: paths(func(o *School) []string {
-			return []string{"/absensi/", "/absensi/?kelas=" + o.ClassID, "/absensi/?kelas=" + o.ClassID + "&tanggal=2026-10-16"}
+			return []string{"/absensi/", "/absensi/?kelas=" + o.ClassID, "/absensi/?kelas=" + o.ClassID + "&tanggal=2026-10-16",
+				"/absensi/?kelas=" + o.ClassID + "&mapel=" + o.SubjectID}
 		})},
 	{Method: "POST", Pattern: "/absensi/{sessionID}", Kind: KindByID, Roles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/absensi/" + o.AttendanceSessionID },
 			func(o *School) url.Values { return url.Values{"status_" + o.EnrollmentIDs[0]: {"alpa"}} })},
 	{Method: "GET", Pattern: "/absensi/rekap", Kind: KindPage, Roles: []string{Admin, Teacher, Principal},
 		Requests: paths(func(o *School) []string {
-			return []string{"/absensi/rekap", "/absensi/rekap?kelas=" + o.ClassID}
+			return []string{"/absensi/rekap", "/absensi/rekap?kelas=" + o.ClassID, "/absensi/rekap?kelas=" + o.ClassID + "&mapel=" + o.SubjectID}
 		})},
 
 	// Impor siswa.
@@ -273,6 +274,12 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/pengaturan/tahun-ajaran/" + o.YearID + "/aktifkan" }, nil)},
 	{Method: "GET", Pattern: "/pengaturan/tahun-ajaran/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/pengaturan/tahun-ajaran/" + o.YearID + "/ubah"} })},
+
+	// Pengaturan absensi per mapel (T68): hanya admin/TU.
+	{Method: "POST", Pattern: "/pengaturan/absensi", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/absensi" }, func(*School) url.Values {
+			return url.Values{"per_mapel": {"aktif"}}
+		})},
 
 	// Mata pelajaran (T64): hanya admin/TU.
 	{Method: "GET", Pattern: "/pengaturan/mapel/", Kind: KindPage, Roles: adminTU},

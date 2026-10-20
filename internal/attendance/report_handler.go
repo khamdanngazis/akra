@@ -32,11 +32,15 @@ type reportView struct {
 	From, To  string // YYYY-MM-DD
 	Range     string // label rentang
 	YearRange string
-	Summary   ClassSummary
-	Percent   string
-	Rows      []reportRow
-	Error     string
-	Flash     string
+	// Subjects berisi pilihan jenis rekap (harian lalu mapel) jika sekolah
+	// memakai absensi per mapel; kosong jika tidak.
+	Subjects    []reportOption
+	SubjectName string // kosong untuk rekap harian
+	Summary     ClassSummary
+	Percent     string
+	Rows        []reportRow
+	Error       string
+	Flash       string
 }
 
 // canViewReport: admin_tu dan kepala_sekolah boleh melihat rekap semua kelas
@@ -152,12 +156,17 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	students, err := SummaryByStudent(r.Context(), h.db, id.SchoolID, classID, from, to)
+	subjectID, err := h.reportSubjects(r.Context(), &view, id.SchoolID, classID, q.Get("mapel"))
+	if err != nil {
+		h.serverError(w, r, "report subjects", err)
+		return
+	}
+	students, err := SummaryByStudent(r.Context(), h.db, id.SchoolID, classID, subjectID, from, to)
 	if err != nil {
 		h.serverError(w, r, "summary by student", err)
 		return
 	}
-	if view.Summary, err = SummaryByClass(r.Context(), h.db, id.SchoolID, classID, from, to); err != nil {
+	if view.Summary, err = SummaryByClass(r.Context(), h.db, id.SchoolID, classID, subjectID, from, to); err != nil {
 		h.serverError(w, r, "summary by class", err)
 		return
 	}
@@ -167,6 +176,38 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 		view.Rows = append(view.Rows, reportRow{NIS: s.NIS, FullName: s.FullName, Counts: s.Counts, Percent: FormatPercent(s.PresentPercent())})
 	}
 	h.render.Render(w, r, http.StatusOK, "attendance/rekap", view)
+}
+
+// reportSubjects mengisi pilihan jenis rekap untuk kelas classID dan
+// mengembalikan mapel yang dipakai. Pilihan tampil jika absensi per mapel
+// aktif atau kelas sudah punya sesi mapel. Mapel yang bukan pilihan kelas
+// ini (mis. tersisa setelah ganti kelas, atau milik sekolah lain) diganti
+// rekap harian.
+func (h *Handler) reportSubjects(ctx context.Context, view *reportView, schoolID, classID, requested string) (string, error) {
+	enabled, err := PerSubjectEnabled(ctx, h.db, schoolID)
+	if err != nil {
+		return "", err
+	}
+	if !enabled {
+		if enabled, err = HasSubjectSessions(ctx, h.db, schoolID, classID); err != nil || !enabled {
+			return "", err
+		}
+	}
+	subjects, err := ClassSubjects(ctx, h.db, schoolID, classID)
+	if err != nil {
+		return "", err
+	}
+	chosen := ""
+	for _, s := range subjects {
+		if s.ID == requested {
+			chosen, view.SubjectName = s.ID, s.Name
+		}
+	}
+	view.Subjects = append(view.Subjects, reportOption{ID: "", Label: "Harian", Selected: chosen == ""})
+	for _, s := range subjects {
+		view.Subjects = append(view.Subjects, reportOption{ID: s.ID, Label: s.Name, Selected: s.ID == chosen})
+	}
+	return chosen, nil
 }
 
 // FormatPercent memformat persepuluhan persen sebagai "92,5%", atau "–"
@@ -194,7 +235,12 @@ func containsOption(opts []reportOption, id string) bool {
 	return false
 }
 
-// reportURL mengembalikan tautan rekap kelas classID.
-func reportURL(classID string) string {
-	return attendancePath + "/rekap?" + url.Values{"kelas": {classID}}.Encode()
+// reportURL mengembalikan tautan rekap kelas classID, untuk mapel subjectID
+// jika tidak kosong.
+func reportURL(classID, subjectID string) string {
+	v := url.Values{"kelas": {classID}}
+	if subjectID != "" {
+		v.Set("mapel", subjectID)
+	}
+	return attendancePath + "/rekap?" + v.Encode()
 }

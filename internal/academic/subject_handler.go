@@ -10,6 +10,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/page"
+	"akra/internal/platform/settings"
 	"akra/internal/school"
 )
 
@@ -65,8 +66,11 @@ type subjectsView struct {
 	Rows      []subjectRow
 	New       SubjectForm
 	NewErrors map[string]string
-	Flash     string
-	Error     string
+	// PerSubject: absensi per mapel aktif (T68). Diubah lewat
+	// POST /pengaturan/absensi di paket attendance.
+	PerSubject bool
+	Flash      string
+	Error      string
 }
 
 // showOpts berisi keadaan form yang gagal disimpan, untuk ditampilkan lagi.
@@ -135,11 +139,17 @@ func (h *SubjectHandler) show(w http.ResponseWriter, r *http.Request, status int
 		h.serverError(w, r, "list subjects", err)
 		return
 	}
+	perSubject, err := settings.Bool(r.Context(), h.svc.db, id.SchoolID, settings.AttendancePerSubject, false)
+	if err != nil {
+		h.serverError(w, r, "attendance settings", err)
+		return
+	}
 	view := subjectsView{
-		User:      id,
-		New:       opts.newForm,
-		NewErrors: opts.newErrors,
-		Flash:     auth.PopFlash(r.Context(), h.sessions),
+		User:       id,
+		New:        opts.newForm,
+		NewErrors:  opts.newErrors,
+		PerSubject: perSubject,
+		Flash:      auth.PopFlash(r.Context(), h.sessions),
 	}
 	for _, s := range list {
 		row := subjectRow{ID: s.ID, Name: s.Name, Code: s.Code, IsActive: s.IsActive,

@@ -90,7 +90,7 @@ func TestGetChildDetail(t *testing.T) {
 		t.Errorf("attendance = %+v, want %+v (last year's record excluded)", d.Attendance, want)
 	}
 	// Sama dengan rekap kelas T27 untuk siswa yang sama.
-	rows, err := attendance.SummaryByStudent(ctx, f.tx, f.schoolA, c1A, d.RecapFrom, d.RecapTo)
+	rows, err := attendance.SummaryByStudent(ctx, f.tx, f.schoolA, c1A, "", d.RecapFrom, d.RecapTo)
 	if err != nil {
 		t.Fatal(err)
 	}

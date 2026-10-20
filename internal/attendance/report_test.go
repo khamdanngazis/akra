@@ -68,7 +68,7 @@ func newReportFixture(t *testing.T) *reportFixture {
 			if class == f.class1B && d < 6 {
 				continue
 			}
-			s, err := GetOrCreateSession(ctx, tx, f.schoolA, class, date, f.teacher)
+			s, err := GetOrCreateSession(ctx, tx, f.schoolA, class, "", date, f.teacher)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -116,7 +116,7 @@ func TestReport_ManuallyComputedNumbers(t *testing.T) {
 	ctx := context.Background()
 	from, to := day("2026-09-01"), day("2026-09-10")
 
-	students, err := SummaryByStudent(ctx, f.tx, f.schoolA, f.class1A, from, to)
+	students, err := SummaryByStudent(ctx, f.tx, f.schoolA, f.class1A, "", from, to)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestReport_ManuallyComputedNumbers(t *testing.T) {
 		t.Errorf("totals = %d, %d, %d; want 10, 5, 10", got["Ani"].Total(), got["Budi"].Total(), got["Citra"].Total())
 	}
 
-	class, err := SummaryByClass(ctx, f.tx, f.schoolA, f.class1A, from, to)
+	class, err := SummaryByClass(ctx, f.tx, f.schoolA, f.class1A, "", from, to)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,19 +152,19 @@ func TestReport_ManuallyComputedNumbers(t *testing.T) {
 	}
 
 	// Budi di 1B: 6–10 September, semua hadir.
-	b, _ := SummaryByStudent(ctx, f.tx, f.schoolA, f.class1B, from, to)
+	b, _ := SummaryByStudent(ctx, f.tx, f.schoolA, f.class1B, "", from, to)
 	if len(b) != 1 || b[0].FullName != "Budi" || b[0].Counts != (Counts{Hadir: 5}) || b[0].PresentPercent() != 1000 {
 		t.Errorf("class 1B = %+v", b)
 	}
 
 	// Sebagian rentang: 3–7 September.
-	part := byName(must(SummaryByStudent(ctx, f.tx, f.schoolA, f.class1A, day("2026-09-03"), day("2026-09-07"))))
+	part := byName(must(SummaryByStudent(ctx, f.tx, f.schoolA, f.class1A, "", day("2026-09-03"), day("2026-09-07"))))
 	if part["Ani"].Counts != (Counts{Hadir: 2, Sakit: 1, Izin: 1, Alpa: 1}) || part["Budi"].Counts != (Counts{Hadir: 2, Sakit: 1}) || part["Citra"].Counts != (Counts{Hadir: 5}) {
 		t.Errorf("3–7 September = %+v", part)
 	}
 
 	// Sekolah lain tidak melihat apa pun.
-	if list, _ := SummaryByStudent(ctx, f.tx, "00000000-0000-0000-0000-000000000000", f.class1A, from, to); len(list) != 0 {
+	if list, _ := SummaryByStudent(ctx, f.tx, "00000000-0000-0000-0000-000000000000", f.class1A, "", from, to); len(list) != 0 {
 		t.Error("another school sees records")
 	}
 }
@@ -231,7 +231,7 @@ func TestReportHandler(t *testing.T) {
 		t.Errorf("report does not show 60 sessions and 30 students")
 	}
 	// Total per siswa = 60 sesi.
-	students, _ := SummaryByStudent(ctx, e.tx, e.schoolA, e.class1A, e.today.AddDate(0, 0, -59), e.today)
+	students, _ := SummaryByStudent(ctx, e.tx, e.schoolA, e.class1A, "", e.today.AddDate(0, 0, -59), e.today)
 	for _, s := range students {
 		if s.Total() != 60 {
 			t.Fatalf("%s total = %d, want 60", s.FullName, s.Total())

@@ -1,5 +1,6 @@
-// Package attendance mengelola absensi harian per kelas: satu sesi per kelas
-// per tanggal, dan satu catatan status per siswa di sesi itu.
+// Package attendance mengelola absensi per kelas: satu sesi harian per kelas
+// per tanggal, dan (jika sekolah mengaktifkannya, T68) satu sesi per mapel
+// per kelas per tanggal. Setiap sesi punya satu catatan status per siswa.
 package attendance
 
 import (
@@ -34,15 +35,20 @@ var (
 	ErrDateOutsideYear = errors.New("attendance: date is outside the class academic year")
 	// ErrInvalidStatus dikembalikan jika status bukan salah satu Statuses.
 	ErrInvalidStatus = errors.New("attendance: invalid status")
+	// ErrSubjectNotFound dikembalikan jika mapel tidak ada atau milik sekolah lain.
+	ErrSubjectNotFound = errors.New("attendance: subject not found")
 )
 
-// Session adalah sesi absensi satu kelas pada satu tanggal.
+// Session adalah sesi absensi satu kelas pada satu tanggal: harian jika
+// SubjectID kosong, atau untuk satu mapel.
 type Session struct {
 	ID             string
 	SchoolID       string
 	AcademicYearID string
 	ClassID        string
 	ClassName      string
+	SubjectID      string // kosong untuk sesi harian
+	SubjectName    string
 	SessionDate    time.Time
 	CreatedBy      string
 	CreatedAt      time.Time
@@ -61,19 +67,24 @@ type Record struct {
 }
 
 const sessionSelect = `
-SELECT s.id, s.school_id, s.academic_year_id, s.class_id, c.name, s.session_date, s.created_by, s.created_at, s.updated_at
+SELECT s.id, s.school_id, s.academic_year_id, s.class_id, c.name, coalesce(s.subject_id::text, ''), coalesce(sub.name, ''),
+       s.session_date, s.created_by, s.created_at, s.updated_at
 FROM attendance_sessions s
-JOIN classes c ON c.id = s.class_id AND c.school_id = s.school_id`
+JOIN classes c ON c.id = s.class_id AND c.school_id = s.school_id
+LEFT JOIN subjects sub ON sub.id = s.subject_id AND sub.school_id = s.school_id`
 
-// GetOrCreateSession mengembalikan sesi kelas classID pada tanggal date,
-// membuatnya jika belum ada. INSERT ... ON CONFLICT DO NOTHING lalu SELECT
+// GetOrCreateSession mengembalikan sesi kelas classID pada tanggal date
+// untuk mapel subjectID (kosong = sesi harian), membuatnya jika belum ada. INSERT ... ON CONFLICT DO NOTHING lalu SELECT
 // membuat dua permintaan bersamaan tetap menghasilkan satu sesi.
 //
 // Kelas harus milik schoolID dan date harus di dalam tahun ajaran kelas.
 // userID dicatat sebagai pembuat jika sesi baru dibuat.
-func GetOrCreateSession(ctx context.Context, q database.DBTX, schoolID, classID string, date time.Time, userID string) (Session, error) {
+func GetOrCreateSession(ctx context.Context, q database.DBTX, schoolID, classID, subjectID string, date time.Time, userID string) (Session, error) {
 	if !database.IsUUID(classID) {
 		return Session{}, ErrClassNotFound
+	}
+	if subjectID != "" && !database.IsUUID(subjectID) {
+		return Session{}, ErrSubjectNotFound
 	}
 	var yearStart, yearEnd time.Time
 	err := q.QueryRow(ctx, `
@@ -90,13 +101,16 @@ func GetOrCreateSession(ctx context.Context, q database.DBTX, schoolID, classID 
 		return Session{}, ErrDateOutsideYear
 	}
 
+	subject := nullUUID(subjectID)
 	if _, err := q.Exec(ctx, `
-		INSERT INTO attendance_sessions (school_id, academic_year_id, class_id, session_date, created_by)
-		SELECT school_id, academic_year_id, id, $3, $4 FROM classes WHERE school_id = $1 AND id = $2
-		ON CONFLICT (class_id, session_date) DO NOTHING`, schoolID, classID, date, userID); err != nil {
+		INSERT INTO attendance_sessions (school_id, academic_year_id, class_id, subject_id, session_date, created_by)
+		SELECT school_id, academic_year_id, id, $5::uuid, $3, $4 FROM classes WHERE school_id = $1 AND id = $2
+		ON CONFLICT (class_id, session_date, (coalesce(subject_id, '00000000-0000-0000-0000-000000000000'::uuid))) DO NOTHING`,
+		schoolID, classID, date, userID, subject); err != nil {
 		return Session{}, mapError("create session", err)
 	}
-	rows, err := q.Query(ctx, sessionSelect+` WHERE s.school_id = $1 AND s.class_id = $2 AND s.session_date = $3`, schoolID, classID, date)
+	rows, err := q.Query(ctx, sessionSelect+` WHERE s.school_id = $1 AND s.class_id = $2 AND s.session_date = $3
+		AND s.subject_id IS NOT DISTINCT FROM $4::uuid`, schoolID, classID, date, subject)
 	if err != nil {
 		return Session{}, mapError("get session", err)
 	}
@@ -177,8 +191,17 @@ func ListRecords(ctx context.Context, q database.DBTX, schoolID, sessionID strin
 
 func scanSession(row pgx.CollectableRow) (Session, error) {
 	var s Session
-	err := row.Scan(&s.ID, &s.SchoolID, &s.AcademicYearID, &s.ClassID, &s.ClassName, &s.SessionDate, &s.CreatedBy, &s.CreatedAt, &s.UpdatedAt)
+	err := row.Scan(&s.ID, &s.SchoolID, &s.AcademicYearID, &s.ClassID, &s.ClassName, &s.SubjectID, &s.SubjectName,
+		&s.SessionDate, &s.CreatedBy, &s.CreatedAt, &s.UpdatedAt)
 	return s, err
+}
+
+// nullUUID mengubah id kosong menjadi NULL.
+func nullUUID(id string) any {
+	if id == "" {
+		return nil
+	}
+	return id
 }
 
 // mapError mengubah error database menjadi error domain tanpa membawa pesan
@@ -194,6 +217,8 @@ func mapError(op string, err error) error {
 			return ErrInvalidStatus
 		case pgErr.Code == "23503" && pgErr.ConstraintName == "attendance_sessions_class_fkey":
 			return ErrClassNotFound
+		case pgErr.Code == "23503" && pgErr.ConstraintName == "attendance_sessions_subject_fkey":
+			return ErrSubjectNotFound
 		}
 		return fmt.Errorf("attendance: %s: database error %s (constraint %q)", op, pgErr.Code, pgErr.ConstraintName)
 	}

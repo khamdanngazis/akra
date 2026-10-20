@@ -3,16 +3,23 @@
 {{define "content"}}
 <div class="attendance-head">
 <div>
-<h1>Absensi {{.Session.ClassName}}</h1>
+<h1>Absensi {{.Session.ClassName}}{{with .Session.SubjectName}} · {{.}}{{end}}</h1>
 <p class="muted">{{.DateLabel}}{{if .IsToday}} · hari ini{{end}}</p>
 </div>
 <form method="get" action="/absensi" class="date-picker">
 <input type="hidden" name="kelas" value="{{.Session.ClassID}}">
+{{with .Session.SubjectID}}<input type="hidden" name="mapel" value="{{.}}">{{end}}
 <a class="btn btn-ghost btn-sm" href="{{.PrevURL}}" aria-label="Hari sebelumnya">‹</a>
 <input type="date" name="tanggal" value="{{.Date}}" max="{{.Today}}" aria-label="Tanggal" onchange="this.form.submit()">
 {{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}" aria-label="Hari berikutnya">›</a>{{else}}<span class="btn btn-ghost btn-sm" aria-disabled="true">›</span>{{end}}
 </form>
 </div>
+
+{{if .Modes}}
+<nav class="mode-tabs" aria-label="Jenis absensi">
+{{range .Modes}}<a href="{{.URL}}"{{if .Active}} class="is-active" aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+{{end}}
 
 {{template "flash" .}}
 

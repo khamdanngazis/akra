@@ -92,6 +92,10 @@ func (c ClassYear) CheckRange(from, to time.Time) error {
 	return nil
 }
 
+// Rekap selalu untuk satu jenis sesi: harian (subjectID kosong, sama dengan
+// rekap sebelum T68) atau satu mapel. Sesi harian dan per mapel tidak
+// dijumlahkan karena siswa yang sama tercatat di keduanya.
+//
 // Catatan dihitung hanya jika tanggal sesi berada di dalam masa enrollment
 // siswa, sehingga siswa yang pindah kelas tidak terhitung di kelas lamanya
 // setelah pindah (atau di kelas barunya sebelum masuk).
@@ -102,6 +106,7 @@ JOIN enrollments e ON e.id = r.enrollment_id AND e.school_id = r.school_id
 JOIN students st ON st.id = e.student_id AND st.school_id = e.school_id
 WHERE r.school_id = $1 AND s.class_id = $2
   AND s.session_date BETWEEN $3 AND $4
+  AND s.subject_id IS NOT DISTINCT FROM $5::uuid
   AND s.session_date BETWEEN e.start_date AND coalesce(e.end_date, 'infinity'::date)`
 
 const countColumns = `
@@ -111,18 +116,22 @@ count(*) FILTER (WHERE r.status = 'izin'),
 count(*) FILTER (WHERE r.status = 'alpa')`
 
 // SummaryByStudent mengembalikan jumlah hadir, sakit, izin, dan alpa per
-// siswa di kelas classID antara from dan to (inklusif), urut nama. Hanya
-// data sekolah schoolID.
-func SummaryByStudent(ctx context.Context, q database.DBTX, schoolID, classID string, from, to time.Time) ([]StudentSummary, error) {
+// siswa di kelas classID antara from dan to (inklusif), urut nama, untuk
+// sesi harian (subjectID kosong) atau sesi mapel subjectID. Hanya data
+// sekolah schoolID.
+func SummaryByStudent(ctx context.Context, q database.DBTX, schoolID, classID, subjectID string, from, to time.Time) ([]StudentSummary, error) {
 	if !database.IsUUID(classID) {
 		return nil, ErrClassNotFound
+	}
+	if subjectID != "" && !database.IsUUID(subjectID) {
+		return nil, ErrSubjectNotFound
 	}
 	rows, err := q.Query(ctx, `
 		SELECT st.id, st.nis, st.full_name, `+countColumns+`
 		`+reportFrom+`
 		GROUP BY st.id, st.nis, st.full_name
 		ORDER BY lower(st.full_name), st.nis`,
-		schoolID, classID, from, to)
+		schoolID, classID, from, to, nullUUID(subjectID))
 	if err != nil {
 		return nil, mapError("summary by student", err)
 	}
@@ -138,22 +147,41 @@ func SummaryByStudent(ctx context.Context, q database.DBTX, schoolID, classID st
 }
 
 // SummaryByClass mengembalikan total per status kelas classID antara from
-// dan to (inklusif), beserta jumlah sesinya.
-func SummaryByClass(ctx context.Context, q database.DBTX, schoolID, classID string, from, to time.Time) (ClassSummary, error) {
+// dan to (inklusif), beserta jumlah sesinya, untuk jenis sesi yang sama
+// dengan SummaryByStudent.
+func SummaryByClass(ctx context.Context, q database.DBTX, schoolID, classID, subjectID string, from, to time.Time) (ClassSummary, error) {
 	if !database.IsUUID(classID) {
 		return ClassSummary{}, ErrClassNotFound
 	}
+	if subjectID != "" && !database.IsUUID(subjectID) {
+		return ClassSummary{}, ErrSubjectNotFound
+	}
 	var c ClassSummary
-	err := q.QueryRow(ctx, `SELECT `+countColumns+reportFrom, schoolID, classID, from, to).
+	err := q.QueryRow(ctx, `SELECT `+countColumns+reportFrom, schoolID, classID, from, to, nullUUID(subjectID)).
 		Scan(&c.Hadir, &c.Sakit, &c.Izin, &c.Alpa)
 	if err != nil {
 		return ClassSummary{}, mapError("summary by class", err)
 	}
 	err = q.QueryRow(ctx, `SELECT count(*) FROM attendance_sessions
-		WHERE school_id = $1 AND class_id = $2 AND session_date BETWEEN $3 AND $4`,
-		schoolID, classID, from, to).Scan(&c.Sessions)
+		WHERE school_id = $1 AND class_id = $2 AND session_date BETWEEN $3 AND $4
+		  AND subject_id IS NOT DISTINCT FROM $5::uuid`,
+		schoolID, classID, from, to, nullUUID(subjectID)).Scan(&c.Sessions)
 	if err != nil {
 		return ClassSummary{}, mapError("count sessions", err)
 	}
 	return c, nil
+}
+
+// HasSubjectSessions melaporkan apakah kelas classID punya sesi absensi mapel.
+func HasSubjectSessions(ctx context.Context, q database.DBTX, schoolID, classID string) (bool, error) {
+	if !database.IsUUID(classID) {
+		return false, nil
+	}
+	var ok bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM attendance_sessions WHERE school_id = $1 AND class_id = $2 AND subject_id IS NOT NULL)`,
+		schoolID, classID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("attendance: has subject sessions: %w", err)
+	}
+	return ok, nil
 }

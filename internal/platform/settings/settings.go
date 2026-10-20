@@ -18,6 +18,9 @@ const (
 	// VoidApprovalThreshold: pembatalan pembayaran dengan nominal di atas
 	// nilai ini (rupiah) perlu persetujuan kepala sekolah.
 	VoidApprovalThreshold = "void_approval_threshold"
+	// AttendancePerSubject: "true" jika guru boleh mengisi absensi per mapel
+	// selain absensi harian (T68). Belum diatur berarti nonaktif.
+	AttendancePerSubject = "attendance_per_subject"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.
@@ -56,4 +59,20 @@ func Int64(ctx context.Context, q database.DBTX, schoolID, key string, fallback 
 		return 0, fmt.Errorf("settings: %s is not an integer: %q", key, v)
 	}
 	return n, nil
+}
+
+// Bool membaca kunci sebagai "true"/"false"; fallback jika belum diatur.
+// Nilai lain dianggap error, sama seperti Int64.
+func Bool(ctx context.Context, q database.DBTX, schoolID, key string, fallback bool) (bool, error) {
+	v, ok, err := Get(ctx, q, schoolID, key)
+	if err != nil || !ok {
+		return fallback, err
+	}
+	switch v {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+	return false, fmt.Errorf("settings: %s is not a boolean: %q", key, v)
 }

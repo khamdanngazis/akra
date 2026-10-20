@@ -92,4 +92,18 @@
 <p>Belum ada mata pelajaran. Tambahkan yang pertama dengan form di atas.</p>
 </section>
 {{end}}
+
+<section class="card form-card mt-6" aria-labelledby="per-subject-title">
+<h2 id="per-subject-title" class="card-title">Absensi per mata pelajaran</h2>
+<p class="muted mt-1">Jika aktif, guru bisa mengisi absensi untuk mapel yang diajarnya di kelas, selain absensi harian. Rekap absensi bisa difilter per mapel. Absensi harian tetap berjalan seperti biasa.</p>
+<form method="post" action="/pengaturan/absensi" class="stack mt-3" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<fieldset class="choice-row">
+<legend class="visually-hidden">Absensi per mapel</legend>
+<label class="choice"><input type="radio" name="per_mapel" value="nonaktif"{{if not .PerSubject}} checked{{end}}> Nonaktif, hanya absensi harian</label>
+<label class="choice"><input type="radio" name="per_mapel" value="aktif"{{if .PerSubject}} checked{{end}}> Aktif, harian dan per mapel</label>
+</fieldset>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pengaturan</button></div>
+</form>
+</section>
 {{end}}

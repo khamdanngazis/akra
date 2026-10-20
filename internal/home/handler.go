@@ -315,7 +315,7 @@ func TeacherClassesFor(ctx context.Context, q database.DBTX, schoolID, userID st
 		var filled bool
 		if err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM attendance_sessions s
 			JOIN attendance_records r ON r.school_id = s.school_id AND r.session_id = s.id
-			WHERE s.school_id = $1 AND s.class_id = $2 AND s.session_date = $3 AND r.updated_by IS NOT NULL)`,
+			WHERE s.school_id = $1 AND s.class_id = $2 AND s.session_date = $3 AND s.subject_id IS NULL AND r.updated_by IS NOT NULL)`,
 			schoolID, c.ID, today).Scan(&filled); err != nil {
 			return nil, fmt.Errorf("home: attendance today: %w", err)
 		}

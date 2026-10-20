@@ -109,7 +109,7 @@ func (s *Service) GetChildDetail(ctx context.Context, schoolID, userID, studentI
 	if d.RecapTo.Before(yearStart) {
 		d.RecapTo = yearEnd
 	}
-	// Rekap memakai attendance.SummaryByStudent (T27) per kelas yang pernah
+	// Rekap absensi harian memakai attendance.SummaryByStudent (T27) per kelas yang pernah
 	// ditempati anak di tahun ajaran aktif, lalu dijumlahkan, agar angkanya
 	// sama dengan rekap kelas.
 	rows, err := s.db.Query(ctx, `SELECT DISTINCT class_id FROM enrollments
@@ -122,7 +122,7 @@ func (s *Service) GetChildDetail(ctx context.Context, schoolID, userID, studentI
 		return ChildDetail{}, fmt.Errorf("portal: child classes: %w", err)
 	}
 	for _, classID := range classIDs {
-		list, err := attendance.SummaryByStudent(ctx, s.db, schoolID, classID, d.RecapFrom, d.RecapTo)
+		list, err := attendance.SummaryByStudent(ctx, s.db, schoolID, classID, "", d.RecapFrom, d.RecapTo)
 		if err != nil {
 			return ChildDetail{}, err
 		}

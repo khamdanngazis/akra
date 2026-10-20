@@ -353,12 +353,12 @@ Paket [internal/portal](internal/portal/service.go). Semua route `/portal` hanya
 
 Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di [internal/attendance](internal/attendance/repo.go).
 
-- Satu **sesi** per kelas per tanggal (`UNIQUE (class_id, session_date)`), tanggal lokal Asia/Jakarta. `GetOrCreateSession` memakai `INSERT … ON CONFLICT DO NOTHING` lalu `SELECT`, sehingga dua guru yang membuka absensi bersamaan tetap mendapat satu sesi. Tanggal harus di dalam tahun ajaran kelas.
+- Satu **sesi harian** per kelas per tanggal (sejak T68 lewat unique index bersama mapel, lihat di bawah), tanggal lokal Asia/Jakarta. `GetOrCreateSession` memakai `INSERT … ON CONFLICT DO NOTHING` lalu `SELECT`, sehingga dua guru yang membuka absensi bersamaan tetap mendapat satu sesi. Tanggal harus di dalam tahun ajaran kelas.
 - Satu **catatan** per siswa (enrollment) per sesi, status `hadir`, `sakit`, `izin`, atau `alpa` (default `hadir`).
 - `EnsureRecords` memakai enrollment yang aktif **pada tanggal sesi** (`start_date <= tanggal` dan `end_date` kosong atau `>= tanggal`). Siswa yang pindah kelas hanya muncul di kelas yang benar untuk setiap tanggal. Catatan yang sudah ada tidak diubah dan tidak pernah dihapus; koreksi dengan mengubah status.
 - Foreign key komposit menjamin sesi, kelas, enrollment, dan pembuat sesi berasal dari sekolah yang sama.
 - **Form guru** `GET /absensi?kelas=&tanggal=` dan `POST /absensi/{sessionID}` ([handler.go](internal/attendance/handler.go)):
-  - Hanya peran `guru`, dan hanya **wali kelas** dari kelas itu (`attendance.CanEditClass`). Guru lain, admin/TU, kepala sekolah, dan orang tua mendapat `403`. Belum ada penugasan guru mata pelajaran di MVP 1.
+  - Hanya peran `guru`, dan hanya **wali kelas** dari kelas itu atau guru yang punya penugasan mapel di kelas itu (`attendance.CanEditClass`, T65). Guru lain, admin/TU, kepala sekolah, dan orang tua mendapat `403`.
   - Tanpa `?kelas`, guru melihat kelas perwaliannya di tahun aktif (langsung dibuka jika hanya satu). Tanggal default hari ini (WIB); tanggal masa depan dan di luar tahun ajaran ditolak.
   - Semua status disimpan dengan **satu POST** dan satu `UPDATE` dalam satu transaksi; satu baris tidak valid membatalkan semuanya. Tombol "Tandai semua hadir" (Alpine) hanya mengubah pilihan di browser. Setelah simpan tampil ringkasan hadir/sakit/izin/alpa.
   - Dibuat untuk HP: tombol status 44px, tombol simpan menempel di bawah. Diukur di uji: simpan 30 siswa sekitar 10 ms.
@@ -369,6 +369,11 @@ Tabel `attendance_sessions` dan `attendance_records` (migrasi 000014), fungsi di
   - Persentase kehadiran = hadir ÷ (hadir + sakit + izin + alpa). **Definisi ini perlu dikonfirmasi ke sekolah.**
   - Rentang default: awal tahun ajaran sampai hari ini; maksimal satu tahun ajaran kelas (di luar itu ditolak dengan pesan yang menyebut batasnya).
   - Diukur di uji: 30 siswa × 60 sesi sekitar 16 ms. Tombol unduh Excel masih placeholder (T47).
+- **Absensi per mapel** (T68, migrasi 000034), opsional per sekolah:
+  - `attendance_sessions.subject_id` (NULL = sesi harian). Unique index `(class_id, session_date, coalesce(subject_id, '0000…'))` menggantikan constraint lama: dua sesi untuk kelas, tanggal, dan mapel yang sama ditolak, sedangkan sesi harian dan sesi mapel di tanggal yang sama boleh berdampingan.
+  - Diaktifkan admin/TU di kartu "Absensi per mata pelajaran" di `/pengaturan/mapel` (`POST /pengaturan/absensi`, kunci `school_settings` `attendance_per_subject`, belum diatur = nonaktif). Perubahan diaudit `attendance.settings_update`, terpisah dari audit keuangan `settings.update`. Menonaktifkan tidak menghapus sesi mapel yang sudah ada.
+  - Jika aktif, form absensi menampilkan pilihan "Harian" dan mapel yang diajar guru di kelas itu (`?mapel=`). Sesi mapel hanya bisa dibuka dan disimpan oleh guru yang punya penugasan mapel itu di kelas itu (`CanEditSubject`, T65); wali kelas tanpa penugasan mapel tersebut mendapat `403`. Absensi harian tetap memakai `CanEditClass`.
+  - Rekap memakai satu jenis sesi: harian (default, angkanya sama dengan rekap sebelum T68) atau satu mapel (`?mapel=`). Keduanya tidak dijumlahkan karena siswa yang sama tercatat di keduanya. Laporan kehadiran (T47), detail anak di portal, dan beranda guru tetap memakai absensi harian.
 
 ## Keuangan
 
