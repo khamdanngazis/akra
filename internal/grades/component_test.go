@@ -351,6 +351,7 @@ func newEnvFor(t *testing.T, f *fixture) *env {
 	NewComponentHandler(f.svc, f.tx, sm, rd, logger).Routes(r)
 	NewInputHandler(NewInputService(f.tx), f.tx, sm, rd, logger).Routes(r)
 	NewReportHandler(f.tx, sm, rd, logger).Routes(r)
+	NewReportConfigHandler(f.tx, sm, rd, logger).Routes(r)
 	return &env{fixture: f, router: r}
 }
 

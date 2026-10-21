@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -34,6 +35,8 @@ const (
 type SubjectForm struct {
 	Name string
 	Code string
+	// KKM kosong berarti memakai KKM default sekolah (T73).
+	KKM string
 	// Status hanya dibaca saat mengubah: StatusActive atau StatusInactive.
 	// Saat membuat, mapel selalu aktif.
 	Status string
@@ -123,7 +126,7 @@ func (s *SubjectService) Update(ctx context.Context, actor school.Actor, id stri
 		}
 		result = before
 
-		if in.Name != before.Name || in.Code != before.Code {
+		if in.Name != before.Name || in.Code != before.Code || !sameKKM(in.KKM, before.KKM) {
 			after, err := UpdateSubject(ctx, tx, actor.SchoolID, id, in)
 			if err != nil {
 				return err
@@ -172,6 +175,14 @@ func ValidateSubject(f SubjectForm) (SubjectInput, error) {
 	if utf8.RuneCountInString(in.Code) > maxSubjectCodeLen {
 		fields["code"] = fmt.Sprintf("Kode maksimal %d karakter.", maxSubjectCodeLen)
 	}
+	if k := strings.TrimSpace(f.KKM); k != "" {
+		n, err := strconv.Atoi(k)
+		if err != nil || n < 0 || n > 100 {
+			fields["kkm"] = "KKM bilangan bulat 0–100, atau kosongkan untuk memakai KKM default."
+		} else {
+			in.KKM = &n
+		}
+	}
 	if len(fields) > 0 {
 		return SubjectInput{}, &ValidationError{Fields: fields}
 	}
@@ -203,10 +214,11 @@ func subjectFieldError(err error) error {
 type subjectJSON struct {
 	Name string `json:"name"`
 	Code string `json:"code"`
+	KKM  *int   `json:"kkm"`
 }
 
 func subjectSnapshot(s Subject) subjectJSON {
-	return subjectJSON{Name: s.Name, Code: s.Code}
+	return subjectJSON{Name: s.Name, Code: s.Code, KKM: s.KKM}
 }
 
 func subjectAudit(actor school.Actor, action, id string, before, after any) audit.Entry {
@@ -215,4 +227,11 @@ func subjectAudit(actor school.Actor, action, id string, before, after any) audi
 		Action: action, EntityType: "subject", EntityID: id,
 		Before: before, After: after,
 	}
+}
+
+func sameKKM(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }

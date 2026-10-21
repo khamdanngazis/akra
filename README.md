@@ -333,8 +333,7 @@ Satu fungsi murni, [grades.FinalScore](internal/grades/final.go), dipakai semua 
   - Pembulatan ada di **satu tempat**, `RoundFinal`: bilangan bulat, setengah ke atas (78,50 → 79; 78,49 → 78).
   - Contoh: bobot 30/30/40 dengan nilai 80/90/70 menghasilkan 79.
   - `Result.Exact` menyimpan nilai berbobot dua desimal sebelum dibulatkan.
-- Skala huruf: `Letter(score, scale)` dengan batas bawah inklusif. Default A ≥ 90, B ≥ 80, C ≥ 70, D di bawah 70 (tepat 80 = B).
-  - Sekolah bisa mengganti skala lewat kunci `school_settings` `grade_letter_scale`, format `A:90,B:80,C:70,D:0`. Batas harus turun tegas dan yang terakhir 0. Skala tersimpan yang rusak adalah error, bukan diam-diam kembali ke default.
+- Skala huruf: `Letter(score, scale)` dengan rentang inklusif. Default A 90–100, B 80–89, C 70–79, D 0–69 (tepat 80 = B). Skala diatur sekolah di Pengaturan Rapor (T73, kunci `report.scale`).
 - **Aturan contoh**: pembulatan dan skala di atas dipilih pada 21 Oktober 2026 sambil menunggu konfirmasi sekolah. Jika berbeda, ubah `RoundFinal` atau skala default, lalu jalankan ulang `final_test.go`.
 - Uji:
   - kasus contoh, batas pembulatan untuk setiap perseratus 0–100;
@@ -355,6 +354,26 @@ Satu fungsi murni, [grades.FinalScore](internal/grades/final.go), dipakai semua 
   - wali kelas: ringkasan kelas dan rekap semua mapel kelasnya;
   - guru mapel lain dan peran lain mendapat `403`; kelas atau mapel sekolah lain atau tahun ajaran lain mendapat `404`.
 - Diukur di uji: ringkasan 30 siswa × 6 mapel sekitar 15 ms.
+
+## Pengaturan Rapor
+
+[internal/grades/report_config.go](internal/grades/report_config.go), halaman `GET`/`POST /pengaturan/rapor` (hanya `admin_tu`; guru dan peran lain `403`). Migrasi 000037. Pengaturan ini sengaja terbatas: format rapor yang berbeda adalah keputusan baru, bukan konfigurasi.
+
+Kunci `school_settings`. Sejak 000037 nama kunci boleh memakai titik sebagai namespace:
+
+| Kunci | Isi | Default |
+|---|---|---|
+| `report.format` | `angka` (K13/KTSP) atau `merdeka` (Kurikulum Merdeka) | `angka` |
+| `report.scale` | JSON `[{"letter":"A","min":90,"max":100}, …]` | A/B/C/D seperti di atas |
+| `report.kkm_default` | KKM untuk mapel tanpa KKM sendiri, 0–100 | 70 |
+| `report.principal_name`, `report.signer_title` | Penanda tangan rapor; nama wali kelas diambil dari data kelas | kosong, "Kepala Sekolah" |
+
+- **Skala** harus mencakup 0–100 tanpa celah dan tanpa tumpang tindih (`ValidateScale`, rentang bilangan bulat inklusif). Huruf atau predikat 1–20 karakter (mis. "Sangat Baik"), tidak boleh ganda. Skala tersimpan yang rusak membuat halaman menampilkan peringatan dan form berisi default.
+- **KKM per mapel**: kolom `subjects.kkm` (NULL = memakai default), diisi di halaman Mata Pelajaran (T64).
+  - Rekap nilai (T72) menampilkan KKM mapel, menandai nilai akhir di bawah KKM, dan menghitung jumlahnya.
+  - Format `merdeka` mengganti sebutan KKM menjadi **KKTP**.
+  - Deskripsi capaian per siswa (khas rapor Merdeka) belum ada; dicatat sebagai task T74b.
+- Semua kunci disimpan dalam satu transaksi dengan audit `report_config.update` (isi sebelum dan sesudah). Rekap membaca pengaturan setiap kali dibuka, jadi perubahan langsung berlaku tanpa deploy ulang.
 
 ## Siswa
 

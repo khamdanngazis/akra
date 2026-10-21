@@ -88,7 +88,7 @@
 {{else}}
 <p class="grade-summary">{{len .Rows}} siswa · {{.Complete}} lengkap ·
 {{if .Incomplete}}<span class="text-amber-700 font-semibold">{{.Incomplete}} belum lengkap</span>{{else}}0 belum lengkap{{end}}
-{{with .Average}} · rata-rata {{.}}{{end}}</p>
+{{with .Average}} · rata-rata {{.}}{{end}} · {{.KKMLabel}} {{.KKM}}{{if .BelowKKM}} · <span class="text-red-700 font-semibold">{{.BelowKKM}} di bawah {{.KKMLabel}}</span>{{end}}</p>
 {{if .EmptyCells}}<div class="alert alert-info" role="status">{{.EmptyCells}} nilai masih kosong. Siswa dengan nilai kosong belum punya nilai akhir.</div>{{end}}
 {{if .Rows}}
 <div class="card card-flush">
@@ -100,7 +100,7 @@
 <tr{{if .Result.Incomplete}} class="row-incomplete"{{end}}>
 <td><strong>{{.FullName}}</strong> <span class="muted small">{{.NIS}}</span></td>
 {{range .Scores}}<td class="text-right tabular-nums">{{with .}}{{.}}{{else}}<span class="cell-empty" title="Belum dinilai">–</span>{{end}}</td>{{end}}
-<td class="text-right tabular-nums">{{if .Result.Incomplete}}<span class="badge badge-warning">Belum lengkap</span>{{else}}<strong>{{.Result.Score}}</strong>{{end}}</td>
+<td class="text-right tabular-nums">{{if .Result.Incomplete}}<span class="badge badge-warning">Belum lengkap</span>{{else}}<strong{{if .BelowKKM}} class="text-red-700" title="Di bawah {{$.Subject.KKMLabel}} {{$.Subject.KKM}}"{{end}}>{{.Result.Score}}</strong>{{end}}</td>
 <td class="text-center">{{or .Letter "–"}}</td>
 </tr>
 {{end}}

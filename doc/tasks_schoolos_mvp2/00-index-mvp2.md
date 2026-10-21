@@ -38,7 +38,7 @@ Total perkiraan: 6–8 minggu, sesuai rencana MVP.
 ## Keputusan yang Harus Diambil dari Wawancara
 - Apakah absensi per mapel dibutuhkan (T68)
 - Skala nilai, komponen penilaian, dan rumus nilai akhir (T69, T71)
-- Format rapor yang dipakai sekolah (T73, T74)
+- Format rapor yang dipakai sekolah (T73, T74). T73: format bisa dipilih (angka atau Kurikulum Merdeka); deskripsi capaian Merdeka menjadi task terpisah T74b
 - Kolom laporan yang paling sering dibutuhkan (T76)
 - Format file impor yang paling sering dipakai sekolah (T81)
 - Definisi rekap pembayaran harian (T80): tanggal bayar atau tanggal masuk rekening

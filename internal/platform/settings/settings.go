@@ -21,9 +21,21 @@ const (
 	// AttendancePerSubject: "true" jika guru boleh mengisi absensi per mapel
 	// selain absensi harian (T68). Belum diatur berarti nonaktif.
 	AttendancePerSubject = "attendance_per_subject"
-	// GradeLetterScale: skala huruf nilai akhir, mis. "A:90,B:80,C:70,D:0"
-	// (T71). Belum diatur berarti grades.DefaultScale.
-	GradeLetterScale = "grade_letter_scale"
+	// Pengaturan rapor (T73), dibaca lewat grades.LoadReportConfig.
+	//
+	// ReportScale: JSON skala huruf nilai akhir, mis.
+	// [{"letter":"A","min":90,"max":100}, ...]; harus mencakup 0–100 tanpa
+	// celah. Belum diatur berarti grades.DefaultScale.
+	ReportScale = "report.scale"
+	// ReportKKMDefault: ambang ketuntasan (KKM/KKTP) untuk mapel yang tidak
+	// punya KKM sendiri, 0–100.
+	ReportKKMDefault = "report.kkm_default"
+	// ReportFormat: "angka" (nilai, huruf, KKM) atau "merdeka" (Kurikulum
+	// Merdeka: label KKTP; deskripsi capaian menyusul).
+	ReportFormat = "report.format"
+	// ReportPrincipalName dan ReportSignerTitle: penanda tangan rapor.
+	ReportPrincipalName = "report.principal_name"
+	ReportSignerTitle   = "report.signer_title"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.
