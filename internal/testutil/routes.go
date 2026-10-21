@@ -337,6 +337,23 @@ var Routes = []Route{
 			return url.Values{"rows": {"1"}, "id_0": {""}, "name_0": {"Uji lintas"}, "weight_0": {"100"}, "active_0": {"on"}}
 		})},
 
+	// Input nilai (T70): hanya guru pengampu kelas–mapel.
+	{Method: "GET", Pattern: "/nilai/input/", Kind: KindPage, Roles: []string{Teacher},
+		Requests: paths(func(o *School) []string {
+			return []string{"/nilai/input/", "/nilai/input/?kelas=" + o.ClassID + "&mapel=" + o.SubjectID,
+				"/nilai/input/?kelas=" + o.ClassID + "&mapel=" + o.SubjectID + "&komponen=" + o.GradeComponentID}
+		})},
+	{Method: "POST", Pattern: "/nilai/input/{classID}/{componentID}", Kind: KindByID, Roles: []string{Teacher},
+		Requests: func(own, o *School) []Request {
+			form := func(s *School) url.Values { return url.Values{"g_" + s.EnrollmentIDs[0]: {"80"}} }
+			return []Request{
+				{Path: "/nilai/input/" + o.ClassID + "/" + o.GradeComponentID, Form: form(o)},
+				// Kelas sendiri dengan komponen sekolah lain, dan sebaliknya.
+				{Path: "/nilai/input/" + own.ClassID + "/" + o.GradeComponentID, Form: form(own)},
+				{Path: "/nilai/input/" + o.ClassID + "/" + own.GradeComponentID, Form: form(o)},
+			}
+		}},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,

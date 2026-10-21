@@ -1109,6 +1109,48 @@
     @apply max-sm:px-2 max-sm:first:pl-4 max-sm:last:pr-4;
   }
 
+  .teaching-list {
+    @apply m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .teaching-card {
+    @apply flex min-h-16 items-center justify-between gap-3 no-underline hover:border-blue-300;
+  }
+
+  .grade-summary {
+    @apply mb-3 text-sm text-slate-600;
+  }
+
+  .grade-list {
+    @apply m-0 list-none divide-y divide-slate-100 p-0;
+  }
+
+  .grade-row {
+    @apply flex items-center justify-between gap-3 px-4 py-2.5;
+  }
+
+  .grade-row.has-error {
+    @apply bg-red-50;
+  }
+
+  .grade-student {
+    @apply min-w-0 flex-1 text-sm;
+  }
+
+  .grade-cell {
+    @apply flex-none text-right;
+  }
+
+  .grade-input {
+    @apply h-11 w-20 text-center text-base tabular-nums;
+  }
+
+  /* Sel kosong = belum dinilai, ditandai agar mudah terlihat (tanpa JS:
+     placeholder hanya tampil saat sel kosong). */
+  .grade-input:placeholder-shown {
+    @apply border-dashed border-amber-400 bg-amber-50;
+  }
+
   .weight-total {
     @apply mt-4 rounded-xl border px-4 py-3 text-sm;
   }

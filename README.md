@@ -303,6 +303,26 @@ Tabel `grade_components` (migrasi 000035), kode di [internal/grades](internal/gr
 - Akses: `admin_tu` untuk semua mapel. `guru` hanya untuk mapel yang ditugaskan kepadanya di kelas mana pun pada tahun ajaran aktif (T65); mapel lain `403`. Karena komponen berlaku per mapel, bukan per kelas, semua guru pengampu mapel yang sama mengatur komponen yang sama. Mapel sekolah lain `404`; peran lain `403`.
 - Audit: `grade_component.create` dan `grade_component.update` (nama, bobot, atau status aktif berubah, dengan isi sebelum dan sesudah). Perubahan urutan saja tidak diaudit.
 
+## Input Nilai
+
+Tabel `grades` (migrasi 000036), kode di [internal/grades](internal/grades/input_service.go). Satu nilai per enrollment per komponen (`UNIQUE (enrollment_id, component_id)`).
+
+- `score numeric(5,2)`, `CHECK` 0–100. **`NULL` berarti belum dinilai, bukan 0**: sel kosong disimpan sebagai `NULL` (atau tidak dibuat barisnya), sedangkan `0` disimpan sebagai 0.
+  - Ini satu-satunya kolom pecahan di skema. Pecahannya desimal eksak, bukan float, dan dikecualikan secara eksplisit di uji T60 (`exactDecimalColumns`).
+  - Di Go, nilai disimpan sebagai `grades.Score` dalam perseratus (85,5 = 8550), tanpa float. Isian menerima `85`, `85,5`, atau `85.5`, maksimal dua angka di belakang koma.
+- Kolom `academic_year_id` dengan foreign key komposit `(school_id, academic_year_id, …)` ke enrollment dan komponen, sehingga keduanya pasti dari sekolah dan tahun ajaran yang sama.
+- `InputService.Save` menyimpan nilai satu kelas untuk satu komponen dalam satu transaksi, mirip absensi (T26):
+  - komponen dikunci `FOR UPDATE`;
+  - satu isian tidak valid membatalkan semuanya (`422`, sel ditandai);
+  - nilai yang tidak berubah tidak disentuh;
+  - komponen nonaktif hanya bisa dilihat.
+- **Riwayat nilai** ada di `audit_logs`: `grade.create` dan `grade.update` per nilai, dengan `score` sebelum dan sesudah. Isinya hanya ID enrollment dan komponen, tanpa nama siswa.
+- Siswa yang tampil: yang masih terdaftar di kelas, ditambah siswa yang sudah pindah tetapi punya nilai untuk komponen itu (bertanda "pindah kelas").
+- Halaman `/nilai/input?kelas=&mapel=&komponen=`, simpan lewat `POST /nilai/input/{classID}/{componentID}`. Tanpa `kelas`/`mapel`, guru melihat daftar kelas–mapel yang diampunya.
+  - Tab per komponen aktif. Sel kosong ditandai (CSS `:placeholder-shown`, tanpa JavaScript), dan penghitung "belum dinilai" diperbarui langsung.
+  - Enter pindah ke siswa berikutnya. Diukur di uji: simpan 30 nilai sekitar 60 ms.
+- Akses: hanya peran `guru` yang punya penugasan mapel itu di kelas itu (T65). **Wali kelas tidak otomatis** bisa mengisi mapel yang bukan miliknya. Guru lain, admin/TU, dan kepala sekolah mendapat `403`. Kelas, mapel, atau komponen sekolah lain atau tahun ajaran lain mendapat `404`.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

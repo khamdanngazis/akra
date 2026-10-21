@@ -30,6 +30,13 @@ var financeDirs = []string{
 // konversi float tetap dilarang.
 var layoutFiles = map[string]bool{"../../payments/receipt_pdf.go": true}
 
+// exactDecimalColumns adalah kolom numeric di luar keuangan yang memang
+// diminta spesifikasi, per file migrasi. numeric adalah desimal eksak (bukan
+// float); uang tetap wajib bigint rupiah.
+var exactDecimalColumns = map[string]string{
+	"000036_grades.up.sql": "score", // nilai siswa 0–100 dua desimal (T70)
+}
+
 // floatInSQL menangkap tipe atau cast pecahan di string SQL.
 var floatInSQL = regexp.MustCompile(`(?i)::\s*(float[48]?|real|numeric|decimal)\b|\bdouble precision\b|\bto_char\s*\([^)]*\b9`)
 
@@ -112,6 +119,10 @@ func TestNoFloatInFinancePaths(t *testing.T) {
 		}
 		for i, line := range strings.Split(string(data), "\n") {
 			code, _, _ := strings.Cut(line, "--")
+			if col, ok := exactDecimalColumns[filepath.Base(m)]; ok && strings.HasPrefix(strings.TrimSpace(code), col+" ") &&
+				strings.Contains(code, "numeric(5,2)") {
+				continue
+			}
 			if column.MatchString(code) {
 				t.Errorf("%s:%d: fractional column type: %s", filepath.Base(m), i+1, strings.TrimSpace(line))
 			}
