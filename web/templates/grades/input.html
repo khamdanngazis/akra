@@ -1,0 +1,91 @@
+{{define "title"}}Input Nilai{{with .Page}} {{.Class.Name}} · {{.Subject.Name}}{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if not .Page}}
+<div class="page-header">
+<div>
+<h1>Input Nilai</h1>
+<p class="muted">Pilih kelas dan mata pelajaran yang Anda ampu di tahun ajaran aktif.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{if .Teaching}}
+<ul class="teaching-list">
+{{range .Teaching}}<li>
+<a class="card teaching-card" href="/nilai/input?kelas={{.ClassID}}&amp;mapel={{.SubjectID}}">
+<span><strong class="block">Kelas {{.ClassName}}</strong><span class="block text-sm text-slate-500">{{.SubjectName}}</span></span>
+{{if .ActiveComponents}}<span class="badge">{{.ActiveComponents}} komponen</span>{{else}}<span class="badge badge-warning">Belum ada komponen</span>{{end}}
+</a>
+</li>{{end}}
+</ul>
+{{else}}
+<section class="card empty-state">
+<p>Anda belum ditugaskan mengajar mata pelajaran di tahun ajaran aktif.</p>
+<p class="muted">Hubungi admin/TU jika ini keliru.</p>
+</section>
+{{end}}
+
+{{else}}
+<p class="breadcrumb"><a href="/nilai/input">← Kelas dan mapel saya</a></p>
+<div class="page-header">
+<div>
+<h1>Nilai {{.Page.Subject.Name}} · {{.Page.Class.Name}}</h1>
+<p class="muted">Kosongkan sel untuk "belum dinilai"; sel kosong tidak dihitung sebagai 0. Nilai 0–100, boleh koma (mis. 87,5).</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .SetupURL}}
+<section class="card empty-state">
+<p>Mapel ini belum punya komponen nilai aktif.</p>
+<p class="muted"><a href="{{.SetupURL}}">Atur komponen nilai</a> lebih dulu (mis. Tugas, UTS, UAS dengan total bobot 100%).</p>
+</section>
+{{else}}
+{{if .Tabs}}
+<nav class="mode-tabs" aria-label="Komponen nilai">
+{{range .Tabs}}<a href="{{.URL}}"{{if .Active}} class="is-active" aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+{{end}}
+{{if .Inactive}}<div class="alert alert-info" role="status">Komponen {{.Page.Component.Name}} nonaktif. Nilainya hanya bisa dilihat.</div>{{end}}
+
+{{if .Rows}}
+<form method="post" action="/nilai/input/{{.Page.Class.ID}}/{{.Page.Component.ID}}" novalidate
+  x-data="{ empty: {{.Empty}}, submitting: false,
+    count() { this.empty = [...this.$root.querySelectorAll('input[data-score]:not([data-moved])')].filter(i => i.value.trim() === '').length; },
+    next(e) { const all = [...this.$root.querySelectorAll('input[data-score]')]; const i = all.indexOf(e.target); if (all[i + 1]) { all[i + 1].focus(); all[i + 1].select(); } } }"
+  @input="count()" @submit="submitting = true">
+{{ csrfField }}
+<p class="grade-summary" role="status" aria-live="polite">
+<strong>{{.Page.Component.Name}}</strong> · bobot {{.Page.Component.Weight}}% · {{len .Rows}} siswa ·
+<span :class="empty > 0 ? 'text-amber-700' : 'text-emerald-700'"><span x-text="empty">{{.Empty}}</span> belum dinilai</span>
+</p>
+<div class="card card-flush">
+<ol class="grade-list">
+{{range .Rows}}
+<li class="grade-row{{if .Error}} has-error{{end}}">
+<label for="g-{{.EnrollmentID}}" class="grade-student"><span class="attendance-no">{{.No}}.</span> <strong>{{.FullName}}</strong> <span class="muted small">{{.NIS}}</span>{{if .Moved}} <span class="badge">pindah kelas</span>{{end}}</label>
+<div class="grade-cell">
+<input id="g-{{.EnrollmentID}}" name="g_{{.EnrollmentID}}" value="{{.Value}}" inputmode="decimal" autocomplete="off" maxlength="6"
+  class="grade-input" data-score{{if .Moved}} data-moved{{end}}
+  @keydown.enter.prevent="next($event)"{{if $.Inactive}} disabled{{end}}{{if .Error}} aria-invalid="true" aria-describedby="g-err-{{.EnrollmentID}}"{{end}}
+  placeholder="–" aria-label="Nilai {{.FullName}}">
+{{if .Error}}<p class="field-error" id="g-err-{{.EnrollmentID}}">{{.Error}}</p>{{end}}
+</div>
+</li>
+{{end}}
+</ol>
+</div>
+{{if not .Inactive}}
+<div class="attendance-submit">
+<button type="submit" class="btn btn-primary btn-block btn-lg" :disabled="submitting">Simpan nilai</button>
+</div>
+{{end}}
+<p class="hint mt-2">Tekan Enter untuk pindah ke siswa berikutnya. Semua nilai disimpan sekaligus.</p>
+</form>
+{{else}}
+<section class="card empty-state"><p>Belum ada siswa di kelas ini.</p></section>
+{{end}}
+{{end}}
+{{end}}
+{{end}}

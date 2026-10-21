@@ -59,6 +59,7 @@ type School struct {
 	FeeTypeID               string
 	SubjectID               string
 	SlotID                  string // slot jadwal ClassID untuk SubjectID (T66)
+	GradeComponentID        string // komponen nilai SubjectID tahun YearID, bobot 100 (T69)
 	InvoiceID               string
 	PaymentID               string
 	ProofID                 string
@@ -164,6 +165,10 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
 	s.SlotID = one(`INSERT INTO schedule_slots (school_id, academic_year_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time)
 		VALUES ($1, $2, $3, $4, $5, 1, '07:00', '07:40') RETURNING id`, s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
+	s.GradeComponentID = one(`INSERT INTO grade_components (school_id, academic_year_id, subject_id, name, weight_percent) VALUES ($1, $2, $3, 'Ujian', 100) RETURNING id`,
+		s.ID, s.YearID, s.SubjectID)
+	exec(`INSERT INTO grades (school_id, academic_year_id, enrollment_id, component_id, score, recorded_by) VALUES ($1, $2, $3, $4, 75, $5)`,
+		s.ID, s.YearID, s.EnrollmentIDs[0], s.GradeComponentID, s.Teacher.ID)
 	inv, err := billing.CreateInvoice(ctx, tx, treasurer, billing.InvoiceRequest{EnrollmentID: s.EnrollmentIDs[0], Period: "2026-09", Items: []billing.ItemRequest{{FeeTypeID: ft.ID}}})
 	check(err)
 	s.InvoiceID = inv.ID

@@ -38,6 +38,7 @@ type fixture struct {
 	year, oldYear       string
 	mtk, ipa, subjectB  string
 	guru1, guru2, guru3 string
+	class1A, oldClass   string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -77,7 +78,8 @@ func newFixture(t *testing.T) *fixture {
 	f.year = one(year, f.schoolA, "2026/2027", "2026-07-13", "2027-06-25", true)
 	f.oldYear = one(year, f.schoolA, "2025/2026", "2025-07-14", "2026-06-26", false)
 	class := `INSERT INTO classes (school_id, academic_year_id, name, grade_level) VALUES ($1, $2, $3, 1) RETURNING id`
-	class1A, old6A := one(class, f.schoolA, f.year, "1A"), one(class, f.schoolA, f.oldYear, "6A")
+	f.class1A, f.oldClass = one(class, f.schoolA, f.year, "1A"), one(class, f.schoolA, f.oldYear, "6A")
+	class1A, old6A := f.class1A, f.oldClass
 	subject := `INSERT INTO subjects (school_id, name) VALUES ($1, $2) RETURNING id`
 	f.mtk, f.ipa = one(subject, f.schoolA, "Matematika"), one(subject, f.schoolA, "IPA")
 	f.subjectB = one(subject, f.schoolB, "Matematika")
@@ -323,7 +325,12 @@ type env struct {
 
 func newEnv(t *testing.T) *env {
 	t.Helper()
-	f := newFixture(t)
+	return newEnvFor(t, newFixture(t))
+}
+
+// newEnvFor memasang handler komponen dan input nilai di atas fixture f.
+func newEnvFor(t *testing.T, f *fixture) *env {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
 	static, _ := fs.Sub(web.FS, "static")
@@ -342,6 +349,7 @@ func newEnv(t *testing.T) *env {
 		})
 	})
 	NewComponentHandler(f.svc, f.tx, sm, rd, logger).Routes(r)
+	NewInputHandler(NewInputService(f.tx), f.tx, sm, rd, logger).Routes(r)
 	return &env{fixture: f, router: r}
 }
 
