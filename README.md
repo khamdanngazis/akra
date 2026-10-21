@@ -764,6 +764,6 @@ Backup harian `pg_dump -Fc` ke R2 (`backups/{tanggal}/schoolos.dump`, retensi 14
 
 ### CI
 
-[.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
+[.github/workflows/test.yml](.github/workflows/test.yml) **tidak** berjalan otomatis di push maupun pull request; jalankan manual dari tab Actions (Run workflow). Isinya: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Sebelum push, jalankan pemeriksaan yang sama di lokal.
 
 Catatan: dependensi dipilih agar tetap kompatibel dengan Go 1.22. Jika `go get` mencoba menaikkan versi Go, jalankan dengan `GOTOOLCHAIN=local`.
