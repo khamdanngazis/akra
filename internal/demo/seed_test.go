@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"akra/internal/auth"
+	"akra/internal/classes"
+	"akra/internal/grades"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 )
@@ -109,7 +111,62 @@ func TestSeed(t *testing.T) {
 			t.Fatal("demo account password does not verify")
 		}
 	}
-	if len(res.Accounts) != 3+12+3 {
+	// MVP 2.
+	for sql, want := range map[string]int{
+		`SELECT count(*) FROM subjects WHERE school_id = $1 AND is_active`:                                                         9,
+		`SELECT count(*) FROM teaching_assignments WHERE school_id = $1`:                                                           12 * 9,
+		`SELECT count(*) FROM (SELECT class_id FROM schedule_slots WHERE school_id = $1 GROUP BY class_id HAVING count(*) = 18) x`: 12,
+		// Setiap guru (wali kelas dan guru mapel) punya jadwal mengajar.
+		`SELECT count(DISTINCT teacher_id) FROM schedule_slots WHERE school_id = $1`:                                      15,
+		`SELECT count(*) FROM grade_components WHERE school_id = $1 AND is_active`:                                        8*3 + 2,
+		`SELECT count(*) FROM grades WHERE school_id = $1 AND score IS NULL`:                                              0,
+		`SELECT count(*) FROM report_configs WHERE school_id = $1 AND is_shared`:                                          2,
+		`SELECT count(*) FROM report_configs WHERE school_id = $1 AND NOT is_shared`:                                      2,
+		`SELECT count(*) FROM import_mappings WHERE school_id = $1`:                                                       2,
+		`SELECT count(*) FROM school_settings WHERE school_id = $1 AND key = 'attendance_per_subject' AND value = 'true'`: 1,
+	} {
+		if n := count(sql); n != want {
+			t.Errorf("%s = %d, want %d", sql, n, want)
+		}
+	}
+	if n := count(`SELECT count(*) FROM attendance_sessions WHERE school_id = $1 AND subject_id IS NOT NULL`); n == 0 {
+		t.Error("no per-subject attendance sessions")
+	}
+	if n := count(`SELECT count(*) FROM audit_logs WHERE school_id = $1 AND action = 'grade.create'`); n != count(`SELECT count(*) FROM grades WHERE school_id = $1`) {
+		t.Errorf("grade audits = %d", n)
+	}
+	// Rapor: 1A belum lengkap (UAS kosong), kelas lain siap cetak.
+	var c1A, c2A classes.Class
+	for name, c := range map[string]*classes.Class{"1A": &c1A, "2A": &c2A} {
+		var id string
+		if err := tx.QueryRow(ctx, `SELECT id FROM classes WHERE school_id = $1 AND name = $2 AND academic_year_id = (SELECT id FROM academic_years WHERE school_id = $1 AND is_active)`, res.SchoolID, name).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		if *c, err = classes.GetByID(ctx, tx, res.SchoolID, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ready := func(c classes.Class) (ok, total int) {
+		rep, err := grades.ClassSummary(ctx, tx, res.SchoolID, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, st := range rep.CardStatuses() {
+			total++
+			if len(st.Missing) == 0 {
+				ok++
+			}
+		}
+		return ok, total
+	}
+	if ok, total := ready(c2A); total != 20 || ok != 20 {
+		t.Errorf("2A report cards ready = %d of %d", ok, total)
+	}
+	if ok, total := ready(c1A); total != 20 || ok != 0 {
+		t.Errorf("1A report cards ready = %d of %d, want none", ok, total)
+	}
+
+	if len(res.Accounts) != 3+12+3+3 {
 		t.Errorf("accounts = %d", len(res.Accounts))
 	}
 }

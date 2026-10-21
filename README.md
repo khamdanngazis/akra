@@ -974,6 +974,23 @@ Mitigasi utama risiko kebocoran data antar sekolah:
 - pengumuman umum dan satu pengumuman kelas;
 - akun aktif untuk semua peran. Akun orang tua tidak butuh email aktivasi: satu orang tua dua anak, satu dengan tunggakan, satu lunas semua.
 
+Data MVP 2 ([internal/demo/mvp2.go](internal/demo/mvp2.go)), juga dibuat lewat service aplikasi (validasi dan audit asli):
+
+- 9 mapel aktif berkode dan ber-KKM (Bahasa Inggris memakai KKM default 70), ditambah satu mapel nonaktif;
+- penugasan guru: wali kelas mengajar mapel umum. Tiga guru mapel (`guru.pai`, `guru.pjok`, `guru.inggris`) mengajar di 12 kelas;
+- jadwal Senin–Jumat, 18 blok per kelas, tanpa bentrok guru;
+- komponen Tugas/UTS/UAS (PJOK: Praktik/Teori) dan nilai semua siswa, diisi atas nama guru pengampu. **UAS kelas 1A sengaja kosong**: rekap 1A "belum lengkap" dan `guru.1a` bisa mencoba input nilai. Kelas lain siap cetak rapor;
+- nilai Naufal (3A) sengaja rendah sehingga di portal ada nilai di bawah KKM. Nilai per komponen tampil di portal;
+- absensi per mapel aktif, dengan absensi Matematika dua minggu terakhir sesuai jadwal (status disalin dari absensi harian);
+- penanda tangan rapor diisi nama kepala sekolah;
+- empat laporan tersimpan:
+  - kepala sekolah: "Tunggakan lebih dari 30 hari" (bersama) dan "Nilai UTS Matematika" (pribadi);
+  - bendahara: "Transfer bulan ini" (pribadi);
+  - admin/TU: "Siswa alpa" (bersama);
+- mapping impor "Ekspor Dapodik" (siswa) dan "Rekap nilai guru" (nilai).
+
+Seluruh seed sekitar 30 detik di laptop development.
+
 Semua akun memakai password dari `DEMO_PASSWORD`; jika kosong, password acak dicetak sekali. Email berdomain `.akra.test`, jadi tidak ada email terkirim. Perintah ini ditolak jika `APP_ENV=production`. Di staging:
 
 ```sh

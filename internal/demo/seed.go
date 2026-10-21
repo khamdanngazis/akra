@@ -120,7 +120,8 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 	if err != nil {
 		return res, err
 	}
-	principalID, err := user("kepala", "Hasan Basri, S.Pd., M.Pd.", "kepala_sekolah", "Kepala sekolah: ringkasan, laporan, persetujuan pembatalan", nil)
+	const principalName = "Hasan Basri, S.Pd., M.Pd."
+	principalID, err := user("kepala", principalName, "kepala_sekolah", "Kepala sekolah: ringkasan, laporan, persetujuan pembatalan", nil)
 	if err != nil {
 		return res, err
 	}
@@ -144,11 +145,14 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 	}
 
 	// Kelas 1A–6B dengan wali kelas; akun guru untuk 1A dan 4B ditandai di ringkasan.
-	var classIDs, classNames []string
+	var classIDs, classNames, homerooms []string
 	for i, t := range teachers {
 		grade, letter := i/classesPerGrade+1, string(rune('A'+i%classesPerGrade))
 		name := fmt.Sprintf("%d%s", grade, letter)
 		note := "Wali kelas " + name
+		if name == "1A" {
+			note += "; UAS belum diisi (coba input nilai)"
+		}
 		tid, err := user("guru."+strings.ToLower(name), t, "guru", note, nil)
 		if err != nil {
 			return res, err
@@ -158,7 +162,7 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 		if err != nil {
 			return res, err
 		}
-		classIDs, classNames = append(classIDs, cid), append(classNames, name)
+		classIDs, classNames, homerooms = append(classIDs, cid), append(classNames, name), append(homerooms, tid)
 	}
 
 	// Siswa dan wali. Beberapa siswa sengaja diberi nama tetap untuk akun
@@ -385,7 +389,6 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 		}
 		res.Counts["pembatalan_menunggu"]++
 	}
-	_ = principalID
 
 	// Absensi setiap hari sekolah sejak awal tahun ajaran sampai kemarin;
 	// hari ini sengaja kosong agar wali kelas bisa mencoba mengisinya.
@@ -406,6 +409,21 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 		return res, fmt.Errorf("demo: attendance: %w", err)
 	}
 	res.Counts["absensi"] = int(tag.RowsAffected())
+
+	// MVP 2: mapel, jadwal, nilai, laporan tersimpan, mapping impor. Rata-rata
+	// nilai per siswa acak; Naufal sengaja rendah (ada nilai di bawah KKM di
+	// portal), Alya tinggi.
+	ability := map[string]int{"Naufal Saputra": 62, "Alya Lestari": 90}
+	for _, s := range students {
+		if _, ok := ability[s.name]; !ok {
+			ability[s.name] = 66 + rng.IntN(26)
+		}
+	}
+	if err := seedMVP2(ctx, tx, o, rng, mvp2Input{sid: sid, year: year, admin: admin, principal: principalID, principalName: principalName,
+		treasurer: treasurerID, start: start, classIDs: classIDs, classNames: classNames, homerooms: homerooms, students: students,
+		ability: ability, user: user}, &res); err != nil {
+		return res, err
+	}
 
 	// Pengumuman, sebagian untuk satu kelas.
 	for i, a := range []struct{ title, body, class string }{

@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"text/tabwriter"
 	"time"
 
@@ -83,10 +84,15 @@ func run() error {
 		return err
 	}
 	fmt.Printf("Sekolah demo dibuat: %s (kode %s) dalam %s\n", *name, *code, time.Since(start).Round(time.Millisecond))
-	fmt.Printf("Data: %d siswa, %d tagihan, %d pembayaran, %d catatan absensi, %d pembatalan langsung berlaku, %d menunggu persetujuan\n\n",
+	fmt.Printf("Data: %d siswa, %d tagihan, %d pembayaran, %d catatan absensi, %d pembatalan langsung berlaku, %d menunggu persetujuan\n",
 		res.Counts["siswa"], res.Counts["tagihan"], res.Counts["pembayaran"], res.Counts["absensi"], res.Counts["pembatalan_berlaku"], res.Counts["pembatalan_menunggu"])
+	fmt.Printf("MVP 2: %d mapel, %d penugasan, %d slot jadwal, %d nilai, %d catatan absensi per mapel, %d laporan tersimpan, %d mapping impor\n\n",
+		res.Counts["mapel"], res.Counts["penugasan"], res.Counts["jadwal"], res.Counts["nilai"], res.Counts["absensi_mapel"], res.Counts["laporan_tersimpan"], res.Counts["mapping"])
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "PERAN\tNAMA\tEMAIL\tCATATAN")
+	// Urut per peran; guru mapel (dibuat bagian MVP 2) ikut di kelompok guru.
+	rank := map[string]int{"admin_tu": 0, "bendahara": 1, "kepala_sekolah": 2, "guru": 3, "orang_tua": 4}
+	slices.SortStableFunc(res.Accounts, func(a, b demo.Account) int { return rank[a.Role] - rank[b.Role] })
 	for _, a := range res.Accounts {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.Role, a.Name, a.Email, a.Note)
 	}
