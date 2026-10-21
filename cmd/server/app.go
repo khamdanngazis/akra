@@ -58,6 +58,8 @@ func newApp(d appDeps) (http.Handler, error) {
 		return nil, err
 	}
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
+	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
+	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
 
 	return newRouter(routerDeps{
 		pinger:      d.pinger,
@@ -80,7 +82,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		gradeInput:   grades.NewInputHandler(grades.NewInputService(d.db), d.db, d.sessions, d.render, d.logger),
 		gradeRecap:   grades.NewReportHandler(d.db, d.sessions, d.render, d.logger),
 		reportConfig: grades.NewReportConfigHandler(d.db, d.sessions, d.render, d.logger),
-		reportSaved:  builder.NewConfigHandler(builder.NewConfigService(d.db, builder.Default), d.sessions, d.render, d.logger),
+		reportSaved:  builder.NewConfigHandler(builder.NewConfigService(d.db, builder.Default), reportsHandler, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),
@@ -97,7 +99,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
 		home:        home.NewHandler(d.db, d.render, d.sessions, d.logger),
 		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
-		reports:     reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger),
+		reports:     reportsHandler,
 		importer:    importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
 	}), nil
 }

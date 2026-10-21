@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,6 +17,7 @@ import (
 	"akra/internal/billing"
 	"akra/internal/platform/database"
 	"akra/internal/platform/storage"
+	"akra/internal/reports/builder"
 	"akra/internal/reports/export"
 	"akra/internal/school"
 )
@@ -32,6 +34,8 @@ const (
 const (
 	TypeAttendance = "attendance"
 	TypeArrears    = "arrears"
+	// TypeCustom adalah laporan kustom dari konfigurasi tersimpan (T79).
+	TypeCustom = "custom"
 )
 
 const (
@@ -62,6 +66,11 @@ type JobParams struct {
 	DueFrom   string `json:"due_from,omitempty"`
 	DueTo     string `json:"due_to,omitempty"`
 	AsOf      string `json:"as_of"`
+	// Laporan kustom (T79): judul (nama konfigurasi) dan salinan konfigurasi
+	// saat diminta, sehingga isi file tidak berubah jika konfigurasinya
+	// diubah atau dihapus sebelum job berjalan.
+	Title  string          `json:"title,omitempty"`
+	Config *builder.Config `json:"config,omitempty"`
 }
 
 // ReportJob adalah satu permintaan ekspor di server.
@@ -102,8 +111,9 @@ func parseDay(s string) time.Time {
 }
 
 // buildTable menyusun tabel laporan dari parameter job. Dipakai ekspor
-// langsung dan job agar isinya sama.
-func buildTable(ctx context.Context, q database.DBTX, schoolID, schoolName, reportType string, p JobParams) (export.Table, int, error) {
+// langsung dan job agar isinya sama. inJob true di worker: laporan kustom
+// memuat semua baris (ekspor langsung berhenti di MaxRows+1).
+func buildTable(ctx context.Context, q database.DBTX, schoolID, schoolName, reportType string, p JobParams, inJob bool) (export.Table, int, error) {
 	asOf := parseDay(p.AsOf)
 	switch reportType {
 	case TypeAttendance:
@@ -120,12 +130,17 @@ func buildTable(ctx context.Context, q database.DBTX, schoolID, schoolName, repo
 		}
 		t, a, err := ArrearsReport(ctx, q, schoolID, schoolName, f, labels, asOf)
 		return t, len(a.Items), err
+	case TypeCustom:
+		if p.Config == nil {
+			return export.Table{}, 0, errors.New("reports: custom job without config")
+		}
+		return builder.ExportTable(ctx, q, builder.Default, schoolID, schoolName, p.Title, *p.Config, asOf, builder.Options{NoLimit: inJob})
 	default:
 		return export.Table{}, 0, fmt.Errorf("reports: unknown report type %q", reportType)
 	}
 }
 
-var reportSheets = map[string]string{TypeAttendance: "Rekap", TypeArrears: "Tunggakan"}
+var reportSheets = map[string]string{TypeAttendance: "Rekap", TypeArrears: "Tunggakan", TypeCustom: "Laporan"}
 
 // renderTable menulis t dalam format xlsx atau pdf.
 func renderTable(t export.Table, reportType, format string) ([]byte, error) {
@@ -240,7 +255,7 @@ func (w *ExportWorker) export(ctx context.Context, a ExportArgs) error {
 	if err := w.db.QueryRow(ctx, `SELECT name FROM schools WHERE id = $1`, a.SchoolID).Scan(&schoolName); err != nil {
 		return fmt.Errorf("load school: %w", err)
 	}
-	t, rows, err := buildTable(ctx, w.db, a.SchoolID, schoolName, j.Type, j.Params)
+	t, rows, err := buildTable(ctx, w.db, a.SchoolID, schoolName, j.Type, j.Params, true)
 	if err != nil {
 		return fmt.Errorf("build report: %w", err)
 	}
@@ -264,6 +279,9 @@ func (w *ExportWorker) export(ctx context.Context, a ExportArgs) error {
 func exportFilename(j ReportJob, printed time.Time) string {
 	if j.Type == TypeAttendance {
 		return fmt.Sprintf("rekap-kehadiran-%s-%s.%s", j.Params.From, j.Params.To, j.Format)
+	}
+	if j.Type == TypeCustom {
+		return fmt.Sprintf("laporan-%s-%s.%s", slug(j.Params.Title), printed.Format(dateLayout), j.Format)
 	}
 	return fmt.Sprintf("tunggakan-%s.%s", printed.Format(dateLayout), j.Format)
 }
@@ -342,4 +360,29 @@ func jobParamsFromArrears(f billing.ArrearsFilter, asOf time.Time) JobParams {
 		p.DueTo = f.DueTo.Format(dateLayout)
 	}
 	return p
+}
+
+// slug membuat bagian nama file dari judul: huruf kecil, angka, dan tanda
+// hubung saja.
+func slug(s string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			dash = false
+		case !dash && b.Len() > 0:
+			b.WriteByte('-')
+			dash = true
+		}
+	}
+	out := strings.TrimSuffix(b.String(), "-")
+	if out == "" {
+		return "kustom"
+	}
+	if len(out) > 60 {
+		out = strings.TrimSuffix(out[:60], "-")
+	}
+	return out
 }

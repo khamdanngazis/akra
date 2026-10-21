@@ -101,10 +101,11 @@
 </div>
 </div>
 <label class="choice mt-2"><input type="checkbox" name="shared"{{if .Shared}} checked{{end}}> Bagikan ke pengguna sekolah yang berhak atas sumber ini (baca saja)</label>
+<p class="hint mt-2">{{if .DownloadID}}Unduhan memakai konfigurasi yang tersimpan; simpan dulu jika ada perubahan.{{else}}Simpan konfigurasi untuk bisa mengunduh Excel atau PDF.{{end}} Lebih dari 5.000 baris dibuat di server; Anda akan diarahkan ke halaman statusnya.</p>
 <div class="action-row mt-3">
 <button type="submit" class="btn btn-ghost">Pratinjau</button>
 <button type="submit" class="btn btn-primary" formaction="/laporan/bangun/simpan">Simpan{{if .ConfigID}} perubahan{{end}}</button>
-<button type="button" class="btn btn-ghost" disabled title="Unduhan Excel/PDF dikerjakan di T79">Unduh (segera)</button>
+{{with .DownloadID}}<a class="btn btn-ghost" href="/laporan/konfigurasi/{{.}}.xlsx">Unduh Excel</a><a class="btn btn-ghost" href="/laporan/konfigurasi/{{.}}.pdf">Unduh PDF</a>{{end}}
 </div>
 </section>
 </form>

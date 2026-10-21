@@ -20,6 +20,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
 	"akra/internal/platform/storage"
+	"akra/internal/reports/builder"
 	"akra/internal/reports/export"
 	"akra/internal/school"
 )
@@ -278,7 +279,7 @@ func (h *Handler) attendanceExport(w http.ResponseWriter, r *http.Request, forma
 		return
 	}
 	today := h.today()
-	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeAttendance, jobParamsFromAttendance(f, today))
+	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeAttendance, jobParamsFromAttendance(f, today), false)
 	if msg, ok := rangeMessage(err); ok {
 		page.BadRequest(h.render, w, r, id, "Rentang tidak valid", msg)
 		return
@@ -302,7 +303,7 @@ func (h *Handler) arrearsExport(w http.ResponseWriter, r *http.Request, format s
 		return
 	}
 	today := h.today()
-	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeArrears, jobParamsFromArrears(f, today))
+	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeArrears, jobParamsFromArrears(f, today), false)
 	if err != nil {
 		page.ServerError(h.render, h.logger, w, r, id, "arrears report", err)
 		return
@@ -377,4 +378,19 @@ func (h *Handler) sendFile(w http.ResponseWriter, data []byte, format, filename 
 	hdr.Set("Cache-Control", "private, no-store")
 	hdr.Set("Content-Length", strconv.Itoa(len(data)))
 	_, _ = w.Write(data)
+}
+
+// ExportCustom mengirim laporan kustom (T79) sebagai xlsx atau pdf, langsung
+// jika tidak lebih dari MaxSyncRows baris, selain itu sebagai job (T49)
+// dengan salinan konfigurasi di params. Hak akses (pemilik, berbagi, peran
+// sumber) sudah diperiksa builder.ConfigHandler sebelum memanggil ini.
+func (h *Handler) ExportCustom(w http.ResponseWriter, r *http.Request, title string, cfg builder.Config, format string) {
+	id, _ := auth.CurrentUser(r.Context())
+	p := JobParams{Title: title, Config: &cfg, AsOf: h.today().Format(dateLayout)}
+	t, rows, err := buildTable(r.Context(), h.db, id.SchoolID, id.SchoolName, TypeCustom, p, false)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "custom report", err)
+		return
+	}
+	h.deliver(w, r, id, t, rows, TypeCustom, format, p)
 }

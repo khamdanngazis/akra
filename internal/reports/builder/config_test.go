@@ -263,7 +263,7 @@ func configRouter(t *testing.T, tx pgx.Tx, a *testutil.School) doFunc {
 			next.ServeHTTP(w, req.WithContext(auth.ContextWithIdentity(req.Context(), id)))
 		})
 	})
-	NewConfigHandler(NewConfigService(tx, Default), sm, rd, logger).Routes(r)
+	NewConfigHandler(NewConfigService(tx, Default), nil, sm, rd, logger).Routes(r)
 	return func(method, path string, u testutil.User, form url.Values) *httptest.ResponseRecorder {
 		var body io.Reader
 		if form != nil {

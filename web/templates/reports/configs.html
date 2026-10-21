@@ -15,23 +15,26 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>Nama</th><th>Sumber</th><th class="max-sm:hidden">Kolom</th><th>Pemilik</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
+<thead><tr><th>Nama</th><th class="max-sm:hidden">Sumber</th><th class="max-sm:hidden">Kolom</th><th class="max-sm:hidden">Pemilik</th></tr></thead>
 <tbody>
 {{range .Configs}}
 <tr>
-<td><strong>{{.Name}}</strong>{{if .Shared}} <span class="badge badge-info">Bersama</span>{{end}}</td>
-<td>{{.SourceLabel}}</td>
-<td class="max-sm:hidden tabular-nums">{{len .Config.Columns}} kolom{{with .Config.Filters}} · {{len .}} filter{{end}}</td>
-<td>{{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</td>
-<td class="actions">
-<div class="action-row">
+<td>
+<strong>{{.Name}}</strong>{{if .Shared}} <span class="badge badge-info">Bersama</span>{{end}}
+<span class="block text-sm text-slate-500 sm:hidden">{{.SourceLabel}} · {{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</span>
+<div class="config-actions">
 <a class="btn btn-ghost btn-sm" href="/laporan/bangun?konfigurasi={{.ID}}">Buka</a>
+<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi/{{.ID}}.xlsx">Excel</a>
+<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi/{{.ID}}.pdf">PDF</a>
 {{if .Mine}}
 <a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi?ubah={{.ID}}">Ubah</a>
 <form method="post" action="/laporan/konfigurasi/{{.ID}}/hapus" x-data @submit="if (!confirm('Hapus konfigurasi ini?')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
 {{end}}
 </div>
 </td>
+<td class="max-sm:hidden">{{.SourceLabel}}</td>
+<td class="max-sm:hidden tabular-nums">{{len .Config.Columns}} kolom{{with .Config.Filters}} · {{len .}} filter{{end}}</td>
+<td class="max-sm:hidden">{{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</td>
 </tr>
 {{end}}
 </tbody>

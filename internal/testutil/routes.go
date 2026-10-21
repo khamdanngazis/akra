@@ -387,6 +387,10 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/laporan/konfigurasi/" + o.ReportConfigID }, func(*School) url.Values {
 			return url.Values{"name": {"Diubah"}, "source": {"attendance"}, "columns_attendance": {"nis"}, "shared": {"on"}}
 		})},
+	{Method: "GET", Pattern: "/laporan/konfigurasi/{id}.xlsx", Kind: KindByID, Roles: financeRead, ControlRoles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/laporan/konfigurasi/" + o.ReportConfigID + ".xlsx"} })},
+	{Method: "GET", Pattern: "/laporan/konfigurasi/{id}.pdf", Kind: KindByID, Roles: financeRead, ControlRoles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/laporan/konfigurasi/" + o.ReportConfigID + ".pdf"} })},
 	{Method: "POST", Pattern: "/laporan/konfigurasi/{id}/hapus", Kind: KindByID, Roles: financeRead, ControlRoles: adminTU,
 		Requests: post(func(o *School) string { return "/laporan/konfigurasi/" + o.ReportConfigID + "/hapus" }, nil)},
 

@@ -20,7 +20,7 @@ const (
 	DownloadURLTTL = 5 * time.Minute
 )
 
-var jobTypeLabels = map[string]string{TypeAttendance: "Rekap kehadiran", TypeArrears: "Daftar tunggakan"}
+var jobTypeLabels = map[string]string{TypeAttendance: "Rekap kehadiran", TypeArrears: "Daftar tunggakan", TypeCustom: "Laporan kustom"}
 
 type jobView struct {
 	User      auth.Identity

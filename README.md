@@ -441,7 +441,19 @@ Paket [internal/reports/builder](internal/reports/builder/compile.go) (T76): lap
 - Akses selalu diperiksa di server, bukan hanya di menu:
   - guru mendapat `403` di halaman maupun `POST` langsung;
   - peran yang tidak berhak atas suatu sumber mendapat `422` saat pratinjau atau simpan.
-- Tombol unduh menyusul di T79.
+
+**Ekspor laporan kustom** (T79), `GET /laporan/konfigurasi/{id}.xlsx` dan `.pdf` (tombol di daftar konfigurasi dan di pembangun laporan untuk konfigurasi tersimpan):
+
+- Hanya pemilik, atau konfigurasi bersama yang sumbernya boleh dipakai peran pengguna. Selain itu `404`, termasuk konfigurasi pribadi milik orang lain dan konfigurasi sekolah lain.
+  - Konfigurasi yang sumbernya sudah tidak diizinkan untuk peran pengguna (mis. perannya berubah) ditolak `403`.
+  - Konfigurasi yang tidak valid lagi (mis. kolomnya dihapus dari registry) ditolak `422`.
+- Satu jalur ekspor:
+  1. `builder.ExportTable` menjalankan `Compile` yang sama dengan pratinjau dan menyusun `export.Table` T47.
+  2. `reports.Handler.ExportCustom` memakai `deliver`. Sampai `MaxSyncRows` (5.000) baris file dikirim langsung; di atasnya dibuat job T49 (`report_type = 'custom'`, migrasi 000039).
+- Params job menyimpan judul dan **salinan konfigurasi** saat diminta, sehingga isi file tidak berubah jika konfigurasinya diubah sebelum job berjalan. Worker menjalankan konfigurasi tanpa batas baris.
+- Judul file adalah nama konfigurasi. Kepala laporan berisi sumber, filter, dan urutan. Nama sekolah dan tanggal cetak ada di kepala PDF, kaki PDF, dan sheet Info Excel.
+  - Nominal ditulis sebagai angka berformat rupiah di Excel. Uji memastikan isi Excel sama dengan pratinjau T78.
+  - Nama file: `laporan-<nama>-<tanggal>.xlsx`.
 
 ## Siswa
 
