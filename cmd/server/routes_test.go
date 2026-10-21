@@ -91,6 +91,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		schedule:     schedule.NewHandler(schedule.NewService(nil), nil, sessions, rd, logger),
 		components:   grades.NewComponentHandler(grades.NewComponentService(nil), nil, sessions, rd, logger),
 		gradeInput:   grades.NewInputHandler(grades.NewInputService(nil), nil, sessions, rd, logger),
+		gradeRecap:   grades.NewReportHandler(nil, sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
 			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),

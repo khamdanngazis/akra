@@ -15,10 +15,10 @@ func paths(items []MenuItem) string {
 
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/komponen /pengaturan/mapel",
+		"admin_tu":       "/ /absensi/rekap /siswa /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/mapel",
 		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
-		"guru":           "/ /absensi /jadwal/saya /pengumuman /pengaturan/penugasan /nilai/input /nilai/komponen",
-		"kepala_sekolah": "/ /absensi/rekap /siswa /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran",
+		"guru":           "/ /absensi /jadwal/saya /pengumuman /pengaturan/penugasan /nilai/input /nilai/rekap /nilai/komponen",
+		"kepala_sekolah": "/ /absensi/rekap /siswa /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran /nilai/rekap",
 		"orang_tua":      "/portal /portal/pengumuman",
 	} {
 		if got := paths(MenuFor([]string{role})); got != want {
@@ -62,7 +62,7 @@ func TestMenuFor_TwoRolesMergedWithoutDuplicates(t *testing.T) {
 			t.Errorf("merged menu misses %s", p)
 		}
 	}
-	if len(got) != len(MenuFor([]string{"bendahara"}))+5 { // + /absensi, /jadwal/saya, /pengaturan/penugasan, /nilai/input, /nilai/komponen
+	if len(got) != len(MenuFor([]string{"bendahara"}))+6 { // + /absensi, /jadwal/saya, /pengaturan/penugasan, /nilai/input, /nilai/rekap, /nilai/komponen
 		t.Errorf("merged menu = %s", paths(got))
 	}
 	// Urutan mengikuti Items, bukan urutan peran.

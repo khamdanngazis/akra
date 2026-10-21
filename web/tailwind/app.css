@@ -1151,6 +1151,19 @@
     @apply border-dashed border-amber-400 bg-amber-50;
   }
 
+  .recap-table th,
+  .recap-table td {
+    @apply whitespace-nowrap;
+  }
+
+  .row-incomplete {
+    @apply bg-amber-50/50;
+  }
+
+  .cell-empty {
+    @apply inline-block min-w-8 rounded border border-dashed border-amber-400 bg-amber-50 px-1 text-center text-amber-700;
+  }
+
   .weight-total {
     @apply mt-4 rounded-xl border px-4 py-3 text-sm;
   }

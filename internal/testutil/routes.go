@@ -354,6 +354,13 @@ var Routes = []Route{
 			}
 		}},
 
+	// Rekap nilai (T72): admin/TU dan kepala sekolah semua kelas, guru mapel
+	// yang diajar dan kelas perwaliannya.
+	{Method: "GET", Pattern: "/nilai/rekap/", Kind: KindPage, Roles: []string{Admin, Principal, Teacher},
+		Requests: paths(func(o *School) []string {
+			return []string{"/nilai/rekap/", "/nilai/rekap/?kelas=" + o.ClassID, "/nilai/rekap/?kelas=" + o.ClassID + "&mapel=" + o.SubjectID}
+		})},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,
