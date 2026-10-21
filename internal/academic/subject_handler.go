@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -53,6 +54,7 @@ type subjectRow struct {
 	ID       string
 	Name     string
 	Code     string
+	KKM      *int
 	IsActive bool
 	// Form berisi isian form ubah: nilai tersimpan, atau isian terakhir jika
 	// penyimpanan gagal. Open membuka form ubah saat halaman tampil.
@@ -69,6 +71,9 @@ type subjectsView struct {
 	// PerSubject: absensi per mapel aktif (T68). Diubah lewat
 	// POST /pengaturan/absensi di paket attendance.
 	PerSubject bool
+	// KKMDefault dan KKMLabel (KKM atau KKTP) dari pengaturan rapor (T73).
+	KKMDefault int
+	KKMLabel   string
 	Flash      string
 	Error      string
 }
@@ -144,7 +149,14 @@ func (h *SubjectHandler) show(w http.ResponseWriter, r *http.Request, status int
 		h.serverError(w, r, "attendance settings", err)
 		return
 	}
+	kkm, label, err := SchoolThreshold(r.Context(), h.svc.db, id.SchoolID)
+	if err != nil {
+		h.serverError(w, r, "report threshold", err)
+		return
+	}
 	view := subjectsView{
+		KKMDefault: kkm,
+		KKMLabel:   label,
 		User:       id,
 		New:        opts.newForm,
 		NewErrors:  opts.newErrors,
@@ -153,7 +165,10 @@ func (h *SubjectHandler) show(w http.ResponseWriter, r *http.Request, status int
 	}
 	for _, s := range list {
 		row := subjectRow{ID: s.ID, Name: s.Name, Code: s.Code, IsActive: s.IsActive,
-			Form: SubjectForm{Name: s.Name, Code: s.Code, Status: StatusActive}}
+			Form: SubjectForm{Name: s.Name, Code: s.Code, Status: StatusActive}, KKM: s.KKM}
+		if s.KKM != nil {
+			row.Form.KKM = strconv.Itoa(*s.KKM)
+		}
 		if !s.IsActive {
 			row.Form.Status = StatusInactive
 		}
@@ -174,6 +189,7 @@ func parseSubjectForm(w http.ResponseWriter, r *http.Request) (SubjectForm, bool
 	return SubjectForm{
 		Name:   r.PostForm.Get("name"),
 		Code:   r.PostForm.Get("code"),
+		KKM:    r.PostForm.Get("kkm"),
 		Status: r.PostForm.Get("status"),
 	}, true
 }

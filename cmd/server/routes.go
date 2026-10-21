@@ -45,6 +45,7 @@ type routerDeps struct {
 	components   *grades.ComponentHandler
 	gradeInput   *grades.InputHandler
 	gradeRecap   *grades.ReportHandler
+	reportConfig *grades.ReportConfigHandler
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
@@ -118,6 +119,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.components.Routes(r)
 			d.gradeInput.Routes(r)
 			d.gradeRecap.Routes(r)
+			d.reportConfig.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)

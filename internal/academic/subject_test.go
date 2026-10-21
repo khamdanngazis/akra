@@ -446,3 +446,50 @@ func TestSubjects_UpdateAndAudit(t *testing.T) {
 		}
 	})
 }
+
+func TestSubjects_KKM(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	sub, err := f.svc.Create(ctx, f.actor, SubjectForm{Name: "Matematika", KKM: "75"})
+	if err != nil || sub.KKM == nil || *sub.KKM != 75 {
+		t.Fatalf("create with KKM: %v %+v", err, sub)
+	}
+	plain, err := f.svc.Create(ctx, f.actor, SubjectForm{Name: "IPA"})
+	if err != nil || plain.KKM != nil {
+		t.Fatalf("create without KKM: %v %+v", err, plain)
+	}
+	for _, bad := range []string{"101", "-1", "tujuh", "7.5"} {
+		_, err := f.svc.Create(ctx, f.actor, SubjectForm{Name: "Seni " + bad, KKM: bad})
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.Fields["kkm"] == "" {
+			t.Errorf("KKM %q: err = %v", bad, err)
+		}
+	}
+	// Mengubah KKM saja tetap diaudit; mengosongkan kembali ke default (NULL).
+	before := f.audits(f.schoolA, ActionSubjectUpdate)
+	sub, err = f.svc.Update(ctx, f.actor, sub.ID, SubjectForm{Name: "Matematika", KKM: "80", Status: StatusActive})
+	if err != nil || *sub.KKM != 80 || f.audits(f.schoolA, ActionSubjectUpdate) != before+1 {
+		t.Fatalf("update KKM: %v %+v", err, sub)
+	}
+	sub, err = f.svc.Update(ctx, f.actor, sub.ID, SubjectForm{Name: "Matematika", KKM: " ", Status: StatusActive})
+	if err != nil || sub.KKM != nil {
+		t.Errorf("clear KKM: %v %+v", err, sub)
+	}
+	if got := EffectiveKKM(sub, 70); got != 70 {
+		t.Errorf("EffectiveKKM default = %d", got)
+	}
+	if kkm, label, err := SchoolThreshold(ctx, f.tx, f.schoolA); err != nil || kkm != DefaultKKM || label != "KKM" {
+		t.Errorf("school threshold: %d %s %v", kkm, label, err)
+	}
+	if ThresholdLabel(ReportFormatMerdeka) != "KKTP" || ThresholdLabel("") != "KKM" {
+		t.Error("threshold labels")
+	}
+	// Database menolak KKM di luar 0–100.
+	if _, err := f.tx.Exec(ctx, `SAVEPOINT k`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.tx.Exec(ctx, `UPDATE subjects SET kkm = 101 WHERE id = $1`, sub.ID); err == nil || !strings.Contains(err.Error(), "subjects_kkm_check") {
+		t.Errorf("kkm 101: %v", err)
+	}
+	_, _ = f.tx.Exec(ctx, `ROLLBACK TO SAVEPOINT k`)
+}

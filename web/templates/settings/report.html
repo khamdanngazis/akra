@@ -1,0 +1,72 @@
+{{define "title"}}Pengaturan Rapor{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Pengaturan Rapor</h1>
+<p class="muted">Skala huruf, KKM default, dan penanda tangan rapor. Perubahan langsung berlaku di rekap nilai. Pengaturan ini sengaja terbatas; format rapor yang berbeda perlu dibahas sebagai fitur baru.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+{{if .Broken}}<div class="alert alert-error" role="alert">Pengaturan rapor tersimpan tidak valid. Form diisi nilai default; simpan untuk memperbaikinya.</div>{{end}}
+
+<form method="post" action="/pengaturan/rapor" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+
+<section class="card form-card" aria-labelledby="format-title">
+<h2 id="format-title" class="card-title">Format rapor</h2>
+<fieldset class="stack mt-3{{if .Errors.format}} has-error{{end}}">
+<legend class="visually-hidden">Format rapor</legend>
+{{range .Formats}}
+<label class="choice items-start"><input type="radio" name="format" value="{{.Value}}"{{if eq .Value $.Form.Format}} checked{{end}} class="mt-1 flex-none">
+<span><strong class="block">{{.Label}}</strong><span class="block text-sm text-slate-500">{{.Hint}}</span></span></label>
+{{end}}
+{{with .Errors.format}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+</section>
+
+<section class="card form-card" aria-labelledby="kkm-title">
+<h2 id="kkm-title" class="card-title">Ketuntasan dan penanda tangan</h2>
+<div class="field-grid mt-3">
+<div class="field{{if .Errors.kkm_default}} has-error{{end}}">
+<label for="kkm_default">KKM/KKTP default</label>
+<input id="kkm_default" name="kkm_default" value="{{.Form.KKMDefault}}" type="number" min="0" max="100" step="1" inputmode="numeric"{{if .Errors.kkm_default}} aria-invalid="true"{{end}}>
+{{with .Errors.kkm_default}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dipakai mapel yang tidak punya KKM sendiri. KKM per mapel diisi di <a href="/pengaturan/mapel">Mata Pelajaran</a>.</p>{{end}}
+</div>
+<div class="field{{if .Errors.principal_name}} has-error{{end}}">
+<label for="principal_name">Nama kepala sekolah</label>
+<input id="principal_name" name="principal_name" value="{{.Form.PrincipalName}}" maxlength="80" autocomplete="off"{{if .Errors.principal_name}} aria-invalid="true"{{end}}>
+{{with .Errors.principal_name}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Tampil di bawah tanda tangan rapor. Nama wali kelas diambil dari data kelas.</p>{{end}}
+</div>
+<div class="field{{if .Errors.signer_title}} has-error{{end}}">
+<label for="signer_title">Jabatan penanda tangan</label>
+<input id="signer_title" name="signer_title" value="{{.Form.SignerTitle}}" maxlength="80"{{if .Errors.signer_title}} aria-invalid="true"{{end}}>
+{{with .Errors.signer_title}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+</section>
+
+<section class="card form-card" aria-labelledby="scale-title">
+<h2 id="scale-title" class="card-title">Skala huruf</h2>
+<p class="muted mt-1">Rentang nilai akhir (bilangan bulat) untuk setiap huruf atau predikat. Harus mencakup 0 sampai 100 tanpa celah dan tanpa tumpang tindih. Baris kosong diabaikan.</p>
+{{with .Errors.scale}}<div class="alert alert-error mt-3" role="alert">{{.}}</div>{{end}}
+<div class="table-wrap mt-3">
+<table class="scale-table">
+<thead><tr><th>Huruf/predikat</th><th class="w-24">Dari</th><th class="w-24">Sampai</th></tr></thead>
+<tbody>
+{{range .Bands}}
+<tr{{if .Error}} class="has-error"{{end}}>
+<td><label class="visually-hidden" for="letter-{{.Index}}">Huruf baris {{inc .Index}}</label><input id="letter-{{.Index}}" name="letter_{{.Index}}" value="{{.Letter}}" maxlength="20">{{with .Error}}<p class="field-error">{{.}}</p>{{end}}</td>
+<td><label class="visually-hidden" for="min-{{.Index}}">Batas bawah baris {{inc .Index}}</label><input id="min-{{.Index}}" name="min_{{.Index}}" value="{{.Min}}" type="number" min="0" max="100" inputmode="numeric"></td>
+<td><label class="visually-hidden" for="max-{{.Index}}">Batas atas baris {{inc .Index}}</label><input id="max-{{.Index}}" name="max_{{.Index}}" value="{{.Max}}" type="number" min="0" max="100" inputmode="numeric"></td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</section>
+
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pengaturan</button></div>
+</form>
+{{end}}

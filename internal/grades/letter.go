@@ -2,90 +2,124 @@ package grades
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"akra/internal/platform/database"
 	"akra/internal/platform/settings"
 )
 
-// Band adalah satu huruf beserta batas bawahnya (inklusif), dalam nilai
-// akhir bulat.
+// Band adalah satu huruf (atau predikat) dengan rentang nilai akhir bulat
+// Min–Max, keduanya inklusif.
 type Band struct {
-	Letter string
-	Min    int
+	Letter string `json:"letter"`
+	Min    int    `json:"min"`
+	Max    int    `json:"max"`
 }
 
-// Scale adalah skala huruf, urut batas bawah dari tertinggi; batas bawah
-// terakhir selalu 0 sehingga setiap nilai 0–100 punya huruf.
+// Scale adalah skala huruf, urut dari rentang tertinggi. Skala valid
+// mencakup 0–100 tanpa celah dan tanpa tumpang tindih (ValidateScale).
 type Scale []Band
 
-// DefaultScale berlaku jika sekolah belum mengatur skala: A ≥ 90, B ≥ 80,
-// C ≥ 70, D di bawah 70.
+// MaxLetterLen adalah panjang maksimal huruf/predikat, mis. "Sangat Baik".
+const MaxLetterLen = 20
+
+// DefaultScale berlaku jika sekolah belum mengatur skala: A 90–100,
+// B 80–89, C 70–79, D 0–69.
 func DefaultScale() Scale {
-	return Scale{{"A", 90}, {"B", 80}, {"C", 70}, {"D", 0}}
+	return Scale{{"A", 90, 100}, {"B", 80, 89}, {"C", 70, 79}, {"D", 0, 69}}
 }
 
-// ErrInvalidScale: teks skala tidak valid.
-var ErrInvalidScale = errors.New("grades: invalid letter scale")
+var (
+	// ErrInvalidScale: isi skala tidak valid (huruf kosong atau ganda, batas
+	// di luar 0–100, min lebih besar dari max).
+	ErrInvalidScale = errors.New("grades: invalid letter scale")
+	// ErrScaleOverlap: dua rentang tumpang tindih.
+	ErrScaleOverlap = errors.New("grades: letter scale ranges overlap")
+	// ErrScaleGap: ada nilai di antara dua rentang yang tidak punya huruf.
+	ErrScaleGap = errors.New("grades: letter scale has a gap")
+	// ErrScaleCoverage: skala tidak dimulai dari 0 atau tidak sampai 100.
+	ErrScaleCoverage = errors.New("grades: letter scale must cover 0-100")
+)
 
-// ParseScale membaca skala dari teks "A:90,B:80,C:70,D:0" (format kunci
-// school_settings grade_letter_scale). Batas harus turun tegas, 0–100, dan
-// yang terakhir 0; huruf 1–3 karakter dan tidak boleh ganda.
+// ValidateScale mengurutkan skala dari rentang tertinggi lalu memastikan
+// setiap nilai bulat 0–100 punya tepat satu huruf.
+func ValidateScale(sc Scale) (Scale, error) {
+	if len(sc) == 0 {
+		return nil, ErrScaleCoverage
+	}
+	out := slices.Clone(sc)
+	seen := map[string]bool{}
+	for i, b := range out {
+		b.Letter = strings.TrimSpace(b.Letter)
+		out[i] = b
+		key := strings.ToLower(b.Letter)
+		switch {
+		case b.Letter == "" || utf8.RuneCountInString(b.Letter) > MaxLetterLen:
+			return nil, fmt.Errorf("%w: letter %q", ErrInvalidScale, b.Letter)
+		case seen[key]:
+			return nil, fmt.Errorf("%w: duplicate letter %q", ErrInvalidScale, b.Letter)
+		case b.Min < 0 || b.Max > 100 || b.Min > b.Max:
+			return nil, fmt.Errorf("%w: %s %d-%d", ErrInvalidScale, b.Letter, b.Min, b.Max)
+		}
+		seen[key] = true
+	}
+	slices.SortStableFunc(out, func(a, b Band) int { return b.Min - a.Min })
+	for i := 1; i < len(out); i++ {
+		upper, lower := out[i-1], out[i]
+		switch {
+		case lower.Max >= upper.Min:
+			return nil, fmt.Errorf("%w: %s and %s", ErrScaleOverlap, upper.Letter, lower.Letter)
+		case lower.Max < upper.Min-1:
+			return nil, fmt.Errorf("%w: between %s and %s", ErrScaleGap, lower.Letter, upper.Letter)
+		}
+	}
+	if out[0].Max != 100 || out[len(out)-1].Min != 0 {
+		return nil, ErrScaleCoverage
+	}
+	return out, nil
+}
+
+// ParseScale membaca skala JSON kunci school_settings report.scale, mis.
+// [{"letter":"A","min":90,"max":100}, ...], lalu memvalidasinya.
 func ParseScale(s string) (Scale, error) {
 	var sc Scale
-	seen := map[string]bool{}
-	for _, part := range strings.Split(s, ",") {
-		letter, min, ok := strings.Cut(strings.TrimSpace(part), ":")
-		letter = strings.TrimSpace(letter)
-		n, err := strconv.Atoi(strings.TrimSpace(min))
-		switch {
-		case !ok || err != nil:
-			return nil, fmt.Errorf("%w: %q", ErrInvalidScale, part)
-		case letter == "" || len([]rune(letter)) > 3 || seen[letter]:
-			return nil, fmt.Errorf("%w: letter %q", ErrInvalidScale, letter)
-		case n < 0 || n > 100 || (len(sc) > 0 && n >= sc[len(sc)-1].Min):
-			return nil, fmt.Errorf("%w: bounds must decrease within 0-100", ErrInvalidScale)
-		}
-		seen[letter] = true
-		sc = append(sc, Band{letter, n})
+	dec := json.NewDecoder(strings.NewReader(s))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&sc); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidScale, err)
 	}
-	if len(sc) == 0 || sc[len(sc)-1].Min != 0 {
-		return nil, fmt.Errorf("%w: the last bound must be 0", ErrInvalidScale)
-	}
-	return sc, nil
+	return ValidateScale(sc)
 }
 
-// String memformat skala untuk disimpan: "A:90,B:80,C:70,D:0".
-func (sc Scale) String() string {
-	parts := make([]string, len(sc))
-	for i, b := range sc {
-		parts[i] = b.Letter + ":" + strconv.Itoa(b.Min)
-	}
-	return strings.Join(parts, ",")
+// JSON memformat skala untuk disimpan.
+func (sc Scale) JSON() string {
+	b, _ := json.Marshal(sc)
+	return string(b)
 }
 
-// Letter mengembalikan huruf untuk nilai akhir bulat score (0–100). Batas
-// bawah inklusif: tepat 80 pada skala default = B.
+// Letter mengembalikan huruf untuk nilai akhir bulat score (0–100).
 func Letter(score int, scale Scale) (string, error) {
 	if score < 0 || score > 100 {
 		return "", fmt.Errorf("%w: %d", ErrInvalidScore, score)
 	}
 	for _, b := range scale {
-		if score >= b.Min {
+		if score >= b.Min && score <= b.Max {
 			return b.Letter, nil
 		}
 	}
 	return "", ErrInvalidScale
 }
 
-// LoadScale membaca skala huruf sekolah dari school_settings; DefaultScale
-// jika belum diatur. Nilai tersimpan yang rusak adalah error, bukan
-// diam-diam memakai default.
+// LoadScale membaca skala huruf sekolah (report.scale); DefaultScale jika
+// belum diatur. Nilai tersimpan yang rusak adalah error, bukan diam-diam
+// memakai default.
 func LoadScale(ctx context.Context, q database.DBTX, schoolID string) (Scale, error) {
-	v, ok, err := settings.Get(ctx, q, schoolID, settings.GradeLetterScale)
+	v, ok, err := settings.Get(ctx, q, schoolID, settings.ReportScale)
 	if err != nil {
 		return nil, err
 	}

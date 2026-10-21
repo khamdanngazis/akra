@@ -30,6 +30,7 @@ type Subject struct {
 	SchoolID  string
 	Name      string
 	Code      string // kosong jika tidak diisi
+	KKM       *int   // KKM mapel (T73); nil = memakai report.kkm_default sekolah
 	IsActive  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -39,9 +40,10 @@ type Subject struct {
 type SubjectInput struct {
 	Name string
 	Code string // kosong disimpan sebagai NULL
+	KKM  *int   // nil disimpan sebagai NULL
 }
 
-const subjectColumns = `id, school_id, name, coalesce(code, ''), is_active, created_at, updated_at`
+const subjectColumns = `id, school_id, name, coalesce(code, ''), kkm, is_active, created_at, updated_at`
 
 // Semua fungsi di bawah memfilter dengan schoolID dari sesi. Mapel sekolah
 // lain diperlakukan seperti tidak ada (ErrSubjectNotFound).
@@ -49,21 +51,21 @@ const subjectColumns = `id, school_id, name, coalesce(code, ''), is_active, crea
 // CreateSubject membuat mapel aktif.
 func CreateSubject(ctx context.Context, q database.DBTX, schoolID string, in SubjectInput) (Subject, error) {
 	return oneSubject(ctx, q, "create subject", `
-		INSERT INTO subjects (school_id, name, code)
-		VALUES ($1, $2, $3) RETURNING `+subjectColumns,
-		schoolID, in.Name, codeArg(in.Code))
+		INSERT INTO subjects (school_id, name, code, kkm)
+		VALUES ($1, $2, $3, $4) RETURNING `+subjectColumns,
+		schoolID, in.Name, codeArg(in.Code), in.KKM)
 }
 
-// UpdateSubject mengubah nama dan kode. Status aktif diubah lewat
+// UpdateSubject mengubah nama, kode, dan KKM. Status aktif diubah lewat
 // SetSubjectActive.
 func UpdateSubject(ctx context.Context, q database.DBTX, schoolID, id string, in SubjectInput) (Subject, error) {
 	if !database.IsUUID(id) {
 		return Subject{}, ErrSubjectNotFound
 	}
 	return oneSubject(ctx, q, "update subject", `
-		UPDATE subjects SET name = $3, code = $4, updated_at = now()
+		UPDATE subjects SET name = $3, code = $4, kkm = $5, updated_at = now()
 		WHERE school_id = $1 AND id = $2 RETURNING `+subjectColumns,
-		schoolID, id, in.Name, codeArg(in.Code))
+		schoolID, id, in.Name, codeArg(in.Code), in.KKM)
 }
 
 // SetSubjectActive mengaktifkan atau menonaktifkan mapel. Mapel tidak pernah
@@ -125,7 +127,12 @@ func listSubjects(ctx context.Context, q database.DBTX, sql string, args ...any)
 
 func scanSubject(row pgx.CollectableRow) (Subject, error) {
 	var s Subject
-	err := row.Scan(&s.ID, &s.SchoolID, &s.Name, &s.Code, &s.IsActive, &s.CreatedAt, &s.UpdatedAt)
+	var kkm *int16
+	err := row.Scan(&s.ID, &s.SchoolID, &s.Name, &s.Code, &kkm, &s.IsActive, &s.CreatedAt, &s.UpdatedAt)
+	if kkm != nil {
+		k := int(*kkm)
+		s.KKM = &k
+	}
 	return s, err
 }
 

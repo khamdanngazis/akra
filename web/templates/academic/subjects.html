@@ -26,6 +26,11 @@
 <input id="new-code" name="code" value="{{.New.Code}}" maxlength="20" placeholder="MTK" autocomplete="off"{{if .NewErrors.code}} aria-invalid="true" aria-describedby="new-code-error"{{end}}>
 {{with .NewErrors.code}}<p class="field-error" id="new-code-error">{{.}}</p>{{else}}<p class="hint">Singkatan, mis. MTK. Tidak boleh sama dengan kode lain.</p>{{end}}
 </div>
+<div class="field{{if .NewErrors.kkm}} has-error{{end}}">
+<label for="new-kkm">{{.KKMLabel}} <span class="muted">(opsional)</span></label>
+<input id="new-kkm" name="kkm" value="{{.New.KKM}}" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="{{.KKMDefault}}"{{if .NewErrors.kkm}} aria-invalid="true" aria-describedby="new-kkm-error"{{end}}>
+{{with .NewErrors.kkm}}<p class="field-error" id="new-kkm-error">{{.}}</p>{{else}}<p class="hint">Kosongkan untuk memakai {{$.KKMLabel}} default sekolah ({{$.KKMDefault}}).</p>{{end}}
+</div>
 </div>
 <div class="action-row">
 <button type="submit" class="btn btn-primary" :disabled="submitting">Tambah</button>
@@ -37,12 +42,13 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>Nama</th><th>Kode</th><th>Status</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
+<thead><tr><th>Nama</th><th>Kode</th><th>{{.KKMLabel}}</th><th>Status</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
 {{range .Rows}}{{$id := .ID}}
 <tbody x-data="{ editing: {{if .Open}}true{{else}}false{{end}} }">
 <tr{{if not .IsActive}} class="row-inactive"{{end}}>
 <td><strong>{{.Name}}</strong></td>
 <td>{{if .Code}}{{.Code}}{{else}}<span class="muted">–</span>{{end}}</td>
+<td class="tabular-nums">{{with .KKM}}{{.}}{{else}}<span class="muted" title="Default sekolah">{{$.KKMDefault}}</span>{{end}}</td>
 <td>{{if .IsActive}}<span class="badge badge-success">Aktif</span>{{else}}<span class="badge">Nonaktif</span>{{end}}</td>
 <td class="actions">
 <div class="action-row">
@@ -51,7 +57,7 @@
 </td>
 </tr>
 <tr x-show="editing" x-cloak>
-<td colspan="4">
+<td colspan="5">
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
 <form method="post" action="/pengaturan/mapel/{{.ID}}" class="stack" novalidate>
 {{ csrfField }}
@@ -65,6 +71,11 @@
 <label for="code-{{.ID}}">Kode <span class="muted">(opsional)</span></label>
 <input id="code-{{.ID}}" name="code" value="{{.Form.Code}}" maxlength="20" autocomplete="off"{{if .Errors.code}} aria-invalid="true" aria-describedby="code-error-{{.ID}}"{{end}}>
 {{with .Errors.code}}<p class="field-error" id="code-error-{{$id}}">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.kkm}} has-error{{end}}">
+<label for="kkm-{{.ID}}">{{$.KKMLabel}} <span class="muted">(kosong = {{$.KKMDefault}})</span></label>
+<input id="kkm-{{.ID}}" name="kkm" value="{{.Form.KKM}}" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="{{$.KKMDefault}}"{{if .Errors.kkm}} aria-invalid="true"{{end}}>
+{{with .Errors.kkm}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 <div class="field{{if .Errors.status}} has-error{{end}}">
 <label for="status-{{.ID}}">Status</label>

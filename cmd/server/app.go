@@ -78,6 +78,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		components:   grades.NewComponentHandler(grades.NewComponentService(d.db), d.db, d.sessions, d.render, d.logger),
 		gradeInput:   grades.NewInputHandler(grades.NewInputService(d.db), d.db, d.sessions, d.render, d.logger),
 		gradeRecap:   grades.NewReportHandler(d.db, d.sessions, d.render, d.logger),
+		reportConfig: grades.NewReportConfigHandler(d.db, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

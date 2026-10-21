@@ -281,6 +281,14 @@ var Routes = []Route{
 			return url.Values{"per_mapel": {"aktif"}}
 		})},
 
+	// Pengaturan rapor (T73): hanya admin/TU.
+	{Method: "GET", Pattern: "/pengaturan/rapor/", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pengaturan/rapor/", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/rapor/" }, func(*School) url.Values {
+			return url.Values{"format": {"angka"}, "kkm_default": {"75"}, "principal_name": {"Uji"}, "signer_title": {"Kepala Sekolah"},
+				"letter_0": {"A"}, "min_0": {"80"}, "max_0": {"100"}, "letter_1": {"B"}, "min_1": {"0"}, "max_1": {"79"}}
+		})},
+
 	// Mata pelajaran (T64): hanya admin/TU.
 	{Method: "GET", Pattern: "/pengaturan/mapel/", Kind: KindPage, Roles: adminTU},
 	{Method: "POST", Pattern: "/pengaturan/mapel/", Kind: KindOwn, Roles: adminTU,

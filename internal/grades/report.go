@@ -24,6 +24,7 @@ type StudentGrades struct {
 	Scores       []*Score // sejajar dengan SubjectReport.Components; nil = belum dinilai
 	Result       Result
 	Letter       string // kosong jika belum lengkap atau komponen belum diatur
+	BelowKKM     bool   // nilai akhir lengkap di bawah KKM mapel
 }
 
 // SubjectReport adalah rekap satu mapel di satu kelas.
@@ -39,6 +40,9 @@ type SubjectReport struct {
 	Incomplete int    // siswa yang belum lengkap
 	EmptyCells int    // sel nilai kosong (siswa × komponen)
 	Average    *Score // rata-rata nilai akhir siswa yang lengkap, perseratus; nil jika belum ada
+	KKM        int    // KKM mapel, atau KKM default sekolah (T73)
+	KKMLabel   string // "KKM" atau "KKTP" sesuai format rapor
+	BelowKKM   int    // siswa lengkap dengan nilai akhir di bawah KKM
 }
 
 // ClassReport adalah ringkasan semua mapel satu kelas.
@@ -68,7 +72,7 @@ func SubjectSummary(ctx context.Context, q database.DBTX, schoolID string, c cla
 // guru pengampu di kelas itu (T65), urut nama mapel.
 func ClassSummary(ctx context.Context, q database.DBTX, schoolID string, c classes.Class) (ClassReport, error) {
 	rows, err := q.Query(ctx, `
-		SELECT s.id, s.school_id, s.name, coalesce(s.code, ''), s.is_active
+		SELECT s.id, s.school_id, s.name, coalesce(s.code, ''), s.kkm, s.is_active
 		FROM teaching_assignments ta JOIN subjects s ON s.school_id = ta.school_id AND s.id = ta.subject_id
 		WHERE ta.school_id = $1 AND ta.class_id = $2
 		ORDER BY lower(s.name)`, schoolID, c.ID)
@@ -77,7 +81,12 @@ func ClassSummary(ctx context.Context, q database.DBTX, schoolID string, c class
 	}
 	subjects, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (academic.Subject, error) {
 		var s academic.Subject
-		err := row.Scan(&s.ID, &s.SchoolID, &s.Name, &s.Code, &s.IsActive)
+		var kkm *int16
+		err := row.Scan(&s.ID, &s.SchoolID, &s.Name, &s.Code, &kkm, &s.IsActive)
+		if kkm != nil {
+			k := int(*kkm)
+			s.KKM = &k
+		}
 		return s, err
 	})
 	if err != nil {
@@ -94,7 +103,7 @@ func ClassSummary(ctx context.Context, q database.DBTX, schoolID string, c class
 // semua mapel sekaligus (tiga query, tanpa N+1), lalu menghitung nilai akhir
 // dengan FinalScore.
 func buildReports(ctx context.Context, q database.DBTX, schoolID string, c classes.Class, subjects []academic.Subject) ([]SubjectReport, int, error) {
-	scale, err := LoadScale(ctx, q, schoolID)
+	cfg, err := LoadReportConfig(ctx, q, schoolID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -130,7 +139,8 @@ func buildReports(ctx context.Context, q database.DBTX, schoolID string, c class
 
 	reports := make([]SubjectReport, 0, len(subjects))
 	for _, sub := range subjects {
-		rep := SubjectReport{Subject: sub, TeacherName: teachers[sub.ID], Components: comps[sub.ID]}
+		rep := SubjectReport{Subject: sub, TeacherName: teachers[sub.ID], Components: comps[sub.ID],
+			KKM: academic.EffectiveKKM(sub, cfg.KKMDefault), KKMLabel: cfg.ThresholdLabel()}
 		weights := 0
 		for _, comp := range rep.Components {
 			weights += comp.Weight
@@ -159,8 +169,12 @@ func buildReports(ctx context.Context, q database.DBTX, schoolID string, c class
 				} else {
 					rep.Complete++
 					sum += int64(res.Exact)
-					if row.Letter, err = Letter(res.Score, scale); err != nil {
+					if row.Letter, err = Letter(res.Score, cfg.Scale); err != nil {
 						return nil, 0, err
+					}
+					if res.Score < rep.KKM {
+						row.BelowKKM = true
+						rep.BelowKKM++
 					}
 				}
 			}
