@@ -1190,6 +1190,33 @@
     @apply m-0 min-w-0 border-0 p-0;
   }
 
+  /* Pembangun laporan (T78): baris filter/urutan menumpuk di layar sempit. */
+  .builder-row {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center;
+  }
+
+  .builder-row-sort {
+    @apply sm:grid-cols-[1fr_1fr_auto];
+  }
+
+  .builder-row > select,
+  .builder-row > input {
+    @apply min-w-0;
+  }
+
+  .column-order {
+    @apply m-0 list-none divide-y divide-slate-100 rounded-xl border border-slate-200 p-0;
+  }
+
+  .column-order > li {
+    @apply flex items-center gap-2 px-3 py-1.5 text-sm;
+  }
+
+  .preview-table td,
+  .preview-table th {
+    @apply whitespace-nowrap;
+  }
+
   .check-grid {
     @apply grid grid-cols-2 gap-x-3 gap-y-1 lg:grid-cols-3;
   }

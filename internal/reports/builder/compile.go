@@ -62,6 +62,9 @@ type Config struct {
 type Options struct {
 	// NoLimit menghilangkan LIMIT. Hanya untuk job ekspor di server (T49).
 	NoLimit bool
+	// Limit mengganti batas baris bawaan (MaxRows+1), mis. untuk pratinjau.
+	// 0 = bawaan; tidak boleh melebihi MaxRows+1.
+	Limit int
 }
 
 // Query adalah hasil rakitan, siap dijalankan dengan pgx.
@@ -180,6 +183,9 @@ func Compile(reg *Registry, schoolID string, cfg Config, opts Options) (Query, e
 	q := Query{Columns: selected}
 	if !opts.NoLimit {
 		q.Limit = MaxRows + 1
+		if opts.Limit > 0 && opts.Limit < q.Limit {
+			q.Limit = opts.Limit
+		}
 		args = append(args, q.Limit)
 		b.WriteString(" LIMIT $" + strconv.Itoa(len(args)))
 	}

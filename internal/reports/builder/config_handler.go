@@ -68,6 +68,7 @@ func (h *ConfigHandler) Routes(r chi.Router) {
 		// Peran: pemilik konfigurasi (selain itu 403).
 		r.Post("/{id}/hapus", h.delete)
 	})
+	h.builderRoutes(r)
 }
 
 type sourceView struct {

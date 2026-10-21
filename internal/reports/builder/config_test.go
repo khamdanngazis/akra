@@ -236,8 +236,12 @@ func TestConfig_OwnershipAndSharing(t *testing.T) {
 	}
 }
 
-func TestConfigHandler(t *testing.T) {
-	tx, a, b := seededTx(t)
+type doFunc func(method, path string, u testutil.User, form url.Values) *httptest.ResponseRecorder
+
+// configRouter memasang handler konfigurasi dan pembangun laporan untuk
+// pengguna sekolah a (dipilih lewat header X-User).
+func configRouter(t *testing.T, tx pgx.Tx, a *testutil.School) doFunc {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
 	static, _ := fs.Sub(web.FS, "static")
@@ -260,7 +264,7 @@ func TestConfigHandler(t *testing.T) {
 		})
 	})
 	NewConfigHandler(NewConfigService(tx, Default), sm, rd, logger).Routes(r)
-	do := func(method, path string, u testutil.User, form url.Values) *httptest.ResponseRecorder {
+	return func(method, path string, u testutil.User, form url.Values) *httptest.ResponseRecorder {
 		var body io.Reader
 		if form != nil {
 			body = strings.NewReader(form.Encode())
@@ -274,6 +278,11 @@ func TestConfigHandler(t *testing.T) {
 		r.ServeHTTP(rec, req)
 		return rec
 	}
+}
+
+func TestConfigHandler(t *testing.T) {
+	tx, a, b := seededTx(t)
+	do := configRouter(t, tx, a)
 
 	// Simpan lewat form: kolom, filter "in" dipisah koma, urutan.
 	form := url.Values{"name": {"Tunggakan besar"}, "source": {"arrears"}, "columns_arrears": {"nis", "remaining"},
