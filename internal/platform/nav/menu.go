@@ -61,6 +61,7 @@ var Items = []MenuItem{
 	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Short: "Tahun", Desc: "Atur tahun ajaran aktif", Roles: []string{adminTU, kepala}},
 	{Label: "Penugasan Guru", Path: "/pengaturan/penugasan", Icon: "user-check", Short: "Mapel", Desc: "Guru pengampu mapel per kelas", Roles: []string{adminTU, guru}},
 	{Label: "Input Nilai", Path: "/nilai/input", Icon: "spreadsheet", Short: "Nilai", Desc: "Isi nilai siswa per komponen", Roles: []string{guru}},
+	{Label: "Rekap Nilai", Path: "/nilai/rekap", Icon: "report", Short: "Rekap", Desc: "Nilai akhir per mapel dan kelas", Roles: []string{adminTU, kepala, guru}},
 	{Label: "Komponen Nilai", Path: "/nilai/komponen", Icon: "percent", Short: "Bobot", Desc: "Komponen dan bobot nilai per mapel", Roles: []string{adminTU, guru}},
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Short: "Mapel", Desc: "Daftar mata pelajaran sekolah", Roles: []string{adminTU}},
 }

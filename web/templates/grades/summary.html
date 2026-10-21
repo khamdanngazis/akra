@@ -1,0 +1,117 @@
+{{define "title"}}Rekap Nilai{{with .Class}} {{.Name}}{{end}}{{with .Subject}} · {{.Subject.Name}}{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Rekap Nilai{{with .Class}} · Kelas {{.Name}}{{end}}</h1>
+<p class="muted">Nilai akhir = jumlah nilai komponen × bobot, dibulatkan ke bilangan bulat (setengah ke atas). Siswa dengan komponen yang belum dinilai ditandai <strong>belum lengkap</strong> dan belum punya nilai akhir.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .NoYear}}
+<section class="card empty-state"><p>Belum ada tahun ajaran aktif.</p></section>
+{{else}}
+
+{{if and .Staff .Classes}}
+<form method="get" action="/nilai/rekap" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas">
+{{range .Classes}}<option value="{{.ID}}"{{if and $.Class (eq .ID $.Class.ID)}} selected{{end}}>{{.Name}}{{with .HomeroomTeacherName}} · wali: {{.}}{{end}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+{{else if and .Staff (not .Classes)}}
+<section class="card empty-state"><p>Belum ada kelas di tahun ajaran aktif.</p></section>
+{{end}}
+
+{{if and (not .Class) (not .Staff)}}
+{{if or .Teaching .Homeroom}}
+{{if .Homeroom}}
+<h2 class="section-title">Kelas perwalian</h2>
+<ul class="teaching-list">
+{{range .Homeroom}}<li><a class="card teaching-card" href="/nilai/rekap?kelas={{.ID}}"><span><strong class="block">Kelas {{.Name}}</strong><span class="block text-sm text-slate-500">Ringkasan semua mapel</span></span></a></li>{{end}}
+</ul>
+{{end}}
+{{if .Teaching}}
+<h2 class="section-title">Mapel yang saya ajar</h2>
+<ul class="teaching-list">
+{{range .Teaching}}<li><a class="card teaching-card" href="/nilai/rekap?kelas={{.ClassID}}&amp;mapel={{.SubjectID}}"><span><strong class="block">Kelas {{.ClassName}}</strong><span class="block text-sm text-slate-500">{{.SubjectName}}</span></span></a></li>{{end}}
+</ul>
+{{end}}
+{{else}}
+<section class="card empty-state">
+<p>Anda belum mengajar mapel atau menjadi wali kelas di tahun ajaran aktif.</p>
+</section>
+{{end}}
+{{end}}
+
+{{with .Summary}}
+<p class="grade-summary">{{.Students}} siswa · {{len .Subjects}} mata pelajaran</p>
+{{if .Subjects}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mata pelajaran</th><th class="text-right max-sm:hidden">Lengkap</th><th class="text-right">Belum<span class="max-sm:hidden"> lengkap</span></th><th class="text-right max-sm:hidden">Rata-rata</th><th>Catatan</th></tr></thead>
+<tbody>
+{{range .Subjects}}
+<tr>
+<td><a href="/nilai/rekap?kelas={{$.Class.ID}}&amp;mapel={{.Subject.ID}}"><strong>{{.Subject.Name}}</strong></a><span class="block text-sm text-slate-500">{{or .TeacherName "Belum ada guru"}}</span></td>
+{{if .Configured}}
+<td class="text-right tabular-nums max-sm:hidden">{{.Complete}}</td>
+<td class="text-right tabular-nums">{{if .Incomplete}}<span class="text-amber-700 font-semibold">{{.Incomplete}}</span>{{else}}0{{end}}</td>
+<td class="text-right tabular-nums max-sm:hidden">{{with .Average}}{{.}}{{else}}–{{end}}</td>
+<td>{{if .EmptyCells}}<span class="badge badge-warning" title="{{.EmptyCells}} nilai belum diisi">{{.EmptyCells}} kosong</span>{{else}}<span class="badge badge-success">Lengkap</span>{{end}}</td>
+{{else}}
+<td class="text-right max-sm:hidden">–</td><td class="text-right">–</td><td class="text-right max-sm:hidden">–</td>
+<td><span class="badge" title="Komponen nilai belum diatur">Belum diatur</span></td>
+{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada mapel dengan guru pengampu di kelas ini.</p><p class="muted">Atur di Penugasan Guru.</p></section>
+{{end}}
+{{end}}
+
+{{with .Subject}}
+{{if $.CanClass}}<p class="breadcrumb"><a href="/nilai/rekap?kelas={{$.Class.ID}}">← Ringkasan kelas {{$.Class.Name}}</a></p>{{else}}<p class="breadcrumb"><a href="/nilai/rekap">← Rekap saya</a></p>{{end}}
+<h2 class="section-title">{{.Subject.Name}}{{with .TeacherName}} <span class="muted text-base font-normal">· {{.}}</span>{{end}}</h2>
+{{if not .Configured}}
+<section class="card empty-state"><p>Mapel ini belum punya komponen nilai aktif dengan total bobot 100%.</p></section>
+{{else}}
+<p class="grade-summary">{{len .Rows}} siswa · {{.Complete}} lengkap ·
+{{if .Incomplete}}<span class="text-amber-700 font-semibold">{{.Incomplete}} belum lengkap</span>{{else}}0 belum lengkap{{end}}
+{{with .Average}} · rata-rata {{.}}{{end}}</p>
+{{if .EmptyCells}}<div class="alert alert-info" role="status">{{.EmptyCells}} nilai masih kosong. Siswa dengan nilai kosong belum punya nilai akhir.</div>{{end}}
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table class="recap-table">
+<thead><tr><th>Siswa</th>{{range .Components}}<th class="text-right">{{.Name}}<span class="block text-xs font-normal">{{.Weight}}%</span></th>{{end}}<th class="text-right">Nilai akhir</th><th class="text-center">Huruf</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr{{if .Result.Incomplete}} class="row-incomplete"{{end}}>
+<td><strong>{{.FullName}}</strong> <span class="muted small">{{.NIS}}</span></td>
+{{range .Scores}}<td class="text-right tabular-nums">{{with .}}{{.}}{{else}}<span class="cell-empty" title="Belum dinilai">–</span>{{end}}</td>{{end}}
+<td class="text-right tabular-nums">{{if .Result.Incomplete}}<span class="badge badge-warning">Belum lengkap</span>{{else}}<strong>{{.Result.Score}}</strong>{{end}}</td>
+<td class="text-center">{{or .Letter "–"}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada siswa di kelas ini.</p></section>
+{{end}}
+{{end}}
+{{end}}
+{{end}}
+{{end}}

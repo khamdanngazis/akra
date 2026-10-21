@@ -342,6 +342,20 @@ Satu fungsi murni, [grades.FinalScore](internal/grades/final.go), dipakai semua 
   - 1000 kali dengan input sama menghasilkan hasil identik;
   - `TestNoFloatInGrades`: tidak ada float, paket `math`, `strconv.*Float`, literal desimal, atau format `%f` di kode paket `grades`.
 
+## Rekap Nilai
+
+[internal/grades/report.go](internal/grades/report.go), halaman `GET /nilai/rekap?kelas=&mapel=` (baca saja). Angka rekap ini menjadi sumber rapor (T74), portal (T75), dan ekspor (T79).
+
+- `SubjectSummary` menghasilkan satu baris per siswa yang **sedang terdaftar** di kelas, dengan nilai per komponen aktif, nilai akhir, dan huruf. `ClassSummary` meringkas setiap mapel yang punya guru pengampu di kelas itu: jumlah lengkap dan belum lengkap, rata-rata, dan jumlah nilai kosong (ditampilkan sebagai peringatan).
+- Nilai akhir **selalu** dihitung dengan `FinalScore` (T71) di Go, tidak di SQL. Data dimuat dengan tiga query untuk semua mapel sekaligus (siswa, komponen aktif, nilai), tanpa N+1. Uji memastikan setiap baris sama persis dengan `FinalScore`, dan ringkasan kelas sama dengan rekap per mapel.
+- Siswa dengan komponen kosong ditandai **belum lengkap**, tanpa nilai akhir dan huruf. Rata-rata hanya dari siswa yang lengkap. Mapel tanpa komponen aktif ditandai "komponen belum diatur".
+- Akses:
+  - `admin_tu` dan `kepala_sekolah`: semua kelas tahun ajaran aktif;
+  - guru pengampu: rekap mapelnya di kelas itu;
+  - wali kelas: ringkasan kelas dan rekap semua mapel kelasnya;
+  - guru mapel lain dan peran lain mendapat `403`; kelas atau mapel sekolah lain atau tahun ajaran lain mendapat `404`.
+- Diukur di uji: ringkasan 30 siswa × 6 mapel sekitar 15 ms.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.
