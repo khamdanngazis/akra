@@ -1,0 +1,108 @@
+{{define "title"}}Mapping Impor{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/impor/siswa">← Impor siswa</a></p>
+<div class="page-header">
+<div>
+<h1>Mapping Impor</h1>
+<p class="muted">Simpan pemetaan judul kolom file sekolah (mis. ekspor aplikasi lain) ke kolom baku AKRA, agar impor berikutnya tidak perlu mengubah file. Mapping hanya mengganti judul kolom; aturan pemeriksaan data tetap sama.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+
+{{if .Mappings}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nama</th><th>Jenis data</th><th class="max-sm:hidden">Pemetaan</th><th class="max-sm:hidden">Dibuat</th></tr></thead>
+<tbody>
+{{range .Mappings}}
+<tr>
+<td><strong>{{.Name}}</strong><span class="block text-sm text-slate-500 sm:hidden">{{len .Pairs}} kolom dipetakan</span></td>
+<td>{{.TargetLabel}}</td>
+<td class="max-sm:hidden text-sm">{{range $i, $p := .Pairs}}{{if $i}}<br>{{end}}{{$p}}{{end}}</td>
+<td class="max-sm:hidden text-sm">{{.CreatorName}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada mapping impor.</p></section>
+{{end}}
+
+{{if not .Step2}}
+<section class="card form-card mt-6" aria-labelledby="new-title">
+<h2 id="new-title" class="card-title">Mapping baru · 1. Unggah file contoh</h2>
+<p class="muted mt-1">Unggah satu file contoh dari sekolah (.xlsx). Hanya baris judul kolomnya yang dibaca; datanya tidak disimpan.</p>
+<form method="post" action="/impor/mapping" enctype="multipart/form-data" class="stack mt-3" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="step" value="contoh">
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="m-name">Nama mapping</label>
+<input id="m-name" name="name" value="{{.Name}}" maxlength="80" placeholder="Ekspor Dapodik">
+</div>
+<div class="field{{if .Errors.target}} has-error{{end}}">
+<label for="m-target">Jenis data</label>
+<select id="m-target" name="target">
+{{range .Targets}}<option value="{{.Key}}">{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.target}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field">
+<label for="m-file">File contoh</label>
+<input id="m-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Baca judul kolom</button></div>
+</form>
+</section>
+{{else}}
+<section class="card form-card mt-6" aria-labelledby="map-title"
+  x-data="{ picks: {}, get dups() { const seen = {}, d = {}; Object.values(this.picks).forEach(v => { if (v) { if (seen[v]) d[v] = true; seen[v] = true } }); return d } }">
+<h2 id="map-title" class="card-title">Mapping baru · 2. Pasangkan kolom</h2>
+<p class="muted mt-1">{{.Target.Label}}{{with .FileName}} · file contoh {{.}}{{end}}. Pilih kolom file untuk setiap kolom baku. Kolom bertanda * wajib.</p>
+<form method="post" action="/impor/mapping" enctype="multipart/form-data" class="stack mt-3" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="step" value="simpan">
+<input type="hidden" name="target" value="{{.Target.Key}}">
+<input type="hidden" name="file_name" value="{{.FileName}}">
+{{range .Header}}<input type="hidden" name="header" value="{{.}}">{{end}}
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="m2-name">Nama mapping</label>
+<input id="m2-name" name="name" value="{{.Name}}" maxlength="80">
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+{{with .Errors.target}}<p class="field-error">{{.}}</p>{{end}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kolom baku AKRA</th><th>Kolom di file</th></tr></thead>
+<tbody>
+{{range .Choices}}
+<tr{{if .Error}} class="has-error"{{end}}>
+<td><strong>{{.Column.Header}}{{if .Column.Required}} *{{end}}</strong><span class="block text-sm text-slate-500">{{.Column.Format}}</span></td>
+<td>
+<label class="visually-hidden" for="map-{{.Index}}">Kolom file untuk {{.Column.Header}}</label>
+<select id="map-{{.Index}}" name="map_{{.Index}}" x-init="picks[{{.Index}}] = $el.value" @change="picks[{{.Index}}] = $el.value"{{if .Error}} aria-invalid="true"{{end}}>
+<option value="">— {{if .Column.Required}}pilih kolom{{else}}tidak dipakai{{end}} —</option>
+{{$sel := .Selected}}{{range $.Header}}<option value="{{.}}"{{if eq . $sel}} selected{{end}}>{{.}}</option>{{end}}
+</select>
+<p class="field-error" x-show="picks[{{.Index}}] && dups[picks[{{.Index}}]]" x-cloak>Kolom ini dipilih lebih dari sekali.</p>
+{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
+</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan mapping</button><a class="btn btn-ghost" href="/impor/mapping">Batal</a></div>
+</form>
+</section>
+{{end}}
+{{end}}
