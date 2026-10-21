@@ -323,6 +323,25 @@ Tabel `grades` (migrasi 000036), kode di [internal/grades](internal/grades/input
   - Enter pindah ke siswa berikutnya. Diukur di uji: simpan 30 nilai sekitar 60 ms.
 - Akses: hanya peran `guru` yang punya penugasan mapel itu di kelas itu (T65). **Wali kelas tidak otomatis** bisa mengisi mapel yang bukan miliknya. Guru lain, admin/TU, dan kepala sekolah mendapat `403`. Kelas, mapel, atau komponen sekolah lain atau tahun ajaran lain mendapat `404`.
 
+## Nilai Akhir
+
+Satu fungsi murni, [grades.FinalScore](internal/grades/final.go), dipakai semua tampilan dan rekap nilai (T72 dan seterusnya).
+
+- Masukannya komponen **aktif** satu mapel, masing-masing `{bobot, nilai atau kosong}`. Bobot harus 1–100 dengan total 100 (`ErrWeightTotal`). Total ini diperiksa lebih dulu, bahkan jika ada nilai yang kosong.
+- Jika ada satu komponen yang belum dinilai, hasilnya `Incomplete` (dengan jumlah yang kosong) **tanpa angka parsial**. Nilai 0 tetap dihitung sebagai sudah dinilai.
+- Hanya bilangan bulat: Σ(nilai dalam perseratus × bobot persen) dalam satuan 1/10.000 poin.
+  - Pembulatan ada di **satu tempat**, `RoundFinal`: bilangan bulat, setengah ke atas (78,50 → 79; 78,49 → 78).
+  - Contoh: bobot 30/30/40 dengan nilai 80/90/70 menghasilkan 79.
+  - `Result.Exact` menyimpan nilai berbobot dua desimal sebelum dibulatkan.
+- Skala huruf: `Letter(score, scale)` dengan batas bawah inklusif. Default A ≥ 90, B ≥ 80, C ≥ 70, D di bawah 70 (tepat 80 = B).
+  - Sekolah bisa mengganti skala lewat kunci `school_settings` `grade_letter_scale`, format `A:90,B:80,C:70,D:0`. Batas harus turun tegas dan yang terakhir 0. Skala tersimpan yang rusak adalah error, bukan diam-diam kembali ke default.
+- **Aturan contoh**: pembulatan dan skala di atas dipilih pada 21 Oktober 2026 sambil menunggu konfirmasi sekolah. Jika berbeda, ubah `RoundFinal` atau skala default, lalu jalankan ulang `final_test.go`.
+- Uji:
+  - kasus contoh, batas pembulatan untuk setiap perseratus 0–100;
+  - 20.000 input acak dibandingkan dengan perhitungan rasional eksak (`math/big`, hanya di uji);
+  - 1000 kali dengan input sama menghasilkan hasil identik;
+  - `TestNoFloatInGrades`: tidak ada float, paket `math`, `strconv.*Float`, literal desimal, atau format `%f` di kode paket `grades`.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

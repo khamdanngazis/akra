@@ -21,6 +21,9 @@ const (
 	// AttendancePerSubject: "true" jika guru boleh mengisi absensi per mapel
 	// selain absensi harian (T68). Belum diatur berarti nonaktif.
 	AttendancePerSubject = "attendance_per_subject"
+	// GradeLetterScale: skala huruf nilai akhir, mis. "A:90,B:80,C:70,D:0"
+	// (T71). Belum diatur berarti grades.DefaultScale.
+	GradeLetterScale = "grade_letter_scale"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.
