@@ -80,6 +80,36 @@
 {{end}}
 {{end}}
 
+{{if and .CanPrint .Cards}}
+<section class="mt-8" aria-labelledby="cards-title" x-data="{ semester: '{{.Semester}}' }">
+<div class="flex flex-wrap items-end justify-between gap-3">
+<div>
+<h2 id="cards-title" class="section-title m-0">Cetak rapor</h2>
+<p class="muted text-sm">Rapor hanya bisa dicetak jika nilai semua mapel siswa sudah lengkap. Setiap cetak tercatat di audit.</p>
+</div>
+<div class="field">
+<label for="semester">Semester</label>
+<select id="semester" x-model="semester">
+<option value="1"{{if eq .Semester 1}} selected{{end}}>1 (Ganjil)</option>
+<option value="2"{{if eq .Semester 2}} selected{{end}}>2 (Genap)</option>
+</select>
+</div>
+</div>
+<div class="card card-flush mt-3">
+<ul class="grade-list">
+{{range .Cards}}
+<li class="grade-row">
+<span class="grade-student"><strong>{{.FullName}}</strong> <span class="muted small">{{.NIS}}</span>
+{{if .Missing}}<span class="block text-xs text-amber-700">Belum lengkap: {{range $i, $m := .Missing}}{{if $i}}, {{end}}{{$m}}{{end}}</span>{{end}}</span>
+{{if .Missing}}<span class="badge badge-warning">Belum siap</span>
+{{else}}<a class="btn btn-ghost btn-sm" href="/nilai/rapor/{{.EnrollmentID}}.pdf?semester={{$.Semester}}" :href="'/nilai/rapor/{{.EnrollmentID}}.pdf?semester=' + semester">Unduh PDF</a>{{end}}
+</li>
+{{end}}
+</ul>
+</div>
+</section>
+{{end}}
+
 {{with .Subject}}
 {{if $.CanClass}}<p class="breadcrumb"><a href="/nilai/rekap?kelas={{$.Class.ID}}">← Ringkasan kelas {{$.Class.Name}}</a></p>{{else}}<p class="breadcrumb"><a href="/nilai/rekap">← Rekap saya</a></p>{{end}}
 <h2 class="section-title">{{.Subject.Name}}{{with .TeacherName}} <span class="muted text-base font-normal">· {{.}}</span>{{end}}</h2>

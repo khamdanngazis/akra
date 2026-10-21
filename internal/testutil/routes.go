@@ -369,6 +369,10 @@ var Routes = []Route{
 			return []string{"/nilai/rekap/", "/nilai/rekap/?kelas=" + o.ClassID, "/nilai/rekap/?kelas=" + o.ClassID + "&mapel=" + o.SubjectID}
 		})},
 
+	// Rapor PDF (T74): admin/TU dan wali kelas.
+	{Method: "GET", Pattern: "/nilai/rapor/{enrollmentID}.pdf", Kind: KindByID, Roles: []string{Admin, Teacher},
+		Requests: paths(func(o *School) []string { return []string{"/nilai/rapor/" + o.EnrollmentIDs[0] + ".pdf?semester=1"} })},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,

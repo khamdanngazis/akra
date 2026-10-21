@@ -15,6 +15,11 @@ import (
 // kolom score memang desimal eksak (T70).
 var floatInSQL = regexp.MustCompile(`(?i)::\s*(float[48]?|real)\b|\bdouble precision\b`)
 
+// layoutFiles boleh berisi literal desimal: koordinat tata letak PDF dalam
+// milimeter (sama dengan receipt_pdf.go di T60). Angka rapor tetap teks dari
+// FinalScore; tipe dan konversi float tetap dilarang.
+var layoutFiles = map[string]bool{"report_pdf.go": true}
+
 // floatVerb menangkap format pecahan di string fmt (%f, %.2f, %e, %g).
 var floatVerb = regexp.MustCompile(`%[-+# 0]*\d*(\.\d+)?[feEgG]`)
 
@@ -59,7 +64,7 @@ func TestNoFloatInGrades(t *testing.T) {
 					t.Errorf("%s: uses strconv.%s", fset.Position(x.Pos()), x.Sel.Name)
 				}
 			case *ast.BasicLit:
-				if x.Kind == token.FLOAT {
+				if x.Kind == token.FLOAT && !layoutFiles[name] {
 					t.Errorf("%s: float literal %s", fset.Position(x.Pos()), x.Value)
 				}
 				if x.Kind == token.STRING {

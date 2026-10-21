@@ -1,0 +1,18 @@
+{{define "title"}}Rapor belum bisa dicetak{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/nilai/rekap?kelas={{.Class.ID}}">← Rekap kelas {{.Class.Name}}</a></p>
+<div class="page-header">
+<div>
+<h1>Rapor belum bisa dicetak</h1>
+<p class="muted">{{with .Student}}{{.}} · {{end}}kelas {{.Class.Name}}. Rapor hanya dicetak jika nilai semua mata pelajaran sudah lengkap.</p>
+</div>
+</div>
+<section class="card" aria-labelledby="missing-title">
+<h2 id="missing-title" class="card-title">Mata pelajaran yang belum lengkap</h2>
+<ul class="mt-3 list-disc pl-5">
+{{range .Subjects}}<li>{{.}}</li>{{end}}
+</ul>
+<p class="muted mt-3">Minta guru pengampu melengkapi nilai di Input Nilai, atau atur komponen nilai mapel yang belum punya komponen.</p>
+</section>
+{{end}}
