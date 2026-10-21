@@ -112,48 +112,94 @@ var zipMagic = []byte("PK\x03\x04")
 // diabaikan. Baris kosong dan baris contoh template dilewati. ParseFile tidak
 // menulis ke database.
 func ParseFile(r io.Reader) (Rows, error) {
+	sheet, data, skipped, err := scanSheet(r, matchHeader, 1)
+	if err != nil {
+		return Rows{}, err
+	}
+	return studentRows(sheet, data, skipped), nil
+}
+
+// rawRow adalah satu baris data dengan sel yang sudah disusun sesuai urutan
+// kolom baku target.
+type rawRow struct {
+	Line   int
+	Values []string
+}
+
+// studentRows mengubah baris mentah (urutan StudentColumns) menjadi Rows.
+func studentRows(sheet string, data []rawRow, skipped []Skip) Rows {
+	out := Rows{Sheet: sheet, Skipped: skipped}
+	for _, d := range data {
+		row := Row{Line: d.Line}
+		copy(row.Values[:], d.Values)
+		row.Values[ColBirthDate] = excelDate(row.Values[ColBirthDate])
+		out.Data = append(out.Data, row)
+	}
+	return out
+}
+
+// openSheet memeriksa ukuran dan jenis file lalu membuka sheet pertamanya.
+func openSheet(r io.Reader) (*excelize.File, string, error) {
 	data, err := io.ReadAll(io.LimitReader(r, MaxFileSize+1))
 	if err != nil {
-		return Rows{}, fmt.Errorf("importer: read file: %w", err)
+		return nil, "", fmt.Errorf("importer: read file: %w", err)
 	}
 	switch {
 	case len(data) == 0:
-		return Rows{}, ErrFileEmpty
+		return nil, "", ErrFileEmpty
 	case len(data) > MaxFileSize:
-		return Rows{}, ErrFileTooLarge
+		return nil, "", ErrFileTooLarge
 	case !bytes.HasPrefix(data, zipMagic):
-		return Rows{}, ErrNotXLSX
+		return nil, "", ErrNotXLSX
 	}
-
 	f, err := excelize.OpenReader(bytes.NewReader(data), excelize.Options{UnzipSizeLimit: maxUnzipSize, UnzipXMLSizeLimit: maxUnzipSize})
 	if err != nil {
-		return Rows{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+		return nil, "", fmt.Errorf("%w: %v", ErrNotXLSX, err)
 	}
-	defer f.Close()
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
-		return Rows{}, ErrNotXLSX
+		f.Close()
+		return nil, "", ErrNotXLSX
 	}
-	out := Rows{Sheet: sheets[0]}
+	return f, sheets[0], nil
+}
 
-	iter, err := f.Rows(out.Sheet)
+// scanSheet membaca sheet pertama. Baris berisi diserahkan ke header, yang
+// mengembalikan posisi kolom sheet untuk setiap kolom baku target (urutan
+// target); baris pertama yang diterima header adalah baris header. Hingga
+// headerTries baris berisi pertama dicoba (mis. file ekspor dengan baris
+// judul laporan di atas header); jika tidak ada yang cocok, error dari baris
+// pertama dikembalikan. Baris kosong dan baris contoh template dilewati;
+// baris kosong di akhir sheet tidak dilaporkan. Batas ukuran file, jumlah
+// baris, dan panjang sel sama untuk semua target.
+func scanSheet(r io.Reader, header func(cells []string) ([]int, error), headerTries int) (string, []rawRow, []Skip, error) {
+	f, sheet, err := openSheet(r)
 	if err != nil {
-		return Rows{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+		return "", nil, nil, err
+	}
+	defer f.Close()
+	iter, err := f.Rows(sheet)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
 	}
 	defer iter.Close()
 
-	var cols []int // cols[i] = indeks kolom sheet untuk StudentColumns[i]
+	var cols []int // cols[i] = indeks kolom sheet untuk kolom baku ke-i
+	var firstErr error
+	tries := 0
+	var data []rawRow
+	var skipped []Skip
 	line := 0
 	for iter.Next() {
 		line++
 		if line > maxSheetRows {
-			return Rows{}, ErrTooManyRows
+			return "", nil, nil, ErrTooManyRows
 		}
 		// Nilai mentah: tanggal yang diubah Excel menjadi angka seri tetap
 		// bisa dikenali, dan angka tidak diformat ulang (mis. 1E+11).
 		cells, err := iter.Columns(excelize.Options{RawCellValue: true})
 		if err != nil {
-			return Rows{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+			return "", nil, nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
 		}
 		for i := range cells {
 			cells[i] = clean(cells[i])
@@ -162,49 +208,90 @@ func ParseFile(r io.Reader) (Rows, error) {
 			if isEmpty(cells) {
 				continue
 			}
-			if cols, err = matchHeader(cells); err != nil {
-				return Rows{}, err
+			if cols, err = header(cells); err != nil {
+				cols = nil
+				if firstErr == nil {
+					firstErr = err
+				}
+				if tries++; tries >= headerTries {
+					return "", nil, nil, firstErr
+				}
 			}
 			continue
 		}
 		switch {
 		case isEmpty(cells):
-			out.Skipped = append(out.Skipped, Skip{Line: line, Reason: SkipEmpty})
+			skipped = append(skipped, Skip{Line: line, Reason: SkipEmpty})
 			continue
 		case hasExampleMarker(cells):
-			out.Skipped = append(out.Skipped, Skip{Line: line, Reason: SkipExample})
+			skipped = append(skipped, Skip{Line: line, Reason: SkipExample})
 			continue
 		}
-		if len(out.Data) == MaxDataRows {
-			return Rows{}, ErrTooManyRows
+		if len(data) == MaxDataRows {
+			return "", nil, nil, ErrTooManyRows
 		}
-		row := Row{Line: line}
+		row := rawRow{Line: line, Values: make([]string, len(cols))}
 		for i, c := range cols {
-			if c < len(cells) {
+			if c >= 0 && c < len(cells) {
 				row.Values[i] = cells[c]
 			}
 		}
-		row.Values[ColBirthDate] = excelDate(row.Values[ColBirthDate])
-		out.Data = append(out.Data, row)
+		data = append(data, row)
 	}
 	if err := iter.Error(); err != nil {
-		return Rows{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+		return "", nil, nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
 	}
 	if cols == nil {
-		return Rows{}, ErrNoHeader
+		if firstErr != nil {
+			return "", nil, nil, firstErr
+		}
+		return "", nil, nil, ErrNoHeader
 	}
 	// Baris kosong di akhir sheet (sisa format template) bukan "dilewati".
-	for n := len(out.Skipped); n > 0; n-- {
-		s := out.Skipped[n-1]
-		if s.Reason != SkipEmpty || (len(out.Data) > 0 && s.Line < out.Data[len(out.Data)-1].Line) {
+	for n := len(skipped); n > 0; n-- {
+		s := skipped[n-1]
+		if s.Reason != SkipEmpty || (len(data) > 0 && s.Line < data[len(data)-1].Line) {
 			break
 		}
-		out.Skipped = out.Skipped[:n-1]
+		skipped = skipped[:n-1]
 	}
-	if len(out.Data) == 0 {
-		return Rows{}, ErrNoData
+	if len(data) == 0 {
+		return "", nil, nil, ErrNoData
 	}
-	return out, nil
+	return sheet, data, skipped, nil
+}
+
+// ReadHeader mengembalikan isi baris header (baris pertama yang berisi) di
+// sheet pertama, untuk membuat mapping dari file contoh (T81). Sel kosong di
+// tengah ikut (string kosong); sel kosong di akhir dibuang.
+func ReadHeader(r io.Reader) ([]string, error) {
+	f, sheet, err := openSheet(r)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	iter, err := f.Rows(sheet)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+	}
+	defer iter.Close()
+	for line := 1; iter.Next() && line <= maxSheetRows; line++ {
+		cells, err := iter.Columns(excelize.Options{RawCellValue: true})
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+		}
+		for i := range cells {
+			cells[i] = clean(cells[i])
+		}
+		if isEmpty(cells) {
+			continue
+		}
+		for len(cells) > 0 && cells[len(cells)-1] == "" {
+			cells = cells[:len(cells)-1]
+		}
+		return cells, nil
+	}
+	return nil, ErrNoHeader
 }
 
 // matchHeader memetakan kolom baku ke posisinya di header.

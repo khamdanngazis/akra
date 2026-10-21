@@ -61,6 +61,7 @@ type routerDeps struct {
 	announce     *announcements.Handler
 	home         *home.Handler
 	importer     *importer.Handler
+	mappings     *importer.MappingHandler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -134,6 +135,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.reports.Routes(r)
 			d.announce.Routes(r)
 			d.importer.Routes(r)
+			d.mappings.Routes(r)
 		})
 	})
 

@@ -87,6 +87,7 @@ func newUploadFixture(t *testing.T) *uploadFixture {
 	h := NewHandler(NewService(tx, f.jobs), sm, rd, logger)
 	h.today = func() time.Time { return testToday }
 	h.Routes(r)
+	NewMappingHandler(NewMappingService(tx), sm, rd, logger).Routes(r)
 	f.h = r
 	return f
 }

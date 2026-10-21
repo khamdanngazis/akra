@@ -108,6 +108,10 @@ func parseMessage(err error) string {
 	if errors.As(err, &dup) {
 		return dup.Message() + ". Hapus salah satunya."
 	}
+	var src *MappingSourceError
+	if errors.As(err, &src) {
+		return src.Message()
+	}
 	for target, msg := range parseErrors {
 		if errors.Is(err, target) {
 			return msg
