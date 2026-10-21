@@ -39,6 +39,8 @@ type ReportConfig struct {
 	KKMDefault    int
 	PrincipalName string
 	SignerTitle   string
+	// PortalComponents: orang tua melihat nilai per komponen (T75).
+	PortalComponents bool
 }
 
 // ThresholdLabel mengembalikan "KKM" atau "KKTP" sesuai format.
@@ -71,6 +73,9 @@ func LoadReportConfig(ctx context.Context, q database.DBTX, schoolID string) (Re
 	if c.Format != academic.ReportFormatNumeric && c.Format != academic.ReportFormatMerdeka {
 		return ReportConfig{}, fmt.Errorf("grades: stored %s is invalid: %q", settings.ReportFormat, c.Format)
 	}
+	if c.PortalComponents, err = settings.Bool(ctx, q, schoolID, settings.ReportPortalComponents, false); err != nil {
+		return ReportConfig{}, err
+	}
 	return c, nil
 }
 
@@ -85,12 +90,15 @@ type ReportConfigForm struct {
 	KKMDefault    string
 	PrincipalName string
 	SignerTitle   string
-	Bands         []BandInput
+	// PortalComponents: isian kotak centang ("on" = dicentang).
+	PortalComponents bool
+	Bands            []BandInput
 }
 
 // FormOf mengisi form dari pengaturan tersimpan.
 func FormOf(c ReportConfig) ReportConfigForm {
-	f := ReportConfigForm{Format: c.Format, KKMDefault: strconv.Itoa(c.KKMDefault), PrincipalName: c.PrincipalName, SignerTitle: c.SignerTitle}
+	f := ReportConfigForm{Format: c.Format, KKMDefault: strconv.Itoa(c.KKMDefault), PrincipalName: c.PrincipalName, SignerTitle: c.SignerTitle,
+		PortalComponents: c.PortalComponents}
 	for _, b := range c.Scale {
 		f.Bands = append(f.Bands, BandInput{b.Letter, strconv.Itoa(b.Min), strconv.Itoa(b.Max)})
 	}
@@ -111,9 +119,10 @@ func (e *ConfigError) Error() string {
 func ValidateReportConfig(f ReportConfigForm) (ReportConfig, error) {
 	fields := map[string]string{}
 	c := ReportConfig{
-		Format:        strings.TrimSpace(f.Format),
-		PrincipalName: strings.Join(strings.Fields(f.PrincipalName), " "),
-		SignerTitle:   strings.Join(strings.Fields(f.SignerTitle), " "),
+		Format:           strings.TrimSpace(f.Format),
+		PrincipalName:    strings.Join(strings.Fields(f.PrincipalName), " "),
+		SignerTitle:      strings.Join(strings.Fields(f.SignerTitle), " "),
+		PortalComponents: f.PortalComponents,
 	}
 	if c.Format != academic.ReportFormatNumeric && c.Format != academic.ReportFormatMerdeka {
 		fields["format"] = "Pilih format rapor."
@@ -203,11 +212,12 @@ func (s *ReportConfigService) Save(ctx context.Context, actor school.Actor, f Re
 			return nil
 		}
 		for key, value := range map[string]string{
-			settings.ReportFormat:        c.Format,
-			settings.ReportScale:         c.Scale.JSON(),
-			settings.ReportKKMDefault:    strconv.Itoa(c.KKMDefault),
-			settings.ReportPrincipalName: c.PrincipalName,
-			settings.ReportSignerTitle:   c.SignerTitle,
+			settings.ReportFormat:           c.Format,
+			settings.ReportScale:            c.Scale.JSON(),
+			settings.ReportKKMDefault:       strconv.Itoa(c.KKMDefault),
+			settings.ReportPrincipalName:    c.PrincipalName,
+			settings.ReportSignerTitle:      c.SignerTitle,
+			settings.ReportPortalComponents: strconv.FormatBool(c.PortalComponents),
 		} {
 			if err := settings.Set(ctx, tx, actor.SchoolID, key, value); err != nil {
 				return err
@@ -228,10 +238,10 @@ func (s *ReportConfigService) Save(ctx context.Context, actor school.Actor, f Re
 }
 
 func configSnapshot(c ReportConfig) string {
-	return strings.Join([]string{c.Format, c.Scale.JSON(), strconv.Itoa(c.KKMDefault), c.PrincipalName, c.SignerTitle}, "\x00")
+	return strings.Join([]string{c.Format, c.Scale.JSON(), strconv.Itoa(c.KKMDefault), c.PrincipalName, c.SignerTitle, strconv.FormatBool(c.PortalComponents)}, "\x00")
 }
 
 func configAudit(c ReportConfig) map[string]any {
 	return map[string]any{"format": c.Format, "scale": c.Scale, "kkm_default": c.KKMDefault,
-		"principal_name": c.PrincipalName, "signer_title": c.SignerTitle}
+		"principal_name": c.PrincipalName, "signer_title": c.SignerTitle, "portal_components": c.PortalComponents}
 }

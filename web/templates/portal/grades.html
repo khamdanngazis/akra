@@ -1,0 +1,55 @@
+{{define "title"}}Nilai {{.Grades.Child.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{$g := .Grades}}
+<p class="breadcrumb"><a href="/portal/siswa/{{$g.Child.ID}}">← {{$g.Child.FullName}}</a></p>
+<h1>Nilai dan Rapor</h1>
+<p class="muted">{{$g.Child.FullName}} · NIS {{$g.Child.NIS}}{{if $g.HasClass}} · kelas {{$g.Child.ClassName}}{{end}}</p>
+{{template "flash" .}}
+
+{{if not $g.HasClass}}
+<section class="card empty-state"><p>Anak belum terdaftar di kelas pada tahun ajaran aktif.</p></section>
+{{else if not $g.Subjects}}
+<section class="card empty-state"><p>Belum ada nilai mata pelajaran.</p></section>
+{{else}}
+
+<section class="card mt-4" aria-labelledby="rapor-title">
+<h2 id="rapor-title" class="card-title">Rapor</h2>
+{{if $g.Complete}}
+<form method="get" action="/portal/siswa/{{$g.Child.ID}}/rapor.pdf" class="mt-3 flex flex-wrap items-end gap-3">
+<div class="field">
+<label for="semester">Semester</label>
+<select id="semester" name="semester">
+<option value="1"{{if eq .Semester 1}} selected{{end}}>1 (Ganjil)</option>
+<option value="2"{{if eq .Semester 2}} selected{{end}}>2 (Genap)</option>
+</select>
+</div>
+<button type="submit" class="btn btn-primary">Unduh rapor (PDF)</button>
+</form>
+{{else}}
+<p class="muted mt-2">Rapor bisa diunduh setelah nilai semua mata pelajaran lengkap.</p>
+{{end}}
+</section>
+
+<h2 class="section-title">Nilai per mata pelajaran</h2>
+<div class="pay-list">
+{{range $g.Subjects}}
+<section class="pay-item">
+<div class="pay-row">
+<strong>{{.Name}}</strong>
+{{if not .Configured}}<span class="badge">Belum ada penilaian</span>
+{{else if .Incomplete}}<span class="badge badge-warning">Belum lengkap</span>
+{{else}}<span class="grade-final{{if .BelowKKM}} is-below{{end}}">{{.Score}}{{with .Letter}} <span class="grade-letter">{{.}}</span>{{end}}</span>{{end}}
+</div>
+<p class="pay-item-meta">{{$g.KKMLabel}} {{.KKM}}{{if .Incomplete}} · {{.Missing}} komponen belum dinilai{{end}}{{if and (not .Incomplete) .BelowKKM}} · di bawah {{$g.KKMLabel}}{{end}}</p>
+{{if .Components}}
+<ul class="component-list">
+{{range .Components}}<li><span>{{.Name}} <span class="muted">({{.Weight}}%)</span></span><span class="tabular-nums">{{with .Score}}{{.}}{{else}}<span class="muted">belum dinilai</span>{{end}}</span></li>{{end}}
+</ul>
+{{end}}
+</section>
+{{end}}
+</div>
+<p class="hint mt-3">Nilai akhir baru tampil setelah semua komponen mapel dinilai guru.</p>
+{{end}}
+{{end}}

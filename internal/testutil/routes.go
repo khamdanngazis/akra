@@ -390,6 +390,12 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/tagihan"} })},
 	{Method: "GET", Pattern: "/portal/siswa/{id}/jadwal", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/jadwal"} })},
+	{Method: "GET", Pattern: "/portal/siswa/{id}/nilai", Kind: KindByID, Roles: parent,
+		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/nilai"} })},
+	{Method: "GET", Pattern: "/portal/siswa/{id}/rapor.pdf", Kind: KindByID, Roles: parent,
+		Requests: paths(func(o *School) []string {
+			return []string{"/portal/siswa/" + o.StudentIDs[0] + "/rapor.pdf?semester=1"}
+		})},
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 

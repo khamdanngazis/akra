@@ -110,33 +110,33 @@ func maxTime(a, b time.Time) time.Time {
 	return b
 }
 
-// cardEnrollment adalah enrollment aktif beserta kelasnya.
-type cardEnrollment struct {
+// CardEnrollment adalah enrollment aktif beserta kelasnya, untuk rapor.
+type CardEnrollment struct {
 	ID, StudentID string
 	Class         classes.Class
 }
 
 // GetCardEnrollment mengembalikan enrollment aktif (masih terdaftar) di
 // kelas tahun ajaran aktif milik schoolID.
-func GetCardEnrollment(ctx context.Context, q database.DBTX, schoolID, enrollmentID string) (cardEnrollment, error) {
+func GetCardEnrollment(ctx context.Context, q database.DBTX, schoolID, enrollmentID string) (CardEnrollment, error) {
 	if !database.IsUUID(enrollmentID) {
-		return cardEnrollment{}, ErrEnrollmentNotFound
+		return CardEnrollment{}, ErrEnrollmentNotFound
 	}
-	var e cardEnrollment
+	var e CardEnrollment
 	var classID string
 	err := q.QueryRow(ctx, `SELECT e.id, e.student_id, e.class_id FROM enrollments e
 		WHERE e.school_id = $1 AND e.id = $2 AND e.end_date IS NULL`, schoolID, enrollmentID).Scan(&e.ID, &e.StudentID, &classID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return cardEnrollment{}, ErrEnrollmentNotFound
+		return CardEnrollment{}, ErrEnrollmentNotFound
 	}
 	if err != nil {
-		return cardEnrollment{}, fmt.Errorf("grades: get enrollment: %w", err)
+		return CardEnrollment{}, fmt.Errorf("grades: get enrollment: %w", err)
 	}
 	if e.Class, err = activeClass(ctx, q, schoolID, classID); err != nil {
 		if errors.Is(err, ErrClassNotFound) {
-			return cardEnrollment{}, ErrEnrollmentNotFound
+			return CardEnrollment{}, ErrEnrollmentNotFound
 		}
-		return cardEnrollment{}, err
+		return CardEnrollment{}, err
 	}
 	return e, nil
 }
@@ -144,7 +144,7 @@ func GetCardEnrollment(ctx context.Context, q database.DBTX, schoolID, enrollmen
 // BuildReportCard menyusun rapor enrollment e untuk semester (1 atau 2).
 // IncompleteError jika ada mapel yang belum lengkap atau belum punya
 // komponen nilai; rapor parsial tidak pernah dibuat.
-func BuildReportCard(ctx context.Context, q database.DBTX, schoolID string, e cardEnrollment, semester int, printedAt time.Time) (ReportCard, error) {
+func BuildReportCard(ctx context.Context, q database.DBTX, schoolID string, e CardEnrollment, semester int, printedAt time.Time) (ReportCard, error) {
 	if semester != 1 && semester != 2 {
 		return ReportCard{}, ErrInvalidSemester
 	}

@@ -36,6 +36,9 @@ const (
 	// ReportPrincipalName dan ReportSignerTitle: penanda tangan rapor.
 	ReportPrincipalName = "report.principal_name"
 	ReportSignerTitle   = "report.signer_title"
+	// ReportPortalComponents: "true" jika portal orang tua menampilkan nilai
+	// per komponen, bukan hanya nilai akhir (T75). Belum diatur = tidak.
+	ReportPortalComponents = "report.portal_components"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.
