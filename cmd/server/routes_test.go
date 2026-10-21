@@ -110,6 +110,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
 		home:        home.NewHandler(nil, rd, sessions, logger),
 		importer:    importer.NewHandler(importer.NewService(nil, nil), sessions, rd, logger),
+		mappings:    importer.NewMappingHandler(importer.NewMappingService(nil), sessions, rd, logger),
 		// Route driver storage local ikut didaftarkan agar daftar route lengkap (T58).
 		storage: http.NotFoundHandler(),
 	})

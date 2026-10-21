@@ -101,6 +101,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
 		reports:     reportsHandler,
 		importer:    importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
+		mappings:    importer.NewMappingHandler(importer.NewMappingService(d.db), d.sessions, d.render, d.logger),
 	}), nil
 }
 

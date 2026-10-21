@@ -471,6 +471,29 @@ Paket [internal/reports/builder](internal/reports/builder/compile.go) (T76): lap
 - Excel memakai pola T47 (`export.Table`): nominal sebagai angka rupiah, baris total, serta sheet Info berisi sekolah, periode, dan tanggal cetak.
 - **Perlu dicek sebelum rilis:** angka ini harus sama dengan laporan keuangan untuk yayasan.
 
+## Mapping Impor
+
+Tabel `import_mappings` (migrasi 000040), kode di [internal/importer/mapping.go](internal/importer/mapping.go), halaman `GET`/`POST /impor/mapping` (hanya `admin_tu`; tautan di halaman impor siswa).
+
+- Mapping memetakan judul kolom file sekolah ke kolom baku AKRA. `column_map` berbentuk `{"<kolom baku>": "<judul di file>"}`.
+  - Kolom baku ditetapkan di kode: `StudentColumns` (T52) dan `GradeColumns` (NIS, Kode mapel, Nama komponen, Nilai; impornya di T82). Jenis tagihan belum didukung karena belum punya kolom baku.
+  - Mapping **hanya mengganti judul kolom**; aturan pemeriksaan data tetap di T54.
+- Validasi saat disimpan (`ValidateMapping`):
+  - setiap kolom wajib target harus punya sumber;
+  - kunci hanya boleh kolom baku target (mapping tidak bisa menambah kolom);
+  - satu kolom file tidak boleh dipakai dua kolom baku;
+  - setiap sumber harus ada di header file contoh.
+
+  Nama unik per sekolah. Mapping sekolah lain tidak pernah terlihat. Audit: `import_mapping.create`.
+- Membuat mapping berlangsung dua langkah:
+  1. unggah file contoh; hanya baris header yang dibaca (`ReadHeader`), datanya tidak disimpan;
+  2. pilih kolom file untuk setiap kolom baku. Pilihan awal disarankan dari judul yang sama, dan Alpine memberi peringatan jika satu kolom dipilih dua kali.
+- `ParseMapped` membaca file lewat mapping dengan batas dan aturan baris yang sama dengan `ParseFile` (bagian bersama: `scanSheet`).
+  - Header adalah baris pertama, di antara 10 baris berisi pertama, yang memuat semua kolom yang dirujuk mapping. Baris judul laporan di atasnya dilewati.
+  - File yang tidak punya kolom yang dirujuk ditolak dengan pesan yang menyebut kolom file, kolom bakunya, dan nama mapping.
+  - Uji memastikan dua format file berbeda (template baku dan format ekspor lain dengan judul, urutan, kolom tambahan, dan tanggal Excel yang berbeda) menghasilkan baris yang sama.
+- **Belum ada contoh file asli dari sekolah pilot.** Uji memakai format buatan. Setelah file asli didapat, cukup buat mapping-nya di aplikasi, tanpa mengubah kode.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.
