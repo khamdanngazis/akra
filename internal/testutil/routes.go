@@ -417,6 +417,10 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/keuangan/rekap-pembayaran.xlsx", Kind: KindPage, Roles: []string{Treasurer, Principal},
 		Requests: paths(func(*School) []string { return []string{"/keuangan/rekap-pembayaran.xlsx?mode=bulanan&tahun=2026"} })},
 
+	// Impor nilai lewat mapping (T82): hanya admin/TU.
+	{Method: "GET", Pattern: "/impor/nilai", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/impor/nilai", Kind: KindOwn, Roles: adminTU, Requests: post(func(*School) string { return "/impor/nilai" }, nil)},
+
 	// Mapping impor (T81): hanya admin/TU.
 	{Method: "GET", Pattern: "/impor/mapping", Kind: KindPage, Roles: adminTU},
 	{Method: "POST", Pattern: "/impor/mapping", Kind: KindOwn, Roles: adminTU,

@@ -494,6 +494,29 @@ Tabel `import_mappings` (migrasi 000040), kode di [internal/importer/mapping.go]
   - Uji memastikan dua format file berbeda (template baku dan format ekspor lain dengan judul, urutan, kolom tambahan, dan tanggal Excel yang berbeda) menghasilkan baris yang sama.
 - **Belum ada contoh file asli dari sekolah pilot.** Uji memakai format buatan. Setelah file asli didapat, cukup buat mapping-nya di aplikasi, tanpa mengubah kode.
 
+### Impor dengan mapping
+
+Migrasi 000041 menambah `import_batches.target` (`students`/`grades`) dan `mapping_id` (FK komposit dengan `school_id`). Alur batch T53–T56 (unggah, periksa, simpan, laporan kesalahan) dipakai untuk kedua target.
+
+- **Siswa:** di `/impor/siswa` muncul pilihan "Format file" jika sekolah punya mapping siswa. Mapping hanya mengubah cara file dibaca (`ParseMapped` → `StudentRows`); pemeriksaan dan penyimpanan tetap T54–T55. Uji memastikan file format lain dengan mapping menghasilkan isi `import_rows` (raw dan data) yang sama persis dengan file template.
+- **Nilai:** halaman `GET`/`POST /impor/nilai` (hanya `admin_tu`). Tanpa mapping, file memakai judul kolom baku NIS, Kode mapel, Nama komponen, Nilai, dalam urutan bebas. Kode ada di [internal/importer/grades_import.go](internal/importer/grades_import.go).
+  - Setiap baris diperiksa:
+    - siswa terdaftar di kelas tahun ajaran aktif;
+    - mapel aktif berdasarkan kode;
+    - **mapel punya guru pengampu di kelas siswa** (T65);
+    - komponen aktif mapel itu (T69);
+    - nilai 0–100 dengan paling banyak dua desimal;
+    - tidak ada baris ganda (NIS, mapel, komponen).
+
+    Semua kesalahan satu baris tampil sekaligus dan masuk laporan kesalahan, yang memakai kolom nilai.
+  - Penyimpanan lewat `grades.InputService.Save`, jalur yang sama dengan input guru (T70):
+    - nilai kosong berarti belum dinilai: tidak membuat baris baru, atau mengosongkan nilai lama;
+    - satu nilai per siswa per komponen (UNIQUE), sehingga impor ulang file yang sama tidak membuat nilai ganda;
+    - hanya nilai yang berubah yang diaudit (`grade.create`/`grade.update`), atas nama pengguna yang menekan Simpan.
+  - Baris disimpan per kelompok (kelas, komponen), sehingga daftar siswa kelas dibaca sekali per kelompok. Jika satu baris gagal (mis. siswa keluar kelas setelah diperiksa), kelompok itu diulang per baris dan hanya baris itu yang ditandai gagal.
+  - Lebih dari 50 baris valid diproses job River (T55). Uji 1.000 baris selesai lewat job dalam sekitar 1 detik.
+- Mapping milik sekolah lain, atau mapping untuk target lain, ditolak dengan `422` "Mapping tidak ditemukan".
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

@@ -20,6 +20,16 @@
   x-data="{ err: '', submitting: false }"
   @submit="const f = $refs.file.files[0]; err = !f ? 'Pilih file Excel yang akan diimpor.' : (f.size > Number($el.dataset.max) ? 'File terlalu besar. Maksimal 5 MB.' : ''); if (err) $event.preventDefault(); else submitting = true">
 {{ csrfField }}
+{{if .Mappings}}
+<div class="field mb-3">
+<label for="import-mapping">Format file</label>
+<select id="import-mapping" name="mapping_id">
+<option value="">Template AKRA</option>
+{{range .Mappings}}<option value="{{.ID}}"{{if eq .ID $.MappingID}} selected{{end}}>Mapping: {{.Name}}</option>{{end}}
+</select>
+<p class="hint">Pilih mapping jika file memakai judul kolom sekolah, bukan template.</p>
+</div>
+{{end}}
 <div class="field">
 <label for="import-file">File Excel</label>
 <input id="import-file" type="file" name="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" x-ref="file" required{{if .Error}} aria-invalid="true" aria-describedby="import-file-error"{{end}}>
@@ -37,6 +47,7 @@
 </div>
 <a class="btn btn-ghost mt-4 w-full" href="/impor/siswa/template.xlsx" download>{{template "icon" "download"}}Unduh template</a>
 <a class="btn btn-ghost mt-2 w-full" href="/impor/mapping">Mapping kolom file sekolah</a>
+<a class="btn btn-ghost mt-2 w-full" href="/impor/nilai">Impor nilai</a>
 </section>
 
 <section class="card" aria-labelledby="import-rules">

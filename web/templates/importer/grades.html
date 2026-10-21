@@ -1,0 +1,56 @@
+{{define "title"}}Impor Nilai{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/impor/siswa">← Impor siswa</a></p>
+<div class="page-header">
+<div>
+<h1>Impor nilai</h1>
+<p class="muted">Impor nilai komponen dari file Excel. Setiap baris diperiksa terhadap siswa, mapel, penugasan guru, dan komponen nilai aktif, lalu disimpan dengan aturan yang sama dengan input nilai guru.</p>
+</div>
+</div>
+
+{{if .Flash}}{{template "flash" .}}{{end}}
+
+<div class="import-grid">
+<aside class="import-side">
+<section class="card" aria-labelledby="upload-title">
+<h2 id="upload-title" class="card-title">Unggah file nilai</h2>
+<p class="mt-1 mb-4 text-sm text-slate-500">File .xlsx, maksimal 5 MB dan 5.000 baris.</p>
+<form method="post" action="/impor/nilai" enctype="multipart/form-data" data-max="{{.MaxBytes}}"
+  x-data="{ err: '', submitting: false }"
+  @submit="const f = $refs.file.files[0]; err = !f ? 'Pilih file Excel yang akan diimpor.' : (f.size > Number($el.dataset.max) ? 'File terlalu besar. Maksimal 5 MB.' : ''); if (err) $event.preventDefault(); else submitting = true">
+{{ csrfField }}
+<div class="field mb-3">
+<label for="import-mapping">Format file</label>
+<select id="import-mapping" name="mapping_id">
+<option value="">Judul kolom baku</option>
+{{range .Mappings}}<option value="{{.ID}}"{{if eq .ID $.MappingID}} selected{{end}}>Mapping: {{.Name}}</option>{{end}}
+</select>
+<p class="hint"><a href="/impor/mapping">Buat mapping</a> jika judul kolom file berbeda.</p>
+</div>
+<div class="field">
+<label for="import-file">File Excel</label>
+<input id="import-file" type="file" name="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" x-ref="file" required{{if .Error}} aria-invalid="true" aria-describedby="import-file-error"{{end}}>
+{{with .Error}}<p id="import-file-error" class="field-error" x-show="!err">{{.}}</p>{{end}}
+<p class="field-error" x-show="err" x-text="err" x-cloak></p>
+</div>
+<button type="submit" class="btn btn-primary mt-4 w-full" :disabled="submitting">{{template "icon" "upload"}}<span x-text="submitting ? 'Mengunggah…' : 'Unggah file'">Unggah file</span></button>
+</form>
+</section>
+<section class="card" aria-labelledby="import-rules">
+<h2 id="import-rules" class="card-title">Aturan</h2>
+<ol class="steps">
+<li class="step"><span class="step-num">1</span><div><strong>Satu baris, satu nilai</strong><p>NIS siswa, kode mapel, nama komponen (mis. UTS), dan nilai 0–100. Nilai kosong berarti belum dinilai.</p></div></li>
+<li class="step"><span class="step-num">2</span><div><strong>Mapel harus punya guru di kelas siswa</strong><p>Baris untuk mapel tanpa penugasan guru, atau komponen yang tidak aktif, ditandai salah.</p></div></li>
+<li class="step"><span class="step-num">3</span><div><strong>Aman diimpor ulang</strong><p>Nilai yang sama tidak dibuat ganda; nilai yang berbeda menggantikan yang lama dan tercatat di riwayat.</p></div></li>
+</ol>
+</section>
+</aside>
+<section class="card import-main" aria-labelledby="import-columns">
+<div class="card-head"><div><h2 id="import-columns" class="card-title">Kolom baku</h2><p class="m-0 text-sm text-slate-500">Judul kolom tanpa mapping; urutan bebas.</p></div></div>
+<ol class="column-list">
+{{range .Columns}}<li><span class="column-letter" aria-hidden="true">{{.Letter}}</span><span class="min-w-0 flex-1"><strong class="block">{{.Header}}</strong><span class="block text-sm text-slate-500">{{.Format}}</span></span><span class="badge badge-info">Wajib</span></li>
+{{end}}</ol>
+</section>
+</div>
+{{end}}
