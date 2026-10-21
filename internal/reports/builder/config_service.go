@@ -118,22 +118,30 @@ func (s *ConfigService) Validate(id auth.Identity, in ConfigInput) (ConfigInput,
 	case n > MaxConfigNameLen:
 		fields["name"] = fmt.Sprintf("Nama maksimal %d karakter.", MaxConfigNameLen)
 	}
-	src, ok := s.reg.Source(in.Config.Source)
-	switch {
-	case !ok:
-		fields["source"] = "Pilih sumber data dari daftar."
-	case !src.Allowed(id.Roles):
-		fields["source"] = "Anda tidak punya akses ke sumber data ini."
-	default:
-		if _, err := Compile(s.reg, id.SchoolID, in.Config, Options{}); err != nil {
-			field, msg := compileMessage(err)
-			fields[field] = msg
-		}
+	for k, v := range s.configFields(id, in.Config) {
+		fields[k] = v
 	}
 	if len(fields) > 0 {
 		return ConfigInput{}, &ConfigError{Fields: fields}
 	}
 	return in, nil
+}
+
+// configFields memeriksa konfigurasi (tanpa nama): sumber terdaftar dan
+// boleh dipakai peran id, lalu aturan Compile. Hasilnya pesan per field.
+func (s *ConfigService) configFields(id auth.Identity, c Config) map[string]string {
+	src, ok := s.reg.Source(c.Source)
+	switch {
+	case !ok:
+		return map[string]string{"source": "Pilih sumber data dari daftar."}
+	case !src.Allowed(id.Roles):
+		return map[string]string{"source": "Anda tidak punya akses ke sumber data ini."}
+	}
+	if _, err := Compile(s.reg, id.SchoolID, c, Options{}); err != nil {
+		field, msg := compileMessage(err)
+		return map[string]string{field: msg}
+	}
+	return nil
 }
 
 // compileMessage memetakan error Compile ke field dan pesan form.

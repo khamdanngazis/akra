@@ -390,6 +390,20 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/laporan/konfigurasi/{id}/hapus", Kind: KindByID, Roles: financeRead, ControlRoles: adminTU,
 		Requests: post(func(o *School) string { return "/laporan/konfigurasi/" + o.ReportConfigID + "/hapus" }, nil)},
 
+	// Pembangun laporan (T78): peran yang punya sumber laporan.
+	{Method: "GET", Pattern: "/laporan/bangun/", Kind: KindPage, Roles: financeRead,
+		Requests: paths(func(o *School) []string {
+			return []string{"/laporan/bangun/", "/laporan/bangun/?konfigurasi=" + o.ReportConfigID}
+		})},
+	{Method: "POST", Pattern: "/laporan/bangun/pratinjau", Kind: KindOwn, Roles: financeRead,
+		Requests: post(func(*School) string { return "/laporan/bangun/pratinjau" }, func(*School) url.Values {
+			return url.Values{"source": {"payments"}, "columns_payments": {"nis", "student_name", "amount"}}
+		})},
+	{Method: "POST", Pattern: "/laporan/bangun/simpan", Kind: KindFormRef, Roles: financeRead,
+		Requests: post(func(*School) string { return "/laporan/bangun/simpan" }, func(o *School) url.Values {
+			return url.Values{"config_id": {o.ReportConfigID}, "name": {"Diambil"}, "source": {"payments"}, "columns_payments": {"nis"}}
+		})},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,

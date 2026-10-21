@@ -1,0 +1,134 @@
+{{define "title"}}Pembangun Laporan{{end}}
+{{define "head"}}<script src="{{ asset "js/report-builder.js" }}"></script>{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/laporan/konfigurasi">← Konfigurasi laporan</a></p>
+<div class="page-header">
+<div>
+<h1>Pembangun Laporan</h1>
+<p class="muted">Pilih sumber, kolom, filter, dan urutan, lalu lihat pratinjau (maksimal 50 baris) sebelum menyimpan.{{with .CopyOf}} Ini salinan konfigurasi bersama "{{.}}"; menyimpan membuat konfigurasi baru milik Anda.{{end}}</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if not .HasSource}}
+<section class="card empty-state"><p>Peran Anda belum punya sumber data laporan.</p></section>
+{{else}}
+<noscript><div class="alert alert-info">Pembangun laporan memerlukan JavaScript. Tanpa JavaScript, gunakan form di <a href="/laporan/konfigurasi">Konfigurasi Laporan</a>.</div></noscript>
+
+<form method="post" action="/laporan/bangun/pratinjau" class="stack" novalidate x-data="reportBuilder($el)" data-state="{{.State}}" x-cloak>
+{{ csrfField }}
+{{with .ConfigID}}<input type="hidden" name="config_id" value="{{.}}">{{end}}
+<input type="hidden" name="source" :value="source">
+<template x-for="key in columns" :key="key"><input type="hidden" :name="'columns_' + source" :value="key"></template>
+<template x-for="(s, i) in sort" :key="i">
+<span><input type="hidden" :name="'s_' + source + '_col_' + i" :value="s.column"><input type="hidden" :name="'s_' + source + '_desc_' + i" :value="s.desc ? 'on' : ''"></span>
+</template>
+
+<section class="card form-card" aria-labelledby="src-title">
+<h2 id="src-title" class="card-title">1. Sumber data</h2>
+<div class="field mt-3{{if .Errors.source}} has-error{{end}}">
+<label for="b-source">Sumber</label>
+<select id="b-source" x-model="source" @change="changeSource()">
+<template x-for="s in sources" :key="s.name"><option :value="s.name" x-text="s.label" :selected="s.name === source"></option></template>
+</select>
+{{with .Errors.source}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</section>
+
+<section class="card form-card" aria-labelledby="col-title">
+<h2 id="col-title" class="card-title">2. Kolom</h2>
+<p class="muted text-sm mt-1">Centang kolom, lalu atur urutannya. Maksimal <span x-text="maxColumns"></span> kolom.</p>
+<div class="check-grid mt-3">
+<template x-for="c in current.columns" :key="c.key">
+<label class="choice"><input type="checkbox" :checked="selected(c.key)" @change="toggle(c.key)" :disabled="!selected(c.key) && columns.length >= maxColumns"> <span x-text="c.label"></span></label>
+</template>
+</div>
+<ol class="column-order mt-3" x-show="columns.length">
+<template x-for="(key, i) in columns" :key="key">
+<li><span class="min-w-0 flex-1 truncate" x-text="(i + 1) + '. ' + label(key)"></span>
+<button type="button" class="btn btn-ghost btn-sm" @click="move(i, -1)" :disabled="i === 0" :aria-label="'Naikkan ' + label(key)">↑</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="move(i, 1)" :disabled="i === columns.length - 1" :aria-label="'Turunkan ' + label(key)">↓</button></li>
+</template>
+</ol>
+{{with .Errors.columns}}<p class="field-error">{{.}}</p>{{end}}
+</section>
+
+<section class="card form-card" aria-labelledby="flt-title">
+<h2 id="flt-title" class="card-title">3. Filter <span class="muted text-sm font-normal">(opsional)</span></h2>
+<template x-for="(f, i) in filters" :key="i">
+<div class="builder-row mt-3">
+<select :name="'f_' + source + '_col_' + i" x-model="f.column" @change="fixOp(f)" :aria-label="'Kolom filter ' + (i + 1)">
+<template x-for="c in current.columns" :key="c.key"><option :value="c.key" x-text="c.label" :selected="c.key === f.column"></option></template>
+</select>
+<select :name="'f_' + source + '_op_' + i" x-model="f.op" :aria-label="'Operator filter ' + (i + 1)">
+<template x-for="o in opsFor(f.column)" :key="o.value"><option :value="o.value" x-text="o.label" :selected="o.value === f.op"></option></template>
+</select>
+<input :type="inputType(f)" :name="'f_' + source + '_val_' + i" x-model="f.value" :placeholder="placeholder(f)" :aria-label="'Nilai filter ' + (i + 1)">
+<button type="button" class="btn btn-ghost btn-sm" @click="filters.splice(i, 1)" :aria-label="'Hapus filter ' + (i + 1)">Hapus</button>
+</div>
+</template>
+<button type="button" class="btn btn-ghost btn-sm mt-3" @click="addFilter()" x-show="filters.length < maxFilters">+ Tambah filter</button>
+{{with .Errors.filters}}<p class="field-error">{{.}}</p>{{end}}
+</section>
+
+<section class="card form-card" aria-labelledby="sort-title">
+<h2 id="sort-title" class="card-title">4. Urutan <span class="muted text-sm font-normal">(opsional)</span></h2>
+<template x-for="(s, i) in sort" :key="i">
+<div class="builder-row builder-row-sort mt-3">
+<select x-model="s.column" :aria-label="'Kolom urutan ' + (i + 1)">
+<template x-for="c in current.columns" :key="c.key"><option :value="c.key" x-text="c.label" :selected="c.key === s.column"></option></template>
+</select>
+<select @change="s.desc = $event.target.value === 'true'" :aria-label="'Arah urutan ' + (i + 1)">
+<option value="false" :selected="!s.desc">Naik (A–Z, kecil–besar)</option>
+<option value="true" :selected="s.desc">Turun (Z–A, besar–kecil)</option>
+</select>
+<button type="button" class="btn btn-ghost btn-sm" @click="sort.splice(i, 1)" :aria-label="'Hapus urutan ' + (i + 1)">Hapus</button>
+</div>
+</template>
+<button type="button" class="btn btn-ghost btn-sm mt-3" @click="addSort()" x-show="sort.length < maxSort">+ Tambah urutan</button>
+{{with .Errors.sort}}<p class="field-error">{{.}}</p>{{end}}
+</section>
+
+<section class="card form-card" aria-labelledby="save-title">
+<h2 id="save-title" class="card-title">5. Pratinjau dan simpan</h2>
+<div class="field-grid mt-3">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="b-name">Nama konfigurasi <span class="muted">(untuk simpan)</span></label>
+<input id="b-name" name="name" value="{{.Name}}" maxlength="80" placeholder="Tunggakan kelas 1">
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<label class="choice mt-2"><input type="checkbox" name="shared"{{if .Shared}} checked{{end}}> Bagikan ke pengguna sekolah yang berhak atas sumber ini (baca saja)</label>
+<div class="action-row mt-3">
+<button type="submit" class="btn btn-ghost">Pratinjau</button>
+<button type="submit" class="btn btn-primary" formaction="/laporan/bangun/simpan">Simpan{{if .ConfigID}} perubahan{{end}}</button>
+<button type="button" class="btn btn-ghost" disabled title="Unduhan Excel/PDF dikerjakan di T79">Unduh (segera)</button>
+</div>
+</section>
+</form>
+
+{{with .Preview}}
+<section class="mt-6" aria-labelledby="preview-title">
+<h2 id="preview-title" class="section-title">Pratinjau</h2>
+<p class="muted text-sm">{{len .Rows}} baris ditampilkan{{if .More}} (masih ada baris lain; unduhan memuat semuanya){{end}}.</p>
+{{if .Rows}}
+<div class="card card-flush mt-2">
+<div class="table-wrap">
+<table class="preview-table">
+<thead><tr>{{range .Columns}}<th{{if or (eq .Type "money") (eq .Type "int")}} class="text-right"{{end}}>{{.Label}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}<tr>{{range $i, $cell := .}}{{$col := index $.Preview.Columns $i}}<td{{if or (eq $col.Type "money") (eq $col.Type "int")}} class="text-right tabular-nums"{{end}}>{{$cell}}</td>{{end}}</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state mt-2"><p>Tidak ada baris yang cocok dengan filter.</p></section>
+{{end}}
+</section>
+{{end}}
+{{end}}
+{{end}}

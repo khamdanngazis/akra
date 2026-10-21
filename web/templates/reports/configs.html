@@ -5,7 +5,7 @@
 <div class="page-header">
 <div>
 <h1>Konfigurasi Laporan</h1>
-<p class="muted">Simpan pilihan sumber, kolom, filter, dan urutan laporan untuk dipakai lagi. Konfigurasi pribadi hanya bisa diubah pemiliknya; konfigurasi bersama bisa dibaca pengguna sekolah lain yang berhak atas sumbernya.</p>
+<p class="muted">Simpan pilihan sumber, kolom, filter, dan urutan laporan untuk dipakai lagi. Untuk memilih dengan pratinjau, pakai <a href="/laporan/bangun">Pembangun Laporan</a>. Konfigurasi pribadi hanya bisa diubah pemiliknya; konfigurasi bersama bisa dibaca pengguna sekolah lain yang berhak atas sumbernya.</p>
 </div>
 </div>
 
@@ -24,12 +24,13 @@
 <td class="max-sm:hidden tabular-nums">{{len .Config.Columns}} kolom{{with .Config.Filters}} · {{len .}} filter{{end}}</td>
 <td>{{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</td>
 <td class="actions">
-{{if .Mine}}
 <div class="action-row">
+<a class="btn btn-ghost btn-sm" href="/laporan/bangun?konfigurasi={{.ID}}">Buka</a>
+{{if .Mine}}
 <a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi?ubah={{.ID}}">Ubah</a>
 <form method="post" action="/laporan/konfigurasi/{{.ID}}/hapus" x-data @submit="if (!confirm('Hapus konfigurasi ini?')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
-</div>
 {{end}}
+</div>
 </td>
 </tr>
 {{end}}

@@ -421,7 +421,27 @@ Paket [internal/reports/builder](internal/reports/builder/compile.go) (T76): lap
 - Ubah dan hapus hanya oleh pemilik; pengguna lain mendapat `403`, dan sekolah lain mendapat `404`.
 - Hapus bersifat lunak: `deleted_at` diisi dan `is_shared` dimatikan.
 - Audit: `report_config.create`, `report_config.update` (isi berubah), `report_config.share` (status berbagi berubah), `report_config.delete`.
-- Form memakai nama isian berawalan sumber (`columns_<sumber>`, `f_<sumber>_col_<i>`, …) sehingga tetap benar tanpa JavaScript. Pembangun laporan interaktif dan pratinjau menyusul di T78.
+- Form memakai nama isian berawalan sumber (`columns_<sumber>`, `f_<sumber>_col_<i>`, …) sehingga tetap benar tanpa JavaScript.
+
+**Pembangun laporan** (T78), halaman `/laporan/bangun` (`?konfigurasi=` membuka konfigurasi tersimpan):
+
+- Komponen Alpine di [report-builder.js](web/static/js/report-builder.js) hanya mengatur tampilan:
+  - daftar sumber sesuai peran;
+  - centang kolom dan atur urutannya;
+  - tambah atau hapus filter, dengan operator mengikuti tipe kolom;
+  - 1–2 urutan.
+
+  Isiannya dikirim dengan nama yang sama dengan form T77.
+- `POST /laporan/bangun/pratinjau` menjalankan maksimal 50 baris lewat `ConfigService.Preview`.
+  - Validasinya sama dengan saat simpan: sumber dan hak peran, kolom, operator per tipe, dan nilai.
+  - Query berjalan di transaksi baca-saja dengan `statement_timeout` 5 detik, dan transaksinya selalu dibatalkan.
+  - Nilai uang diformat rupiah, tanggal diformat tanggal Indonesia.
+  - Diukur di uji: sekitar 30 ms.
+- `POST /laporan/bangun/simpan` memakai `ConfigService` (T77). Dengan `config_id`, konfigurasi diubah (hanya pemilik, selain itu `403`); tanpa `config_id`, dibuat konfigurasi baru. Konfigurasi bersama milik orang lain dibuka sebagai salinan.
+- Akses selalu diperiksa di server, bukan hanya di menu:
+  - guru mendapat `403` di halaman maupun `POST` langsung;
+  - peran yang tidak berhak atas suatu sumber mendapat `422` saat pratinjau atau simpan.
+- Tombol unduh menyusul di T79.
 
 ## Siswa
 
