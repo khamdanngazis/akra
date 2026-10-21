@@ -455,6 +455,22 @@ Paket [internal/reports/builder](internal/reports/builder/compile.go) (T76): lap
   - Nominal ditulis sebagai angka berformat rupiah di Excel. Uji memastikan isi Excel sama dengan pratinjau T78.
   - Nama file: `laporan-<nama>-<tanggal>.xlsx`.
 
+## Rekap Pembayaran
+
+[internal/payments/daily_report.go](internal/payments/daily_report.go), halaman `GET /keuangan/rekap-pembayaran?mode=harian|bulanan&dari=&sampai=&tahun=` dan unduhan `.xlsx` dengan parameter sama. Hanya `bendahara` dan `kepala_sekolah`; peran lain, termasuk admin/TU dan guru, mendapat `403`.
+
+- **Harian berarti tanggal bayar** (`paid_on`), sesuai default T80; skema tidak menyimpan tanggal uang masuk rekening.
+  - `DailyTotals` menghasilkan satu baris per tanggal yang punya pembayaran, maksimal 366 hari. Default-nya tanggal 1 bulan ini sampai hari ini.
+  - `MonthlyTotals` menghasilkan 12 baris untuk satu tahun kalender, termasuk bulan tanpa pembayaran.
+  - Kolom: tunai, transfer, total, jumlah pembayaran, dan pembayaran yang pembatalannya menunggu persetujuan.
+- Pembayaran yang pembatalannya **disetujui** tidak dihitung (aturan `billing.ActivePaid`, T39). Pembatalan yang **ditolak** tidak berpengaruh. Pembatalan yang **menunggu** tetap dihitung di total dan juga ditampilkan di kolom tersendiri (satu pembayaran paling banyak punya satu pembatalan yang belum ditolak).
+- Uji:
+  - total bulanan sama dengan jumlah total harian bulan itu, dan sama dengan `billing.ActivePaid` atas pembayaran bulan itu;
+  - sekolah lain tidak ikut;
+  - rekap satu tahun dengan 3.600 pembayaran (300 siswa × 12) sekitar 12 ms.
+- Excel memakai pola T47 (`export.Table`): nominal sebagai angka rupiah, baris total, serta sheet Info berisi sekolah, periode, dan tanggal cetak.
+- **Perlu dicek sebelum rilis:** angka ini harus sama dengan laporan keuangan untuk yayasan.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.
