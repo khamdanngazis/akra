@@ -375,6 +375,25 @@ Kunci `school_settings`. Sejak 000037 nama kunci boleh memakai titik sebagai nam
   - Deskripsi capaian per siswa (khas rapor Merdeka) belum ada; dicatat sebagai task T74b.
 - Semua kunci disimpan dalam satu transaksi dengan audit `report_config.update` (isi sebelum dan sesudah). Rekap membaca pengaturan setiap kali dibuka, jadi perubahan langsung berlaku tanpa deploy ulang.
 
+## Rapor PDF
+
+[internal/grades/report_pdf.go](internal/grades/report_pdf.go), route `GET /nilai/rapor/{enrollmentID}.pdf?semester=1|2`. Akses: `admin_tu` dan wali kelas siswa itu. Kepala sekolah, guru mapel, dan peran lain mendapat `403`. Orang tua mengunduh lewat portal (T75).
+
+- Isi rapor:
+  - identitas siswa, kelas, tahun ajaran, dan semester;
+  - tabel mapel dengan KKM/KKTP, nilai akhir, predikat, dan kolom catatan (kosong karena belum ada sumbernya);
+  - ketidakhadiran (sakit, izin, tanpa keterangan);
+  - tanda tangan wali kelas dan kepala sekolah (T73).
+- Angka diambil dari `ClassSummary` (T72), sehingga **sama dengan rekap**. Kehadiran memakai `attendance.SummaryByStudent` (T27) untuk setiap kelas siswa di tahun ajaran itu, dijumlahkan seperti detail anak di portal.
+- **Semester** dipilih saat cetak (default dari tanggal: Juli–Desember = 1, Januari–Juni = 2). Semester hanya mengubah label dan rentang kehadiran (awal tahun ajaran – 31 Desember, atau 1 Januari – akhir tahun ajaran). Nilai tetap nilai tahun ajaran, karena komponen nilai belum per semester; nilai per semester sungguhan perlu task terpisah.
+- Rapor **hanya dibuat jika semua mapel lengkap**. Jika ada mapel dengan nilai kosong atau tanpa komponen, halaman `422` menyebut mapel tersebut dan tidak ada PDF.
+  - Ringkasan kelas di `/nilai/rekap?kelas=` menampilkan daftar siswa beserta kesiapan rapornya (untuk admin dan wali kelas), dengan pilihan semester.
+- Setiap cetak diaudit `report_card.print` (enrollment, kelas, semester; tanpa nama siswa) sebelum PDF dikirim.
+- Tata letak ada di **satu fungsi**, `WriteReportCardPDF` (A4 tegak, fpdf, pola T41).
+  - Mengubah layout tidak menyentuh data. Nama mapel yang panjang dipecah ke beberapa baris.
+  - Literal desimal koordinat mm di file ini dikecualikan dari uji no-float; tipe float tetap dilarang.
+  - Layout ini **standar sementara**: menunggu persetujuan kepala sekolah pilot.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

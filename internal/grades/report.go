@@ -277,3 +277,28 @@ func loadScores(ctx context.Context, q database.DBTX, schoolID string, component
 	}
 	return out, rows.Err()
 }
+
+// CardStatus adalah kesiapan rapor satu siswa di ringkasan kelas.
+type CardStatus struct {
+	EnrollmentID, FullName, NIS string
+	Missing                     []string // mapel yang belum lengkap; kosong = siap cetak
+}
+
+// CardStatuses mengembalikan kesiapan rapor setiap siswa, memakai aturan yang
+// sama dengan BuildReportCard (semua mapel harus lengkap).
+func (r ClassReport) CardStatuses() []CardStatus {
+	var out []CardStatus
+	if len(r.Subjects) == 0 {
+		return nil
+	}
+	for i, row := range r.Subjects[0].Rows {
+		st := CardStatus{EnrollmentID: row.EnrollmentID, FullName: row.FullName, NIS: row.NIS}
+		for _, sub := range r.Subjects {
+			if !sub.Configured || sub.Rows[i].Result.Incomplete {
+				st.Missing = append(st.Missing, sub.Subject.Name)
+			}
+		}
+		out = append(out, st)
+	}
+	return out
+}
