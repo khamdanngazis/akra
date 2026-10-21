@@ -1,0 +1,67 @@
+{{define "title"}}Rekap Pembayaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Rekap Pembayaran</h1>
+<p class="muted">Total pembayaran per {{if eq .Mode "bulanan"}}bulan{{else}}hari{{end}} berdasarkan tanggal bayar, dibagi metode. Pembayaran yang pembatalannya disetujui tidak dihitung; yang masih menunggu persetujuan tetap dihitung dan ditampilkan di kolom tersendiri.</p>
+</div>
+{{with .ExcelURL}}<a class="btn btn-ghost" href="{{.}}">Unduh Excel</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+<nav class="mode-tabs" aria-label="Jenis rekap">
+<a href="/keuangan/rekap-pembayaran?mode=harian"{{if eq .Mode "harian"}} class="is-active" aria-current="page"{{end}}>Harian</a>
+<a href="/keuangan/rekap-pembayaran?mode=bulanan"{{if eq .Mode "bulanan"}} class="is-active" aria-current="page"{{end}}>Bulanan</a>
+</nav>
+
+<form method="get" action="/keuangan/rekap-pembayaran" class="filter-bar filter-grid">
+<input type="hidden" name="mode" value="{{.Mode}}">
+{{if eq .Mode "bulanan"}}
+<div class="field">
+<label for="tahun">Tahun</label>
+<select id="tahun" name="tahun">
+{{range .Years}}<option value="{{.}}"{{if eq . $.Year}} selected{{end}}>{{.}}</option>{{end}}
+</select>
+</div>
+{{else}}
+<div class="field"><label for="dari">Dari</label><input id="dari" type="date" name="dari" value="{{.From}}"></div>
+<div class="field"><label for="sampai">Sampai</label><input id="sampai" type="date" name="sampai" value="{{.To}}"></div>
+{{end}}
+<div class="filter-actions"><button type="submit" class="btn btn-primary">Tampilkan</button></div>
+</form>
+
+{{if not .Error}}
+<p class="muted small mt-2">{{.Range}}<span class="sm:hidden"> · rincian tunai dan transfer ada di layar lebar dan Excel</span></p>
+{{if .Rows}}
+<div class="card card-flush mt-2">
+<div class="table-wrap">
+<table class="recap-table">
+<thead><tr><th>{{if eq .Mode "bulanan"}}Bulan{{else}}Tanggal{{end}}</th><th class="text-right max-sm:hidden">Tunai</th><th class="text-right max-sm:hidden">Transfer</th><th class="text-right">Total</th><th class="text-right max-sm:hidden">Pembayaran</th><th class="text-right"><span class="max-sm:hidden">Menunggu pembatalan</span><span class="sm:hidden">Menunggu</span></th></tr></thead>
+<tbody>
+{{range .Rows}}<tr{{if .Empty}} class="row-inactive"{{end}}>
+<td>{{.Label}}</td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Cash}}</td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Transfer}}</td>
+<td class="text-right tabular-nums"><strong>{{.Total}}</strong></td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Count}}</td>
+<td class="text-right tabular-nums">{{if .PendingCount}}<span class="text-amber-700">{{.Pending}} ({{.PendingCount}})</span>{{else}}–{{end}}</td>
+</tr>{{end}}
+</tbody>
+<tfoot><tr class="font-semibold">
+<td>Total</td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Total.Cash}}</td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Total.Transfer}}</td>
+<td class="text-right tabular-nums">{{.Total.Total}}</td>
+<td class="text-right tabular-nums max-sm:hidden">{{.Total.Count}}</td>
+<td class="text-right tabular-nums">{{if .Total.PendingCount}}{{.Total.Pending}} ({{.Total.PendingCount}}){{else}}–{{end}}</td>
+</tr></tfoot>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state mt-2"><p>Tidak ada pembayaran pada periode ini.</p></section>
+{{end}}
+{{end}}
+{{end}}

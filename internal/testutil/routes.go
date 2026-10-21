@@ -408,6 +408,15 @@ var Routes = []Route{
 			return url.Values{"config_id": {o.ReportConfigID}, "name": {"Diambil"}, "source": {"payments"}, "columns_payments": {"nis"}}
 		})},
 
+	// Rekap pembayaran (T80): bendahara dan kepala sekolah.
+	{Method: "GET", Pattern: "/keuangan/rekap-pembayaran", Kind: KindPage, Roles: []string{Treasurer, Principal},
+		Requests: paths(func(*School) []string {
+			return []string{"/keuangan/rekap-pembayaran", "/keuangan/rekap-pembayaran?mode=harian&dari=2026-09-01&sampai=2026-09-30",
+				"/keuangan/rekap-pembayaran?mode=bulanan&tahun=2026"}
+		})},
+	{Method: "GET", Pattern: "/keuangan/rekap-pembayaran.xlsx", Kind: KindPage, Roles: []string{Treasurer, Principal},
+		Requests: paths(func(*School) []string { return []string{"/keuangan/rekap-pembayaran.xlsx?mode=bulanan&tahun=2026"} })},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,

@@ -70,6 +70,11 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: bendahara, admin_tu. Kuitansi PDF (dibuat saat diminta).
 		r.With(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU)).Get("/{id}/kuitansi", h.receipt)
 	})
+	recapRoles := auth.RequireRole(auth.RoleBendahara, auth.RoleKepalaSekolah)
+	// Peran: bendahara, kepala_sekolah. Rekap pembayaran harian/bulanan (T80).
+	r.With(recapRoles).Get(recapPath, h.recap)
+	// Peran: bendahara, kepala_sekolah.
+	r.With(recapRoles).Get(recapPath+".xlsx", h.recapExcel)
 	readers := auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah)
 	// Peran: bendahara, admin_tu, kepala_sekolah (hanya baca).
 	r.With(readers).Get(invoicesPath+"/{id}", h.invoice)
