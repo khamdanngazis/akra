@@ -37,16 +37,16 @@ var (
 
 // Filter adalah satu syarat. Untuk OpIn isi Values, selain itu isi Value.
 type Filter struct {
-	Column string
-	Op     Operator
-	Value  string
-	Values []string
+	Column string   `json:"column"`
+	Op     Operator `json:"op"`
+	Value  string   `json:"value,omitempty"`
+	Values []string `json:"values,omitempty"`
 }
 
 // Order adalah satu kunci urutan.
 type Order struct {
-	Column string
-	Desc   bool
+	Column string `json:"column"`
+	Desc   bool   `json:"desc,omitempty"`
 }
 
 // Config adalah konfigurasi laporan dari pengguna. Semua isinya dianggap

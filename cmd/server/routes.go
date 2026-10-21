@@ -24,6 +24,7 @@ import (
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/reports"
+	"akra/internal/reports/builder"
 	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
@@ -46,6 +47,7 @@ type routerDeps struct {
 	gradeInput   *grades.InputHandler
 	gradeRecap   *grades.ReportHandler
 	reportConfig *grades.ReportConfigHandler
+	reportSaved  *builder.ConfigHandler
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
@@ -120,6 +122,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.gradeInput.Routes(r)
 			d.gradeRecap.Routes(r)
 			d.reportConfig.Routes(r)
+			d.reportSaved.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)

@@ -1,6 +1,17 @@
 package builder
 
-import "akra/internal/billing"
+import (
+	"akra/internal/auth"
+	"akra/internal/billing"
+)
+
+// Peran per sumber. Guru belum punya sumber: builder tidak membatasi baris
+// ke kelas yang diampu, jadi data absensi dan nilai seluruh sekolah hanya
+// untuk admin/TU dan kepala sekolah. Data keuangan juga untuk bendahara.
+var (
+	schoolDataRoles = []string{auth.RoleAdminTU, auth.RoleKepalaSekolah}
+	financeRoles    = []string{auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah}
+)
 
 // Sumber awal laporan kustom. Semua SQL di file ini ditulis tangan dan tetap;
 // tidak ada bagian yang berasal dari pengguna.
@@ -62,6 +73,7 @@ func attendanceSource() Source {
 	return Source{
 		Name:  "attendance",
 		Label: "Absensi",
+		Roles: schoolDataRoles,
 		From: `attendance_records ar
  JOIN attendance_sessions asn ON asn.school_id = ar.school_id AND asn.id = ar.session_id
  JOIN enrollments e ON e.school_id = ar.school_id AND e.id = ar.enrollment_id
@@ -89,6 +101,7 @@ func arrearsSource() Source {
 	return Source{
 		Name:  "arrears",
 		Label: "Tunggakan",
+		Roles: financeRoles,
 		From: `invoices i
  JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
  JOIN students st ON st.school_id = e.school_id AND st.id = e.student_id
@@ -116,6 +129,7 @@ func paymentsSource() Source {
 	return Source{
 		Name:  "payments",
 		Label: "Pembayaran",
+		Roles: financeRoles,
 		From: `payments p
  JOIN invoices i ON i.school_id = p.school_id AND i.id = p.invoice_id
  JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
@@ -141,6 +155,7 @@ func gradesSource() Source {
 	return Source{
 		Name:  "grades",
 		Label: "Nilai",
+		Roles: schoolDataRoles,
 		From: `grades g
  JOIN grade_components gc ON gc.school_id = g.school_id AND gc.id = g.component_id
  JOIN subjects sub ON sub.school_id = gc.school_id AND sub.id = gc.subject_id

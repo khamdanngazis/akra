@@ -27,6 +27,7 @@ import (
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
 	"akra/internal/reports"
+	"akra/internal/reports/builder"
 	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
@@ -79,6 +80,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		gradeInput:   grades.NewInputHandler(grades.NewInputService(d.db), d.db, d.sessions, d.render, d.logger),
 		gradeRecap:   grades.NewReportHandler(d.db, d.sessions, d.render, d.logger),
 		reportConfig: grades.NewReportConfigHandler(d.db, d.sessions, d.render, d.logger),
+		reportSaved:  builder.NewConfigHandler(builder.NewConfigService(d.db, builder.Default), d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

@@ -60,6 +60,7 @@ type School struct {
 	SubjectID               string
 	SlotID                  string // slot jadwal ClassID untuk SubjectID (T66)
 	GradeComponentID        string // komponen nilai SubjectID tahun YearID, bobot 100 (T69)
+	ReportConfigID          string // konfigurasi laporan pribadi milik Admin (T77)
 	InvoiceID               string
 	PaymentID               string
 	ProofID                 string
@@ -206,6 +207,8 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.AttendanceSessionID, s.EnrollmentIDs[0], s.Teacher.ID)
 	s.BulkRunID = one(`INSERT INTO bulk_invoice_runs (school_id, academic_year_id, fee_type_id, class_id, period, due_date, mode, status, requested_by)
 		VALUES ($1, $2, $3, $4, '2026-10', '2026-10-10', 'sync', 'done', $5) RETURNING id`, s.ID, s.YearID, s.FeeTypeID, s.ClassID, s.Treasurer.ID)
+	s.ReportConfigID = one(`INSERT INTO report_configs (school_id, owner_user_id, name, source, columns) VALUES ($1, $2, $3, 'attendance', '["nis","status"]') RETURNING id`,
+		s.ID, s.Admin.ID, "Absensi "+marker)
 	s.ReportJobID = one(`INSERT INTO report_jobs (school_id, requested_by, report_type, format, status, file_key, file_name, finished_at)
 		VALUES ($1, $2, 'arrears', 'xlsx', 'selesai', $3, 'tunggakan.xlsx', now()) RETURNING id`, s.ID, s.Treasurer.ID, "schools/"+s.ID+"/reports/uji.xlsx")
 
