@@ -34,12 +34,14 @@ func TestParentAuth_Ownership(t *testing.T) {
 		"detail":   "/portal/siswa/" + a.StudentIDs[0],
 		"tagihan":  "/portal/siswa/" + a.StudentIDs[0] + "/tagihan",
 		"jadwal":   "/portal/siswa/" + a.StudentIDs[0] + "/jadwal",
+		"nilai":    "/portal/siswa/" + a.StudentIDs[0] + "/nilai",
 		"kuitansi": "/portal/pembayaran/" + a.PaymentID + "/kuitansi",
 	}
 	sibling := map[string]string{
 		"detail":   "/portal/siswa/" + a.StudentIDs[1],
 		"tagihan":  "/portal/siswa/" + a.StudentIDs[1] + "/tagihan",
 		"jadwal":   "/portal/siswa/" + a.StudentIDs[1] + "/jadwal",
+		"nilai":    "/portal/siswa/" + a.StudentIDs[1] + "/nilai",
 		"kuitansi": "/portal/pembayaran/" + a.Payment2ID + "/kuitansi",
 	}
 	for name, path := range own {
@@ -84,6 +86,17 @@ func TestParentAuth_Ownership(t *testing.T) {
 	}
 	if strings.Contains(p2.get(sibling["jadwal"]).Body.String(), "Mapel "+a.Marker) {
 		t.Error("parent 2 sees a slot from another class")
+	}
+	// Nilai dan rapor (T75): anak X punya nilai lengkap (Ujian 75), rapor
+	// terunduh; rapor anak lain 404.
+	if body := p1.get(own["nilai"]).Body.String(); !strings.Contains(body, ">75") || !strings.Contains(body, "/rapor.pdf") {
+		t.Error("parent 1 grades page misses the score or report card link")
+	}
+	if rec := p1.get("/portal/siswa/" + a.StudentIDs[0] + "/rapor.pdf?semester=1"); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/pdf" {
+		t.Errorf("parent 1 own report card: status = %d", rec.Code)
+	}
+	if rec := p1.get("/portal/siswa/" + a.StudentIDs[1] + "/rapor.pdf"); rec.Code != http.StatusNotFound {
+		t.Errorf("parent 1 other child's report card: status = %d, want 404", rec.Code)
 	}
 	// Daftar anak hanya berisi anak sendiri.
 	list := p1.get("/portal/").Body.String()
@@ -184,6 +197,8 @@ func TestParentAuth_NoEnumeration(t *testing.T) {
 		{"detail", "/portal/siswa/" + a.StudentIDs[1], "/portal/siswa/" + b.StudentIDs[0], "/portal/siswa/" + random},
 		{"tagihan", "/portal/siswa/" + a.StudentIDs[1] + "/tagihan", "/portal/siswa/" + b.StudentIDs[0] + "/tagihan", "/portal/siswa/" + random + "/tagihan"},
 		{"jadwal", "/portal/siswa/" + a.StudentIDs[1] + "/jadwal", "/portal/siswa/" + b.StudentIDs[0] + "/jadwal", "/portal/siswa/" + random + "/jadwal"},
+		{"nilai", "/portal/siswa/" + a.StudentIDs[1] + "/nilai", "/portal/siswa/" + b.StudentIDs[0] + "/nilai", "/portal/siswa/" + random + "/nilai"},
+		{"rapor", "/portal/siswa/" + a.StudentIDs[1] + "/rapor.pdf", "/portal/siswa/" + b.StudentIDs[0] + "/rapor.pdf", "/portal/siswa/" + random + "/rapor.pdf"},
 		{"kuitansi", "/portal/pembayaran/" + a.Payment2ID + "/kuitansi", "/portal/pembayaran/" + b.PaymentID + "/kuitansi", "/portal/pembayaran/" + random + "/kuitansi"},
 		{"bukan uuid", "/portal/siswa/" + a.StudentIDs[1], "/portal/siswa/" + b.StudentIDs[0], "/portal/siswa/123"},
 	} {

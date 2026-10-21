@@ -394,6 +394,15 @@ Kunci `school_settings`. Sejak 000037 nama kunci boleh memakai titik sebagai nam
   - Literal desimal koordinat mm di file ini dikecualikan dari uji no-float; tipe float tetap dilarang.
   - Layout ini **standar sementara**: menunggu persetujuan kepala sekolah pilot.
 
+## Nilai di Portal Orang Tua
+
+[internal/portal/grade_service.go](internal/portal/grade_service.go), halaman `GET /portal/siswa/{id}/nilai` dan unduhan `GET /portal/siswa/{id}/rapor.pdf?semester=`. Kepemilikan diperiksa seperti halaman portal lain (T44): anak orang lain, sekolah lain, atau ID acak mendapat `404` yang identik.
+
+- Angka diambil dari `grades.ClassSummary`, sehingga **sama dengan rekap guru** (T72). Per mapel ditampilkan nilai akhir, huruf, dan KKM/KKTP, dengan tanda jika di bawah KKM.
+- Mapel yang belum lengkap tampil **"Belum lengkap"**, beserta jumlah komponen yang kosong, **tanpa angka akhir dan huruf**.
+- Nilai per komponen hanya tampil jika sekolah mencentang "Tampilkan nilai per komponen" di Pengaturan Rapor (kunci `report.portal_components`, default tidak).
+- Tautan unduh rapor hanya muncul jika semua mapel lengkap. Unduhan memakai aturan dan PDF yang sama dengan T74. Rapor yang belum lengkap mendapat `400`. Setiap unduhan diaudit `report_card.download_parent`.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

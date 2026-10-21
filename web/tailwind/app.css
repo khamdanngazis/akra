@@ -1164,6 +1164,27 @@
     @apply inline-block min-w-8 rounded border border-dashed border-amber-400 bg-amber-50 px-1 text-center text-amber-700;
   }
 
+  /* Nilai di portal orang tua (T75). */
+  .grade-final {
+    @apply text-lg font-bold text-navy-900 tabular-nums;
+  }
+
+  .grade-final.is-below {
+    @apply text-red-700;
+  }
+
+  .grade-letter {
+    @apply ml-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-sm font-semibold text-blue-700;
+  }
+
+  .component-list {
+    @apply m-0 mt-2 list-none space-y-1 border-t border-slate-100 p-0 pt-2 text-sm;
+  }
+
+  .component-list > li {
+    @apply flex justify-between gap-3;
+  }
+
   .weight-total {
     @apply mt-4 rounded-xl border px-4 py-3 text-sm;
   }

@@ -1,6 +1,6 @@
 // Package portal menyediakan halaman untuk orang tua: daftar anak (T43),
 // detail siswa (T44), tagihan dan riwayat (T45), kuitansi (T46), jadwal
-// kelas (T67).
+// kelas (T67), nilai dan rapor (T75).
 package portal
 
 import (
@@ -56,6 +56,10 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/siswa/{id}/tagihan", h.childBilling)
 		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
 		r.Get("/siswa/{id}/jadwal", h.childSchedule)
+		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
+		r.Get("/siswa/{id}/nilai", h.childGrades)
+		// Peran: orang_tua (hanya anak sendiri, dan hanya jika semua nilai lengkap).
+		r.Get("/siswa/{id}/rapor.pdf", h.childReportCard)
 		// Peran: orang_tua (hanya pembayaran anak sendiri; selain itu 404).
 		r.Get("/pembayaran/{id}/kuitansi", h.receipt)
 		// Peran: orang_tua.

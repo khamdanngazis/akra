@@ -67,6 +67,12 @@
 </div>
 </section>
 
+<section class="card form-card" aria-labelledby="portal-title">
+<h2 id="portal-title" class="card-title">Portal orang tua</h2>
+<label class="choice items-start mt-3"><input type="checkbox" name="portal_components" class="mt-1 flex-none"{{if .Form.PortalComponents}} checked{{end}}>
+<span><strong class="block">Tampilkan nilai per komponen</strong><span class="block text-sm text-slate-500">Jika dicentang, orang tua melihat nilai setiap komponen (mis. Tugas, UTS, UAS), bukan hanya nilai akhir. Nilai akhir yang belum lengkap tetap tidak ditampilkan.</span></span></label>
+</section>
+
 <div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pengaturan</button></div>
 </form>
 {{end}}
