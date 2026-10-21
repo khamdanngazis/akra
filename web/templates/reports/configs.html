@@ -1,0 +1,119 @@
+{{define "title"}}Konfigurasi Laporan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/laporan">← Laporan</a></p>
+<div class="page-header">
+<div>
+<h1>Konfigurasi Laporan</h1>
+<p class="muted">Simpan pilihan sumber, kolom, filter, dan urutan laporan untuk dipakai lagi. Konfigurasi pribadi hanya bisa diubah pemiliknya; konfigurasi bersama bisa dibaca pengguna sekolah lain yang berhak atas sumbernya.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .Configs}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nama</th><th>Sumber</th><th class="max-sm:hidden">Kolom</th><th>Pemilik</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
+<tbody>
+{{range .Configs}}
+<tr>
+<td><strong>{{.Name}}</strong>{{if .Shared}} <span class="badge badge-info">Bersama</span>{{end}}</td>
+<td>{{.SourceLabel}}</td>
+<td class="max-sm:hidden tabular-nums">{{len .Config.Columns}} kolom{{with .Config.Filters}} · {{len .}} filter{{end}}</td>
+<td>{{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</td>
+<td class="actions">
+{{if .Mine}}
+<div class="action-row">
+<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi?ubah={{.ID}}">Ubah</a>
+<form method="post" action="/laporan/konfigurasi/{{.ID}}/hapus" x-data @submit="if (!confirm('Hapus konfigurasi ini?')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
+</div>
+{{end}}
+</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada konfigurasi laporan.</p></section>
+{{end}}
+
+{{if .Sources}}
+<section class="card form-card mt-6" aria-labelledby="form-title" x-data="{ source: '{{.Form.Config.Source}}', submitting: false }">
+<h2 id="form-title" class="card-title">{{if .EditID}}Ubah konfigurasi{{else}}Konfigurasi baru{{end}}</h2>
+{{with .Error}}<div class="alert alert-error mt-3" role="alert">{{.}}</div>{{end}}
+<form method="post" action="/laporan/konfigurasi{{with .EditID}}/{{.}}{{end}}" class="stack mt-3" novalidate @submit="submitting = true">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="cfg-name">Nama</label>
+<input id="cfg-name" name="name" value="{{.Form.Name}}" maxlength="80" placeholder="Tunggakan kelas 1"{{if .Errors.name}} aria-invalid="true"{{end}}>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.source}} has-error{{end}}">
+<label for="cfg-source">Sumber data</label>
+<select id="cfg-source" name="source" x-model="source">
+{{range .Sources}}<option value="{{.Name}}"{{if eq .Name $.Form.Config.Source}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.source}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+
+{{range $src := .Sources}}
+<div class="stack" x-show="source === '{{$src.Name}}'"{{if ne $src.Name $.Form.Config.Source}} x-cloak{{end}}>
+<fieldset class="config-group{{if and (eq $src.Name $.Form.Config.Source) $.Errors.columns}} has-error{{end}}">
+<legend class="font-semibold text-sm">Kolom {{$src.Label}}</legend>
+<div class="check-grid mt-2">
+{{range $src.Columns}}<label class="choice"><input type="checkbox" name="columns_{{$src.Name}}" value="{{.Key}}"{{if and (eq $src.Name $.Form.Config.Source) ($.HasColumn .Key)}} checked{{end}}> {{.Label}}</label>{{end}}
+</div>
+{{if eq $src.Name $.Form.Config.Source}}{{with $.Errors.columns}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</fieldset>
+
+<fieldset class="config-group{{if and (eq $src.Name $.Form.Config.Source) $.Errors.filters}} has-error{{end}}">
+<legend class="font-semibold text-sm">Filter <span class="muted font-normal">(opsional; untuk "salah satu dari", pisahkan nilai dengan koma; tanggal YYYY-MM-DD)</span></legend>
+{{range $.Filters}}{{$f := .}}
+<div class="filter-row mt-2">
+<label class="visually-hidden" for="f-{{$src.Name}}-col-{{.Index}}">Kolom filter {{inc .Index}}</label>
+<select id="f-{{$src.Name}}-col-{{.Index}}" name="f_{{$src.Name}}_col_{{.Index}}">
+<option value="">— Tanpa filter —</option>
+{{range $src.Columns}}<option value="{{.Key}}"{{if and (eq $src.Name $.Form.Config.Source) (eq .Key $f.Column)}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+<label class="visually-hidden" for="f-{{$src.Name}}-op-{{.Index}}">Operator filter {{inc .Index}}</label>
+<select id="f-{{$src.Name}}-op-{{.Index}}" name="f_{{$src.Name}}_op_{{.Index}}">
+{{range $.AllOps}}<option value="{{.}}"{{if and (eq $src.Name $.Form.Config.Source) (eq . $f.Op)}} selected{{end}}>{{$.OpLabel .}}</option>{{end}}
+</select>
+<label class="visually-hidden" for="f-{{$src.Name}}-val-{{.Index}}">Nilai filter {{inc .Index}}</label>
+<input id="f-{{$src.Name}}-val-{{.Index}}" name="f_{{$src.Name}}_val_{{.Index}}" value="{{if eq $src.Name $.Form.Config.Source}}{{$f.Raw}}{{end}}" placeholder="Nilai">
+</div>
+{{end}}
+{{if eq $src.Name $.Form.Config.Source}}{{with $.Errors.filters}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</fieldset>
+
+<fieldset class="config-group{{if and (eq $src.Name $.Form.Config.Source) $.Errors.sort}} has-error{{end}}">
+<legend class="font-semibold text-sm">Urutan <span class="muted font-normal">(opsional)</span></legend>
+{{range $i, $o := $.Sorts}}
+<div class="filter-row mt-2">
+<label class="visually-hidden" for="s-{{$src.Name}}-col-{{$i}}">Urutan {{inc $i}}</label>
+<select id="s-{{$src.Name}}-col-{{$i}}" name="s_{{$src.Name}}_col_{{$i}}">
+<option value="">— Bawaan —</option>
+{{range $src.Columns}}<option value="{{.Key}}"{{if and (eq $src.Name $.Form.Config.Source) (eq .Key $o.Column)}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+<label class="choice self-center"><input type="checkbox" name="s_{{$src.Name}}_desc_{{$i}}"{{if and (eq $src.Name $.Form.Config.Source) $o.Desc}} checked{{end}}> Menurun</label>
+</div>
+{{end}}
+</fieldset>
+</div>
+{{end}}
+
+<label class="choice"><input type="checkbox" name="shared"{{if .Form.Shared}} checked{{end}}> Bagikan ke pengguna sekolah yang berhak atas sumber ini (baca saja)</label>
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan konfigurasi</button>
+{{if .EditID}}<a class="btn btn-ghost" href="/laporan/konfigurasi">Batal</a>{{end}}
+</div>
+</form>
+</section>
+{{end}}
+{{end}}

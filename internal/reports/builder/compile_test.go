@@ -23,7 +23,7 @@ func bigRegistry(t *testing.T) *Registry {
 	}
 	r, err := NewRegistry(Source{
 		Name: "big", Label: "Besar", From: "t", SchoolExpr: "t.school_id",
-		DefaultOrder: "t.id", Columns: cols,
+		DefaultOrder: "t.id", Roles: []string{"admin_tu"}, Columns: cols,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +262,7 @@ func TestCompile_SchoolFilterSurvivesBaseWhere(t *testing.T) {
 	// tidak bisa melewatinya.
 	r, err := NewRegistry(Source{
 		Name: "x", Label: "X", From: "t", SchoolExpr: "t.school_id",
-		Where: "t.a = 1 OR t.b = 2", DefaultOrder: "t.id",
+		Where: "t.a = 1 OR t.b = 2", DefaultOrder: "t.id", Roles: []string{"admin_tu"},
 		Columns: []Column{{Key: "a", Label: "A", Type: TypeText, Expr: "t.a"}},
 	})
 	if err != nil {
@@ -402,7 +402,7 @@ func TestCompile_DoesNotMutateConfig(t *testing.T) {
 func TestNewRegistry_RejectsBadSources(t *testing.T) {
 	ok := func() Source {
 		return Source{
-			Name: "s", Label: "S", From: "t", SchoolExpr: "t.school_id", DefaultOrder: "t.id",
+			Name: "s", Label: "S", From: "t", SchoolExpr: "t.school_id", DefaultOrder: "t.id", Roles: []string{"admin_tu"},
 			Columns: []Column{{Key: "a", Label: "A", Type: TypeText, Expr: "t.a"}},
 		}
 	}
@@ -415,6 +415,7 @@ func TestNewRegistry_RejectsBadSources(t *testing.T) {
 		"tanpa school_id":    func(s *Source) { s.SchoolExpr = "" },
 		"tanpa urutan":       func(s *Source) { s.DefaultOrder = " " },
 		"tanpa kolom":        func(s *Source) { s.Columns = nil },
+		"tanpa peran":        func(s *Source) { s.Roles = nil },
 		"kunci tak valid":    func(s *Source) { s.Columns[0].Key = `a"; DROP` },
 		"kunci ganda":        func(s *Source) { s.Columns = append(s.Columns, s.Columns[0]) },
 		"tipe tak dikenal":   func(s *Source) { s.Columns[0].Type = "float" },

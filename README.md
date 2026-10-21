@@ -403,6 +403,26 @@ Kunci `school_settings`. Sejak 000037 nama kunci boleh memakai titik sebagai nam
 - Nilai per komponen hanya tampil jika sekolah mencentang "Tampilkan nilai per komponen" di Pengaturan Rapor (kunci `report.portal_components`, default tidak).
 - Tautan unduh rapor hanya muncul jika semua mapel lengkap. Unduhan memakai aturan dan PDF yang sama dengan T74. Rapor yang belum lengkap mendapat `400`. Setiap unduhan diaudit `report_card.download_parent`.
 
+## Laporan Kustom
+
+Paket [internal/reports/builder](internal/reports/builder/compile.go) (T76): laporan kustom dirakit dari sumber dan kolom yang terdaftar di kode, tanpa SQL dari pengguna.
+
+- Sumber: `attendance`, `arrears`, `payments`, dan `grades` ([sources.go](internal/reports/builder/sources.go)).
+  - Setiap sumber punya daftar peran (`Source.Roles`). Absensi dan nilai: admin/TU dan kepala sekolah. Tunggakan dan pembayaran: bendahara, admin/TU, dan kepala sekolah.
+  - Guru belum punya sumber, karena builder belum membatasi baris ke kelas yang diampu.
+- `Compile` menolak sumber, kolom, dan operator yang tidak terdaftar. Nilai filter selalu menjadi parameter, `school_id = $1` selalu ada, dan batasnya 15 kolom, 5 filter, 5.000 baris.
+- `sources_db_test.go` menjalankan setiap sumber ke skema sungguhan, dan tunggakannya dicek sama dengan `/keuangan/tunggakan`.
+
+**Konfigurasi tersimpan** (T77, tabel `report_configs`, migrasi 000038), halaman `/laporan/konfigurasi`:
+
+- Konfigurasi divalidasi dengan `Compile` dan hak peran atas sumbernya **sebelum disimpan**. Konfigurasi tidak valid (mis. kolom tidak terdaftar, operator tidak cocok tipe) ditolak `422`.
+- Nama unik per pemilik tanpa membedakan huruf besar/kecil, di antara konfigurasi yang belum dihapus.
+- Konfigurasi pribadi hanya terlihat dan bisa diubah oleh pemiliknya. Konfigurasi **bersama** bisa dibaca pengguna sekolah yang sama dan perannya berhak atas sumber itu. Konfigurasi sekolah lain tidak pernah terlihat.
+- Ubah dan hapus hanya oleh pemilik; pengguna lain mendapat `403`, dan sekolah lain mendapat `404`.
+- Hapus bersifat lunak: `deleted_at` diisi dan `is_shared` dimatikan.
+- Audit: `report_config.create`, `report_config.update` (isi berubah), `report_config.share` (status berbagi berubah), `report_config.delete`.
+- Form memakai nama isian berawalan sumber (`columns_<sumber>`, `f_<sumber>_col_<i>`, …) sehingga tetap benar tanpa JavaScript. Pembangun laporan interaktif dan pratinjau menyusul di T78.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.

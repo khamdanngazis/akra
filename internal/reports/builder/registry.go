@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -72,7 +73,20 @@ type Source struct {
 	// DefaultOrder adalah urutan tetap yang dipakai setelah urutan pilihan
 	// pengguna, agar hasil deterministik. Wajib.
 	DefaultOrder string
-	Columns      []Column
+	// Roles adalah peran yang boleh memakai sumber ini (membangun, menyimpan,
+	// dan membaca konfigurasi bersama). Wajib.
+	Roles   []string
+	Columns []Column
+}
+
+// Allowed melaporkan apakah pengguna dengan peran roles boleh memakai sumber.
+func (s *Source) Allowed(roles []string) bool {
+	for _, r := range roles {
+		if slices.Contains(s.Roles, r) {
+			return true
+		}
+	}
+	return false
 }
 
 // Column mengembalikan kolom dengan kunci tertentu.
@@ -136,6 +150,9 @@ func NewRegistry(sources ...Source) (*Registry, error) {
 		if len(s.Columns) == 0 {
 			return nil, fmt.Errorf("builder: sumber %q tanpa kolom", s.Name)
 		}
+		if len(s.Roles) == 0 {
+			return nil, fmt.Errorf("builder: sumber %q tanpa peran", s.Name)
+		}
 		for _, frag := range []string{s.From, s.SchoolExpr, s.Where, s.DefaultOrder} {
 			if err := checkFragment(frag); err != nil {
 				return nil, fmt.Errorf("builder: sumber %q: %w", s.Name, err)
@@ -160,6 +177,7 @@ func NewRegistry(sources ...Source) (*Registry, error) {
 			}
 			keys[c.Key] = true
 		}
+		s.Roles = slices.Clone(s.Roles)
 		cols := make([]Column, len(s.Columns))
 		copy(cols, s.Columns)
 		s.Columns = cols

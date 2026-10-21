@@ -1185,6 +1185,19 @@
     @apply flex justify-between gap-3;
   }
 
+  /* Konfigurasi laporan (T77). */
+  .config-group {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+
+  .check-grid {
+    @apply grid grid-cols-2 gap-x-3 gap-y-1 lg:grid-cols-3;
+  }
+
+  .filter-row {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-3;
+  }
+
   .weight-total {
     @apply mt-4 rounded-xl border px-4 py-3 text-sm;
   }
