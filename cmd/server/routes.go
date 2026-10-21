@@ -14,6 +14,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
 	"akra/internal/payments"
@@ -41,6 +42,7 @@ type routerDeps struct {
 	subjects     *academic.SubjectHandler
 	assignments  *academic.AssignmentHandler
 	schedule     *schedule.Handler
+	components   *grades.ComponentHandler
 	students     *students.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
@@ -111,6 +113,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.subjects.Routes(r)
 			d.assignments.Routes(r)
 			d.schedule.Routes(r)
+			d.components.Routes(r)
 			d.students.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)

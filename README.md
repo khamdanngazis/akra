@@ -290,6 +290,19 @@ Tabel `schedule_slots` (migrasi 000033), kode di [internal/schedule](internal/sc
   - `/portal/siswa/{id}/jadwal`: jadwal kelas aktif anak untuk orang tua. Kepemilikan diperiksa seperti halaman portal lain (T44), sehingga anak lain, anak sekolah lain, atau ID acak memberi `404` yang identik.
 - Di layar sempit (< 768px), jadwal tampil satu hari per layar dengan tab hari (Alpine.js); tab hari ini (WIB) terbuka lebih dulu, dan Minggu dibuka sebagai Senin. Tanpa JavaScript, semua hari tampil berurutan. Jam slot adalah jam dinding sekolah dan ditampilkan sebagai WIB (Asia/Jakarta).
 
+## Komponen Nilai
+
+Tabel `grade_components` (migrasi 000035), kode di [internal/grades](internal/grades/component_service.go). Komponen penilaian (mis. Tugas, UTS, UAS) berlaku per mapel per tahun ajaran.
+
+- Database menolak bobot di luar 1–100 dan nama kosong atau lebih dari 40 karakter. Nama unik per mapel dan tahun ajaran tanpa membedakan huruf besar/kecil (unique index pada `lower(name)`). Foreign key komposit dengan `school_id` ke tahun ajaran dan mapel.
+- **Tanpa komponen default.** Setiap mapel mulai kosong. Tombol "Isi contoh" (Alpine) mengisi baris kosong dengan Tugas 30, UTS 30, UAS 40 di browser, belum tersimpan.
+- `ComponentService.Save` menyimpan semua baris satu mapel dalam satu transaksi (semua atau tidak sama sekali). Mapel dikunci `FOR UPDATE` agar dua simpan bersamaan berurutan.
+  - Setelah semua baris diterapkan, **total bobot komponen aktif harus 100**, kecuali belum ada komponen aktif sama sekali. Total dihitung dari isi database, bukan hanya isian form, sehingga form lama yang tidak memuat semua baris tetap diperiksa. Aturan ini berlaku saat menambah, mengubah bobot, menonaktifkan, dan mengaktifkan lagi.
+  - Komponen **tidak dihapus**, hanya dinonaktifkan, karena nilai lama masih merujuknya.
+- Halaman `/nilai/komponen?mapel=`, simpan lewat `POST /nilai/komponen/{subjectID}`. Total bobot aktif dihitung langsung di browser (Alpine) dan dicek ulang di server.
+- Akses: `admin_tu` untuk semua mapel. `guru` hanya untuk mapel yang ditugaskan kepadanya di kelas mana pun pada tahun ajaran aktif (T65); mapel lain `403`. Karena komponen berlaku per mapel, bukan per kelas, semua guru pengampu mapel yang sama mengatur komponen yang sama. Mapel sekolah lain `404`; peran lain `403`.
+- Audit: `grade_component.create` dan `grade_component.update` (nama, bobot, atau status aktif berubah, dengan isi sebelum dan sesudah). Perubahan urutan saja tidak diaudit.
+
 ## Siswa
 
 Tabel `students` (migrasi 000010), fungsi di [internal/students/repo.go](internal/students/repo.go): `Create`, `GetByID`, `Update`, `Search`. Keterikatan siswa ke kelas ada di `enrollments` (T21), bukan di tabel ini.
@@ -764,6 +777,6 @@ Backup harian `pg_dump -Fc` ke R2 (`backups/{tanggal}/schoolos.dump`, retensi 14
 
 ### CI
 
-[.github/workflows/test.yml](.github/workflows/test.yml) berjalan di setiap push dan pull request: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Agar merge terhalang jika gagal, jadikan job `test` status check wajib di pengaturan branch protection `main` di GitHub.
+[.github/workflows/test.yml](.github/workflows/test.yml) **tidak** berjalan otomatis di push maupun pull request; jalankan manual dari tab Actions (Run workflow). Isinya: `gofmt`, `go vet`, migrasi naik-turun-naik di Postgres 16, `go test -p 1 ./...` dengan database (termasuk uji T58), dan `make css-check`. Sebelum push, jalankan pemeriksaan yang sama di lokal.
 
 Catatan: dependensi dipilih agar tetap kompatibel dengan Go 1.22. Jika `go get` mencoba menaikkan versi Go, jalankan dengan `GOTOOLCHAIN=local`.

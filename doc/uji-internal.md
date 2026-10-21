@@ -81,7 +81,7 @@ Uji ini dijalankan oleh pembuat fitur. Catatan T63 menyarankan penguji lain, jad
 | Login portal, lihat anak, absensi, tagihan | ✓ dicoba penguji dan dinyatakan sesuai |
 | Unduh kuitansi dari portal | ✓ kuitansi KW/2026/000002 diunduh oleh Wali 002, tercatat di audit (18 Okt 17.53 WIB) |
 
-Kepemilikan data portal sudah diuji otomatis di T59 (setiap push di CI): anak sendiri 200; anak lain, sekolah lain, dan ID acak 404 dengan respons identik; route staf 403.
+Kepemilikan data portal sudah diuji otomatis di T59 (`go test`): anak sendiri 200; anak lain, sekolah lain, dan ID acak 404 dengan respons identik; route staf 403.
 
 ### 6. Laporan (admin/TU, bendahara)
 

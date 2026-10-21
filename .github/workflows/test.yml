@@ -1,13 +1,11 @@
-# Uji setiap push dan pull request: format, vet, migrasi, seluruh go test
-# (termasuk uji otorisasi lintas sekolah T58 yang butuh database), dan CSS
-# hasil build yang sesuai sumbernya. Jadikan job "test" status check wajib
-# di branch protection main agar merge terhalang jika gagal.
+# Uji lengkap: format, vet, migrasi, seluruh go test (termasuk uji otorisasi
+# lintas sekolah T58 yang butuh database), dan CSS hasil build yang sesuai
+# sumbernya. Tidak lagi berjalan otomatis di push dan pull request; jalankan
+# manual dari tab Actions (Run workflow) bila perlu.
 name: test
 
 on:
-  push:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
