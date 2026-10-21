@@ -1100,6 +1100,28 @@
   }
 }
 
+/* ---------- Komponen nilai ---------- */
+
+@layer components {
+  /* Sel tabel komponen lebih rapat di layar sempit agar kolom nama lega. */
+  .components-table th,
+  .components-table td {
+    @apply max-sm:px-2 max-sm:first:pl-4 max-sm:last:pr-4;
+  }
+
+  .weight-total {
+    @apply mt-4 rounded-xl border px-4 py-3 text-sm;
+  }
+
+  .weight-total.is-ok {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+  }
+
+  .weight-total.is-off {
+    @apply border-amber-200 bg-amber-50 text-amber-900;
+  }
+}
+
 /* ---------- Absensi per mapel ---------- */
 
 @layer components {

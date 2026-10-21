@@ -60,6 +60,7 @@ var Items = []MenuItem{
 	{Label: "Pengaturan Keuangan", Path: "/pengaturan/keuangan", Icon: "settings", Short: "Atur", Desc: "Ambang persetujuan pembatalan", Roles: []string{bendahara, kepala}},
 	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Short: "Tahun", Desc: "Atur tahun ajaran aktif", Roles: []string{adminTU, kepala}},
 	{Label: "Penugasan Guru", Path: "/pengaturan/penugasan", Icon: "user-check", Short: "Mapel", Desc: "Guru pengampu mapel per kelas", Roles: []string{adminTU, guru}},
+	{Label: "Komponen Nilai", Path: "/nilai/komponen", Icon: "percent", Short: "Nilai", Desc: "Komponen dan bobot nilai per mapel", Roles: []string{adminTU, guru}},
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Short: "Mapel", Desc: "Daftar mata pelajaran sekolah", Roles: []string{adminTU}},
 }
 

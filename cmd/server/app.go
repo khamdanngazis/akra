@@ -14,6 +14,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
 	"akra/internal/payments"
@@ -74,6 +75,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		subjects:     academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
 		assignments:  academic.NewAssignmentHandler(academic.NewAssignmentService(d.db), d.db, d.sessions, d.render, d.logger),
 		schedule:     schedule.NewHandler(schedule.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		components:   grades.NewComponentHandler(grades.NewComponentService(d.db), d.db, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),

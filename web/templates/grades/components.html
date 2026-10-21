@@ -1,0 +1,99 @@
+{{define "title"}}Komponen Nilai{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Komponen Nilai</h1>
+<p class="muted">Komponen penilaian per mata pelajaran{{with .YearName}}, tahun ajaran {{.}}{{end}}, misalnya tugas, UTS, dan UAS. Total bobot komponen aktif harus {{.Required}}%. Komponen tidak dihapus, hanya dinonaktifkan, karena nilai lama masih merujuknya.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .NoYear}}
+<section class="card empty-state"><p>Belum ada tahun ajaran aktif.</p></section>
+{{else if not .Subjects}}
+<section class="card empty-state">
+{{if .User.HasRole "admin_tu"}}<p>Belum ada mata pelajaran aktif.</p><p class="muted"><a href="/pengaturan/mapel">Tambah mata pelajaran</a> lebih dulu.</p>
+{{else}}<p>Anda belum ditugaskan mengajar mata pelajaran di tahun ajaran aktif.</p><p class="muted">Hubungi admin/TU jika ini keliru.</p>{{end}}
+</section>
+{{else}}
+<form method="get" action="/nilai/komponen" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="mapel">Mata pelajaran</label>
+<select id="mapel" name="mapel">
+{{range .Subjects}}<option value="{{.ID}}"{{if eq .ID $.Subject.ID}} selected{{end}}>{{.Name}}{{if not .IsActive}} (nonaktif){{end}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+<form method="post" action="/nilai/komponen/{{.Subject.ID}}" novalidate
+  x-data="{ total: {{.Total}}, submitting: false,
+    calc() {
+      let t = 0;
+      this.$root.querySelectorAll('[data-row]').forEach(r => {
+        const w = parseInt(r.querySelector('[data-weight]').value, 10);
+        if (r.querySelector('[data-name]').value.trim() !== '' && r.querySelector('[data-active]').checked && w > 0) t += w;
+      });
+      this.total = t;
+    },
+    sample() {
+      const rows = this.$root.querySelectorAll('[data-row][data-new]');
+      [['Tugas', 30], ['UTS', 30], ['UAS', 40]].forEach(([n, w], i) => {
+        if (!rows[i]) return;
+        rows[i].querySelector('[data-name]').value = n;
+        rows[i].querySelector('[data-weight]').value = w;
+        rows[i].querySelector('[data-active]').checked = true;
+      });
+      this.calc();
+    } }"
+  @input="calc()" @change="calc()" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="rows" value="{{len .Rows}}">
+<div class="card card-flush">
+<div class="table-wrap">
+<table class="components-table">
+<thead><tr><th>Nama komponen</th><th class="w-24">Bobot (%)</th><th class="w-14 text-center">Aktif</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr data-row{{if .New}} data-new{{end}}{{if and (not .Active) (not .New)}} class="row-inactive"{{end}}>
+<td>
+<input type="hidden" name="id_{{.Index}}" value="{{.ID}}">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label class="visually-hidden" for="name-{{.Index}}">Nama komponen baris {{inc .Index}}</label>
+<input id="name-{{.Index}}" name="name_{{.Index}}" value="{{.Name}}" maxlength="40" data-name{{if .New}} placeholder="Komponen baru"{{end}}{{if .Errors.name}} aria-invalid="true" aria-describedby="name-err-{{.Index}}"{{end}}>
+{{if .Errors.name}}<p class="field-error" id="name-err-{{.Index}}">{{.Errors.name}}</p>{{end}}
+</div>
+</td>
+<td>
+<div class="field{{if .Errors.weight}} has-error{{end}}">
+<label class="visually-hidden" for="weight-{{.Index}}">Bobot baris {{inc .Index}}</label>
+<input id="weight-{{.Index}}" name="weight_{{.Index}}" value="{{.Weight}}" type="number" min="1" max="100" step="1" inputmode="numeric" data-weight{{if .Errors.weight}} aria-invalid="true"{{end}}>
+{{with .Errors.weight}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</td>
+<td class="text-center">
+<label class="choice justify-center"><input type="checkbox" name="active_{{.Index}}" data-active{{if .Active}} checked{{end}}><span class="visually-hidden">Aktif baris {{inc .Index}}</span></label>
+</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="weight-total" role="status" aria-live="polite" :class="total === {{.Required}} ? 'is-ok' : 'is-off'" class="{{if eq .Total .Required}}is-ok{{else}}is-off{{end}}">
+Total bobot aktif: <strong><span x-text="total">{{.Total}}</span>%</strong>
+<span x-show="total !== {{.Required}}">· harus {{.Required}}%</span>
+</div>
+{{with .TotalErr}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+
+<div class="action-row mt-4">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan komponen</button>
+{{if not .HasSaved}}<button type="button" class="btn btn-ghost" @click="sample()" hidden x-init="$el.hidden = false">Isi contoh: Tugas 30, UTS 30, UAS 40</button>{{end}}
+</div>
+<p class="hint mt-2">Baris kosong diabaikan. Butuh lebih banyak baris? Simpan dulu, baris kosong baru akan muncul.</p>
+</form>
+{{end}}
+{{end}}

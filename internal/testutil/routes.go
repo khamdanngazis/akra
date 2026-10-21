@@ -329,6 +329,14 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/jadwal/slot/{id}/hapus", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/jadwal/slot/" + o.SlotID + "/hapus" }, nil)},
 
+	// Komponen nilai (T69): admin/TU semua mapel, guru mapel yang ditugaskan.
+	{Method: "GET", Pattern: "/nilai/komponen/", Kind: KindPage, Roles: []string{Admin, Teacher},
+		Requests: paths(func(o *School) []string { return []string{"/nilai/komponen/", "/nilai/komponen/?mapel=" + o.SubjectID} })},
+	{Method: "POST", Pattern: "/nilai/komponen/{subjectID}", Kind: KindByID, Roles: []string{Admin, Teacher},
+		Requests: post(func(o *School) string { return "/nilai/komponen/" + o.SubjectID }, func(*School) url.Values {
+			return url.Values{"rows": {"1"}, "id_0": {""}, "name_0": {"Uji lintas"}, "weight_0": {"100"}, "active_0": {"on"}}
+		})},
+
 	// Pengumuman.
 	{Method: "GET", Pattern: "/pengumuman", Kind: KindPage, Roles: staff},
 	{Method: "POST", Pattern: "/pengumuman", Kind: KindFormRef, Roles: schoolData,
