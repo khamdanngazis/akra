@@ -26,8 +26,15 @@ const (
 	msgNotOwner    = "Konfigurasi ini milik pengguna lain. Hanya pemiliknya yang bisa mengubah atau menghapusnya."
 )
 
+// Exporter mengirim file laporan kustom (xlsx/pdf), langsung atau lewat job.
+// Dipenuhi reports.Handler (T79), agar hanya ada satu jalur ekspor.
+type Exporter interface {
+	ExportCustom(w http.ResponseWriter, r *http.Request, title string, cfg Config, format string)
+}
+
 // ConfigHandler melayani halaman konfigurasi laporan tersimpan.
 type ConfigHandler struct {
+	exporter Exporter
 	svc      *ConfigService
 	sessions *scs.SessionManager
 	render   page.Renderer
@@ -36,8 +43,9 @@ type ConfigHandler struct {
 
 // NewConfigHandler mengembalikan ConfigHandler. Route-nya harus berada di
 // dalam grup RequireLogin.
-func NewConfigHandler(svc *ConfigService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *ConfigHandler {
-	return &ConfigHandler{svc: svc, sessions: sessions, render: render, logger: logger}
+// exporter boleh nil: route unduhan lalu 404.
+func NewConfigHandler(svc *ConfigService, exporter Exporter, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *ConfigHandler {
+	return &ConfigHandler{svc: svc, exporter: exporter, sessions: sessions, render: render, logger: logger}
 }
 
 // configRoles adalah peran yang punya minimal satu sumber laporan.
@@ -67,6 +75,11 @@ func (h *ConfigHandler) Routes(r chi.Router) {
 		r.Post("/{id}", h.update)
 		// Peran: pemilik konfigurasi (selain itu 403).
 		r.Post("/{id}/hapus", h.delete)
+		// Peran: pemilik, atau konfigurasi bersama yang sumbernya boleh
+		// dipakai peran pengguna (selain itu 404).
+		r.Get("/{id}.xlsx", h.exportXLSX)
+		// Peran: sama dengan .xlsx.
+		r.Get("/{id}.pdf", h.exportPDF)
 	})
 	h.builderRoutes(r)
 }
@@ -309,3 +322,39 @@ func (configsView) OpLabel(op Operator) string { return opLabels[op] }
 // AllOps adalah semua operator, urut tampil. Kecocokan dengan tipe kolom
 // diperiksa server (Compile).
 func (configsView) AllOps() []Operator { return []Operator{OpEq, OpNe, OpContains, OpIn, OpGte, OpLte} }
+
+func (h *ConfigHandler) exportXLSX(w http.ResponseWriter, r *http.Request) { h.export(w, r, "xlsx") }
+
+func (h *ConfigHandler) exportPDF(w http.ResponseWriter, r *http.Request) { h.export(w, r, "pdf") }
+
+// export mengunduh konfigurasi tersimpan (T79). Hanya pemilik atau
+// konfigurasi bersama (Get, selain itu 404). Konfigurasi yang sumbernya
+// sudah tidak diizinkan untuk peran pengguna (mis. perannya berubah)
+// ditolak 403; konfigurasi yang tidak valid lagi (mis. kolomnya dihapus dari
+// registry) ditolak 422.
+func (h *ConfigHandler) export(w http.ResponseWriter, r *http.Request, format string) {
+	id, _ := auth.CurrentUser(r.Context())
+	if h.exporter == nil {
+		page.NotFound(h.render, w, r, id, msgConfigGone)
+		return
+	}
+	saved, err := h.svc.Get(r.Context(), id, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrConfigNotFound) {
+		page.NotFound(h.render, w, r, id, msgConfigGone)
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, "get report config", err)
+		return
+	}
+	if fields := h.svc.configFields(id, saved.Config); len(fields) > 0 {
+		if _, bad := fields["source"]; bad {
+			page.Forbidden(h.render, w, r, id, "Sumber data konfigurasi ini tidak lagi diizinkan untuk peran Anda.")
+			return
+		}
+		h.render.Render(w, r, http.StatusUnprocessableEntity, "error", page.ErrorView{User: id, Title: "Konfigurasi tidak valid",
+			Message: "Konfigurasi ini tidak bisa dijalankan lagi (mis. kolomnya sudah tidak tersedia). Buka di pembangun laporan lalu simpan ulang."})
+		return
+	}
+	h.exporter.ExportCustom(w, r, saved.Name, saved.Config, format)
+}

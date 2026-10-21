@@ -1186,6 +1186,10 @@
   }
 
   /* Konfigurasi laporan (T77). */
+  .config-actions {
+    @apply mt-2 flex flex-wrap gap-1.5;
+  }
+
   .config-group {
     @apply m-0 min-w-0 border-0 p-0;
   }

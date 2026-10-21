@@ -80,11 +80,14 @@ type builderView struct {
 	ConfigID string
 	// CopyOf diisi jika membuka konfigurasi bersama milik orang lain:
 	// menyimpan membuat salinan milik sendiri.
-	CopyOf  string
-	Preview *Preview
-	Errors  map[string]string
-	Flash   string
-	Error   string
+	CopyOf string
+	// DownloadID adalah konfigurasi tersimpan yang sedang dibuka (milik
+	// sendiri atau bersama), untuk tautan unduh (T79).
+	DownloadID string
+	Preview    *Preview
+	Errors     map[string]string
+	Flash      string
+	Error      string
 }
 
 func (h *ConfigHandler) builderState(id auth.Identity, c Config) builderState {
@@ -150,7 +153,7 @@ func (h *ConfigHandler) builder(w http.ResponseWriter, r *http.Request) {
 			h.serverError(w, r, "get report config", err)
 			return
 		}
-		c, v.Name = saved.Config, saved.Name
+		c, v.Name, v.DownloadID = saved.Config, saved.Name, saved.ID
 		if saved.OwnerID == id.UserID {
 			v.ConfigID, v.Shared = saved.ID, saved.Shared
 		} else {
@@ -167,6 +170,7 @@ func (h *ConfigHandler) preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := builderView{Name: in.Name, Shared: in.Shared, ConfigID: r.PostForm.Get("config_id")}
+	v.DownloadID = v.ConfigID
 	p, err := h.svc.Preview(r.Context(), id, in.Config)
 	var ce *ConfigError
 	switch {
