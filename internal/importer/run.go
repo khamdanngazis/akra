@@ -207,6 +207,13 @@ func (w *ImportStudentsWorker) markFailed(args ImportStudentsArgs, cause error) 
 // ada baris setengah tersimpan; percobaan berikutnya mengulang dari baris
 // pertama yang belum ditandai processed_at.
 func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runOn time.Time, failAtLine int) (int, error) {
+	var target, runBy string
+	if err := tx.QueryRow(ctx, `SELECT target, coalesce(run_by::text, '') FROM import_batches WHERE school_id = $1 AND id = $2`, schoolID, batchID).
+		Scan(&target, &runBy); err != nil {
+		return 0, fmt.Errorf("importer: batch target: %w", err)
+	}
+	// Nilai disimpan atas nama pengguna yang menekan Simpan (audit T70).
+	actor := school.Actor{SchoolID: schoolID, UserID: runBy}
 	rows, err := tx.Query(ctx, `
 		SELECT id, line, data FROM import_rows
 		WHERE school_id = $1 AND batch_id = $2 AND status = 'valid' AND processed_at IS NULL
@@ -215,9 +222,10 @@ func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runO
 		return 0, fmt.Errorf("importer: pending rows: %w", err)
 	}
 	type pending struct {
-		id   string
-		line int
-		data ValidRow
+		id    string
+		line  int
+		data  ValidRow
+		grade GradeRow
 	}
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (pending, error) {
 		var p pending
@@ -225,16 +233,34 @@ func processChunk(ctx context.Context, tx pgx.Tx, schoolID, batchID string, runO
 		if err := r.Scan(&p.id, &p.line, &raw); err != nil {
 			return p, err
 		}
+		if target == TargetGrades {
+			return p, json.Unmarshal(raw, &p.grade)
+		}
 		return p, json.Unmarshal(raw, &p.data)
 	})
 	if err != nil {
 		return 0, fmt.Errorf("importer: pending rows: %w", err)
 	}
-	for _, p := range list {
+	var gradeResults []rowResult
+	if target == TargetGrades {
+		rows := make([]GradeRow, len(list))
+		for i, p := range list {
+			rows[i] = p.grade
+		}
+		if gradeResults, err = saveGradeRows(ctx, tx, actor, rows); err != nil {
+			return 0, err
+		}
+	}
+	for i, p := range list {
 		if failAtLine > 0 && p.line == failAtLine {
 			return 0, errors.New("injected failure for test")
 		}
-		result, msg, err := saveRow(ctx, tx, schoolID, p.data, runOn)
+		var result, msg string
+		if target == TargetGrades {
+			result, msg = gradeResults[i].result, gradeResults[i].msg
+		} else {
+			result, msg, err = saveRow(ctx, tx, schoolID, p.data, runOn)
+		}
 		if err != nil {
 			return 0, fmt.Errorf("importer: line %d: %w", p.line, err)
 		}

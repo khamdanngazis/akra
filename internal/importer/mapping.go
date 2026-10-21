@@ -237,6 +237,17 @@ func (mp Mapping) headerResolver(t Target) func(cells []string) ([]int, error) {
 	}
 }
 
+// StandardMapping adalah mapping identitas: judul kolom file sama dengan
+// judul kolom baku target (dipakai jika pengguna tidak memilih mapping).
+func StandardMapping(target string) Mapping {
+	t, _ := TargetByKey(target)
+	m := Mapping{Name: "Judul kolom baku", Target: target, Columns: ColumnMap{}}
+	for _, c := range t.Columns {
+		m.Columns[c.Header] = c.Header
+	}
+	return m
+}
+
 // MappedRows adalah hasil membaca file lewat mapping: satu baris per baris
 // data, Values sesuai urutan kolom baku target.
 type MappedRows struct {
@@ -248,8 +259,8 @@ type MappedRows struct {
 
 // MappedRow adalah satu baris hasil mapping.
 type MappedRow struct {
-	Line   int
-	Values []string
+	Line   int      `json:"line"`
+	Values []string `json:"values"`
 }
 
 // mappedHeaderTries adalah jumlah baris berisi pertama yang dicoba sebagai
@@ -373,6 +384,9 @@ func (s *MappingService) Get(ctx context.Context, schoolID, id string) (Mapping,
 // List mengembalikan mapping sekolah schoolID, urut nama. Mapping sekolah
 // lain tidak pernah ikut.
 func (s *MappingService) List(ctx context.Context, schoolID string) ([]Mapping, error) {
+	if !database.IsUUID(schoolID) {
+		return nil, nil
+	}
 	rows, err := s.db.Query(ctx, mappingSelect+` WHERE m.school_id = $1 ORDER BY lower(m.name)`, schoolID)
 	if err != nil {
 		return nil, fmt.Errorf("importer: list mappings: %w", err)

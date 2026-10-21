@@ -42,7 +42,7 @@ func TestErrorReport_200Rows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := append(append([]string{"Baris asli"}, columnHeaders()...), "Kesalahan")
+	wantHeader := append(append([]string{"Baris asli"}, columnHeaders(StudentColumns[:])...), "Kesalahan")
 	if strings.Join(rows[0], "|") != strings.Join(wantHeader, "|") {
 		t.Errorf("header = %q", rows[0])
 	}

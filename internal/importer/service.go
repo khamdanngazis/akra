@@ -33,14 +33,19 @@ const previewRows = 5
 
 // Batch adalah satu unggahan file impor.
 type Batch struct {
-	ID          string
+	ID string
+	// Target adalah jenis data: TargetStudents atau TargetGrades (T82).
+	Target string
+	// MappingName adalah nama mapping yang dipakai saat unggah; kosong =
+	// judul kolom baku.
+	MappingName string
 	FileName    string
 	Status      string
 	TotalRows   int
 	SkippedRows int
 	Skipped     []Skip
-	Preview     []Row
-	UploadedBy  string // nama pengunggah
+	Preview     []MappedRow // isi sel sesuai urutan kolom baku target
+	UploadedBy  string      // nama pengunggah
 	CreatedAt   time.Time
 	// Hasil validasi (T54); nol sebelum divalidasi.
 	ValidRows  int // termasuk yang akan diperbarui
@@ -79,6 +84,17 @@ func (b Batch) NewRows() int { return b.ValidRows - b.UpdateRows }
 // Validated melaporkan apakah batch sudah melewati validasi.
 func (b Batch) Validated() bool { return b.Status != StatusUploaded }
 
+// Grades melaporkan apakah batch ini impor nilai.
+func (b Batch) Grades() bool { return b.Target == TargetGrades }
+
+// Columns adalah kolom baku target batch, untuk pratinjau dan laporan.
+func (b Batch) Columns() []Column {
+	if t, ok := TargetByKey(b.Target); ok {
+		return t.Columns
+	}
+	return StudentColumns[:]
+}
+
 // Service menyimpan dan membaca batch impor.
 type Service struct {
 	db   database.DB
@@ -91,14 +107,21 @@ func NewService(db database.DB, jobs JobInserter) *Service {
 	return &Service{db: db, jobs: jobs}
 }
 
-// Upload menyimpan hasil parsing sebagai batch lalu langsung memvalidasi
-// setiap baris, dalam satu transaksi. ErrNoActiveYear jika sekolah belum
-// punya tahun ajaran aktif (tidak ada batch yang tersimpan).
+// Upload menyimpan hasil parsing sebagai batch siswa lalu langsung
+// memvalidasi setiap baris, dalam satu transaksi. ErrNoActiveYear jika
+// sekolah belum punya tahun ajaran aktif (tidak ada batch yang tersimpan).
 func (s *Service) Upload(ctx context.Context, actor school.Actor, fileName string, rows Rows, today time.Time) (string, error) {
+	return s.UploadMapped(ctx, actor, fileName, rows, "", today)
+}
+
+// UploadMapped sama dengan Upload, dan mencatat mapping yang dipakai saat
+// membaca file (T82; kosong = judul kolom baku). Baris hasil mapping masuk
+// validasi T54 yang sama.
+func (s *Service) UploadMapped(ctx context.Context, actor school.Actor, fileName string, rows Rows, mappingID string, today time.Time) (string, error) {
 	var id string
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		var err error
-		if id, err = createBatch(ctx, tx, actor, fileName, rows); err != nil {
+		if id, err = createBatch(ctx, tx, actor, TargetStudents, mappingID, fileName, rows.Data, rows.Skipped); err != nil {
 			return err
 		}
 		return validateBatch(ctx, tx, actor.SchoolID, id, today)
@@ -109,18 +132,19 @@ func (s *Service) Upload(ctx context.Context, actor school.Actor, fileName strin
 	return id, nil
 }
 
-// CreateBatch menyimpan hasil parsing sebagai batch berstatus diunggah,
-// tanpa validasi. Belum ada data siswa yang ditulis.
+// CreateBatch menyimpan hasil parsing sebagai batch siswa berstatus
+// diunggah, tanpa validasi. Belum ada data siswa yang ditulis.
 func (s *Service) CreateBatch(ctx context.Context, actor school.Actor, fileName string, rows Rows) (string, error) {
-	return createBatch(ctx, s.db, actor, fileName, rows)
+	return createBatch(ctx, s.db, actor, TargetStudents, "", fileName, rows.Data, rows.Skipped)
 }
 
-func createBatch(ctx context.Context, q database.DBTX, actor school.Actor, fileName string, rows Rows) (string, error) {
-	parsed, err := json.Marshal(rows.Data)
+// createBatch menyimpan baris hasil parsing (data: []Row untuk siswa,
+// []MappedRow untuk nilai; keduanya {"line", "values"}) sebagai batch.
+func createBatch(ctx context.Context, q database.DBTX, actor school.Actor, target, mappingID, fileName string, data any, skipped []Skip) (string, error) {
+	parsed, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("importer: encode rows: %w", err)
 	}
-	skipped := rows.Skipped
 	if skipped == nil {
 		skipped = []Skip{}
 	}
@@ -128,11 +152,16 @@ func createBatch(ctx context.Context, q database.DBTX, actor school.Actor, fileN
 	if err != nil {
 		return "", fmt.Errorf("importer: encode skipped: %w", err)
 	}
+	var rowsN []json.RawMessage
+	if err := json.Unmarshal(parsed, &rowsN); err != nil {
+		return "", fmt.Errorf("importer: count rows: %w", err)
+	}
 	var id string
 	err = q.QueryRow(ctx, `
-		INSERT INTO import_batches (school_id, uploaded_by, file_name, status, total_rows, skipped_rows, parsed_rows, skipped)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-		actor.SchoolID, actor.UserID, cleanFileName(fileName), StatusUploaded, len(rows.Data), len(rows.Skipped), parsed, skippedJSON).Scan(&id)
+		INSERT INTO import_batches (school_id, uploaded_by, file_name, status, total_rows, skipped_rows, parsed_rows, skipped, target, mapping_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		actor.SchoolID, actor.UserID, cleanFileName(fileName), StatusUploaded, len(rowsN), len(skipped), parsed, skippedJSON,
+		target, nullIfEmpty(mappingID)).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("importer: insert batch: %w", err)
 	}
@@ -150,7 +179,7 @@ func (s *Service) GetBatch(ctx context.Context, schoolID, id string) (Batch, err
 		preview, skipped []byte
 	)
 	err := s.db.QueryRow(ctx, `
-		SELECT b.id, b.file_name, b.status, b.total_rows, b.skipped_rows, b.skipped,
+		SELECT b.id, b.target, coalesce(m.name, ''), b.file_name, b.status, b.total_rows, b.skipped_rows, b.skipped,
 		       coalesce(jsonb_path_query_array(b.parsed_rows, '$[0 to `+fmt.Sprint(previewRows-1)+`]'),
 		                (SELECT jsonb_agg(jsonb_build_object('line', p.line, 'values', p.raw) ORDER BY p.line)
 		                 FROM (SELECT line, raw FROM import_rows
@@ -162,8 +191,9 @@ func (s *Service) GetBatch(ctx context.Context, schoolID, id string) (Batch, err
 		       coalesce(b.mode, ''), b.processed_rows, b.created_count, b.updated_count, b.failed_count, coalesce(b.error, '')
 		FROM import_batches b
 		JOIN users u ON u.school_id = b.school_id AND u.id = b.uploaded_by
+		LEFT JOIN import_mappings m ON m.school_id = b.school_id AND m.id = b.mapping_id
 		WHERE b.school_id = $1 AND b.id = $2`, schoolID, id).
-		Scan(&b.ID, &b.FileName, &b.Status, &b.TotalRows, &b.SkippedRows, &skipped, &preview, &b.UploadedBy, &b.CreatedAt,
+		Scan(&b.ID, &b.Target, &b.MappingName, &b.FileName, &b.Status, &b.TotalRows, &b.SkippedRows, &skipped, &preview, &b.UploadedBy, &b.CreatedAt,
 			&b.ValidRows, &b.ErrorRows, &b.UpdateRows,
 			&b.Mode, &b.ProcessedRows, &b.CreatedCount, &b.UpdatedCount, &b.FailedCount, &b.Error)
 	if errors.Is(err, pgx.ErrNoRows) {

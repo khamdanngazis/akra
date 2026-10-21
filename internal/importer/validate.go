@@ -242,10 +242,11 @@ func (s *Service) ValidateBatch(ctx context.Context, schoolID, batchID string, t
 
 func validateBatch(ctx context.Context, q pgx.Tx, schoolID, batchID string, today time.Time) error {
 	var (
-		status  string
-		skipped []byte
+		status, target string
+		skipped, raw   []byte
 	)
-	err := q.QueryRow(ctx, `SELECT status, skipped FROM import_batches WHERE school_id = $1 AND id = $2 FOR UPDATE`, schoolID, batchID).Scan(&status, &skipped)
+	err := q.QueryRow(ctx, `SELECT status, skipped, target, coalesce(parsed_rows, '[]') FROM import_batches WHERE school_id = $1 AND id = $2 FOR UPDATE`,
+		schoolID, batchID).Scan(&status, &skipped, &target, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrBatchNotFound
 	}
@@ -255,21 +256,39 @@ func validateBatch(ctx context.Context, q pgx.Tx, schoolID, batchID string, toda
 	if status != StatusUploaded {
 		return ErrBatchValidated
 	}
-	rows, err := parsedRows(ctx, q, schoolID, batchID)
-	if err != nil {
-		return err
-	}
 	var skips []Skip
 	if err := json.Unmarshal(skipped, &skips); err != nil {
 		return fmt.Errorf("importer: decode skipped: %w", err)
 	}
-	rc, err := NewRowContext(ctx, q, schoolID, today, rows)
-	if err != nil {
+	var (
+		records                 [][]any
+		valid, invalid, updates int
+	)
+	if target == TargetGrades {
+		if records, valid, invalid, updates, err = validateGradeRecords(ctx, q, schoolID, batchID, raw); err != nil {
+			return err
+		}
+	} else if records, valid, invalid, updates, err = validateStudentRecords(ctx, q, schoolID, batchID, raw, today); err != nil {
 		return err
 	}
+	for _, sk := range skips {
+		records = append(records, []any{schoolID, batchID, sk.Line, []string{}, RowStatusSkipped, nil, nil, []RowError{}})
+	}
+	return saveValidation(ctx, q, schoolID, batchID, records, valid, invalid, updates)
+}
 
-	records := make([][]any, 0, len(rows)+len(skips))
-	var valid, invalid, updates int
+// validateStudentRecords memvalidasi baris batch siswa (T54) dan menyusun
+// baris import_rows.
+func validateStudentRecords(ctx context.Context, q database.DBTX, schoolID, batchID string, raw []byte, today time.Time) (records [][]any, valid, invalid, updates int, err error) {
+	var rows []Row
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, 0, 0, 0, fmt.Errorf("importer: decode parsed rows: %w", err)
+	}
+	rc, err := NewRowContext(ctx, q, schoolID, today, rows)
+	if err != nil {
+		return nil, 0, 0, 0, err
+	}
+	records = make([][]any, 0, len(rows))
 	for _, r := range rows {
 		vr, errs := ValidateRow(r, rc)
 		if errs != nil {
@@ -284,10 +303,13 @@ func validateBatch(ctx context.Context, q pgx.Tx, schoolID, batchID string, toda
 		}
 		records = append(records, []any{schoolID, batchID, r.Line, r.Values, RowStatusValid, action, vr, []RowError{}})
 	}
-	for _, sk := range skips {
-		records = append(records, []any{schoolID, batchID, sk.Line, []string{}, RowStatusSkipped, nil, nil, []RowError{}})
-	}
-	_, err = q.CopyFrom(ctx, pgx.Identifier{"import_rows"},
+	return records, valid, invalid, updates, nil
+}
+
+// saveValidation menulis hasil validasi ke import_rows dan ringkasannya ke
+// batch.
+func saveValidation(ctx context.Context, q pgx.Tx, schoolID, batchID string, records [][]any, valid, invalid, updates int) error {
+	_, err := q.CopyFrom(ctx, pgx.Identifier{"import_rows"},
 		[]string{"school_id", "batch_id", "line", "raw", "status", "action", "data", "errors"}, pgx.CopyFromRows(records))
 	if err != nil {
 		return fmt.Errorf("importer: insert rows: %w", err)
@@ -302,7 +324,8 @@ func validateBatch(ctx context.Context, q pgx.Tx, schoolID, batchID string, toda
 	return nil
 }
 
-// ErrorRow adalah baris yang gagal validasi, untuk ditampilkan.
+// ErrorRow adalah baris yang gagal validasi, untuk ditampilkan. Untuk impor
+// nilai, Name berisi "kode mapel · komponen".
 type ErrorRow struct {
 	Line   int
 	NIS    string
@@ -311,13 +334,30 @@ type ErrorRow struct {
 	Errors []RowError
 }
 
+// labelRow mengisi NIS dan nama baris dari isi sel mentah sesuai target.
+func (e *ErrorRow) labelRow(target string, raw []string) {
+	at := func(i int) string {
+		if i < len(raw) {
+			return raw[i]
+		}
+		return ""
+	}
+	if target == TargetGrades {
+		e.NIS = at(GradeColNIS)
+		e.Name = strings.Trim(at(GradeColSubjectCode)+" · "+at(GradeColComponent), " ·")
+		return
+	}
+	e.NIS, e.Name, e.Class = at(ColNIS), at(ColFullName), at(ColClass)
+}
+
 // ErrorRows mengembalikan paling banyak limit baris error batch, urut nomor
 // baris.
 func (s *Service) ErrorRows(ctx context.Context, schoolID, batchID string, limit int) ([]ErrorRow, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT line, raw, errors FROM import_rows
-		WHERE school_id = $1 AND batch_id = $2 AND status = $3
-		ORDER BY line LIMIT $4`, schoolID, batchID, RowStatusError, limit)
+		SELECT r.line, r.raw, r.errors, b.target FROM import_rows r
+		JOIN import_batches b ON b.school_id = r.school_id AND b.id = r.batch_id
+		WHERE r.school_id = $1 AND r.batch_id = $2 AND r.status = $3
+		ORDER BY r.line LIMIT $4`, schoolID, batchID, RowStatusError, limit)
 	if err != nil {
 		return nil, fmt.Errorf("importer: list error rows: %w", err)
 	}
@@ -325,13 +365,14 @@ func (s *Service) ErrorRows(ctx context.Context, schoolID, batchID string, limit
 	var out []ErrorRow
 	for rows.Next() {
 		var (
-			e   ErrorRow
-			raw [NumColumns]string
+			e      ErrorRow
+			raw    []string
+			target string
 		)
-		if err := rows.Scan(&e.Line, &raw, &e.Errors); err != nil {
+		if err := rows.Scan(&e.Line, &raw, &e.Errors, &target); err != nil {
 			return nil, fmt.Errorf("importer: scan error row: %w", err)
 		}
-		e.NIS, e.Name, e.Class = raw[ColNIS], raw[ColFullName], raw[ColClass]
+		e.labelRow(target, raw)
 		out = append(out, e)
 	}
 	return out, rows.Err()
@@ -341,9 +382,10 @@ func (s *Service) ErrorRows(ctx context.Context, schoolID, batchID string, limit
 // disimpan (T55), urut nomor baris.
 func (s *Service) FailedRows(ctx context.Context, schoolID, batchID string, limit int) ([]ErrorRow, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT line, raw, coalesce(result_error, '') FROM import_rows
-		WHERE school_id = $1 AND batch_id = $2 AND result = 'gagal'
-		ORDER BY line LIMIT $3`, schoolID, batchID, limit)
+		SELECT r.line, r.raw, coalesce(r.result_error, ''), b.target FROM import_rows r
+		JOIN import_batches b ON b.school_id = r.school_id AND b.id = r.batch_id
+		WHERE r.school_id = $1 AND r.batch_id = $2 AND r.result = 'gagal'
+		ORDER BY r.line LIMIT $3`, schoolID, batchID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("importer: list failed rows: %w", err)
 	}
@@ -351,14 +393,14 @@ func (s *Service) FailedRows(ctx context.Context, schoolID, batchID string, limi
 	var out []ErrorRow
 	for rows.Next() {
 		var (
-			e   ErrorRow
-			raw [NumColumns]string
-			msg string
+			e           ErrorRow
+			raw         []string
+			msg, target string
 		)
-		if err := rows.Scan(&e.Line, &raw, &msg); err != nil {
+		if err := rows.Scan(&e.Line, &raw, &msg, &target); err != nil {
 			return nil, fmt.Errorf("importer: scan failed row: %w", err)
 		}
-		e.NIS, e.Name, e.Class = raw[ColNIS], raw[ColFullName], raw[ColClass]
+		e.labelRow(target, raw)
 		e.Errors = []RowError{{Message: msg}}
 		out = append(out, e)
 	}

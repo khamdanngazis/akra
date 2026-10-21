@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"path"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 
 const (
 	studentPath      = "/impor/siswa"
+	gradesPath       = "/impor/nilai"
 	batchPath        = "/impor/batch"
 	templateFilename = "template-impor-siswa.xlsx"
 	// maxUpload adalah batas body unggahan: file plus field form lain.
@@ -58,16 +60,24 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post(batchPath+"/{id}/simpan", h.run)
 		// Peran: admin_tu.
 		r.Get(batchPath+"/{id}/kesalahan.xlsx", h.errorReport)
+		// Peran: admin_tu. Impor nilai lewat mapping (T82).
+		r.Get(gradesPath, h.gradesIndex)
+		// Peran: admin_tu.
+		r.Post(gradesPath, h.gradesUpload)
 	})
 }
 
 type indexView struct {
-	User     auth.Identity
-	Columns  []columnRow
-	Filename string
-	MaxBytes int
-	Flash    string
-	Error    string
+	User    auth.Identity
+	Columns []columnRow
+	// Mappings adalah mapping sekolah untuk target halaman ini (T82);
+	// MappingID pilihan terakhir.
+	Mappings  []Mapping
+	MappingID string
+	Filename  string
+	MaxBytes  int
+	Flash     string
+	Error     string
 }
 
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
@@ -76,15 +86,74 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) renderIndex(w http.ResponseWriter, r *http.Request, id auth.Identity, status int, errMsg string) {
-	rows := make([]columnRow, len(StudentColumns))
-	for i, c := range StudentColumns {
+	h.renderTargetIndex(w, r, id, TargetStudents, "importer/index", status, errMsg, r.FormValue("mapping_id"))
+}
+
+// renderTargetIndex menampilkan halaman unggah target (siswa atau nilai)
+// beserta mapping sekolah untuk target itu.
+func (h *Handler) renderTargetIndex(w http.ResponseWriter, r *http.Request, id auth.Identity, target, pageName string, status int, errMsg, mappingID string) {
+	t, _ := TargetByKey(target)
+	rows := make([]columnRow, len(t.Columns))
+	for i, c := range t.Columns {
 		rows[i] = columnRow{Letter: string(rune('A' + i)), Column: c}
 	}
-	v := indexView{User: id, Columns: rows, Filename: templateFilename, MaxBytes: MaxFileSize, Error: errMsg}
+	all, err := NewMappingService(h.svc.db).List(r.Context(), id.SchoolID)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "list import mappings", err)
+		return
+	}
+	v := indexView{User: id, Columns: rows, Filename: templateFilename, MaxBytes: MaxFileSize, Error: errMsg, MappingID: mappingID}
+	for _, m := range all {
+		if m.Target == target {
+			v.Mappings = append(v.Mappings, m)
+		}
+	}
 	if errMsg == "" {
 		v.Flash = auth.PopFlash(r.Context(), h.sessions)
 	}
-	h.render.Render(w, r, status, "importer/index", v)
+	h.render.Render(w, r, status, pageName, v)
+}
+
+// formFile membaca file unggahan dengan batas ukuran dan jenis yang sama
+// untuk semua target. Pemanggil menutup file.
+func formFile(w http.ResponseWriter, r *http.Request) (multipart.File, *multipart.FileHeader, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
+	file, hdr, err := r.FormFile("file")
+	var mbe *http.MaxBytesError
+	switch {
+	case errors.As(err, &mbe):
+		return nil, nil, ErrFileTooLarge
+	case errors.Is(err, http.ErrMissingFile):
+		return nil, nil, ErrFileEmpty
+	case err != nil:
+		return nil, nil, err
+	}
+	switch {
+	case hdr.Size > MaxFileSize:
+		file.Close()
+		return nil, nil, ErrFileTooLarge
+	case !strings.EqualFold(path.Ext(strings.TrimSpace(hdr.Filename)), ".xlsx"):
+		file.Close()
+		return nil, nil, ErrNotXLSX
+	}
+	return file, hdr, nil
+}
+
+// mappingFor mengembalikan mapping mappingID milik sekolah untuk target;
+// kosong = judul kolom baku. ok false jika mapping tidak ada, milik sekolah
+// lain, atau untuk target lain.
+func (h *Handler) mappingFor(r *http.Request, schoolID, mappingID, target string) (Mapping, bool, error) {
+	if mappingID == "" {
+		return StandardMapping(target), true, nil
+	}
+	m, err := NewMappingService(h.svc.db).Get(r.Context(), schoolID, mappingID)
+	if errors.Is(err, ErrMappingNotFound) {
+		return Mapping{}, false, nil
+	}
+	if err != nil {
+		return Mapping{}, false, err
+	}
+	return m, m.Target == target, nil
 }
 
 // parseErrors adalah pesan untuk file yang ditolak.
@@ -124,29 +193,38 @@ func parseMessage(err error) string {
 // menyimpan hasil parsing sebagai batch berstatus diunggah.
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
-	file, hdr, err := r.FormFile("file")
-	var (
-		mbe  *http.MaxBytesError
-		rows Rows
-	)
-	switch {
-	case errors.As(err, &mbe):
-		err = ErrFileTooLarge
-	case errors.Is(err, http.ErrMissingFile):
-		err = ErrFileEmpty
-	case err != nil:
+	file, hdr, err := formFile(w, r)
+	if err != nil {
+		if msg := parseMessage(err); msg != "" {
+			h.renderIndex(w, r, id, http.StatusUnprocessableEntity, msg)
+			return
+		}
 		h.renderIndex(w, r, id, http.StatusBadRequest, "Unggahan tidak bisa dibaca. Coba lagi.")
 		return
-	default:
+	}
+	var rows Rows
+	mappingID := r.FormValue("mapping_id")
+	{
 		defer file.Close()
-		switch {
-		case hdr.Size > MaxFileSize:
-			err = ErrFileTooLarge
-		case !strings.EqualFold(path.Ext(strings.TrimSpace(hdr.Filename)), ".xlsx"):
-			err = ErrNotXLSX
-		default:
+		// Tanpa mapping: judul kolom template (T53). Dengan mapping: judul
+		// kolom file sekolah dipetakan ke kolom baku (T82), lalu validasi T54
+		// yang sama.
+		if mappingID == "" {
 			rows, err = ParseFile(file)
+		} else {
+			mp, ok, merr := h.mappingFor(r, id.SchoolID, mappingID, TargetStudents)
+			switch {
+			case merr != nil:
+				err = merr
+			case !ok:
+				h.renderIndex(w, r, id, http.StatusUnprocessableEntity, "Mapping tidak ditemukan. Pilih mapping dari daftar.")
+				return
+			default:
+				var mapped MappedRows
+				if mapped, err = ParseMapped(file, mp); err == nil {
+					rows, err = mapped.StudentRows()
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -158,7 +236,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, id, "parse import file", err)
 		return
 	}
-	batchID, err := h.svc.Upload(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, rows, h.today())
+	batchID, err := h.svc.UploadMapped(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, rows, mappingID, h.today())
 	if errors.Is(err, ErrNoActiveYear) {
 		h.renderIndex(w, r, id, http.StatusUnprocessableEntity, "Belum ada tahun ajaran aktif, jadi kelas tidak bisa dicocokkan. Aktifkan tahun ajaran di menu Tahun Ajaran, lalu unggah lagi.")
 		return
@@ -171,6 +249,60 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, batchPath+"/"+batchID, http.StatusSeeOther)
 }
 
+func (h *Handler) gradesIndex(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	h.renderTargetIndex(w, r, id, TargetGrades, "importer/grades", http.StatusOK, "", r.URL.Query().Get("mapping_id"))
+}
+
+// gradesUpload membaca file nilai lewat mapping (kosong = judul kolom baku),
+// lalu menyimpan dan memvalidasinya sebagai batch nilai (T82).
+func (h *Handler) gradesUpload(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	fail := func(status int, msg string) {
+		h.renderTargetIndex(w, r, id, TargetGrades, "importer/grades", status, msg, r.FormValue("mapping_id"))
+	}
+	file, hdr, err := formFile(w, r)
+	if err != nil {
+		if msg := parseMessage(err); msg != "" {
+			fail(http.StatusUnprocessableEntity, msg)
+			return
+		}
+		fail(http.StatusBadRequest, "Unggahan tidak bisa dibaca. Coba lagi.")
+		return
+	}
+	defer file.Close()
+	mappingID := r.FormValue("mapping_id")
+	mp, ok, err := h.mappingFor(r, id.SchoolID, mappingID, TargetGrades)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "get import mapping", err)
+		return
+	}
+	if !ok {
+		fail(http.StatusUnprocessableEntity, "Mapping tidak ditemukan. Pilih mapping dari daftar.")
+		return
+	}
+	mapped, err := ParseMapped(file, mp)
+	if err != nil {
+		if msg := parseMessage(err); msg != "" {
+			fail(http.StatusUnprocessableEntity, msg)
+			return
+		}
+		page.ServerError(h.render, h.logger, w, r, id, "parse grade import", err)
+		return
+	}
+	batchID, err := h.svc.UploadGrades(r.Context(), school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}, hdr.Filename, mapped, mappingID, h.today())
+	if errors.Is(err, ErrNoActiveYear) {
+		fail(http.StatusUnprocessableEntity, "Belum ada tahun ajaran aktif. Aktifkan tahun ajaran di menu Tahun Ajaran, lalu unggah lagi.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "upload grade import", err)
+		return
+	}
+	auth.SetFlash(r.Context(), h.sessions, "File nilai berhasil diunggah dan diperiksa.")
+	http.Redirect(w, r, batchPath+"/"+batchID, http.StatusSeeOther)
+}
+
 // maxSkippedShown adalah jumlah baris dilewati yang dirinci di halaman batch.
 const maxSkippedShown = 20
 
@@ -180,7 +312,7 @@ const maxErrorsShown = 50
 type batchView struct {
 	User        auth.Identity
 	Batch       Batch
-	Columns     [NumColumns]Column
+	Columns     []Column
 	Uploaded    string
 	StatusLabel string
 	Skipped     []Skip
@@ -214,7 +346,7 @@ func (h *Handler) renderBatch(w http.ResponseWriter, r *http.Request, id auth.Id
 		page.ServerError(h.render, h.logger, w, r, id, "get import batch", err)
 		return
 	}
-	v := batchView{User: id, Batch: b, Columns: StudentColumns, StatusLabel: statusLabels[b.Status], Skipped: b.Skipped,
+	v := batchView{User: id, Batch: b, Columns: b.Columns(), StatusLabel: statusLabels[b.Status], Skipped: b.Skipped,
 		Uploaded:  clock.FormatDateID(clock.DateOf(b.CreatedAt)) + " " + b.CreatedAt.In(clock.Jakarta).Format("15.04") + " WIB",
 		SyncLimit: SyncLimit, Error: errMsg}
 	if errMsg == "" {
@@ -272,7 +404,11 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 	}
 	msg := "Impor berjalan di latar belakang. Halaman ini diperbarui otomatis."
 	if b.Status == StatusDone {
-		msg = fmt.Sprintf("Impor selesai: %d siswa baru, %d diperbarui, %d dilewati.", b.CreatedCount, b.UpdatedCount, b.SkippedRows)
+		what := "siswa"
+		if b.Grades() {
+			what = "nilai"
+		}
+		msg = fmt.Sprintf("Impor selesai: %d %s baru, %d diperbarui, %d dilewati.", b.CreatedCount, what, b.UpdatedCount, b.SkippedRows)
 		if b.FailedCount > 0 {
 			msg += fmt.Sprintf(" %d baris gagal disimpan.", b.FailedCount)
 		}

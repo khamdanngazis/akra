@@ -34,6 +34,15 @@ var kindLabels = map[string]string{
 	KindGuardianPhone: "telepon wali tidak valid",
 	KindGuardianEmail: "email wali tidak valid",
 	KindSaveFailed:    "gagal disimpan",
+	// Impor nilai (T82).
+	KindGradeStudent:      "siswa tidak ada di kelas aktif",
+	KindSubjectEmpty:      "kode mapel kosong",
+	KindSubjectNotFound:   "mapel tidak ditemukan",
+	KindNoAssignment:      "mapel tanpa guru pengampu di kelas",
+	KindComponentEmpty:    "nama komponen kosong",
+	KindComponentNotFound: "komponen tidak ditemukan",
+	KindScore:             "nilai tidak valid",
+	KindGradeDuplicate:    "nilai ganda di file",
 }
 
 // KindLabel mengembalikan nama jenis kesalahan untuk pengguna.
@@ -84,7 +93,7 @@ func (s *Service) ErrorSummary(ctx context.Context, schoolID, batchID string) ([
 // reportRow adalah satu baris laporan kesalahan.
 type reportRow struct {
 	Line     int
-	Raw      [NumColumns]string
+	Raw      []string // isi sel sesuai kolom baku target
 	Messages []string
 }
 
@@ -120,17 +129,21 @@ func (s *Service) errorReportRows(ctx context.Context, schoolID, batchID string)
 // parser hanya membaca kolom template. ErrBatchNotFound jika batch bukan
 // milik sekolah.
 func (s *Service) ErrorReport(ctx context.Context, schoolID, batchID string) ([]byte, error) {
-	if _, err := s.GetBatch(ctx, schoolID, batchID); err != nil {
+	b, err := s.GetBatch(ctx, schoolID, batchID)
+	if err != nil {
 		return nil, err
 	}
 	rows, err := s.errorReportRows(ctx, schoolID, batchID)
 	if err != nil {
 		return nil, err
 	}
-	return buildErrorReport(rows)
+	return buildErrorReport(b.Columns(), rows)
 }
 
-func buildErrorReport(rows []reportRow) ([]byte, error) {
+// buildErrorReport menulis laporan dengan kolom baku cols (siswa atau
+// nilai), sehingga file yang sudah diperbaiki bisa diunggah ulang tanpa
+// mapping.
+func buildErrorReport(cols []Column, rows []reportRow) ([]byte, error) {
 	f := excelize.NewFile()
 	defer f.Close()
 	sheet := ErrorReportSheet
@@ -163,11 +176,11 @@ func buildErrorReport(rows []reportRow) ([]byte, error) {
 	}
 
 	// Kolom: A = Baris asli, B..I = kolom template, J = Kesalahan.
-	headers := append([]string{errorReportLineHeader}, columnHeaders()...)
+	headers := append([]string{errorReportLineHeader}, columnHeaders(cols)...)
 	headers = append(headers, errorReportErrorHeader)
 	last, _ := excelize.ColumnNumberToName(len(headers))
 	firstData, _ := excelize.ColumnNumberToName(2)
-	lastData, _ := excelize.ColumnNumberToName(1 + NumColumns)
+	lastData, _ := excelize.ColumnNumberToName(1 + len(cols))
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		if err := f.SetCellStr(sheet, cell, h); err != nil {
@@ -189,6 +202,9 @@ func buildErrorReport(rows []reportRow) ([]byte, error) {
 			return nil, err
 		}
 		for c, v := range r.Raw {
+			if c >= len(cols) {
+				break
+			}
 			cell, _ := excelize.CoordinatesToCellName(c+2, line)
 			// SetCellStr: isi yang diawali "=" tetap teks, bukan rumus.
 			if err := f.SetCellStr(sheet, cell, v); err != nil {
@@ -226,9 +242,9 @@ func buildErrorReport(rows []reportRow) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func columnHeaders() []string {
-	h := make([]string, NumColumns)
-	for i, c := range StudentColumns {
+func columnHeaders(cols []Column) []string {
+	h := make([]string, len(cols))
+	for i, c := range cols {
 		h[i] = c.Header
 	}
 	return h
