@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -62,6 +63,8 @@ type LoginAttempt struct {
 type Repository interface {
 	// FindUserForLogin mengembalikan ErrNotFound jika sekolah atau pengguna tidak ada.
 	FindUserForLogin(ctx context.Context, schoolCode, email string) (UserCredentials, error)
+	// FindSchoolName mengembalikan nama sekolah berkode code, atau ErrNotFound.
+	FindSchoolName(ctx context.Context, code string) (string, error)
 	// CountRecentFailures mengembalikan jumlah kegagalan dalam window untuk
 	// pasangan (schoolCode, email) sejak login sukses terakhirnya, dan untuk ip.
 	CountRecentFailures(ctx context.Context, schoolCode, email string, ip netip.Addr, window time.Duration) (byEmail, byIP int, err error)
@@ -98,6 +101,25 @@ func NormalizeEmail(email string) string {
 // NormalizeSchoolCode membuang spasi di awal/akhir dan mengubah kode ke huruf kecil.
 func NormalizeSchoolCode(code string) string {
 	return strings.ToLower(strings.TrimSpace(code))
+}
+
+// schoolCodePattern sama dengan constraint schools_code_format.
+var schoolCodePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// ValidSchoolCode melaporkan apakah code (sudah dinormalisasi) berformat
+// kode sekolah: huruf kecil, angka, dan tanda hubung tunggal, 3–32 karakter.
+func ValidSchoolCode(code string) bool {
+	return len(code) >= 3 && len(code) <= 32 && schoolCodePattern.MatchString(code)
+}
+
+// SchoolName mengembalikan nama sekolah berkode code (link login sekolah).
+// ErrNotFound jika format kode salah atau sekolah tidak ada.
+func (s *Service) SchoolName(ctx context.Context, code string) (string, error) {
+	code = NormalizeSchoolCode(code)
+	if !ValidSchoolCode(code) {
+		return "", ErrNotFound
+	}
+	return s.repo.FindSchoolName(ctx, code)
 }
 
 // IsLocked mengembalikan ErrTooManyAttempts jika pasangan (schoolCode, email)

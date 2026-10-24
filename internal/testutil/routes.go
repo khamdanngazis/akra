@@ -112,6 +112,7 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/logout", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}", Kind: KindPublic},
 	{Method: "GET", Pattern: "/lupa-password", Kind: KindPublic},
 	{Method: "POST", Pattern: "/lupa-password", Kind: KindPublic},
 	{Method: "GET", Pattern: "/reset-password", Kind: KindPublic},

@@ -47,6 +47,7 @@ type emptyRepo struct{}
 func (emptyRepo) FindUserForLogin(context.Context, string, string) (auth.UserCredentials, error) {
 	return auth.UserCredentials{}, auth.ErrNotFound
 }
+func (emptyRepo) FindSchoolName(context.Context, string) (string, error) { return "", auth.ErrNotFound }
 func (emptyRepo) CountRecentFailures(context.Context, string, string, netip.Addr, time.Duration) (int, int, error) {
 	return 0, 0, nil
 }
