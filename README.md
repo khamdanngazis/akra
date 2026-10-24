@@ -93,6 +93,17 @@ Login memakai **kode sekolah**, email, dan password. Email unik per sekolah, jad
 - Percobaan dicatat di `login_attempts`. Login dikunci selama 15 menit setelah 5 kegagalan untuk pasangan kode sekolah + email (dihitung sejak login sukses terakhir), atau 20 kegagalan dari satu IP. Batas IP lebih longgar karena banyak pengguna satu sekolah berbagi satu IP.
 - Setelah login berhasil, token sesi diganti (mencegah session fixation) lalu `user_id`, `school_id`, dan daftar peran disimpan di sesi. Logout hanya lewat `POST /logout`.
 
+### Link login sekolah
+
+Agar pengguna tidak perlu mengetik kode sekolah:
+
+- **`GET /s/{kode}`** (mis. `/s/sd-harapan`) membuka form login dengan sekolah sudah terpilih. Form menampilkan nama sekolah dan tautan "Ganti sekolah", bukan kolom kode. Link ini dibagikan sekolah lewat QR atau grup WA, dan mendukung `?next=`.
+  - Kode yang tidak ada atau berformat salah menampilkan form biasa dengan kolom kode kosong, tanpa pesan "sekolah tidak ditemukan".
+  - Login gagal dari link tetap menampilkan nama sekolah; pesan kesalahannya sama dengan form biasa.
+- **Sekolah terakhir diingat di perangkat.** Login yang berhasil menyimpan cookie `akra_school`: hanya berisi kode sekolah (bukan rahasia), `HttpOnly`, `SameSite=Lax`, berlaku setahun, dan terpisah dari sesi. `GET /login` memakai cookie ini untuk memilih sekolah. "Ganti sekolah" (`/login?ganti=1`) menghapusnya.
+- **Logout kembali ke link sekolah.** Kode sekolah disimpan di sesi saat login, sehingga logout mengarah ke `/s/{kode}` dengan pesan "Anda telah keluar". Cookie sekolah tidak dihapus saat logout. Sesi lama yang belum menyimpan kode kembali ke `/login`.
+- Link ini bekerja di domain apa pun (sekarang `https://akra-production.up.railway.app/s/<kode>`); subdomain per sekolah tidak diperlukan.
+
 ### Reset password
 
 Halaman `/lupa-password` meminta kode sekolah dan email, lalu `/reset-password?token=...` menampilkan form password baru.
