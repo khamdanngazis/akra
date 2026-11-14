@@ -87,3 +87,14 @@ Di T106 titik lokasi rumah hanya diisi dengan tombol "Ambil lokasi saya" (GPS pe
 - **Diuji di Chrome dengan Google Maps tiruan** (rute dicegat): tidak ada permintaan ke Google sebelum tombol, peta terbuka di Kota Bandung setelah kabupaten dipilih, batas zoom, titik tersimpan, dan peta terbuka lagi di titik itu. Dengan Google asli dan kunci palsu, pesan "layanan peta menolak permintaan" tampil.
 - **Belum diuji dengan kunci asli:** perlu dicek di staging setelah kunci dibuat.
 
+## Lanjutan: OpenStreetMap sebagai bawaan (2026-11-15)
+- **Latar belakang:** akun penagihan Google Cloud ditutup Google ("not in good standing") dan tidak bisa dibuka ulang, jadi Google Maps belum bisa dipakai. Keputusan: peta memakai **OpenStreetMap saat `GOOGLE_MAPS_API_KEY` kosong**, dan Google bila kunci diisi.
+- **Leaflet 1.9.4** (BSD-2, npm `leaflet@1.9.4`, checksum tarball dicocokkan dengan registry) disimpan di `web/static/vendor/leaflet/` (js, css, gambar kontrol, lisensi). Tidak lewat CDN, sesuai uji "tanpa sumber eksternal". Ubin dari `tile.openstreetmap.org` dengan atribusi "© OpenStreetMap"; tidak ada tampilan satelit.
+- **`lokasi.js`** kini memakai adaptor per penyedia (`createGoogle`/`createOSM`) dengan alur sama: penanda tetap di tengah, ketuk untuk memindahkan, zoom ≥ 16 untuk menyimpan, posisi awal dari titik tersimpan atau kabupaten/kota. Leaflet (skrip + CSS) dan ubin baru dimuat saat tombol ditekan. Bila ubin gagal dimuat, muncul pesan error.
+- **Tombol "Pilih di peta" selalu tampil.** Teks persetujuan dan petunjuk menyebut OpenStreetMap atau Google sesuai penyedia. Tautan "Lihat di peta" mengarah ke openstreetmap.org.
+- **Diuji di Chrome dengan ubin OSM asli:**
+  - tidak ada permintaan keluar sebelum tombol ditekan; setelahnya hanya `tile.openstreetmap.org`;
+  - peta terbuka di Kota Bandung;
+  - perbesar dan geser bekerja;
+  - titik tersimpan, lalu dibuka lagi di posisi yang sama.
+

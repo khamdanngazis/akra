@@ -374,21 +374,25 @@ func TestMapPicker(t *testing.T) {
 	start := url.Values{"choice": {p.ID + "|" + tr.ID}, "full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "phone": {"081234567890"}, "consent": {"on"}}
 	base := "/s/test-adm-a/daftar"
 
-	// Tanpa API key: hanya GPS, tanpa tombol peta dan tanpa sebutan Google.
+	// Tanpa API key Google: peta OpenStreetMap (Leaflet yang disertakan).
 	c := newPublicServer(t, e)
-	if _, body := c.get(base + "/"); strings.Contains(body, "Google") {
-		t.Error("consent mentions Google without maps key")
+	if _, body := c.get(base + "/"); !strings.Contains(body, "peta ditampilkan oleh OpenStreetMap") || strings.Contains(body, "Google") {
+		t.Error("consent without OpenStreetMap notice")
 	}
 	if code, _, _ := c.post(base+"/", start); code != http.StatusSeeOther {
 		t.Fatal("create draft")
 	}
 	_, body := c.get(base + "/isi/alamat")
-	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "js/lokasi.js") || strings.Contains(body, "Pilih di peta") || strings.Contains(body, "data-maps-key") {
-		t.Error("map picker shown without key")
+	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Pilih di peta") || !strings.Contains(body, `data-map-provider="osm"`) ||
+		!strings.Contains(body, "vendor/leaflet/leaflet.js") || strings.Contains(body, "data-maps-key") {
+		t.Error("OpenStreetMap picker missing")
+	}
+	// Leaflet dan ubin peta tidak dimuat sebelum tombol ditekan.
+	if strings.Contains(body, "<script src=\"/static/vendor/leaflet") || strings.Contains(body, "tile.openstreetmap.org") {
+		t.Error("map library or tiles loaded before the button is pressed")
 	}
 
-	// Dengan API key: tombol peta ada, tetapi skrip Google tidak dimuat
-	// sebelum tombol ditekan.
+	// Dengan API key: Google Maps, skrip Google belum dimuat sebelum tombol.
 	m := newPublicServerKey(t, e, "test-browser-key")
 	if _, body := m.get(base + "/"); !strings.Contains(body, "peta ditampilkan oleh Google") {
 		t.Error("consent without Google map notice")
@@ -398,8 +402,8 @@ func TestMapPicker(t *testing.T) {
 		t.Fatal("create draft with key")
 	}
 	_, body = m.get(base + "/isi/alamat")
-	if !strings.Contains(body, "Pilih di peta") || !strings.Contains(body, `data-maps-key="test-browser-key"`) || !strings.Contains(body, "Pakai titik ini") {
-		t.Error("map picker missing with key")
+	if !strings.Contains(body, "Pilih di peta") || !strings.Contains(body, `data-maps-key="test-browser-key"`) || !strings.Contains(body, `data-map-provider="google"`) || !strings.Contains(body, "Pakai titik ini") {
+		t.Error("google map picker missing with key")
 	}
 	if strings.Contains(body, "maps.googleapis.com") {
 		t.Error("google maps script loaded before the button is pressed")
