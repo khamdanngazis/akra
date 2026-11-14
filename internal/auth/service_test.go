@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/netip"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,6 +23,15 @@ func (f *fakeRepo) FindUserForLogin(_ context.Context, schoolCode, email string)
 		return UserCredentials{}, ErrNotFound
 	}
 	return u, nil
+}
+
+func (f *fakeRepo) FindSchoolName(_ context.Context, code string) (string, error) {
+	for k, u := range f.users {
+		if strings.HasPrefix(k, code+"|") {
+			return u.SchoolName, nil
+		}
+	}
+	return "", ErrNotFound
 }
 
 func (f *fakeRepo) CountRecentFailures(_ context.Context, schoolCode, email string, ip netip.Addr, _ time.Duration) (int, int, error) {
@@ -57,12 +67,12 @@ func newTestService(t *testing.T) (*Service, *fakeRepo) {
 	}
 	repo := &fakeRepo{users: map[string]UserCredentials{
 		"sd-harapan|budi@sekolah.id": {
-			User:         User{ID: "u1", SchoolID: "s1", Email: "budi@sekolah.id", FullName: "Budi", Roles: []string{"guru"}},
+			User:         User{ID: "u1", SchoolID: "s1", SchoolName: "SD Harapan", Email: "budi@sekolah.id", FullName: "Budi", Roles: []string{"guru"}},
 			PasswordHash: hash,
 			IsActive:     true,
 		},
 		"sd-harapan|nonaktif@sekolah.id": {
-			User:         User{ID: "u2", SchoolID: "s1", Email: "nonaktif@sekolah.id"},
+			User:         User{ID: "u2", SchoolID: "s1", SchoolName: "SD Harapan", Email: "nonaktif@sekolah.id"},
 			PasswordHash: hash,
 			IsActive:     false,
 		},

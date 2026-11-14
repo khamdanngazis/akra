@@ -1075,6 +1075,15 @@
     @apply mb-6 text-sm text-slate-500;
   }
 
+  /* Sekolah yang sudah diketahui di form login (link /s/{kode}). */
+  .school-chip {
+    @apply flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3;
+  }
+
+  .school-chip-icon {
+    @apply inline-flex size-9 flex-none items-center justify-center rounded-lg bg-white text-navy-600 ring-1 ring-slate-200 [&_svg]:size-5;
+  }
+
   .input-icon {
     @apply relative;
   }

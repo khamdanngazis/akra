@@ -29,6 +29,8 @@ const (
 	// saat login berikutnya.
 	sessionKeyFullName   = "full_name"
 	sessionKeySchoolName = "school_name"
+	// sessionKeySchoolCode: kode sekolah saat login, tujuan logout (/s/{kode}).
+	sessionKeySchoolCode = "school_code"
 	sessionKeyFlash      = "flash"
 )
 

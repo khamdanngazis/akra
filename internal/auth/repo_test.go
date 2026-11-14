@@ -57,6 +57,17 @@ func TestPostgresRepository_Login(t *testing.T) {
 	}
 	ip := netip.MustParseAddr("192.0.2.200")
 
+	t.Run("school name for login link", func(t *testing.T) {
+		if name, err := svc.SchoolName(ctx, " Test-Auth-Repo "); err != nil || name != "Sekolah Uji" {
+			t.Errorf("SchoolName() = %q, %v", name, err)
+		}
+		for _, code := range []string{"test-auth-tidak-ada", "x", "bukan kode"} {
+			if _, err := svc.SchoolName(ctx, code); !errors.Is(err, ErrNotFound) {
+				t.Errorf("SchoolName(%q) error = %v, want ErrNotFound", code, err)
+			}
+		}
+	})
+
 	t.Run("stored hash is argon2id", func(t *testing.T) {
 		var stored string
 		if err := pool.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&stored); err != nil {

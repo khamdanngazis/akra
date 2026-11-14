@@ -42,6 +42,15 @@ func (r *PostgresRepository) FindUserForLogin(ctx context.Context, schoolCode, e
 	return c, err
 }
 
+func (r *PostgresRepository) FindSchoolName(ctx context.Context, code string) (string, error) {
+	var name string
+	err := r.db.QueryRow(ctx, `SELECT name FROM schools WHERE code = $1`, code).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return name, err
+}
+
 // Hitungan per email hanya mencakup kegagalan setelah login sukses terakhir,
 // jadi login sukses mereset hitungan itu. Hitungan per IP tidak direset.
 const countRecentFailuresSQL = `

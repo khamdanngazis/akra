@@ -90,8 +90,8 @@ func TestLogout(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/login" {
-		t.Fatalf("status = %d, Location = %q; want 303 to /login", rec.Code, rec.Header().Get("Location"))
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/s/sd-harapan" {
+		t.Fatalf("status = %d, Location = %q; want 303 to /s/sd-harapan", rec.Code, rec.Header().Get("Location"))
 	}
 	if _, found, _ := store.Find(c.Value); found {
 		t.Error("session still exists in the store after logout")

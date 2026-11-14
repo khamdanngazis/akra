@@ -11,10 +11,20 @@
 {{ csrfField }}
 <input type="hidden" name="next" value="{{.Next}}">
 
+{{if .SchoolName}}
+<input type="hidden" name="school_code" value="{{.SchoolCode}}">
+<input type="hidden" name="school_fixed" value="1">
+<div class="school-chip">
+<span class="school-chip-icon" aria-hidden="true">{{template "icon" "building"}}</span>
+<span class="min-w-0 flex-1"><span class="block text-sm text-slate-500">Sekolah</span><strong class="block break-words">{{.SchoolName}}</strong></span>
+<a href="/login?ganti=1{{if and .Next (ne .Next "/")}}&amp;next={{.Next}}{{end}}" class="flex-none text-sm font-medium no-underline">Ganti sekolah</a>
+</div>
+{{else}}
 <div class="field">
 <label for="school_code">Kode sekolah</label>
 <div class="input-icon">{{template "icon" "building"}}<input id="school_code" name="school_code" value="{{.SchoolCode}}" placeholder="mis. sdn-1-bandung" autocomplete="organization" autocapitalize="none" spellcheck="false" required></div>
 </div>
+{{end}}
 
 <div class="field">
 <label for="email">Email</label>
