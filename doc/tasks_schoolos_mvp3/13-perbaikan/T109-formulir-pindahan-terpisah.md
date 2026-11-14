@@ -1,4 +1,4 @@
-# T109 — Formulir pendaftaran siswa baru dan siswa pindahan dipisah
+# T109 — Formulir pendaftaran siswa baru dan siswa pindahan dipisah, isian dirapikan
 
 **Fase:** 13 Perbaikan
 **Dependensi:** T89, T90, T91, T92, T96
@@ -30,6 +30,11 @@ Formulir pendaftaran yang sekarang **hanya untuk siswa baru**. Siswa pindahan me
 5. Isian wajib (`Missing`) dibedakan per jenis, sehingga siswa baru tidak diminta isian khusus pindahan dan sebaliknya.
 6. Nomor pendaftaran: tetap satu urutan per tahun ajaran, atau awalan berbeda untuk pindahan (mis. `PINDAH-2027-0001`) — putuskan saat implementasi.
 
+7. Pisahkan bagian "Keluarga dan bantuan" (berlaku untuk kedua formulir dan form data rinci staf):
+   - **Keluarga:** anak ke-berapa, jumlah saudara kandung.
+   - **Bantuan pemerintah (opsional):** pertanyaan "Punya KIP?"; nomor dan nama di KIP baru muncul jika Ya. Hal yang sama untuk KKS/PKH. Petunjuk: "Isi jika keluarga menerima kartu bantuan dari pemerintah. Kosongkan jika tidak."
+   - **Layak PIP (usulan dari sekolah) dan alasan PIP** diisi sekolah: disembunyikan dari formulir orang tua, tetap ada di form data rinci staf.
+
 ## File yang disentuh
 - `db/migrations/0000XX_admission_kind.up.sql` (jenis periode/pendaftar, isian pindahan)
 - `internal/admission/applicant.go`, `public_handler.go`, `staff_entry.go`, `convert.go`, `period.go`
@@ -40,4 +45,6 @@ Formulir pendaftaran yang sekarang **hanya untuk siswa baru**. Siswa pindahan me
 - [ ] Formulir pindahan punya isian dan dokumen khusus pindahan
 - [ ] Isian wajib berbeda per jenis dan diuji unit
 - [ ] Pindahan yang diterima menjadi siswa dengan jenis pendaftaran "Pindahan" dan kelas tujuan
+- [ ] Bagian Keluarga dan Bantuan pemerintah terpisah; isian KIP/KKS hanya muncul jika dijawab Ya
+- [ ] Layak PIP dan alasan PIP tidak tampil di formulir orang tua
 - [ ] Route baru masuk daftar uji T58/T59; uji handler untuk kedua formulir
