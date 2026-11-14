@@ -87,10 +87,11 @@
 
 {{else}}
 <div class="adm-title"><h1>{{.StepName}}</h1></div>
-<form method="post" action="{{.Base}}/isi/{{.Step}}" id="step-form" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+<form method="post" action="{{.Base}}/isi/{{.Step}}" id="step-form" class="stack" novalidate x-data="{ submitting: false{{with .FormData}}, {{.}}{{end}} }" @submit="submitting = true">
 {{ csrfField }}
 {{range .Sections}}
-<section class="adm-card" id="{{.Key}}">
+{{if .ShowIf}}<div class="adm-card flex flex-wrap items-center justify-between gap-3" x-cloak x-show="!({{.ShowIf}})"><span class="text-sm text-slate-600">Calon siswa tinggal bersama wali, atau orang tua sudah meninggal?</span><button type="button" class="btn btn-ghost btn-sm" @click="{{.ShowIf}} = true">+ Tambah data wali</button></div>{{end}}
+<section class="adm-card" id="{{.Key}}"{{with .XData}} x-data="{{.}}"{{end}}{{with .ShowIf}} x-show="{{.}}"{{end}}>
 <h2>{{.Title}}</h2>
 {{with .Hint}}<p class="hint mt-1">{{.}}</p>{{end}}
 {{template "profile_fields" dict "Fields" .Fields "Prefix" .Key "Disabled" false "Optional" true}}

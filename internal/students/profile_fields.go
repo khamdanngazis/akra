@@ -46,6 +46,7 @@ const (
 	SectionIdentity     = "identitas"
 	SectionAddress      = "alamat"
 	SectionFamily       = "keluarga"
+	SectionAssistance   = "bantuan" // bantuan pemerintah: KIP, PIP, KKS (T109)
 	SectionContact      = "kontak"
 	SectionPeriodic     = "periodik"
 	SectionRegistration = "registrasi"
@@ -77,12 +78,12 @@ var ProfileFields = []ProfileField{
 
 	{Key: "child_order", Label: "Anak ke-berapa", Kind: kindInt, Min: 1, Max: 30, Column: "child_order", Section: SectionFamily},
 	{Key: "siblings", Label: "Jumlah saudara kandung", Kind: kindInt, Min: 0, Max: 30, Column: "siblings", Section: SectionFamily},
-	{Key: "has_kip", Label: "Punya KIP", Kind: kindBool, Column: "has_kip", Section: SectionFamily},
-	{Key: "kip_number", Label: "Nomor KIP", Kind: kindText, Max: 30, Sensitive: true, Column: "kip", Section: SectionFamily},
-	{Key: "kip_name", Label: "Nama di KIP", Kind: kindText, Max: 100, Column: "kip_name", Section: SectionFamily},
-	{Key: "pip_eligible", Label: "Layak PIP", Kind: kindBool, Column: "pip_eligible", Section: SectionFamily},
-	{Key: "pip_reason", Label: "Alasan PIP", Kind: kindRef, Ref: &ref.AlasanPIP, Column: "pip_reason", Section: SectionFamily},
-	{Key: "kks_number", Label: "Nomor KKS", Kind: kindText, Max: 30, Sensitive: true, Column: "kks", Section: SectionFamily},
+	{Key: "has_kip", Label: "Punya KIP", Kind: kindBool, Column: "has_kip", Section: SectionAssistance},
+	{Key: "kip_number", Label: "Nomor KIP", Kind: kindText, Max: 30, Sensitive: true, Column: "kip", Section: SectionAssistance},
+	{Key: "kip_name", Label: "Nama di KIP", Kind: kindText, Max: 100, Column: "kip_name", Section: SectionAssistance},
+	{Key: "pip_eligible", Label: "Layak PIP", Kind: kindBool, Column: "pip_eligible", Section: SectionAssistance},
+	{Key: "pip_reason", Label: "Alasan PIP", Kind: kindRef, Ref: &ref.AlasanPIP, Column: "pip_reason", Section: SectionAssistance},
+	{Key: "kks_number", Label: "Nomor KKS", Kind: kindText, Max: 30, Sensitive: true, Column: "kks", Section: SectionAssistance},
 
 	{Key: "home_phone", Label: "Telepon rumah", Kind: kindPhone, Column: "home_phone", Section: SectionContact},
 	{Key: "mobile_phone", Label: "Nomor HP", Kind: kindPhone, Column: "mobile_phone", Section: SectionContact},

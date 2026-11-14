@@ -166,6 +166,10 @@ type periodRow struct {
 	Opens, Closes string
 	Fee           string
 	OpenNow       bool
+	// FormPath adalah alamat formulir publik sesuai jenis periode, tanpa
+	// awalan /s/{kode}.
+	FormPath  string
+	KindLabel string
 }
 
 type periodListView struct {
@@ -200,12 +204,13 @@ type trackRow struct {
 }
 
 type periodDetailView struct {
-	User     auth.Identity
-	CanEdit  bool
-	Period   periodRow
-	Docs     []string
-	Tracks   []trackRow
-	NewTrack TrackForm
+	User       auth.Identity
+	SchoolCode string
+	CanEdit    bool
+	Period     periodRow
+	Docs       []string
+	Tracks     []trackRow
+	NewTrack   TrackForm
 	// TrackErrors berisi error form jalur baru (EditTrack kosong) atau
 	// jalur yang diubah.
 	TrackErrors map[string]string
@@ -216,8 +221,17 @@ type periodDetailView struct {
 	Error          string
 }
 
+// publicFormPath mengembalikan alamat formulir publik untuk jenis periode.
+func publicFormPath(kind string) string {
+	if kind == KindTransfer {
+		return "/pindah"
+	}
+	return "/daftar"
+}
+
 func toRow(p Period) periodRow {
-	r := periodRow{Period: p, Opens: clock.FormatDateID(p.OpensOn), Closes: clock.FormatDateID(p.ClosesOn), Fee: "Gratis"}
+	r := periodRow{Period: p, Opens: clock.FormatDateID(p.OpensOn), Closes: clock.FormatDateID(p.ClosesOn), Fee: "Gratis",
+		FormPath: publicFormPath(p.Kind), KindLabel: KindLabel(p.Kind)}
 	if p.FeeAmount > 0 {
 		r.Fee = money.FormatRupiah(p.FeeAmount)
 	}
@@ -293,12 +307,16 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 	if editTrack == "" {
 		view.NewTrack, view.NewTrackErrors = tf, errs
 	}
+	if err := h.db.QueryRow(r.Context(), `SELECT code FROM schools WHERE id = $1`, id.SchoolID).Scan(&view.SchoolCode); err != nil {
+		h.serverError(w, r, "school code", err)
+		return
+	}
 	h.render.Render(w, r, status, "admission/period_detail", view)
 }
 
 func (h *Handler) newPeriod(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	h.renderForm(w, r, periodFormView{User: id, IsNew: true, Form: PeriodForm{TargetGrade: "1"}}, http.StatusOK)
+	h.renderForm(w, r, periodFormView{User: id, IsNew: true, Form: PeriodForm{TargetGrade: "1", Kind: KindNew}}, http.StatusOK)
 }
 
 func (h *Handler) editPeriod(w http.ResponseWriter, r *http.Request) {
@@ -313,7 +331,7 @@ func (h *Handler) editPeriod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f := PeriodForm{
-		AcademicYearID: p.AcademicYearID, Name: p.Name, TargetGrade: strconv.Itoa(p.TargetGrade),
+		AcademicYearID: p.AcademicYearID, Name: p.Name, Kind: p.Kind, TargetGrade: strconv.Itoa(p.TargetGrade),
 		OpensOn: p.OpensOn.Format(dateLayout), ClosesOn: p.ClosesOn.Format(dateLayout),
 		FeeRequired: p.FeeRequiredBeforeVerify, RequiredDocs: p.RequiredDocs,
 	}
@@ -355,7 +373,7 @@ func (h *Handler) parsePeriod(w http.ResponseWriter, r *http.Request) (PeriodFor
 	}
 	p := r.PostForm
 	return PeriodForm{
-		AcademicYearID: p.Get("academic_year_id"), Name: p.Get("name"), TargetGrade: p.Get("target_grade"),
+		AcademicYearID: p.Get("academic_year_id"), Name: p.Get("name"), Kind: p.Get("kind"), TargetGrade: p.Get("target_grade"),
 		OpensOn: p.Get("opens_on"), ClosesOn: p.Get("closes_on"), FeeAmount: p.Get("fee_amount"),
 		FeeRequired: p.Has("fee_required"), RequiredDocs: p["required_docs"],
 	}, true

@@ -16,7 +16,7 @@
 <div class="flex flex-wrap items-center gap-4">
 <span class="adm-logo size-16 text-lg">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="Logo sekolah">{{else}}<span aria-hidden="true">Logo</span>{{end}}</span>
 <div class="min-w-0 flex-1">
-<p class="mb-1">Tautan untuk orang tua: <a href="/s/{{.SchoolCode}}/daftar" target="_blank" rel="noopener"><strong>/s/{{.SchoolCode}}/daftar</strong></a></p>
+<p class="mb-1">Tautan untuk orang tua: siswa baru <a href="/s/{{.SchoolCode}}/daftar" target="_blank" rel="noopener"><strong>/s/{{.SchoolCode}}/daftar</strong></a> · siswa pindahan <a href="/s/{{.SchoolCode}}/pindah" target="_blank" rel="noopener"><strong>/s/{{.SchoolCode}}/pindah</strong></a></p>
 <p class="muted mb-0 text-sm">{{if .LogoURL}}Logo sekolah tampil di kepala halaman pendaftaran.{{else}}Belum ada logo. Halaman pendaftaran menampilkan inisial nama sekolah.{{end}}</p>
 </div>
 </div>
@@ -41,7 +41,7 @@
 <tr>
 <td><a href="/pendaftaran/periode/{{.ID}}"><strong>{{.Name}}</strong></a></td>
 <td>{{.AcademicYearName}}</td>
-<td>{{.TargetGrade}}</td>
+<td>{{if .TargetGrade}}{{.TargetGrade}}{{else}}<span class="badge badge-info">Pindahan</span>{{end}}</td>
 <td class="nowrap">{{.Opens}} – {{.Closes}}</td>
 <td class="nowrap">{{.Fee}}</td>
 <td>{{.TrackCount}}</td>

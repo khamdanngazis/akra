@@ -16,7 +16,11 @@ type enrollRow struct {
 	PeriodName         string
 	TrackName          string
 	YearID             string
-	Classes            []option
+	Kind               string
+	// Grade adalah tingkat tujuan: kelas tujuan pindahan atau tingkat
+	// periode siswa baru, untuk membantu memilih kelas.
+	Grade   string
+	Classes []option
 }
 
 type enrollResultRow struct {
@@ -64,7 +68,8 @@ func (h *Handler) renderEnroll(w http.ResponseWriter, r *http.Request, id auth.I
 		view.Preview = RenderNIS(view.Format, h.periods.Today().Year()+1, 1)
 	}
 	rows, err := h.db.Query(ctx, `
-		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, p.name, t.name, p.academic_year_id
+		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, p.name, t.name, p.academic_year_id,
+		       a.kind, coalesce(a.transfer->>'target_grade', p.target_grade::text, '')
 		FROM applicants a JOIN admission_periods p ON p.id = a.period_id JOIN admission_tracks t ON t.id = a.track_id
 		WHERE a.school_id = $1 AND a.status = 'diterima' AND a.student_id IS NULL
 		ORDER BY p.opens_on, a.registration_number LIMIT 500`, id.SchoolID)
@@ -74,7 +79,7 @@ func (h *Handler) renderEnroll(w http.ResponseWriter, r *http.Request, id auth.I
 	}
 	for rows.Next() {
 		var x enrollRow
-		if err := rows.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.PeriodName, &x.TrackName, &x.YearID); err != nil {
+		if err := rows.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.PeriodName, &x.TrackName, &x.YearID, &x.Kind, &x.Grade); err != nil {
 			rows.Close()
 			h.serverError(w, r, "scan accepted", err)
 			return

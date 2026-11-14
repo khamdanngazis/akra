@@ -29,6 +29,7 @@ type applicantListView struct {
 	Periods  []option
 	Tracks   []option
 	Statuses []option
+	Kinds    []option
 	Query    string
 	Filtered bool
 	Flash    string
@@ -44,9 +45,12 @@ type applicantRow struct {
 func (h *Handler) listApplicants(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	q := r.URL.Query()
-	f := ListFilter{PeriodID: q.Get("periode"), TrackID: q.Get("jalur"), Status: q.Get("status"), Query: q.Get("q")}
+	f := ListFilter{PeriodID: q.Get("periode"), TrackID: q.Get("jalur"), Status: q.Get("status"), Kind: q.Get("jenis"), Query: q.Get("q")}
 	if _, ok := StatusLabels[f.Status]; !ok {
 		f.Status = ""
+	}
+	if f.Kind != KindNew && f.Kind != KindTransfer {
+		f.Kind = ""
 	}
 	periods, err := h.periods.List(r.Context(), id.SchoolID)
 	if err != nil {
@@ -54,7 +58,8 @@ func (h *Handler) listApplicants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := applicantListView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Query: f.Query,
-		Filtered: f.PeriodID != "" || f.TrackID != "" || f.Status != "" || strings.TrimSpace(f.Query) != "",
+		Filtered: f.PeriodID != "" || f.TrackID != "" || f.Status != "" || f.Kind != "" || strings.TrimSpace(f.Query) != "",
+		Kinds:    []option{{Value: KindNew, Label: KindLabel(KindNew), Selected: f.Kind == KindNew}, {Value: KindTransfer, Label: KindLabel(KindTransfer), Selected: f.Kind == KindTransfer}},
 		Flash:    auth.PopFlash(r.Context(), h.sessions)}
 	for _, p := range periods {
 		view.Periods = append(view.Periods, option{Value: p.ID, Label: p.Name + " (" + p.AcademicYearName + ")", Selected: p.ID == f.PeriodID})
@@ -200,10 +205,10 @@ func displayApplicant(a Applicant) []displaySection {
 		{"Nomor HP orang tua", a.ContactPhone},
 	}}}
 	titles := map[string]string{
-		students.SectionIdentity: "Data pribadi", students.SectionAddress: "Alamat", students.SectionFamily: "Keluarga dan bantuan",
+		students.SectionIdentity: "Data pribadi", students.SectionAddress: "Alamat", students.SectionFamily: "Keluarga", students.SectionAssistance: "Bantuan pemerintah",
 		students.SectionContact: "Kontak", students.SectionPeriodic: "Data periodik", students.SectionRegistration: "Sekolah asal",
 	}
-	for _, sec := range []string{students.SectionIdentity, students.SectionAddress, students.SectionFamily, students.SectionContact, students.SectionRegistration} {
+	for _, sec := range []string{students.SectionIdentity, students.SectionAddress, students.SectionFamily, students.SectionAssistance, students.SectionContact, students.SectionRegistration} {
 		ds := displaySection{Title: titles[sec]}
 		for _, f := range students.ProfileFields {
 			if f.Section != sec {
@@ -214,6 +219,24 @@ func displayApplicant(a Applicant) []displaySection {
 					v = "Ya"
 				}
 				ds.Rows = append(ds.Rows, labelValue{f.Label, v})
+			}
+		}
+		if sec == students.SectionRegistration && a.Kind == KindTransfer {
+			ds.Title = "Sekolah asal (pindahan)"
+			for _, k := range transferKeys {
+				v := a.Transfer[k]
+				if v == "" {
+					continue
+				}
+				switch k {
+				case TransferLastGrade, TransferTargetGrade:
+					v = "Kelas " + v
+				case TransferEntryDate:
+					if d, ok := plannedEntry(a); ok {
+						v = clock.FormatDateID(d)
+					}
+				}
+				ds.Rows = append(ds.Rows, labelValue{transferLabels[k], v})
 			}
 		}
 		if len(ds.Rows) > 0 {

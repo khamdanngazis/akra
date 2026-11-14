@@ -33,6 +33,13 @@
 </div>
 {{end}}
 <div class="field">
+<label for="jenis">Jenis</label>
+<select id="jenis" name="jenis" @change="$el.form.submit()">
+<option value="">Semua jenis</option>
+{{range .Kinds}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+<div class="field">
 <label for="status">Status</label>
 <select id="status" name="status" @change="$el.form.submit()">
 <option value="">Semua (kecuali draf)</option>
@@ -54,7 +61,7 @@
 {{range .Rows}}
 <tr>
 <td class="nowrap">{{if .RegistrationNumber}}{{.RegistrationNumber}}{{else}}<span class="muted">Draf</span>{{end}}</td>
-<td><a href="/pendaftaran/{{.ID}}"><strong>{{.FullName}}</strong></a></td>
+<td><a href="/pendaftaran/{{.ID}}"><strong>{{.FullName}}</strong></a>{{if eq .Kind "pindahan"}} <span class="badge badge-info">Pindahan{{with .TargetGrade}} · kelas {{.}}{{end}}</span>{{end}}</td>
 <td>{{if .PreviousSchool}}{{.PreviousSchool}}{{else}}<span class="muted">–</span>{{end}}</td>
 <td>{{.PeriodName}} · {{.TrackName}}</td>
 <td class="nowrap">{{if .DocsRequired}}{{if eq .DocsUploaded .DocsRequired}}<span class="badge badge-success">Lengkap</span>{{else}}<span class="badge badge-warning">{{.DocsUploaded}}/{{.DocsRequired}}</span>{{end}}{{else}}<span class="muted">–</span>{{end}}</td>

@@ -48,7 +48,7 @@
 {{if $.CanEdit}}<td><input type="checkbox" name="pick" value="{{.ApplicantID}}" checked aria-label="Pilih {{.FullName}}"></td>{{end}}
 <td class="nowrap"><a href="/pendaftaran/{{.ApplicantID}}">{{.RegistrationNumber}}</a></td>
 <td>{{.FullName}}</td>
-<td>{{.PeriodName}} · {{.TrackName}}</td>
+<td>{{.PeriodName}} · {{.TrackName}}{{if eq .Kind "pindahan"}} <span class="badge badge-info">Pindahan</span>{{end}}{{with .Grade}}<br><span class="muted small">Tingkat tujuan: kelas {{.}}</span>{{end}}</td>
 {{if $.CanEdit}}
 <td><input name="nis_{{.ApplicantID}}" maxlength="30" autocomplete="off" aria-label="NIS {{.FullName}}"></td>
 <td><select name="class_{{.ApplicantID}}" aria-label="Kelas {{.FullName}}"><option value="">Belum</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></td>

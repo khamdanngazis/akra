@@ -52,7 +52,7 @@ func (h *Handler) renderStaffNew(w http.ResponseWriter, r *http.Request, status 
 				label += " · di luar masa pendaftaran"
 			}
 			choice := p.ID + "|" + t.ID
-			view.Tracks = append(view.Tracks, trackOption{PeriodID: p.ID, TrackID: t.ID, Label: label, Selected: choice == view.Choice})
+			view.Tracks = append(view.Tracks, trackOption{PeriodID: p.ID, TrackID: t.ID, Label: label, Kind: p.Kind, Selected: choice == view.Choice})
 		}
 	}
 	h.render.Render(w, r, status, "admission/staff_new", view)

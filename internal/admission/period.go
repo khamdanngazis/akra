@@ -32,6 +32,20 @@ const (
 	StatusClosed = "tutup"
 )
 
+// Jenis periode dan pendaftar (T109).
+const (
+	KindNew      = "baru"
+	KindTransfer = "pindahan"
+)
+
+// KindLabel mengembalikan nama jenis pendaftaran untuk tampilan.
+func KindLabel(kind string) string {
+	if kind == KindTransfer {
+		return "Siswa pindahan"
+	}
+	return "Siswa baru"
+}
+
 // Aksi audit periode dan jalur.
 const (
 	ActionPeriodCreate = "admission.period_create"
@@ -50,6 +64,8 @@ var Docs = []struct{ Key, Label string }{
 	{"ijazah", "Ijazah/SKL"},
 	{"foto", "Pas foto"},
 	{"kip", "Kartu Indonesia Pintar"},
+	{"surat_pindah", "Surat keterangan pindah"},
+	{"rapor", "Rapor terakhir"},
 }
 
 const dateLayout = "2006-01-02"
@@ -89,7 +105,8 @@ type Period struct {
 	AcademicYearID          string
 	AcademicYearName        string
 	Name                    string
-	TargetGrade             int
+	Kind                    string
+	TargetGrade             int // 0 untuk periode pindahan (tingkat dipilih pendaftar)
 	OpensOn, ClosesOn       time.Time
 	FeeAmount               int64
 	FeeRequiredBeforeVerify bool
@@ -123,6 +140,7 @@ type Track struct {
 type PeriodForm struct {
 	AcademicYearID string
 	Name           string
+	Kind           string // hanya dipakai saat membuat; jenis tidak bisa diubah
 	TargetGrade    string
 	OpensOn        string
 	ClosesOn       string
@@ -152,14 +170,14 @@ func NewService(db database.DB) *Service {
 // Today mengembalikan tanggal hari ini (WIB) yang dipakai service.
 func (s *Service) Today() time.Time { return s.today() }
 
-const periodColumns = `p.id, p.school_id, p.academic_year_id, y.name, p.name, p.target_grade, p.opens_on, p.closes_on,
+const periodColumns = `p.id, p.school_id, p.academic_year_id, y.name, p.name, p.kind, coalesce(p.target_grade, 0), p.opens_on, p.closes_on,
 	p.fee_amount, p.fee_required_before_verify, p.required_docs, p.status, p.created_at,
 	(SELECT count(*) FROM admission_tracks t WHERE t.period_id = p.id)`
 
 func scanPeriod(row pgx.CollectableRow) (Period, error) {
 	var p Period
 	var grade int16
-	err := row.Scan(&p.ID, &p.SchoolID, &p.AcademicYearID, &p.AcademicYearName, &p.Name, &grade, &p.OpensOn, &p.ClosesOn,
+	err := row.Scan(&p.ID, &p.SchoolID, &p.AcademicYearID, &p.AcademicYearName, &p.Name, &p.Kind, &grade, &p.OpensOn, &p.ClosesOn,
 		&p.FeeAmount, &p.FeeRequiredBeforeVerify, &p.RequiredDocs, &p.Status, &p.CreatedAt, &p.TrackCount)
 	p.TargetGrade = int(grade)
 	return p, err
@@ -246,7 +264,8 @@ func (s *Service) OpenPeriods(ctx context.Context, schoolID string) ([]Period, e
 type periodInput struct {
 	AcademicYearID    string
 	Name              string
-	TargetGrade       int
+	Kind              string
+	TargetGrade       *int // nil untuk periode pindahan
 	OpensOn, ClosesOn time.Time
 	FeeAmount         int64
 	FeeRequired       bool
@@ -259,6 +278,13 @@ func validatePeriod(f PeriodForm) (periodInput, error) {
 		AcademicYearID: strings.TrimSpace(f.AcademicYearID),
 		Name:           strings.Join(strings.Fields(f.Name), " "),
 		FeeRequired:    f.FeeRequired,
+		Kind:           f.Kind,
+	}
+	if in.Kind == "" {
+		in.Kind = KindNew
+	}
+	if in.Kind != KindNew && in.Kind != KindTransfer {
+		fields["kind"] = "Pilih jenis pendaftaran."
 	}
 	switch {
 	case in.Name == "":
@@ -269,10 +295,12 @@ func validatePeriod(f PeriodForm) (periodInput, error) {
 	if !database.IsUUID(in.AcademicYearID) {
 		fields["academic_year_id"] = "Pilih tahun ajaran."
 	}
-	if g, err := strconv.Atoi(strings.TrimSpace(f.TargetGrade)); err != nil || g < 1 || g > 12 {
-		fields["target_grade"] = "Tingkat tujuan harus 1–12."
-	} else {
-		in.TargetGrade = g
+	if in.Kind != KindTransfer {
+		if g, err := strconv.Atoi(strings.TrimSpace(f.TargetGrade)); err != nil || g < 1 || g > 12 {
+			fields["target_grade"] = "Tingkat tujuan harus 1–12."
+		} else {
+			in.TargetGrade = &g
+		}
 	}
 	var err error
 	if in.OpensOn, err = time.Parse(dateLayout, strings.TrimSpace(f.OpensOn)); err != nil {
@@ -323,10 +351,10 @@ func (s *Service) Create(ctx context.Context, actor school.Actor, f PeriodForm) 
 	err = pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		var id string
 		err := tx.QueryRow(ctx, `
-			INSERT INTO admission_periods (school_id, academic_year_id, name, target_grade, opens_on, closes_on,
+			INSERT INTO admission_periods (school_id, academic_year_id, name, kind, target_grade, opens_on, closes_on,
 			       fee_amount, fee_required_before_verify, required_docs, created_by)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-			actor.SchoolID, in.AcademicYearID, in.Name, in.TargetGrade, in.OpensOn, in.ClosesOn,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+			actor.SchoolID, in.AcademicYearID, in.Name, in.Kind, in.TargetGrade, in.OpensOn, in.ClosesOn,
 			in.FeeAmount, in.FeeRequired, in.RequiredDocs, actor.UserID).Scan(&id)
 		if err != nil {
 			return mapError("create period", err)
@@ -344,6 +372,11 @@ func (s *Service) Create(ctx context.Context, actor school.Actor, f PeriodForm) 
 
 // Update mengubah periode. Status tidak diubah di sini.
 func (s *Service) Update(ctx context.Context, actor school.Actor, id string, f PeriodForm) (Period, error) {
+	current, err := s.Get(ctx, actor.SchoolID, id)
+	if err != nil {
+		return Period{}, err
+	}
+	f.Kind = current.Kind
 	in, err := validatePeriod(f)
 	if err != nil {
 		return Period{}, err
@@ -555,7 +588,7 @@ func (s *Service) DeleteTrack(ctx context.Context, actor school.Actor, periodID,
 
 func periodSnapshot(p Period) map[string]any {
 	return map[string]any{
-		"name": p.Name, "academic_year_id": p.AcademicYearID, "target_grade": p.TargetGrade,
+		"name": p.Name, "kind": p.Kind, "academic_year_id": p.AcademicYearID, "target_grade": p.TargetGrade,
 		"opens_on": p.OpensOn.Format(dateLayout), "closes_on": p.ClosesOn.Format(dateLayout),
 		"fee_amount": p.FeeAmount, "fee_required_before_verify": p.FeeRequiredBeforeVerify,
 		"required_docs": p.RequiredDocs, "status": p.Status,

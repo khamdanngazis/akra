@@ -21,7 +21,8 @@ var profileSections = []struct {
 }{
 	{SectionIdentity, "Data pribadi", "Nama, NIS, tanggal lahir, dan jenis kelamin diubah di form data siswa."},
 	{SectionAddress, "Alamat", ""},
-	{SectionFamily, "Keluarga dan bantuan", ""},
+	{SectionFamily, "Keluarga", ""},
+	{SectionAssistance, "Bantuan pemerintah", "Isi jika keluarga menerima kartu bantuan dari pemerintah. Layak PIP diusulkan oleh sekolah."},
 	{RelationFather, "Ayah kandung", "Hindari gelar (Alm., Dr., S.Pd, H.)."},
 	{RelationMother, "Ibu kandung", "Nama ibu kandung wajib untuk Dapodik. Hindari gelar (Almh., Hj., Dra.)."},
 	{RelationGuardian, "Wali", "Isi jika siswa tinggal bersama wali."},
@@ -69,6 +70,11 @@ type FieldView struct {
 	Max       int
 	Required  bool // wajib untuk Dapodik
 	Error     string
+	Hint      string
+	// Model mengikat checkbox atau select ke variabel Alpine.js, dan ShowIf
+	// adalah ekspresi Alpine.js yang menampilkan field (formulir publik
+	// T109). Keduanya kosong di form staf.
+	Model, ShowIf string
 }
 
 var requiredKeys = func() map[string]bool {

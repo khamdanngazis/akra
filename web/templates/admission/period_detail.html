@@ -5,7 +5,7 @@
 <div class="page-header">
 <div>
 <h1>{{.Period.Name}}</h1>
-<p class="muted">Tahun ajaran {{.Period.AcademicYearName}} · Tingkat {{.Period.TargetGrade}} · {{template "admission_period_status" .Period}}</p>
+<p class="muted">{{.Period.KindLabel}} · Tahun ajaran {{.Period.AcademicYearName}}{{if .Period.TargetGrade}} · Tingkat {{.Period.TargetGrade}}{{end}} · {{template "admission_period_status" .Period}}</p>
 </div>
 {{if .CanEdit}}<a class="btn btn-ghost" href="/pendaftaran/periode/{{.Period.ID}}/ubah">Ubah periode</a>{{end}}
 </div>
@@ -16,6 +16,7 @@
 <section class="card">
 <h2>Ketentuan</h2>
 <dl class="data-list">
+<dt>Formulir</dt><dd><a href="/s/{{.SchoolCode}}{{.Period.FormPath}}" target="_blank" rel="noopener">/s/{{.SchoolCode}}{{.Period.FormPath}}</a></dd>
 <dt>Tanggal</dt><dd>{{.Period.Opens}} – {{.Period.Closes}}</dd>
 <dt>Biaya formulir</dt><dd>{{.Period.Fee}}{{if .Period.FeeRequiredBeforeVerify}} <span class="badge">Wajib lunas sebelum verifikasi</span>{{end}}</dd>
 <dt>Dokumen wajib</dt><dd>{{if .Docs}}{{range $i, $d := .Docs}}{{if $i}}, {{end}}{{$d}}{{end}}{{else}}<span class="muted">Tidak ada</span>{{end}}</dd>

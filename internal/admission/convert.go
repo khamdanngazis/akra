@@ -218,10 +218,14 @@ func (e *Enroller) Enroll(ctx context.Context, actor school.Actor, applicantID s
 		for _, f := range students.ProfileFields {
 			values[f.Key] = a.Values[f.Key]
 		}
-		if values["registration_type"] == "" {
-			values["registration_type"] = registrationNew
+		// Pindahan (T109): jenis pendaftaran "Pindahan" dan tanggal masuk
+		// dari rencana tanggal masuk (paling awal awal tahun ajaran).
+		values["registration_type"] = registrationFor(a.Kind)
+		entry := yearStart
+		if d, ok := plannedEntry(a); ok && d.After(yearStart) {
+			entry = d
 		}
-		values["entry_date"] = yearStart.Format(dateLayout)
+		values["entry_date"] = entry.Format(dateLayout)
 		if _, err := students.NewProfileService(tx, e.keys).Save(ctx, actor, st.ID, values); err != nil {
 			return fmt.Errorf("admission: save profile: %w", err)
 		}
@@ -231,7 +235,7 @@ func (e *Enroller) Enroll(ctx context.Context, actor school.Actor, applicantID s
 		}
 
 		if o.ClassID != "" {
-			res, err := students.Place(ctx, tx, actor.SchoolID, st.ID, o.ClassID, yearID, yearStart)
+			res, err := students.Place(ctx, tx, actor.SchoolID, st.ID, o.ClassID, yearID, entry)
 			if err != nil {
 				return fieldErr("class_id", "Kelas tidak bisa dipilih untuk tahun ajaran "+yearName+".")
 			}
