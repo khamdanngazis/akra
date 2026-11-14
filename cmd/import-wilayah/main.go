@@ -5,10 +5,11 @@
 // berubah).
 //
 // Dengan -convert: membuat internal/wilayah/data/wilayah.tsv.gz dari berkas
-// SQL dataset cahyadsn/wilayah (db/wilayah.sql) dan cahyadsn/wilayah_kodepos
+// SQL dataset cahyadsn/wilayah (db/wilayah.sql dan, untuk titik ibu kota
+// provinsi/kabupaten, db/wilayah_level_1_2.sql) dan cahyadsn/wilayah_kodepos
 // (db/wilayah_kodepos.sql):
 //
-//	go run ./cmd/import-wilayah -convert -sql wilayah.sql -kodepos wilayah_kodepos.sql
+//	go run ./cmd/import-wilayah -convert -sql wilayah.sql -kodepos wilayah_kodepos.sql -coords wilayah_level_1_2.sql
 package main
 
 import (
@@ -33,11 +34,12 @@ func main() {
 	convert := flag.Bool("convert", false, "buat berkas data dari SQL sumber")
 	sqlPath := flag.String("sql", "", "berkas db/wilayah.sql")
 	kodeposPath := flag.String("kodepos", "", "berkas db/wilayah_kodepos.sql")
+	coordsPath := flag.String("coords", "", "berkas db/wilayah_level_1_2.sql (titik provinsi/kabupaten)")
 	out := flag.String("out", "internal/wilayah/data/wilayah.tsv.gz", "berkas hasil konversi")
 	flag.Parse()
 	var err error
 	if *convert {
-		err = runConvert(*sqlPath, *kodeposPath, *out, logger)
+		err = runConvert(*sqlPath, *kodeposPath, *coordsPath, *out, logger)
 	} else {
 		err = runImport(logger)
 	}
@@ -94,9 +96,43 @@ func readPairs(path string) (map[string]string, error) {
 
 var posRe = regexp.MustCompile(`^[0-9]{5}$`)
 
-func runConvert(sqlPath, kodeposPath, out string, logger *slog.Logger) error {
-	if sqlPath == "" || kodeposPath == "" {
-		return errors.New("-sql and -kodepos are required")
+// coordLineRe membaca awal baris INSERT wilayah_level_1_2: kode, nama,
+// ibukota, lat, lng (kolom path yang besar diabaikan).
+var coordLineRe = regexp.MustCompile(`^\('([0-9]{2}(?:\.[0-9]{2})?)','(?:[^'\\]|\\.|'')*','(?:[^'\\]|\\.|'')*',\s*(-?[0-9]+(?:\.[0-9]+)?),\s*(-?[0-9]+(?:\.[0-9]+)?),`)
+
+// trunc6 memotong desimal menjadi paling banyak 6 angka di belakang koma
+// (presisi kolom numeric(9,6)), tanpa konversi float.
+func trunc6(s string) string {
+	if i := strings.IndexByte(s, '.'); i >= 0 && len(s) > i+7 {
+		s = s[:i+7]
+	}
+	return strings.TrimRight(strings.TrimRight(s, "0"), ".")
+}
+
+func readCoords(path string) (map[string][2]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	out := map[string][2]string{}
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 1<<26) // baris memuat poligon batas wilayah
+	for sc.Scan() {
+		if m := coordLineRe.FindStringSubmatch(sc.Text()); m != nil {
+			out[m[1]] = [2]string{trunc6(m[2]), trunc6(m[3])}
+		}
+	}
+	return out, sc.Err()
+}
+
+func runConvert(sqlPath, kodeposPath, coordsPath, out string, logger *slog.Logger) error {
+	if sqlPath == "" || kodeposPath == "" || coordsPath == "" {
+		return errors.New("-sql, -kodepos, and -coords are required")
+	}
+	coords, err := readCoords(coordsPath)
+	if err != nil {
+		return err
 	}
 	names, err := readPairs(sqlPath)
 	if err != nil {
@@ -128,7 +164,11 @@ func runConvert(sqlPath, kodeposPath, out string, logger *slog.Logger) error {
 		if wilayah.TingkatOf(k) == wilayah.Desa && posRe.MatchString(pos[k]) {
 			p = pos[k]
 		}
-		fmt.Fprintf(bw, "%s\t%s\t%s\n", k, names[k], p)
+		c := coords[k]
+		if wilayah.TingkatOf(k) > wilayah.Kabupaten {
+			c = [2]string{}
+		}
+		fmt.Fprintf(bw, "%s\t%s\t%s\t%s\t%s\n", k, names[k], p, c[0], c[1])
 	}
 	if err := bw.Flush(); err != nil {
 		return err
@@ -139,6 +179,6 @@ func runConvert(sqlPath, kodeposPath, out string, logger *slog.Logger) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	logger.Info("wilayah converted", "rows", len(codes), "out", out)
+	logger.Info("wilayah converted", "rows", len(codes), "coordinates", len(coords), "out", out)
 	return nil
 }

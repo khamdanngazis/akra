@@ -65,10 +65,25 @@ Di T106 titik lokasi rumah hanya diisi dengan tombol "Ambil lokasi saya" (GPS pe
 - Jika langkah 5 pilihan B: `internal/wilayah` (kolom koordinat kabupaten/kota) dan `cmd/import-wilayah`
 
 ## Kriteria selesai
-- [ ] Orang tua bisa memilih titik rumah di peta walau tidak sedang di rumah; titik tersimpan dan tampil lagi saat halaman dibuka
-- [ ] Peta tidak dimuat (tidak ada permintaan ke Google) sampai tombol "Pilih di peta" ditekan
-- [ ] Tanpa `GOOGLE_MAPS_API_KEY` atau saat skrip gagal dimuat, tombol peta tidak tampil/berpesan jelas dan "Ambil lokasi saya" tetap jalan
-- [ ] Nyaman di HP 360 px: peta layar penuh, penanda mudah digeser, tombol "Pakai titik ini" terlihat
-- [ ] API key dibatasi referrer dan API; langkah pembuatannya terdokumentasi
-- [ ] Teks persetujuan/petunjuk menyebut peta dari Google
-- [ ] Uji handler: tombol peta hanya muncul jika kunci diset; validasi koordinat tetap
+- [x] Orang tua bisa memilih titik rumah di peta walau tidak sedang di rumah; titik tersimpan dan tampil lagi saat halaman dibuka
+- [x] Peta tidak dimuat (tidak ada permintaan ke Google) sampai tombol "Pilih di peta" ditekan
+- [x] Tanpa `GOOGLE_MAPS_API_KEY` atau saat skrip gagal dimuat, tombol peta tidak tampil/berpesan jelas dan "Ambil lokasi saya" tetap jalan
+- [x] Nyaman di HP 360 px: peta layar penuh, penanda mudah digeser, tombol "Pakai titik ini" terlihat
+- [x] API key dibatasi referrer dan API; langkah pembuatannya terdokumentasi
+- [x] Teks persetujuan/petunjuk menyebut peta dari Google
+- [x] Uji handler: tombol peta hanya muncul jika kunci diset; validasi koordinat tetap
+
+## Catatan implementasi
+- **Konfigurasi:** `GOOGLE_MAPS_API_KEY` opsional (`config.GoogleMapsAPIKey`, diteruskan ke template lewat `{{mapsKey}}`). Tanpa kunci, tampilan sama seperti T106. Langkah membuat dan membatasi kunci, plus catatan biaya, ada di README (bagian Tampilan).
+- **Komponen:** `web/static/js/lokasi.js` (`lokasiPicker`) menggantikan Alpine inline T106. Isinya GPS seperti sebelumnya, plus tombol **Pilih di peta** yang membuka panel layar penuh (di desktop berupa panel besar).
+  - Peta memakai **penanda tetap di tengah**: orang tua menggeser peta, dan mengetuk peta memindahkan titik ke situ. Pola ini lebih mudah di HP daripada menyeret penanda, dan tidak butuh Map ID untuk penanda lanjutan.
+  - Pilihan tampilan Peta/Satelit (hybrid).
+  - "Pakai titik ini" baru aktif pada zoom ≥ 16.
+  - Ringkasan lokasi punya tautan **Lihat di peta** (google.com/maps), juga di form staf hanya-baca.
+- **Pemuatan:** skrip `maps.googleapis.com/maps/api/js` (`loading=async`, bahasa `id`, region `ID`) dimasukkan saat tombol pertama kali ditekan; uji handler memastikan halaman tidak memuatnya lebih awal. Kegagalan muat, kunci ditolak (`gm_authFailure`), atau waktu habis menampilkan pesan, dan GPS tetap bisa dipakai.
+- **Posisi awal:** titik tersimpan (zoom 18) → titik ibu kota kabupaten/kota yang dipilih di isian wilayah (zoom 13) → provinsi (zoom 9) → tengah Indonesia (zoom 5).
+- **Pusat dari wilayah, keputusan langkah 5: pilihan B.** Titik ibu kota 38 provinsi dan 514 kabupaten/kota diambil dari `wilayah_level_1_2.sql` (dataset sama, MIT), disimpan di `wilayah.lat/lng` (`numeric(9,6)`, migrasi 000055), dan dikirim di `GET /wilayah` sebagai teks. Tidak ada Geocoding API. Data wilayah otomatis diimpor ulang saat start karena berkasnya berubah.
+- **Privasi:** teks persetujuan di halaman awal dan petunjuk peta menyebut "peta ditampilkan/disediakan oleh Google" hanya bila kunci diset. Koordinat disimpan di AKRA; validasi server tidak berubah.
+- **Diuji di Chrome dengan Google Maps tiruan** (rute dicegat): tidak ada permintaan ke Google sebelum tombol, peta terbuka di Kota Bandung setelah kabupaten dipilih, batas zoom, titik tersimpan, dan peta terbuka lagi di titik itu. Dengan Google asli dan kunci palsu, pesan "layanan peta menolak permintaan" tampil.
+- **Belum diuji dengan kunci asli:** perlu dicek di staging setelah kunci dibuat.
+

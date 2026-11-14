@@ -54,6 +54,9 @@ func TestEmbeddedData(t *testing.T) {
 		if TingkatOf(r.kode) != Desa && r.kodePos != "" {
 			t.Fatalf("kode pos on non-village %s", r.kode)
 		}
+		if (TingkatOf(r.kode) <= Kabupaten) != (r.lat != "") {
+			t.Fatalf("coordinate presence wrong for %s", r.kode)
+		}
 	}
 	if count[Provinsi] != 38 || count[Kabupaten] < 500 || count[Kecamatan] < 7000 || count[Desa] < 80000 {
 		t.Errorf("counts = %v", count)
@@ -112,6 +115,12 @@ func TestLoadAndQuery(t *testing.T) {
 	if err != nil || len(prov) != 38 {
 		t.Fatalf("provinces = %d, %v", len(prov), err)
 	}
+	kab, _ := Children(ctx, tx, "32")
+	for _, k := range kab {
+		if k.Kode == "32.73" && (k.Lat != "-6.910655" || k.Lng != "107.609869") {
+			t.Errorf("Kota Bandung point = %q, %q", k.Lat, k.Lng)
+		}
+	}
 	kec, _ := Children(ctx, tx, "32.73")
 	found := false
 	for _, k := range kec {
@@ -121,7 +130,7 @@ func TestLoadAndQuery(t *testing.T) {
 		t.Errorf("Kota Bandung districts = %+v", kec)
 	}
 	desa, _ := Children(ctx, tx, "32.73.04")
-	if len(desa) == 0 || desa[0].KodePos == "" {
+	if len(desa) == 0 || desa[0].KodePos == "" || desa[0].Lat != "" || kec[0].Lat != "" {
 		t.Errorf("villages = %+v", desa)
 	}
 

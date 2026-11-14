@@ -58,6 +58,10 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	rd.SetMapsKey(cfg.GoogleMapsAPIKey)
+	if cfg.GoogleMapsAPIKey != "" {
+		logger.Info("google maps enabled for home location picker")
+	}
 
 	pool, err := database.Connect(context.Background(), cfg.DatabaseURL, cfg.DBMaxConns)
 	if err != nil {

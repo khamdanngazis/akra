@@ -354,6 +354,13 @@ type publicClient struct {
 
 func newPublicServer(t *testing.T, e *env) *publicClient {
 	t.Helper()
+	return newPublicServerKey(t, e, "")
+}
+
+// newPublicServerKey sama dengan newPublicServer dengan API key Google Maps
+// (T112) diset di renderer.
+func newPublicServerKey(t *testing.T, e *env, mapsKey string) *publicClient {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
 	static, _ := fs.Sub(web.FS, "static")
@@ -361,6 +368,7 @@ func newPublicServer(t *testing.T, e *env) *publicClient {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rd.SetMapsKey(mapsKey)
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
 	store, err := storage.NewLocal(t.TempDir())
 	if err != nil {

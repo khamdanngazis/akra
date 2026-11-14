@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"akra/internal/platform/database"
 )
@@ -66,6 +67,10 @@ type Region struct {
 	Kode    string `json:"kode"`
 	Nama    string `json:"nama"`
 	KodePos string `json:"kode_pos,omitempty"`
+	// Lat dan Lng adalah titik ibu kota provinsi/kabupaten (desimal sebagai
+	// teks), kosong untuk kecamatan dan desa. Dipakai memusatkan peta (T112).
+	Lat string `json:"lat,omitempty"`
+	Lng string `json:"lng,omitempty"`
 }
 
 // Children mengembalikan wilayah aktif di bawah induk, urut nama. induk
@@ -74,16 +79,18 @@ func Children(ctx context.Context, q database.DBTX, induk string) ([]Region, err
 	var rows pgx.Rows
 	var err error
 	if induk == "" {
-		rows, err = q.Query(ctx, `SELECT kode, nama, coalesce(kode_pos, '') FROM wilayah WHERE tingkat = 1 AND aktif ORDER BY nama`)
+		rows, err = q.Query(ctx, `SELECT kode, nama, coalesce(kode_pos, ''), coalesce(lat::text, ''), coalesce(lng::text, '')
+			FROM wilayah WHERE tingkat = 1 AND aktif ORDER BY nama`)
 	} else {
-		rows, err = q.Query(ctx, `SELECT kode, nama, coalesce(kode_pos, '') FROM wilayah WHERE induk = $1 AND aktif ORDER BY nama`, induk)
+		rows, err = q.Query(ctx, `SELECT kode, nama, coalesce(kode_pos, ''), coalesce(lat::text, ''), coalesce(lng::text, '')
+			FROM wilayah WHERE induk = $1 AND aktif ORDER BY nama`, induk)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("wilayah: children: %w", err)
 	}
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Region, error) {
 		var x Region
-		return x, r.Scan(&x.Kode, &x.Nama, &x.KodePos)
+		return x, r.Scan(&x.Kode, &x.Nama, &x.KodePos, &x.Lat, &x.Lng)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("wilayah: children: %w", err)
@@ -180,8 +187,12 @@ func DataVersion() string {
 
 // record adalah satu baris data yang disertakan.
 type record struct {
-	kode, nama, kodePos string
+	kode, nama, kodePos, lat, lng string
 }
+
+// coordRe memeriksa titik desimal di data (paling banyak 6 angka di
+// belakang koma, sesuai numeric(9,6)).
+var coordRe = regexp.MustCompile(`^-?[0-9]{1,3}(\.[0-9]{1,6})?$`)
 
 func readData() ([]record, error) {
 	zr, err := gzip.NewReader(bytes.NewReader(dataGz))
@@ -193,10 +204,11 @@ func readData() ([]record, error) {
 	sc := bufio.NewScanner(zr)
 	for sc.Scan() {
 		parts := strings.Split(sc.Text(), "\t")
-		if len(parts) != 3 || !ValidKode(parts[0]) || parts[1] == "" {
+		if len(parts) != 5 || !ValidKode(parts[0]) || parts[1] == "" || (parts[3] == "") != (parts[4] == "") ||
+			(parts[3] != "" && (!coordRe.MatchString(parts[3]) || !coordRe.MatchString(parts[4]))) {
 			return nil, fmt.Errorf("wilayah: bad data line %q", sc.Text())
 		}
-		out = append(out, record{parts[0], parts[1], parts[2]})
+		out = append(out, record{parts[0], parts[1], parts[2], parts[3], parts[4]})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("wilayah: read data: %w", err)
@@ -241,25 +253,47 @@ func load(ctx context.Context, db database.DB, force bool) (bool, error) {
 		if _, err := tx.Exec(ctx, `DROP TABLE IF EXISTS pg_temp.wilayah_baru`); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE wilayah_baru (kode text, nama text, kode_pos text) ON COMMIT DROP`); err != nil {
+		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE wilayah_baru (kode text, nama text, kode_pos text, lat numeric(9,6), lng numeric(9,6)) ON COMMIT DROP`); err != nil {
 			return err
 		}
-		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"wilayah_baru"}, []string{"kode", "nama", "kode_pos"},
+		orNil := func(s string) any {
+			if s == "" {
+				return nil
+			}
+			return s
+		}
+		// Titik dikirim sebagai pgtype.Numeric (desimal eksak dari teks).
+		num := func(s string) (any, error) {
+			if s == "" {
+				return nil, nil
+			}
+			var n pgtype.Numeric
+			if err := n.Scan(s); err != nil {
+				return nil, fmt.Errorf("wilayah: coordinate %q: %w", s, err)
+			}
+			return n, nil
+		}
+		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"wilayah_baru"}, []string{"kode", "nama", "kode_pos", "lat", "lng"},
 			pgx.CopyFromSlice(len(recs), func(i int) ([]any, error) {
-				var pos any
-				if recs[i].kodePos != "" {
-					pos = recs[i].kodePos
+				r := recs[i]
+				lat, err := num(r.lat)
+				if err != nil {
+					return nil, err
 				}
-				return []any{recs[i].kode, recs[i].nama, pos}, nil
+				lng, err := num(r.lng)
+				if err != nil {
+					return nil, err
+				}
+				return []any{r.kode, r.nama, orNil(r.kodePos), lat, lng}, nil
 			})); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO wilayah (kode, nama, tingkat, induk, kode_pos, aktif)
+			INSERT INTO wilayah (kode, nama, tingkat, induk, kode_pos, lat, lng, aktif)
 			SELECT kode, nama, length(kode) - length(replace(kode, '.', '')) + 1,
-			       nullif(regexp_replace(kode, '\.[0-9]+$', ''), kode), kode_pos, true
+			       nullif(regexp_replace(kode, '\.[0-9]+$', ''), kode), kode_pos, lat, lng, true
 			FROM wilayah_baru
-			ON CONFLICT (kode) DO UPDATE SET nama = EXCLUDED.nama, kode_pos = EXCLUDED.kode_pos, aktif = true`); err != nil {
+			ON CONFLICT (kode) DO UPDATE SET nama = EXCLUDED.nama, kode_pos = EXCLUDED.kode_pos, lat = EXCLUDED.lat, lng = EXCLUDED.lng, aktif = true`); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE wilayah w SET aktif = false

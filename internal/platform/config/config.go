@@ -40,6 +40,10 @@ type Config struct {
 	MailDriver   string
 	MailFrom     string
 	ResendAPIKey string
+	// GoogleMapsAPIKey (opsional) mengaktifkan "Pilih di peta" untuk titik
+	// lokasi rumah (T112). Kunci browser: wajib dibatasi HTTP referrer dan
+	// hanya Maps JavaScript API di Google Cloud.
+	GoogleMapsAPIKey string
 
 	// Penyimpanan file (bukti transfer). StorageDriver "local" (default di
 	// luar production) menyimpan di disk StorageLocalDir; "r2" menyimpan di
@@ -139,6 +143,7 @@ func Load() (Config, error) {
 	cfg.MailDriver = getEnv("MAIL_DRIVER", "log")
 	cfg.MailFrom = os.Getenv("MAIL_FROM")
 	cfg.ResendAPIKey = os.Getenv("RESEND_API_KEY")
+	cfg.GoogleMapsAPIKey = strings.TrimSpace(os.Getenv("GOOGLE_MAPS_API_KEY"))
 	switch cfg.MailDriver {
 	case "log":
 		if cfg.AppEnv == EnvProduction {

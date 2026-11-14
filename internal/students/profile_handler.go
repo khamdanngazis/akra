@@ -15,6 +15,7 @@ import (
 	"akra/internal/platform/page"
 	"akra/internal/wilayah"
 	"context"
+	"net/url"
 )
 
 // Bagian form data rinci, berurutan seperti F-PD (T88). Bagian ayah, ibu,
@@ -270,9 +271,15 @@ func ProfileFieldViews(section string, values, errs map[string]string) []FieldVi
 		case "latitude":
 			// Lintang dan bujur satu kelompok dengan tombol "Ambil lokasi
 			// saya" (T106).
-			out = append(out, FieldView{Key: "latitude", Label: "Titik lokasi rumah", Input: "lokasi",
+			fv := FieldView{Key: "latitude", Label: "Titik lokasi rumah", Input: "lokasi",
 				Sub:    map[string]string{"latitude": values["latitude"], "longitude": values["longitude"]},
-				SubErr: map[string]string{"latitude": errs["latitude"], "longitude": errs["longitude"]}})
+				SubErr: map[string]string{"latitude": errs["latitude"], "longitude": errs["longitude"]}}
+			if values["latitude"] != "" && values["longitude"] != "" {
+				// Tautan yang dibuka pengguna sendiri (T112), bukan sumber
+				// yang dimuat halaman.
+				fv.Sub["view_url"] = "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(values["latitude"]+","+values["longitude"])
+			}
+			out = append(out, fv)
 			continue
 		}
 		fv := FieldView{Key: f.Key, Label: f.Label, Value: values[f.Key], Error: errs[f.Key], Required: requiredKeys[f.Key], Input: "text"}

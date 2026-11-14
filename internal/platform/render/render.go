@@ -35,7 +35,14 @@ const (
 type Renderer struct {
 	pages  map[string]*template.Template
 	logger *slog.Logger
+	// mapsKey adalah API key Google Maps untuk peta lokasi rumah (T112);
+	// kosong berarti fitur peta tidak tampil.
+	mapsKey string
 }
+
+// SetMapsKey mengatur API key Google Maps yang dibaca template lewat
+// {{mapsKey}}. Dipanggil sekali saat start, sebelum melayani request.
+func (r *Renderer) SetMapsKey(key string) { r.mapsKey = key }
 
 // New mem-parse semua template di fsys. Error parse dikembalikan dengan nama
 // file-nya agar server gagal start dengan pesan yang jelas.
@@ -49,7 +56,10 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 	if err != nil {
 		return nil, err
 	}
-	base, err := template.New(layoutFile).Funcs(funcs(versions)).ParseFS(fsys, layoutFile)
+	rd := &Renderer{logger: logger}
+	fm := funcs(versions)
+	fm["mapsKey"] = func() string { return rd.mapsKey }
+	base, err := template.New(layoutFile).Funcs(fm).ParseFS(fsys, layoutFile)
 	if err != nil {
 		return nil, fmt.Errorf("render: parse %s: %w", layoutFile, err)
 	}
@@ -87,7 +97,8 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 		}
 		pages[strings.TrimSuffix(p, ".html")] = t
 	}
-	return &Renderer{pages: pages, logger: logger}, nil
+	rd.pages = pages
+	return rd, nil
 }
 
 // funcs berisi fungsi template yang tersedia di semua halaman. Fungsi CSRF
