@@ -286,7 +286,7 @@ func seedMVP2(ctx context.Context, tx pgx.Tx, o Options, rng *rand.Rand, in mvp2
 		cols         importer.ColumnMap
 	}{
 		{"Ekspor Dapodik", importer.TargetStudents, importer.ColumnMap{"NIS": "NIPD", "Nama lengkap": "Nama", "Tanggal lahir": "Tanggal Lahir",
-			"Jenis kelamin": "JK", "Kelas": "Rombel Saat Ini", "Nama wali": "Nama Ibu Kandung", "Telepon wali": "HP"}},
+			"Jenis kelamin": "JK", "Kelas": "Rombel Saat Ini", "Nama wali": "Data Ibu / Nama", "Telepon wali": "HP"}},
 		{"Rekap nilai guru", importer.TargetGrades, importer.ColumnMap{"NIS": "No Induk", "Kode mapel": "Mapel", "Nama komponen": "Jenis Penilaian", "Nilai": "Skor"}},
 	} {
 		if _, err := maps.Create(ctx, actor, m.name, m.target, m.cols, nil); err != nil {

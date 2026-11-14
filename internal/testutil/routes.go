@@ -488,6 +488,12 @@ var Routes = []Route{
 		})},
 	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
+	// Impor ekspor Dapodik (T101): hanya data sekolah sendiri (file + sesi).
+	{Method: "GET", Pattern: "/dapodik/impor", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/dapodik/impor", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/dapodik/impor" }, func(*School) url.Values { return url.Values{} })},
+	{Method: "POST", Pattern: "/dapodik/impor/terapkan", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/dapodik/impor/terapkan" }, func(*School) url.Values { return url.Values{} })},
 	{Method: "POST", Pattern: "/dapodik/siswa/{id}/tandai", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/dapodik/siswa/" + o.StudentIDs[0] + "/tandai" }, func(*School) url.Values {
 			return url.Values{"entered": {"1"}}

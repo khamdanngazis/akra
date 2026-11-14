@@ -22,6 +22,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
+	"akra/internal/platform/storage"
 	"akra/internal/school"
 	"akra/internal/students"
 	"akra/web"
@@ -90,7 +91,11 @@ func newEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
-	h := NewHandler(tx, e.keys, sm, rd, logger)
+	store, err := storage.NewLocal(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandler(tx, e.keys, store, sm, rd, logger)
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
 	r.Use(func(next http.Handler) http.Handler {

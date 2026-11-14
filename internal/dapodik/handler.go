@@ -20,6 +20,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
 	"akra/internal/platform/pii"
+	"akra/internal/platform/storage"
 	"akra/internal/school"
 	"akra/internal/students"
 )
@@ -35,6 +36,7 @@ const (
 type Handler struct {
 	db       database.DB
 	keys     *pii.Keyring
+	store    storage.Store
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
@@ -42,8 +44,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(db database.DB, keys *pii.Keyring, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, keys: keys, sessions: sessions, render: render, logger: logger}
+func NewHandler(db database.DB, keys *pii.Keyring, store storage.Store, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, keys: keys, store: store, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route Dapodik ke r.
@@ -68,6 +70,12 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/siswa/{id}", h.copySheet)
 			// Peran: admin_tu.
 			r.Post("/siswa/{id}/tandai", h.markEntered)
+			// Peran: admin_tu. Impor ekspor Daftar PD Dapodik (T101).
+			r.Get("/impor", h.importForm)
+			// Peran: admin_tu.
+			r.Post("/impor", h.importPreview)
+			// Peran: admin_tu.
+			r.Post("/impor/terapkan", h.importApply)
 		})
 	})
 }

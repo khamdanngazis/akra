@@ -102,7 +102,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
 		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
-		dapodik:         dapodik.NewHandler(d.db, d.pii, d.sessions, d.render, d.logger),
+		dapodik:         dapodik.NewHandler(d.db, d.pii, d.store, d.sessions, d.render, d.logger),
 		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
 		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:             devRoutes(d),
