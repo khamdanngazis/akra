@@ -58,9 +58,17 @@
 <select id="{{$id}}-kab" x-model="kab" @change="pick(2)" :disabled="!prov || loading === 2"><option value="">Pilih kabupaten/kota</option><template x-for="o in lists[2]" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
 <div><label for="{{$id}}-kec" class="wilayah-label">Kecamatan</label>
 <select id="{{$id}}-kec" x-model="kec" @change="pick(3)" :disabled="!kab || loading === 3"><option value="">Pilih kecamatan</option><template x-for="o in lists[3]" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
-<div><label for="{{$id}}-desa" class="wilayah-label">Desa/kelurahan</label>
-<input type="search" class="wilayah-search" x-show="lists[4].length > 15" x-model="q" placeholder="Ketik untuk mencari desa" aria-label="Cari desa/kelurahan" autocomplete="off">
-<select id="{{$id}}-desa" x-model="desa" @change="pick(4)" :disabled="!kec || loading === 4"><option value="">Pilih desa/kelurahan</option><template x-for="o in desaOptions" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
+<div class="wilayah-combo" @click.outside="closeDesa()"><label for="{{$id}}-desa" class="wilayah-label">Desa/kelurahan</label>
+<input id="{{$id}}-desa" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-controls="{{$id}}-desa-list" :aria-expanded="open.toString()"
+ :aria-activedescendant="open && desaOptions[active] ? '{{$id}}-desa-' + active : null"
+ x-model="q" :disabled="!kec || loading === 4" :placeholder="kec ? 'Ketik nama desa/kelurahan' : 'Pilih kecamatan dulu'"
+ @focus="openDesa()" @click="openDesa()" @input="typed()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+ @keydown.enter.prevent="chooseActive()" @keydown.escape="closeDesa()" @keydown.tab="closeDesa()">
+<ul id="{{$id}}-desa-list" role="listbox" class="wilayah-options" x-cloak x-show="open">
+<template x-for="(o, i) in desaOptions" :key="o.kode"><li role="option" :id="'{{$id}}-desa-' + i" :aria-selected="(o.kode === desa).toString()"
+ :class="{ 'is-active': i === active, 'is-selected': o.kode === desa }" @mousedown.prevent="choose(o)" @mouseenter="active = i"><span x-text="o.nama"></span><small x-show="o.kode_pos" x-text="o.kode_pos"></small></li></template>
+<li class="wilayah-empty" x-show="desaOptions.length === 0">Tidak ada desa yang cocok. Periksa ejaan, atau centang "isi manual" di bawah.</li>
+</ul></div>
 </div>
 <p class="hint" x-cloak x-show="failed">Daftar wilayah tidak bisa dimuat. Silakan isi nama desa dan kecamatan secara manual.</p>
 {{end}}

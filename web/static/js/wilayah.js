@@ -20,16 +20,63 @@ window.wilayahPicker = function (el) {
     kab: '',
     kec: '',
     desa: '',
-    q: '',
+    q: '', // teks di isian desa: nama desa terpilih, atau kata yang diketik
+    open: false,
+    active: 0,
     pos: (el.querySelector('[name="postal_code"]') || {}).value || '',
     manual: el.dataset.manual === 'true',
     failed: false,
     loading: 0,
     lists: { 1: [], 2: [], 3: [], 4: [] },
+    get desaName() {
+      const d = this.lists[4].find((o) => o.kode === this.desa);
+      return d ? d.nama : '';
+    },
+    // desaOptions: semua desa jika isian masih berisi nama desa terpilih
+    // (atau kosong), selain itu yang namanya memuat kata yang diketik; yang
+    // diawali kata itu diurutkan lebih dulu.
     get desaOptions() {
       const q = this.q.trim().toLowerCase();
-      if (!q) return this.lists[4];
-      return this.lists[4].filter((o) => o.nama.toLowerCase().includes(q) || o.kode === this.desa);
+      if (!q || (this.desa && this.q === this.desaName)) return this.lists[4];
+      const hits = this.lists[4].filter((o) => o.nama.toLowerCase().includes(q));
+      return hits.sort((a, b) => (b.nama.toLowerCase().startsWith(q) ? 1 : 0) - (a.nama.toLowerCase().startsWith(q) ? 1 : 0));
+    },
+    openDesa() {
+      if (!this.kec) return;
+      this.open = true;
+      const i = this.desaOptions.findIndex((o) => o.kode === this.desa);
+      this.active = i >= 0 ? i : 0;
+    },
+    // closeDesa menutup daftar; teks yang diketik tanpa memilih dikembalikan
+    // ke nama desa terpilih (atau dikosongkan).
+    closeDesa() {
+      this.open = false;
+      this.q = this.desaName;
+    },
+    // typed membuka daftar hasil. Desa terpilih sebelumnya tetap tersimpan
+    // sampai desa lain dipilih; jika batal, teks kembali ke nama desa itu.
+    typed() {
+      this.open = true;
+      this.active = 0;
+    },
+    move(step) {
+      if (!this.open) return this.openDesa();
+      const n = this.desaOptions.length;
+      if (n) this.active = (this.active + step + n) % n;
+      this.$nextTick(() => {
+        const li = el.querySelector('.wilayah-options li.is-active');
+        if (li) li.scrollIntoView({ block: 'nearest' });
+      });
+    },
+    chooseActive() {
+      const o = this.desaOptions[this.active];
+      if (this.open && o) this.choose(o);
+    },
+    choose(o) {
+      this.desa = o.kode;
+      this.q = o.nama;
+      this.open = false;
+      this.fillPos();
     },
     async load(level, induk) {
       this.loading = level;
@@ -54,6 +101,7 @@ window.wilayahPicker = function (el) {
       this.kec = prefix(kode, 3);
       await this.load(4, this.kec);
       this.desa = kode;
+      this.q = this.desaName;
       if (el.dataset.suggest && !el.dataset.kode) this.fillPos();
     },
     // pick dipanggil saat pilihan tingkat level berubah: kosongkan tingkat
@@ -64,7 +112,10 @@ window.wilayahPicker = function (el) {
         this[keys[l]] = '';
         this.lists[l] = [];
       }
-      if (level === 3) this.q = '';
+      if (level <= 3) {
+        this.q = '';
+        this.open = false;
+      }
       if (level < 4 && this[keys[level]]) await this.load(level + 1, this[keys[level]]);
       if (level === 4) this.fillPos();
     },
