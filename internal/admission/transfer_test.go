@@ -318,7 +318,8 @@ func TestAddressWilayah(t *testing.T) {
 		t.Fatal("create draft")
 	}
 	_, body := c.get(base + "/isi/alamat")
-	if !strings.Contains(body, "js/wilayah.js") || !strings.Contains(body, `x-data="wilayahPicker($el)"`) || !strings.Contains(body, "Desa tidak ada di daftar") {
+	if !strings.Contains(body, "js/wilayah.js") || !strings.Contains(body, `x-data="wilayahPicker($el)"`) || !strings.Contains(body, "Desa tidak ada di daftar") ||
+		!strings.Contains(body, `role="combobox"`) || strings.Contains(body, "wilayah-search") {
 		t.Error("address step without wilayah picker")
 	}
 	addr := url.Values{"street": {"Jl. Melati 5"}, "wilayah_kode": {"32.73.04.9999"}}

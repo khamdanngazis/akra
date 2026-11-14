@@ -1989,8 +1989,33 @@
     @apply mb-1.5 block text-sm font-semibold text-slate-700;
   }
 
-  .wilayah-search {
-    @apply mb-2 min-h-10 text-sm;
+  /* Satu isian desa: ketik untuk mencari, pilih dari daftar di bawahnya. */
+  .wilayah-combo {
+    @apply relative;
+  }
+
+  .wilayah-options {
+    @apply absolute inset-x-0 top-full z-20 mt-1 max-h-64 list-none overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg;
+  }
+
+  .wilayah-options li {
+    @apply flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-[15px] text-slate-800;
+  }
+
+  .wilayah-options li small {
+    @apply flex-none text-xs text-slate-400;
+  }
+
+  .wilayah-options li.is-active {
+    @apply bg-blue-50 text-blue-900;
+  }
+
+  .wilayah-options li.is-selected {
+    @apply font-semibold;
+  }
+
+  .wilayah-options li.wilayah-empty {
+    @apply cursor-default text-sm text-slate-500;
   }
 }
 
