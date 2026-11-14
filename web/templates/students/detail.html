@@ -21,6 +21,9 @@
 <dt>Tanggal lahir</dt><dd>{{with .Student.BirthDate}}{{.Format "02-01-2006"}}{{else}}<span class="muted">Tidak diisi</span>{{end}}</dd>
 <dt>Jenis kelamin</dt><dd>{{if eq .Student.Gender "L"}}Laki-laki{{else if eq .Student.Gender "P"}}Perempuan{{else}}<span class="muted">Tidak diisi</span>{{end}}</dd>
 </dl>
+<h3>Data Dapodik: {{.Readiness.Percent}}% lengkap</h3>
+<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.Readiness.Percent}}"><span style="width: {{.Readiness.Percent}}%"></span></div>
+<a class="btn btn-ghost btn-sm" href="/siswa/{{.Student.ID}}/data-rinci">{{if .CanEdit}}Lengkapi data rinci{{else}}Lihat data rinci{{end}}</a>
 </section>
 
 <section class="card">

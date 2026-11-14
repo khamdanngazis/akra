@@ -30,6 +30,7 @@ import (
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/portal"
 	"akra/internal/reports"
@@ -97,7 +98,8 @@ func newTestRouter(t *testing.T) http.Handler {
 		reportSaved:  builder.NewConfigHandler(builder.NewConfigService(nil, builder.Default), nil, sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
-			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),
+			students.NewGuardianAccountService(nil, nil, logger), students.NewProfileService(nil, pii.DevKeyring()),
+			students.NewGuardianDetailService(nil, pii.DevKeyring()), sessions, rd, logger),
 		activation:  auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
 		portal:      portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
 		attendance:  attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),

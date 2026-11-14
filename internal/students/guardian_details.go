@@ -105,53 +105,140 @@ func (s *GuardianDetailService) Save(ctx context.Context, actor school.Actor, gu
 	}
 	var saved GuardianDetails
 	err = pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
-		before, err := s.load(ctx, tx, actor.SchoolID, guardianID, true)
-		if err != nil {
-			return err
-		}
-		changed := diffGuardianDetails(before, in)
-		if len(changed) == 0 {
-			saved = before
-			return nil
-		}
-		var ct, idx []byte
-		if nik := in.NIK.Reveal(); nik != "" {
-			if ct, err = s.keys.Encrypt(nik, guardianNIKAAD); err != nil {
-				return err
-			}
-			idx = s.keys.BlindIndex("nik", nik)
-		}
-		var birthYear any
-		if in.BirthYear > 0 {
-			birthYear = in.BirthYear
-		}
-		_, err = tx.Exec(ctx, `
-			UPDATE guardians SET nik_enc = $3, nik_idx = $4, birth_year = $5, education = $6, occupation = $7,
-			       income = $8, special_needs = $9, updated_at = now()
-			WHERE school_id = $1 AND id = $2`,
-			actor.SchoolID, guardianID, ct, idx, birthYear, nullIfEmpty(in.Education), nullIfEmpty(in.Occupation),
-			nullIfEmpty(in.Income), nonNil(in.SpecialNeeds))
-		if err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == "guardians_school_nik_key" {
-				return errDuplicateGuardianNIK
-			}
-			return mapGuardianError("save guardian details", err)
-		}
-		if err := audit.Record(ctx, tx, guardianAudit(actor, ActionGuardianDetailsUpdate, guardianID, nil,
-			map[string]any{"changed_fields": changed})); err != nil {
-			return err
-		}
-		saved, err = s.load(ctx, tx, actor.SchoolID, guardianID, false)
+		saved, err = s.saveTx(ctx, tx, actor, guardianID, in)
 		return err
 	})
-	if errors.Is(err, errDuplicateGuardianNIK) {
-		return GuardianDetails{}, fieldErr("nik", "NIK sudah dipakai data wali lain di sekolah ini. Pakai data wali yang sudah ada.")
+	if err != nil {
+		return GuardianDetails{}, guardianDetailsFieldError(err)
 	}
+	return saved, nil
+}
+
+// ParentRoles adalah peran orang tua di form data rinci: ayah kandung, ibu
+// kandung, dan wali.
+var ParentRoles = []string{RelationFather, RelationMother, RelationGuardian}
+
+// FindParent mengembalikan ayah kandung, ibu kandung, atau wali siswa.
+// ErrGuardianNotFound jika belum ada.
+func FindParent(guardians []StudentGuardian, role string) (StudentGuardian, bool) {
+	for _, g := range guardians {
+		if g.Relationship != role {
+			continue
+		}
+		if role == RelationGuardian || g.IsBiological {
+			return g, true
+		}
+	}
+	return StudentGuardian{}, false
+}
+
+// SaveParent menyimpan data rinci ayah kandung, ibu kandung, atau wali
+// siswa. Jika belum ada, wali baru dibuat dengan nama fullName dan
+// ditautkan ke siswa (sebagai penanggung jawab utama jika siswa belum punya).
+// Jika sudah ada, fullName diabaikan.
+func (s *GuardianDetailService) SaveParent(ctx context.Context, actor school.Actor, studentID, role, fullName string, f GuardianDetailsForm) (GuardianDetails, error) {
+	if !slices.Contains(ParentRoles, role) {
+		return GuardianDetails{}, fmt.Errorf("students: unknown parent role %q", role)
+	}
+	in, err := s.validate(f)
 	if err != nil {
 		return GuardianDetails{}, err
 	}
+	var saved GuardianDetails
+	err = pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		if _, err := GetByID(ctx, tx, actor.SchoolID, studentID); err != nil {
+			return err
+		}
+		list, err := ListByStudent(ctx, tx, actor.SchoolID, studentID)
+		if err != nil {
+			return err
+		}
+		guardianID := ""
+		if g, ok := FindParent(list, role); ok {
+			guardianID = g.ID
+		} else {
+			name := strings.Join(strings.Fields(fullName), " ")
+			switch {
+			case name == "":
+				return fieldErr("full_name", "Nama wajib diisi.")
+			case len([]rune(name)) > maxGuardianNameLen:
+				return fieldErr("full_name", fmt.Sprintf("Nama maksimal %d karakter.", maxGuardianNameLen))
+			}
+			g, err := CreateGuardian(ctx, tx, actor.SchoolID, GuardianInput{FullName: name})
+			if err != nil {
+				return err
+			}
+			if err := audit.Record(ctx, tx, guardianAudit(actor, ActionGuardianCreate, g.ID, nil, guardianSnapshot(g))); err != nil {
+				return err
+			}
+			hasPrimary := false
+			for _, x := range list {
+				hasPrimary = hasPrimary || x.IsPrimary
+			}
+			if err := LinkToStudent(ctx, tx, actor.SchoolID, studentID, g.ID, role, !hasPrimary); err != nil {
+				return err
+			}
+			if err := audit.Record(ctx, tx, guardianAudit(actor, ActionGuardianLink, g.ID, nil, map[string]any{
+				"student_id": studentID, "relationship": role, "is_primary": !hasPrimary,
+			})); err != nil {
+				return err
+			}
+			guardianID = g.ID
+		}
+		saved, err = s.saveTx(ctx, tx, actor, guardianID, in)
+		return err
+	})
+	if err != nil {
+		return GuardianDetails{}, guardianDetailsFieldError(err)
+	}
 	return saved, nil
+}
+
+func (s *GuardianDetailService) saveTx(ctx context.Context, tx pgx.Tx, actor school.Actor, guardianID string, in GuardianDetails) (GuardianDetails, error) {
+	before, err := s.load(ctx, tx, actor.SchoolID, guardianID, true)
+	if err != nil {
+		return GuardianDetails{}, err
+	}
+	changed := diffGuardianDetails(before, in)
+	if len(changed) == 0 {
+		return before, nil
+	}
+	var ct, idx []byte
+	if nik := in.NIK.Reveal(); nik != "" {
+		if ct, err = s.keys.Encrypt(nik, guardianNIKAAD); err != nil {
+			return GuardianDetails{}, err
+		}
+		idx = s.keys.BlindIndex("nik", nik)
+	}
+	var birthYear any
+	if in.BirthYear > 0 {
+		birthYear = in.BirthYear
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE guardians SET nik_enc = $3, nik_idx = $4, birth_year = $5, education = $6, occupation = $7,
+		       income = $8, special_needs = $9, updated_at = now()
+		WHERE school_id = $1 AND id = $2`,
+		actor.SchoolID, guardianID, ct, idx, birthYear, nullIfEmpty(in.Education), nullIfEmpty(in.Occupation),
+		nullIfEmpty(in.Income), nonNil(in.SpecialNeeds))
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == "guardians_school_nik_key" {
+			return GuardianDetails{}, errDuplicateGuardianNIK
+		}
+		return GuardianDetails{}, mapGuardianError("save guardian details", err)
+	}
+	if err := audit.Record(ctx, tx, guardianAudit(actor, ActionGuardianDetailsUpdate, guardianID, nil,
+		map[string]any{"changed_fields": changed})); err != nil {
+		return GuardianDetails{}, err
+	}
+	return s.load(ctx, tx, actor.SchoolID, guardianID, false)
+}
+
+func guardianDetailsFieldError(err error) error {
+	if errors.Is(err, errDuplicateGuardianNIK) {
+		return fieldErr("nik", "NIK sudah dipakai data wali lain di sekolah ini. Pakai data wali yang sudah ada.")
+	}
+	return err
 }
 
 // SetBiological menandai apakah ayah/ibu adalah orang tua kandung siswa.

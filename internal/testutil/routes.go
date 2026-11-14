@@ -477,6 +477,16 @@ var Routes = []Route{
 		})},
 	{Method: "GET", Pattern: "/siswa/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/ubah"} })},
+	{Method: "GET", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/data-rinci"} })},
+	{Method: "POST", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: adminTU,
+		Requests: func(_, o *School) []Request {
+			id := o.StudentIDs[0]
+			return []Request{
+				{Path: "/siswa/" + id + "/data-rinci", Form: url.Values{"section": {"identitas"}, "nik": {"3201010101019999"}, "religion": {"01"}}},
+				{Path: "/siswa/" + id + "/data-rinci", Form: url.Values{"section": {"ibu"}, "full_name": {"Ibu Lintas"}, "nik": {"3201010101018888"}}},
+			}
+		}},
 	{Method: "POST", Pattern: "/siswa/{id}/wali/{guardianID}/akun", Kind: KindByID, Roles: adminTU,
 		Requests: guardianAccount("/akun")},
 	{Method: "POST", Pattern: "/siswa/{id}/wali/{guardianID}/akun/kirim-ulang", Kind: KindByID, Roles: adminTU,

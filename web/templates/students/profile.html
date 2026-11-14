@@ -1,0 +1,88 @@
+{{define "title"}}Data Rinci {{.Student.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/siswa/{{.Student.ID}}">← {{.Student.FullName}}</a></p>
+<div class="page-header">
+<div>
+<h1>Data rinci (Dapodik)</h1>
+<p class="muted">{{.Student.FullName}} · NIS {{.Student.NIS}}</p>
+</div>
+</div>
+
+{{template "flash" .}}
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+
+<section class="card">
+<h2>Kelengkapan data Dapodik: {{.Readiness.Percent}}%</h2>
+<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.Readiness.Percent}}"><span style="width: {{.Readiness.Percent}}%"></span></div>
+{{if .Readiness.Complete}}
+<p class="muted">Semua isian wajib Dapodik sudah lengkap.</p>
+{{else}}
+<p class="muted">Belum diisi:
+{{range $i, $f := .Readiness.Missing}}{{if $i}}, {{end}}{{if eq $f.Section "siswa"}}<a href="/siswa/{{$.Student.ID}}/ubah">{{$f.Label}}</a>{{else}}<a href="#{{$f.Section}}">{{$f.Label}}</a>{{end}}{{end}}
+</p>
+{{end}}
+<p class="hint">Nomor identitas (NIK, No KK, no akta) disimpan terenkripsi dan hanya terlihat utuh oleh Admin/TU dan Kepala Sekolah.</p>
+</section>
+
+{{range .Sections}}
+{{$sec := .}}
+<section class="card" id="{{.Key}}">
+<h2>{{.Title}}</h2>
+{{with .Hint}}<p class="hint">{{.}}</p>{{end}}
+<form method="post" action="/siswa/{{$.Student.ID}}/data-rinci#{{.Key}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="section" value="{{.Key}}">
+{{with .Parent}}
+{{if .Exists}}
+<p><strong>{{.FullName}}</strong></p>
+{{else}}
+<div class="field{{if .Error}} has-error{{end}}">
+<label for="{{$sec.Key}}-full_name">Nama {{$sec.Lower}}</label>
+<input id="{{$sec.Key}}-full_name" name="full_name" value="{{.FullName}}" maxlength="100" autocomplete="off"{{if not $.CanEdit}} disabled{{end}}>
+{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Belum ada data {{$sec.Lower}}. Mengisi nama akan menambahkannya ke siswa ini.</p>
+</div>
+{{end}}
+{{end}}
+<div class="field-grid">
+{{range .Fields}}
+{{$id := printf "%s-%s" $sec.Key .Key}}
+{{if eq .Input "multi"}}
+<fieldset class="field{{if .Error}} has-error{{end}}">
+<legend>{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</legend>
+<div class="check-grid">
+{{$f := .}}{{range .Options}}<label class="choice"><input type="checkbox" name="{{$f.Key}}" value="{{.Value}}"{{if index $f.Checked .Value}} checked{{end}}{{if not $.CanEdit}} disabled{{end}}> {{.Label}}</label>{{end}}
+</div>
+{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{else if eq .Input "checkbox"}}
+<div class="field{{if .Error}} has-error{{end}}">
+<label class="choice"><input type="checkbox" id="{{$id}}" name="{{.Key}}"{{if eq .Value "true"}} checked{{end}}{{if not $.CanEdit}} disabled{{end}}> {{.Label}}</label>
+{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+{{else}}
+<div class="field{{if .Error}} has-error{{end}}">
+<label for="{{$id}}">{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</label>
+{{if eq .Input "select"}}
+<select id="{{$id}}" name="{{.Key}}"{{if not $.CanEdit}} disabled{{end}}>
+<option value="">Tidak diisi</option>
+{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{else}}
+<input id="{{$id}}" type="{{.Input}}" name="{{.Key}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}}{{if .Max}} maxlength="{{.Max}}"{{end}} autocomplete="off"{{if .Error}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}{{if not $.CanEdit}} disabled{{end}}>
+{{end}}
+{{with .Error}}<p class="field-error" id="{{$id}}-error">{{.}}</p>{{end}}
+</div>
+{{end}}
+{{end}}
+</div>
+{{if $.CanEdit}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm" :disabled="submitting">Simpan {{.Lower}}</button>
+</div>
+{{end}}
+</form>
+</section>
+{{end}}
+{{end}}

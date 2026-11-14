@@ -18,6 +18,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/platform/database"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 )
 
@@ -127,7 +128,7 @@ func TestGuardianAccount_EndToEnd(t *testing.T) {
 	app, err := newApp(appDeps{
 		db: tx, pinger: pool, sessions: auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger),
 		render: rd, static: mustSub(t, "static"), mailer: mailer, hasher: hasher,
-		baseURL: "https://akra.test", logger: logger,
+		baseURL: "https://akra.test", logger: logger, pii: pii.DevKeyring(),
 	})
 	if err != nil {
 		t.Fatal(err)

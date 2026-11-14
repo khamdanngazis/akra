@@ -29,6 +29,8 @@ type Handler struct {
 	svc       *Service
 	guardians *GuardianService
 	accounts  *GuardianAccountService
+	profiles  *ProfileService
+	details   *GuardianDetailService
 	sessions  *scs.SessionManager
 	render    page.Renderer
 	logger    *slog.Logger
@@ -36,8 +38,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(svc *Service, guardians *GuardianService, accounts *GuardianAccountService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, guardians: guardians, accounts: accounts, sessions: sessions, render: render, logger: logger}
+func NewHandler(svc *Service, guardians *GuardianService, accounts *GuardianAccountService, profiles *ProfileService, details *GuardianDetailService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{svc: svc, guardians: guardians, accounts: accounts, profiles: profiles, details: details, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route siswa ke r. Guru dan orang tua tidak punya akses
@@ -50,6 +52,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/", h.index)
 			// Peran: admin_tu, kepala_sekolah (hanya baca).
 			r.Get("/{id}", h.detail)
+			// Peran: admin_tu, kepala_sekolah (hanya baca). Memuat NIK utuh (T88).
+			r.Get("/{id}/data-rinci", h.profile)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
@@ -63,6 +67,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Post("/{id}", h.update)
 			// Peran: admin_tu.
 			r.Post("/{id}/pindah-kelas", h.move)
+			// Peran: admin_tu.
+			r.Post("/{id}/data-rinci", h.saveProfile)
 			// Peran: admin_tu.
 			r.Post("/{id}/wali/{guardianID}/akun", h.createAccount)
 			// Peran: admin_tu.
@@ -92,6 +98,7 @@ type indexView struct {
 	PrevURL    string
 	NextURL    string
 	HasFilters bool
+	Incomplete bool
 }
 
 type formView struct {
@@ -116,6 +123,7 @@ type detailView struct {
 	YearName  string
 	Classes   []string
 	Move      MoveForm
+	Readiness Readiness
 	Errors    map[string]string
 	Error     string
 	Flash     string
@@ -151,15 +159,16 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	f := ListFilter{
-		Query:  strings.TrimSpace(q.Get("q")),
-		Status: q.Get("status"),
+		Query:      strings.TrimSpace(q.Get("q")),
+		Status:     q.Get("status"),
+		Incomplete: q.Get("dapodik") == "belum",
 	}
 	f.Page, _ = strconv.Atoi(q.Get("page"))
 	if !contains(Statuses, f.Status) {
 		f.Status = ""
 	}
 	year := pickYear(years, q.Get("tahun"))
-	view := indexView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Flash: auth.PopFlash(r.Context(), h.sessions), Query: f.Query}
+	view := indexView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Flash: auth.PopFlash(r.Context(), h.sessions), Query: f.Query, Incomplete: f.Incomplete}
 	if year != nil {
 		f.AcademicYearID = year.ID
 		view.YearName = year.Name
@@ -190,13 +199,17 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view.Page, view.Rows = pg, pg.Rows
-	view.HasFilters = f.Query != "" || f.ClassID != "" || f.Status != ""
+	view.HasFilters = f.Query != "" || f.ClassID != "" || f.Status != "" || f.Incomplete
 	if pg.Total > 0 && len(pg.Rows) > 0 {
 		view.From = (pg.Page-1)*PageSize + 1
 		view.To = view.From + len(pg.Rows) - 1
 	}
 	base := url.Values{}
-	for k, v := range map[string]string{"q": f.Query, "tahun": f.AcademicYearID, "kelas": f.ClassID, "status": f.Status} {
+	dapodik := ""
+	if f.Incomplete {
+		dapodik = "belum"
+	}
+	for k, v := range map[string]string{"q": f.Query, "tahun": f.AcademicYearID, "kelas": f.ClassID, "status": f.Status, "dapodik": dapodik} {
 		if v != "" {
 			base.Set(k, v)
 		}
@@ -230,7 +243,12 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 		h.serverError(w, r, "list enrollments", err)
 		return
 	}
-	view := detailView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Student: st, Move: move, Errors: errs, Flash: auth.PopFlash(r.Context(), h.sessions)}
+	readiness, err := GetReadiness(r.Context(), h.svc.db, id.SchoolID, st.ID)
+	if err != nil {
+		h.serverError(w, r, "get readiness", err)
+		return
+	}
+	view := detailView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Student: st, Move: move, Readiness: readiness, Errors: errs, Flash: auth.PopFlash(r.Context(), h.sessions)}
 	if view.Move.Date == "" {
 		view.Move.Date = clock.Today().Format(dateLayout)
 	}

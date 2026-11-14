@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -55,6 +56,9 @@ type appDeps struct {
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
 func newApp(d appDeps) (http.Handler, error) {
+	if d.pii == nil {
+		return nil, errors.New("app: PII keyring is required")
+	}
 	authSvc, err := auth.NewService(auth.NewRepository(d.db), d.hasher)
 	if err != nil {
 		return nil, err
@@ -89,6 +93,8 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),
 			students.NewGuardianAccountService(d.db, activation, d.logger),
+			students.NewProfileService(d.db, d.pii),
+			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
 		portal:      portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:         devRoutes(d),

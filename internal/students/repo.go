@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -165,7 +166,9 @@ type ListFilter struct {
 	AcademicYearID string // tahun ajaran untuk kolom kelas dan filter kelas
 	ClassID        string // hanya siswa yang aktif di kelas ini pada AcademicYearID
 	Status         string
-	Page           int // mulai dari 1
+	// Incomplete hanya menampilkan siswa yang data Dapodik-nya belum lengkap.
+	Incomplete bool
+	Page       int // mulai dari 1
 }
 
 // ListRow adalah satu baris daftar siswa beserta kelas aktifnya pada tahun
@@ -174,6 +177,8 @@ type ListRow struct {
 	Student
 	ClassID   string // kosong jika belum punya kelas di tahun ajaran itu
 	ClassName string
+	// DapodikPercent adalah persentase kelengkapan data Dapodik (T88).
+	DapodikPercent int
 }
 
 // List mengembalikan satu halaman siswa sekolah (PageSize baris) dan jumlah
@@ -188,8 +193,10 @@ func List(ctx context.Context, q database.DBTX, schoolID string, f ListFilter) (
 		SELECT s.id, s.school_id, s.nis, s.full_name, s.birth_date, coalesce(s.gender, ''), s.status,
 		       s.created_at, s.updated_at,
 		       coalesce(c.id::text, ''), coalesce(c.name, ''),
+		       `+readinessPercentSQL()+`,
 		       count(*) OVER ()
 		FROM students s
+		LEFT JOIN student_profiles p ON p.school_id = s.school_id AND p.student_id = s.id
 		LEFT JOIN enrollments e
 		       ON e.school_id = s.school_id AND e.student_id = s.id
 		      AND e.academic_year_id = $2::uuid AND e.end_date IS NULL
@@ -198,10 +205,11 @@ func List(ctx context.Context, q database.DBTX, schoolID string, f ListFilter) (
 		  AND ($3 = '' OR s.full_name ILIKE '%' || $4 || '%' OR s.nis ILIKE $4 || '%')
 		  AND ($5::uuid IS NULL OR e.class_id = $5::uuid)
 		  AND ($6 = '' OR s.status = $6)
+		  AND (NOT $9 OR `+readinessFilledSQL()+` < `+strconv.Itoa(len(DapodikRequired))+`)
 		ORDER BY lower(s.full_name), s.nis
 		LIMIT $7 OFFSET $8`,
 		schoolID, uuidOrNil(f.AcademicYearID), query, escapeLike(query), uuidOrNil(f.ClassID), f.Status,
-		PageSize, (page-1)*PageSize)
+		PageSize, (page-1)*PageSize, f.Incomplete)
 	if err != nil {
 		return nil, 0, mapError("list students", err)
 	}
@@ -209,7 +217,7 @@ func List(ctx context.Context, q database.DBTX, schoolID string, f ListFilter) (
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (ListRow, error) {
 		var r ListRow
 		err := row.Scan(&r.ID, &r.SchoolID, &r.NIS, &r.FullName, &r.BirthDate, &r.Gender, &r.Status,
-			&r.CreatedAt, &r.UpdatedAt, &r.ClassID, &r.ClassName, &total)
+			&r.CreatedAt, &r.UpdatedAt, &r.ClassID, &r.ClassName, &r.DapodikPercent, &total)
 		return r, err
 	})
 	if err != nil {
@@ -217,7 +225,7 @@ func List(ctx context.Context, q database.DBTX, schoolID string, f ListFilter) (
 	}
 	if len(list) == 0 && page > 1 {
 		// Halaman di luar jangkauan: hitung total tanpa baris.
-		_, total, err = List(ctx, q, schoolID, ListFilter{Query: f.Query, AcademicYearID: f.AcademicYearID, ClassID: f.ClassID, Status: f.Status, Page: 1})
+		_, total, err = List(ctx, q, schoolID, ListFilter{Query: f.Query, AcademicYearID: f.AcademicYearID, ClassID: f.ClassID, Status: f.Status, Incomplete: f.Incomplete, Page: 1})
 		if err != nil {
 			return nil, 0, err
 		}
