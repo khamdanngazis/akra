@@ -272,6 +272,11 @@ type publicSection struct {
 }
 
 type stepView struct {
+	// Base adalah alamat dasar form: /s/{kode}/daftar (publik) atau
+	// /pendaftaran/{id} (TU, T92).
+	Base       string
+	Staff      bool
+	User       auth.Identity
 	School     schoolInfo
 	Applicant  Applicant
 	Step       string
@@ -346,16 +351,16 @@ func (h *PublicHandler) stepForm(w http.ResponseWriter, r *http.Request) {
 	h.renderStep(w, r, s, a, step, http.StatusOK, nil, nil)
 }
 
-func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string) {
-	view := stepView{School: s, Applicant: a, Step: step, Flash: auth.PopFlash(r.Context(), h.sessions),
-		ResumeCode: h.sessions.PopString(r.Context(), sessionCode)}
+// buildStepView menyusun halaman satu langkah formulir. Dipakai formulir
+// publik (T90) dan input oleh TU (T92) agar isian dan aturannya sama.
+func buildStepView(ctx context.Context, periods *Service, documents *DocumentService, s schoolInfo, a Applicant, step string, submitted, errs map[string]string) (stepView, error) {
+	view := stepView{School: s, Applicant: a, Step: step}
 	if errs != nil {
 		view.Error = "Data belum disimpan. Periksa isian yang ditandai."
 	}
-	p, err := h.periods.Get(r.Context(), s.ID, a.PeriodID)
+	p, err := periods.Get(ctx, s.ID, a.PeriodID)
 	if err != nil {
-		h.serverError(w, r, "get period", err)
-		return
+		return stepView{}, err
 	}
 	view.Period = p.Name
 	for _, t := range p.Tracks {
@@ -421,10 +426,9 @@ func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s sch
 			publicSection{Key: students.SectionRegistration, Title: "Sekolah asal", Hint: "Untuk siswa pindahan, isi sekolah sebelumnya.", Fields: reg},
 			publicSection{Key: students.SectionContact, Title: "Kontak calon siswa", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)})
 	case StepDocument, StepReview:
-		docs, err := h.documents.List(r.Context(), s.ID, a.ID)
+		docs, err := documents.List(ctx, s.ID, a.ID)
 		if err != nil {
-			h.serverError(w, r, "list documents", err)
-			return
+			return stepView{}, err
 		}
 		view.Documents, view.DocErrors = docRows(p, docs), errs
 		if step == StepReview {
@@ -434,7 +438,62 @@ func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s sch
 			}
 		}
 	}
+	return view, nil
+}
+
+func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string) {
+	view, err := buildStepView(r.Context(), h.periods, h.documents, s, a, step, submitted, errs)
+	if err != nil {
+		h.serverError(w, r, "build step view", err)
+		return
+	}
+	view.Base = "/s/" + s.Code + "/daftar"
+	view.Flash = auth.PopFlash(r.Context(), h.sessions)
+	view.ResumeCode = h.sessions.PopString(r.Context(), sessionCode)
 	h.render.Render(w, r, status, "admission/public_step", view)
+}
+
+// stepValues mengambil isian satu langkah dari form yang sudah di-parse.
+func stepValues(r *http.Request, step string) map[string]string {
+	values := map[string]string{}
+	if step == StepParents {
+		for _, role := range students.ParentRoles {
+			for _, k := range guardianFields {
+				key := role + "." + k
+				if k == "special_needs" {
+					values[key] = strings.Join(r.PostForm[key], ",")
+				} else {
+					values[key] = r.PostForm.Get(key)
+				}
+			}
+		}
+	} else {
+		if step == StepChild {
+			for _, k := range []string{"full_name", "gender", "birth_date"} {
+				values[k] = r.PostForm.Get(k)
+			}
+		}
+		for _, sec := range stepSections[step] {
+			for _, f := range students.ProfileFields {
+				if f.Section != sec {
+					continue
+				}
+				switch {
+				case f.Key == "has_kip" || f.Key == "pip_eligible":
+					if r.PostForm.Has(f.Key) {
+						values[f.Key] = "true"
+					} else {
+						values[f.Key] = "false"
+					}
+				case f.Key == "special_needs":
+					values[f.Key] = strings.Join(r.PostForm[f.Key], ",")
+				default:
+					values[f.Key] = r.PostForm.Get(f.Key)
+				}
+			}
+		}
+	}
+	return values
 }
 
 type docRow struct {
@@ -490,16 +549,26 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepDocument, http.StatusSeeOther)
-	case errors.Is(err, ErrDocTooLarge):
-		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Ukuran file maksimal 2 MB."})
-	case errors.Is(err, ErrDocType), errors.Is(err, ErrDocEmpty):
-		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "File harus berupa foto (JPG/PNG) atau PDF."})
+	case docErrorMessage(err) != "":
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: docErrorMessage(err)})
 	case errors.Is(err, ErrNotEditable):
 		auth.SetFlash(r.Context(), h.sessions, editableMessage)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
 	default:
 		h.serverError(w, r, "upload document", err)
 	}
+}
+
+// docErrorMessage mengubah error unggah dokumen menjadi pesan untuk
+// pengguna, atau "" jika bukan kesalahan isian.
+func docErrorMessage(err error) string {
+	switch {
+	case errors.Is(err, ErrDocTooLarge):
+		return "Ukuran file maksimal 2 MB."
+	case errors.Is(err, ErrDocType), errors.Is(err, ErrDocEmpty):
+		return "File harus berupa foto (JPG/PNG) atau PDF."
+	}
+	return ""
 }
 
 func navFor(step string) ([]stepNav, string) {
@@ -550,44 +619,7 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	values := map[string]string{}
-	if step == StepParents {
-		for _, role := range students.ParentRoles {
-			for _, k := range guardianFields {
-				key := role + "." + k
-				if k == "special_needs" {
-					values[key] = strings.Join(r.PostForm[key], ",")
-				} else {
-					values[key] = r.PostForm.Get(key)
-				}
-			}
-		}
-	} else {
-		if step == StepChild {
-			for _, k := range []string{"full_name", "gender", "birth_date"} {
-				values[k] = r.PostForm.Get(k)
-			}
-		}
-		for _, sec := range stepSections[step] {
-			for _, f := range students.ProfileFields {
-				if f.Section != sec {
-					continue
-				}
-				switch {
-				case f.Key == "has_kip" || f.Key == "pip_eligible":
-					if r.PostForm.Has(f.Key) {
-						values[f.Key] = "true"
-					} else {
-						values[f.Key] = "false"
-					}
-				case f.Key == "special_needs":
-					values[f.Key] = strings.Join(r.PostForm[f.Key], ",")
-				default:
-					values[f.Key] = r.PostForm.Get(f.Key)
-				}
-			}
-		}
-	}
+	values := stepValues(r, step)
 	_, err := h.applicants.SaveStep(r.Context(), s.ID, a.ID, step, values)
 	var ve *ValidationError
 	switch {

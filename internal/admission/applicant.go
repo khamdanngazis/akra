@@ -544,6 +544,12 @@ func Missing(a Applicant) []students.RequiredField {
 // Submit mengirim pendaftaran: memberi nomor pendaftaran dari penghitung
 // tahun ajaran periode, lalu status menjadi dikirim.
 func (s *ApplicantService) Submit(ctx context.Context, schoolID, id string) (Applicant, error) {
+	return s.SubmitBy(ctx, schoolID, id, "")
+}
+
+// SubmitBy sama dengan Submit, dengan actorID petugas TU yang mengirimkan
+// atas nama pendaftar (T92); kosong berarti pendaftar sendiri.
+func (s *ApplicantService) SubmitBy(ctx context.Context, schoolID, id, actorID string) (Applicant, error) {
 	var out Applicant
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		a, err := s.load(ctx, tx, schoolID, id, true)
@@ -596,7 +602,7 @@ func (s *ApplicantService) Submit(ctx context.Context, schoolID, id string) (App
 				return err
 			}
 		}
-		if err := recordEvent(ctx, tx, schoolID, id, a.Status, ApplicantSubmitted, "", ""); err != nil {
+		if err := recordEvent(ctx, tx, schoolID, id, a.Status, ApplicantSubmitted, "", actorID); err != nil {
 			return err
 		}
 		out, err = s.load(ctx, tx, schoolID, id, false)

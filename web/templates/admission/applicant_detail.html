@@ -7,6 +7,7 @@
 <h1>{{.Applicant.FullName}}</h1>
 <p class="muted">{{if .Applicant.RegistrationNumber}}{{.Applicant.RegistrationNumber}} · {{end}}{{.Period.Name}} · Jalur {{.Track.Name}} · {{template "applicant_status" .Applicant.Status}}</p>
 </div>
+{{if and .CanEdit .Applicant.Editable}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/isi/calon">Ubah isian</a>{{end}}
 </div>
 
 {{template "flash" .}}

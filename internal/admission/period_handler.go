@@ -57,6 +57,18 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
 			// Peran: admin_tu.
 			r.Post("/{id}/status", h.setApplicantStatus)
+			// Peran: admin_tu. Input pendaftar oleh TU (T92).
+			r.Get("/baru", h.staffNew)
+			// Peran: admin_tu.
+			r.Post("/baru", h.staffCreate)
+			// Peran: admin_tu.
+			r.Get("/{id}/isi/{step}", h.staffStep)
+			// Peran: admin_tu.
+			r.Post("/{id}/isi/{step}", h.staffSaveStep)
+			// Peran: admin_tu.
+			r.Post("/{id}/dokumen/{type}", h.staffUpload)
+			// Peran: admin_tu.
+			r.Post("/{id}/kirim", h.staffSubmit)
 		})
 	})
 }

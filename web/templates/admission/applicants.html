@@ -6,7 +6,7 @@
 <h1>Pendaftar</h1>
 <p class="muted">Pendaftar siswa baru yang sudah mengirim formulir.</p>
 </div>
-<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/periode">Periode dan jalur</a></div>
+<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/periode">Periode dan jalur</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/baru">Input pendaftar</a>{{end}}</div>
 </div>
 
 {{template "flash" .}}

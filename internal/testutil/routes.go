@@ -482,6 +482,23 @@ var Routes = []Route{
 				{Path: "/pendaftaran/" + own.ApplicantID + "/dokumen/" + o.ApplicantDocID},
 			}
 		}},
+	// Input pendaftar oleh TU (T92). Pendaftar fixture berstatus dikirim,
+	// jadi kontrol positif diarahkan (303) ke halaman detail.
+	{Method: "GET", Pattern: "/pendaftaran/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pendaftaran/baru", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/baru" }, func(o *School) url.Values {
+			return url.Values{"choice": {o.AdmissionPeriodID + "|" + o.AdmissionTrackID}, "full_name": {"Lintas"}, "gender": {"L"}, "birth_date": {"2019-01-01"}, "phone": {"081200000000"}, "consent": {"on"}}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/isi/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID + "/isi/calon"} })},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/isi/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/isi/alamat" }, func(*School) url.Values {
+			return url.Values{"street": {"Lintas"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/dokumen/{type}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/dokumen/kk" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/kirim", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/kirim" }, nil)},
 	{Method: "POST", Pattern: "/pendaftaran/{id}/status", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/status" }, func(*School) url.Values {
 			return url.Values{"status": {"diverifikasi"}}
