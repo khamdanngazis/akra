@@ -265,7 +265,7 @@ func TestApplicantResume(t *testing.T) {
 	}
 }
 
-// TestSubmitConcurrentNumbers: 50 kiriman bersamaan tidak boleh mendapat
+// TestSubmitConcurrentNumbers: 200 kiriman bersamaan tidak boleh mendapat
 // nomor pendaftaran ganda. Memakai koneksi sungguhan (bukan satu transaksi
 // uji), lalu membersihkan datanya.
 func TestSubmitConcurrentNumbers(t *testing.T) {
@@ -308,7 +308,7 @@ func TestSubmitConcurrentNumbers(t *testing.T) {
 	svc := NewApplicantService(pool, pii.DevKeyring(), periods)
 	p := Period{ID: periodID}
 	tr := Track{ID: trackID}
-	const n = 50
+	const n = 200 // T104: 200 kiriman tanpa nomor ganda
 	ids := make([]string, n)
 	for i := range ids {
 		a, _, err := svc.CreateDraft(ctx, schoolID, draftForm(p, tr), "")
@@ -316,7 +316,7 @@ func TestSubmitConcurrentNumbers(t *testing.T) {
 		a = fill(t, svc, schoolID, a.ID)
 		// NIK berbeda per pendaftar.
 		_, err = svc.SaveStep(ctx, schoolID, a.ID, StepChild, map[string]string{"full_name": "Anak", "gender": "P", "birth_date": "2019-01-01",
-			"nik": fmt.Sprintf("32010101011%05d", i), "kk_number": childKK, "birth_place": "Bandung", "religion": "01"})
+			"nik": fmt.Sprintf("32010202%08d", i), "kk_number": childKK, "birth_place": "Bandung", "religion": "01"})
 		must(err)
 		ids[i] = a.ID
 	}
