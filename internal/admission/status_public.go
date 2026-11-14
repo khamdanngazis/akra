@@ -143,6 +143,8 @@ type statusView struct {
 	BirthDate   string
 	Applicant   Applicant
 	StatusLabel string
+	Tone        string
+	History     []historyItem
 	Explain     string
 	Note        string
 	Period      string
@@ -183,7 +185,12 @@ func (h *PublicHandler) statusPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *PublicHandler) fillStatus(ctx context.Context, s schoolInfo, a Applicant, view *statusView) error {
 	view.Found, view.Applicant = true, a
-	view.StatusLabel, view.Explain = StatusLabels[a.Status], statusExplain[a.Status]
+	view.StatusLabel, view.Explain, view.Tone = StatusLabels[a.Status], statusExplain[a.Status], statusTone(a.Status)
+	events, err := h.applicants.Events(ctx, s.ID, a.ID)
+	if err != nil {
+		return err
+	}
+	view.History = publicHistory(events)
 	p, err := h.periods.Get(ctx, s.ID, a.PeriodID)
 	if err != nil {
 		return err

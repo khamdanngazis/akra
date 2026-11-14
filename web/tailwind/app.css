@@ -1418,6 +1418,519 @@
   }
 }
 
+/* ---------- Halaman pendaftaran publik (T111) ----------
+   Satu kolom ramping, nyaman di HP 360 px: kepala bernuansa sekolah,
+   penunjuk langkah, kartu isian, tombol aksi menempel di bawah layar. */
+@layer components {
+  .adm-shell {
+    @apply mx-auto w-full max-w-2xl;
+  }
+
+  .adm-shell > * + * {
+    @apply mt-4;
+  }
+
+  /* Kepala halaman: bar putih di langkah formulir, hero navy di halaman
+     awal dan selesai. */
+  .adm-bar {
+    @apply border-b border-slate-200 bg-white;
+  }
+
+  .adm-bar-inner {
+    @apply mx-auto flex max-w-2xl items-center gap-3 px-4 py-3 sm:px-6;
+  }
+
+  .adm-hero {
+    @apply bg-navy-900 text-white;
+  }
+
+  .adm-hero-inner {
+    @apply mx-auto max-w-2xl px-4 pt-6 pb-20 sm:px-6;
+  }
+
+  .adm-hero h1 {
+    @apply mt-2 mb-2 text-[1.6rem] leading-tight font-extrabold text-white sm:text-3xl;
+  }
+
+  .adm-hero p {
+    @apply mb-0 text-sm text-navy-100;
+  }
+
+  .adm-school {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .adm-school-name {
+    @apply block truncate font-bold leading-tight;
+  }
+
+  .adm-school-sub {
+    @apply block truncate text-[13px] text-slate-500;
+  }
+
+  .adm-hero .adm-school-sub {
+    @apply text-navy-200;
+  }
+
+  .adm-logo {
+    @apply inline-flex size-10 flex-none items-center justify-center overflow-hidden rounded-xl bg-navy-900 text-sm font-extrabold text-white;
+  }
+
+  .adm-logo img {
+    @apply size-full bg-white object-contain p-0.5;
+  }
+
+  .adm-hero .adm-logo {
+    @apply size-12 bg-white text-base text-navy-900;
+  }
+
+  .adm-pill {
+    @apply inline-block rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-emerald-950;
+  }
+
+  .adm-pill-muted {
+    @apply bg-white/15 text-white;
+  }
+
+  /* Konten yang naik ke atas hero. */
+  .adm-lift {
+    @apply relative -mt-14;
+  }
+
+  .adm-card {
+    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgb(15_23_42/0.04)] sm:p-5;
+  }
+
+  .adm-card > h2,
+  .adm-card-head h2 {
+    @apply mb-0 text-base font-bold;
+  }
+
+  .adm-card > h2 + *,
+  .adm-card-head + * {
+    @apply mt-3;
+  }
+
+  .adm-card-raised {
+    @apply border-0 shadow-[0_6px_20px_rgb(11_61_145/0.10)];
+  }
+
+  .adm-card-head {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .adm-card-head a {
+    @apply -my-2 py-2 text-sm font-semibold;
+  }
+
+  .adm-tiles {
+    @apply grid grid-cols-2 gap-2.5;
+  }
+
+  .adm-tile {
+    @apply rounded-xl bg-navy-50 px-3 py-2.5;
+  }
+
+  .adm-tile span {
+    @apply block text-xs text-slate-500;
+  }
+
+  .adm-tile strong {
+    @apply block text-[15px] font-bold text-navy-900;
+  }
+
+  .adm-tags {
+    @apply flex flex-wrap gap-1.5;
+  }
+
+  .adm-tag {
+    @apply rounded-full border border-slate-300 px-2.5 py-1 text-[13px] text-slate-700;
+  }
+
+  .adm-checklist {
+    @apply m-0 list-none space-y-2.5 p-0;
+  }
+
+  .adm-checklist li {
+    @apply flex items-center gap-3 text-sm;
+  }
+
+  .adm-checklist .adm-ico {
+    @apply inline-flex size-9 flex-none items-center justify-center rounded-xl bg-emerald-50 text-emerald-700;
+  }
+
+  .adm-checklist .adm-ico.is-navy {
+    @apply bg-navy-50 text-navy-900;
+  }
+
+  .adm-numbered {
+    @apply m-0 list-none space-y-2.5 p-0;
+  }
+
+  .adm-numbered li {
+    @apply flex items-start gap-3 text-sm leading-snug;
+  }
+
+  .adm-numbered li > span:first-child {
+    @apply inline-flex size-6 flex-none items-center justify-center rounded-full bg-navy-900 text-xs font-bold text-white;
+  }
+
+  /* Penunjuk langkah: batang progres + daftar langkah yang bisa diklik. */
+  .adm-progress-head {
+    @apply flex items-baseline justify-between gap-2 text-[13px];
+  }
+
+  .adm-progress-head strong {
+    @apply font-bold text-navy-900;
+  }
+
+  .adm-progress {
+    @apply mt-2 grid gap-1;
+    grid-template-columns: repeat(var(--steps, 6), minmax(0, 1fr));
+  }
+
+  .adm-progress > span {
+    @apply h-1.5 rounded-full bg-slate-200;
+  }
+
+  .adm-progress > span.is-done {
+    @apply bg-emerald-500;
+  }
+
+  .adm-progress > span.is-warn {
+    @apply bg-amber-400;
+  }
+
+  .adm-progress > span.is-current {
+    @apply bg-blue-600;
+  }
+
+  .adm-steps {
+    /* relative: teks sr-only di dalam langkah ikut terpotong, tidak
+       membuat halaman bisa digulir ke samping. */
+    @apply relative -mx-4 mt-3 flex list-none gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0;
+    scrollbar-width: none;
+  }
+
+  .adm-step {
+    @apply inline-flex min-h-9 flex-none cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 font-sans text-[13px] whitespace-nowrap text-slate-600 no-underline hover:border-slate-300 hover:text-slate-900;
+  }
+
+  .adm-step-num {
+    @apply inline-flex size-5 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500;
+  }
+
+  .adm-step.is-current {
+    @apply border-navy-100 bg-navy-50 font-semibold text-navy-900;
+  }
+
+  .adm-step.is-current .adm-step-num {
+    @apply bg-navy-900 text-white;
+  }
+
+  .adm-step.is-done .adm-step-num {
+    @apply bg-emerald-500 text-white;
+  }
+
+  .adm-step.is-warn .adm-step-num {
+    @apply bg-amber-400 text-white;
+  }
+
+  .adm-step-num .icon {
+    @apply size-3;
+    stroke-width: 3;
+  }
+
+  .adm-title h1 {
+    @apply mb-1 text-xl font-extrabold;
+  }
+
+  .adm-title p {
+    @apply mb-0 text-sm text-slate-600;
+  }
+
+  /* Tombol aksi menempel di bawah layar HP. */
+  .adm-actions {
+    @apply sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-2.5 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgb(15_23_42/0.06)] backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:shadow-none;
+  }
+
+  .adm-actions .btn {
+    @apply min-h-12;
+  }
+
+  .adm-actions .adm-next {
+    @apply flex-1;
+  }
+
+  .adm-actions-note {
+    @apply w-full text-center text-[13px] font-semibold text-amber-700;
+  }
+
+  .adm-actions .choice {
+    @apply w-full items-start text-sm leading-snug text-slate-700;
+  }
+
+  /* Dokumen */
+  .adm-docs {
+    @apply m-0 list-none space-y-3 p-0;
+  }
+
+  .adm-doc {
+    @apply rounded-2xl border border-dashed border-slate-300 bg-white p-4;
+  }
+
+  .adm-doc.is-ok {
+    @apply border-solid border-emerald-200;
+  }
+
+  .adm-doc.is-error {
+    @apply border-solid border-red-200;
+  }
+
+  .adm-doc-head {
+    @apply flex items-center gap-3;
+  }
+
+  .adm-doc-ico {
+    @apply inline-flex size-12 flex-none items-center justify-center rounded-xl bg-slate-100 text-slate-600;
+  }
+
+  .adm-doc.is-ok .adm-doc-ico {
+    @apply bg-emerald-50 text-emerald-700;
+  }
+
+  .adm-doc.is-error .adm-doc-ico {
+    @apply bg-red-50 text-red-700;
+  }
+
+  .adm-doc-name {
+    @apply block font-bold;
+  }
+
+  .adm-doc-state {
+    @apply flex items-center gap-1.5 text-[13px] text-slate-500;
+  }
+
+  .adm-doc.is-ok .adm-doc-state {
+    @apply font-semibold text-emerald-700;
+  }
+
+  .adm-doc.is-error .adm-doc-state {
+    @apply font-semibold text-red-700;
+  }
+
+  .adm-doc-state .icon {
+    @apply size-4;
+  }
+
+  .adm-doc form {
+    @apply mt-3 flex flex-wrap items-center gap-2;
+  }
+
+  .adm-doc input[type="file"] {
+    @apply flex-1 basis-48;
+  }
+
+  /* Periksa dan kirim */
+  .adm-warn {
+    @apply rounded-2xl border border-amber-300 bg-amber-50 p-4;
+  }
+
+  .adm-warn h2 {
+    @apply mb-3 flex items-center gap-2 text-[15px] font-bold text-amber-900 [&_svg]:text-amber-700;
+  }
+
+  .adm-fix {
+    @apply flex min-h-12 items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2 text-slate-900 no-underline hover:border-amber-300 hover:text-slate-900;
+  }
+
+  .adm-fix + .adm-fix {
+    @apply mt-2;
+  }
+
+  .adm-fix small {
+    @apply block text-xs text-amber-800;
+  }
+
+  .adm-fix span:last-child {
+    @apply flex-none text-sm font-bold text-blue-700;
+  }
+
+  .adm-sum-title {
+    @apply flex items-center gap-2;
+  }
+
+  .adm-dot {
+    @apply inline-flex size-5.5 flex-none items-center justify-center rounded-full bg-emerald-500 text-xs font-extrabold text-white;
+  }
+
+  .adm-dot .icon {
+    @apply size-3;
+    stroke-width: 3;
+  }
+
+  .adm-dot.is-warn {
+    @apply bg-amber-400;
+  }
+
+  .adm-card.is-warn {
+    @apply border-amber-300;
+  }
+
+  .adm-sum {
+    @apply m-0 grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5 text-sm;
+  }
+
+  .adm-sum dt {
+    @apply text-slate-500;
+  }
+
+  .adm-sum dd {
+    @apply m-0 min-w-0;
+  }
+
+  .adm-sum .is-empty {
+    @apply font-semibold text-amber-700;
+  }
+
+  .adm-chip {
+    @apply inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[13px] font-semibold text-emerald-700;
+  }
+
+  .adm-chip.is-missing {
+    @apply bg-amber-100 text-amber-800;
+  }
+
+  .adm-chip.is-optional {
+    @apply bg-slate-100 font-medium text-slate-500;
+  }
+
+  .adm-chip .icon {
+    @apply size-3.5;
+    stroke-width: 3;
+  }
+
+  /* Selesai */
+  .adm-done-mark {
+    @apply mx-auto mt-2 flex size-18 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_0_10px_rgb(16_185_129/0.22)];
+  }
+
+  .adm-done-mark .icon {
+    @apply size-9 text-white;
+    stroke-width: 3;
+  }
+
+  .adm-number {
+    @apply block text-[1.75rem] font-extrabold tracking-wide text-navy-900 tabular-nums sm:text-3xl;
+  }
+
+  .adm-timeline {
+    @apply m-0 list-none p-0;
+  }
+
+  .adm-timeline li {
+    @apply relative flex gap-3 pb-4 last:pb-0;
+  }
+
+  .adm-timeline li:not(:last-child)::before {
+    @apply absolute top-7 bottom-0 left-3 w-0.5 -translate-x-1/2 bg-slate-200 content-[''];
+  }
+
+  .adm-timeline-dot {
+    @apply inline-flex size-6 flex-none items-center justify-center rounded-full border-2 border-slate-300 bg-white text-xs font-extrabold text-slate-500;
+  }
+
+  .adm-timeline li.is-done .adm-timeline-dot {
+    @apply border-emerald-500 bg-emerald-500 text-white;
+  }
+
+  .adm-timeline li.is-current .adm-timeline-dot {
+    @apply border-blue-600 bg-blue-50 text-blue-700;
+  }
+
+  .adm-timeline-dot .icon {
+    @apply size-3.5;
+    stroke-width: 3;
+  }
+
+  .adm-timeline strong {
+    @apply block text-sm font-bold;
+  }
+
+  .adm-timeline small {
+    @apply block text-[13px] leading-snug text-slate-500;
+  }
+
+  /* Cek status: kartu berwarna sesuai status. */
+  .adm-status {
+    @apply rounded-2xl border-l-4 bg-white p-4 shadow-[0_6px_20px_rgb(11_61_145/0.10)] sm:p-5;
+  }
+
+  .adm-status-label {
+    @apply mb-1 inline-block rounded-full px-2.5 py-0.5 text-[13px] font-bold;
+  }
+
+  .adm-status.tone-info {
+    @apply border-blue-600;
+  }
+
+  .adm-status.tone-info .adm-status-label {
+    @apply bg-blue-50 text-blue-700;
+  }
+
+  .adm-status.tone-success {
+    @apply border-emerald-500;
+  }
+
+  .adm-status.tone-success .adm-status-label {
+    @apply bg-emerald-50 text-emerald-700;
+  }
+
+  .adm-status.tone-warning {
+    @apply border-amber-400;
+  }
+
+  .adm-status.tone-warning .adm-status-label {
+    @apply bg-amber-50 text-amber-800;
+  }
+
+  .adm-status.tone-danger {
+    @apply border-red-500;
+  }
+
+  .adm-status.tone-danger .adm-status-label {
+    @apply bg-red-50 text-red-700;
+  }
+
+  .adm-status.tone-neutral {
+    @apply border-slate-400;
+  }
+
+  .adm-status.tone-neutral .adm-status-label {
+    @apply bg-slate-100 text-slate-600;
+  }
+
+  .adm-footer {
+    @apply mt-8 text-center text-xs text-slate-500;
+  }
+
+  .adm-resume {
+    @apply rounded-2xl border border-blue-200 bg-blue-50 p-4;
+  }
+
+  .adm-resume h2 {
+    @apply mb-1 text-base;
+  }
+
+  .adm-resume strong {
+    @apply font-extrabold tracking-[0.2em] text-navy-900;
+  }
+
+  .adm-resume p {
+    @apply mb-0 text-sm text-slate-700;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

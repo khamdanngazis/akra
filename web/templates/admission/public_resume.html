@@ -1,9 +1,13 @@
 {{define "title"}}Lanjutkan Pendaftaran{{end}}
+{{define "header"}}{{template "admission_public_bar" .}}{{end}}
 {{define "content"}}
-{{template "admission_public_head" .}}
-<section class="card form-card">
-<h2>Lanjutkan pendaftaran</h2>
+<div class="adm-shell">
+<div class="adm-title">
+<h1>Lanjutkan pendaftaran</h1>
+<p>Masukkan nomor HP dan kode lanjut yang ditampilkan saat Anda mulai mendaftar.</p>
+</div>
 {{template "flash" .}}
+<section class="adm-card">
 <form method="post" action="/s/{{.School.Code}}/daftar/lanjut" class="stack" novalidate>
 {{ csrfField }}
 <div class="field">
@@ -13,12 +17,12 @@
 <div class="field">
 <label for="code">Kode lanjut</label>
 <input id="code" name="code" maxlength="8" autocomplete="off" autocapitalize="characters" required>
-<p class="hint">6 huruf/angka yang ditampilkan saat Anda mulai mendaftar.</p>
+<p class="hint">6 huruf/angka, contoh: K7P2QX.</p>
 </div>
-<div class="action-row">
-<button type="submit" class="btn btn-primary">Lanjutkan</button>
-<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar">Mulai pendaftaran baru</a>
-</div>
+<button type="submit" class="btn btn-primary btn-lg btn-block">Lanjutkan {{template "icon" "arrow-right"}}</button>
 </form>
 </section>
+<p class="text-center"><a class="text-sm" href="/s/{{.School.Code}}/daftar">Belum punya kode? Mulai pendaftaran baru</a></p>
+{{template "admission_footer"}}
+</div>
 {{end}}

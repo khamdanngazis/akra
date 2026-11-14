@@ -124,6 +124,7 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/s/{code}/status/", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/status/bukti.pdf", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/status/keluar", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/logo", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},
@@ -591,6 +592,8 @@ var Routes = []Route{
 	// Pendaftaran (T89).
 	{Method: "GET", Pattern: "/pendaftaran/periode/", Kind: KindPage, Roles: schoolData},
 	{Method: "GET", Pattern: "/pendaftaran/periode/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pendaftaran/periode/logo", Kind: KindOwn, Roles: adminTU, Requests: post(func(*School) string { return "/pendaftaran/periode/logo" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/periode/logo/hapus", Kind: KindOwn, Roles: adminTU, Requests: post(func(*School) string { return "/pendaftaran/periode/logo/hapus" }, nil)},
 	{Method: "POST", Pattern: "/pendaftaran/periode/", Kind: KindFormRef, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pendaftaran/periode/" }, func(o *School) url.Values {
 			return url.Values{"name": {"Lintas"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}

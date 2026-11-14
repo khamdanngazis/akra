@@ -25,8 +25,20 @@ Halaman publik pendaftaran (`/s/{kode}/daftar` dan `/s/{kode}/status`) masih pol
 - Pengaturan logo sekolah (handler dan template pengaturan; storage)
 
 ## Kriteria selesai
-- [ ] Mockup disetujui sebelum implementasi
-- [ ] Halaman awal, langkah form, periksa dan kirim, selesai, dan cek status memakai desain baru
-- [ ] Nyaman dipakai di HP (lebar 360 px): satu kolom, tombol aksi menempel di bawah, tanpa gulir horizontal
-- [ ] Logo sekolah tampil jika diunggah; tanpa logo tetap rapi
-- [ ] `make css-check` lulus; uji handler halaman publik tetap lulus
+- [x] Mockup disetujui sebelum implementasi
+- [x] Halaman awal, langkah form, periksa dan kirim, selesai, dan cek status memakai desain baru
+- [x] Nyaman dipakai di HP (lebar 360 px): satu kolom, tombol aksi menempel di bawah, tanpa gulir horizontal
+- [x] Logo sekolah tampil jika diunggah; tanpa logo tetap rapi
+- [x] `make css-check` lulus; uji handler halaman publik tetap lulus
+
+## Catatan implementasi
+- **Logo sekolah:** kolom `schools.logo_key`/`logo_type` (migrasi 000052). TU mengunggah dan menghapus logo di halaman **Periode Pendaftaran** (`POST /pendaftaran/periode/logo`, `/logo/hapus`); belum ada halaman profil sekolah. PNG/JPG maksimal 512 KB, isi diperiksa sebagai gambar. Logo disajikan publik di `/s/{kode}/logo?v=…` (tidak dienkripsi karena memang tampil publik; `v` berganti setiap logo diganti). Tanpa logo, kepala halaman menampilkan inisial nama sekolah.
+- **Komponen CSS** berawalan `adm-` di `web/tailwind/app.css` (bagian "Halaman pendaftaran publik").
+- **Halaman awal:** kartu periode yang sedang dibuka (tanggal tutup, biaya, jalur), daftar dokumen dari `required_docs` semua periode yang dibuka, lalu form data awal (tetap di halaman yang sama, bukan halaman terpisah seperti di mockup).
+- **Penunjuk langkah:** batang progres + daftar langkah dengan status selesai (✓) / kurang (kuning). Langkah baru dinilai setelah pernah diisi, agar langkah yang belum dibuka tidak tampil "selesai".
+- **Sebagian T107 ikut dikerjakan** karena dibutuhkan desain ini: tombol **Kembali** dan daftar langkah yang bisa diklik (keduanya menyimpan isian dulu lewat `go=prev` / `go=<langkah>`, juga untuk input TU), kekurangan dikelompokkan per langkah dengan tautan "Lengkapi", serta "belum diisi"/"belum diunggah". Yang masih tersisa untuk T107: sorot field yang kurang, unggah dokumen langsung dari halaman periksa, "Kembali tanpa menyimpan" saat format salah, dan tombol Simpan draf.
+- **Dokumen:** tampilan kartu per dokumen dengan status (terunggah / gagal / belum). Unggah masih memakai tombol "Unggah"; unggah otomatis, progres, dan kompresi foto tetap di T108.
+- **Periksa dan kirim:** ringkasan per langkah (NIK tersamar), tombol Ubah, kotak pernyataan (tombol Kirim aktif setelah dicentang, di sisi browser).
+- **Selesai:** sesi langsung diberi akses cek status sehingga "Unduh bukti" bekerja tanpa mengetik nomor lagi. Timeline menyesuaikan biaya formulir dan jalur dengan tes.
+- **Cek status:** kartu berwarna sesuai status dan riwayat status (tanpa nama petugas dan catatan internal).
+

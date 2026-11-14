@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -34,6 +35,7 @@ type PublicHandler struct {
 	periods    *Service
 	applicants *ApplicantService
 	documents  *DocumentService
+	logos      *LogoService
 	limiter    *Limiter
 	sessions   *scs.SessionManager
 	render     page.Renderer
@@ -43,7 +45,7 @@ type PublicHandler struct {
 // NewPublicHandler mengembalikan PublicHandler. Route-nya publik (di luar
 // RequireLogin) tetapi tetap memakai sesi dan CSRF.
 func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *PublicHandler {
-	return &PublicHandler{db: db, periods: periods, applicants: applicants, documents: documents, limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger}
+	return &PublicHandler{db: db, periods: periods, applicants: applicants, documents: documents, logos: logoServiceFor(db, documents), limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route publik pendaftaran ke r.
@@ -71,16 +73,53 @@ func (h *PublicHandler) Routes(r chi.Router) {
 		r.Get("/bukti.pdf", h.statusProof)
 		r.Post("/keluar", h.statusLogout)
 	})
+	// Publik: logo sekolah untuk kepala halaman pendaftaran (T111).
+	r.Get("/s/{code}/logo", h.logo)
 }
 
+// schoolInfo adalah identitas sekolah di kepala halaman publik.
 type schoolInfo struct {
 	ID, Code, Name string
+	Address        string
+	// LogoURL kosong jika sekolah belum mengunggah logo (T111).
+	LogoURL string
+}
+
+// Initials mengembalikan inisial nama sekolah sebagai pengganti logo,
+// tanpa awalan jenjang (SD, SMP, MI, ...).
+func (s schoolInfo) Initials() string {
+	words := strings.Fields(s.Name)
+	skip := map[string]bool{"SD": true, "SDN": true, "SDIT": true, "MI": true, "MIN": true, "SMP": true, "SMPN": true, "MTS": true, "SMA": true, "SMAN": true, "SMK": true, "SMKN": true, "MA": true, "TK": true}
+	var out []rune
+	for _, w := range words {
+		if len(words) > 1 && skip[strings.ToUpper(w)] {
+			continue
+		}
+		for _, r := range w {
+			out = append(out, unicode.ToUpper(r))
+			break
+		}
+		if len(out) == 2 {
+			break
+		}
+	}
+	if len(out) == 0 {
+		return "S"
+	}
+	return string(out)
 }
 
 func (h *PublicHandler) school(ctx context.Context, code string) (schoolInfo, bool, error) {
 	code = auth.NormalizeSchoolCode(code)
 	var s schoolInfo
-	err := h.db.QueryRow(ctx, `SELECT id, code, name FROM schools WHERE code = $1`, code).Scan(&s.ID, &s.Code, &s.Name)
+	var address, logo *string
+	err := h.db.QueryRow(ctx, `SELECT id, code, name, address, logo_key FROM schools WHERE code = $1`, code).Scan(&s.ID, &s.Code, &s.Name, &address, &logo)
+	if address != nil {
+		s.Address = *address
+	}
+	if logo != nil {
+		s.LogoURL = "/s/" + s.Code + "/logo?v=" + logoVersion(*logo)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return schoolInfo{}, false, nil
 	}
@@ -112,6 +151,9 @@ type trackOption struct {
 type startView struct {
 	School   schoolInfo
 	Open     bool
+	Year     string
+	Periods  []periodCard
+	Docs     []docCard
 	Tracks   []trackOption
 	Form     DraftForm
 	Choice   string // "<period_id>|<track_id>"
@@ -137,6 +179,7 @@ func (h *PublicHandler) renderStart(w http.ResponseWriter, r *http.Request, s sc
 		return
 	}
 	view.School, view.Open = s, len(open) > 0
+	view.Periods, view.Docs, view.Year = startInfo(open)
 	if view.Flash == "" {
 		view.Flash = auth.PopFlash(r.Context(), h.sessions)
 	}
@@ -271,7 +314,10 @@ func (h *PublicHandler) resume(w http.ResponseWriter, r *http.Request) {
 
 type stepNav struct {
 	Key, Title string
+	Number     int
 	Current    bool
+	Done       bool
+	Missing    int // isian wajib yang belum diisi (hanya langkah yang sudah dibuka)
 }
 
 type publicSection struct {
@@ -292,6 +338,10 @@ type stepView struct {
 	Steps      []stepNav
 	Sections   []publicSection
 	Missing    []students.RequiredField
+	Groups     []missingGroup
+	Summary    []summaryCard
+	StepNumber int
+	Prev       string
 	Documents  []docRow
 	DocErrors  map[string]string
 	ResumeCode string
@@ -363,7 +413,7 @@ func (h *PublicHandler) stepForm(w http.ResponseWriter, r *http.Request) {
 // publik (T90) dan input oleh TU (T92) agar isian dan aturannya sama.
 func buildStepView(ctx context.Context, periods *Service, documents *DocumentService, s schoolInfo, a Applicant, step string, submitted, errs map[string]string) (stepView, error) {
 	view := stepView{School: s, Applicant: a, Step: step}
-	if errs != nil {
+	if errs != nil && step != StepDocument {
 		view.Error = "Data belum disimpan. Periksa isian yang ditandai."
 	}
 	p, err := periods.Get(ctx, s.ID, a.PeriodID)
@@ -376,7 +426,22 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 			view.Track = t.Name
 		}
 	}
+	docs, err := documents.List(ctx, s.ID, a.ID)
+	if err != nil {
+		return stepView{}, err
+	}
+	missing := Missing(a)
+	for _, k := range MissingDocs(p, docs) {
+		missing = append(missing, students.RequiredField{Key: "doc_" + k, Label: DocLabel(k)})
+	}
 	view.Steps, view.StepName = navFor(step)
+	view.Steps = markSteps(view.Steps, a, missing, docs)
+	for _, n := range view.Steps {
+		if n.Current {
+			view.StepNumber = n.Number
+		}
+	}
+	view.Prev = prevStep(step)
 	values := map[string]string{}
 	for k, v := range a.Values {
 		values[k] = v
@@ -434,16 +499,10 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 			publicSection{Key: students.SectionRegistration, Title: "Sekolah asal", Hint: "Untuk siswa pindahan, isi sekolah sebelumnya.", Fields: reg},
 			publicSection{Key: students.SectionContact, Title: "Kontak calon siswa", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)})
 	case StepDocument, StepReview:
-		docs, err := documents.List(ctx, s.ID, a.ID)
-		if err != nil {
-			return stepView{}, err
-		}
 		view.Documents, view.DocErrors = docRows(p, docs), errs
 		if step == StepReview {
-			view.Missing = Missing(a)
-			for _, k := range MissingDocs(p, docs) {
-				view.Missing = append(view.Missing, students.RequiredField{Key: "doc_" + k, Label: DocLabel(k)})
-			}
+			view.Missing, view.Groups = missing, groupMissing(missing)
+			view.Summary = reviewSummary(a, missing, view.Documents)
 		}
 	}
 	return view, nil
@@ -618,13 +677,14 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if step == StepDocument {
-		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepReview, http.StatusSeeOther)
-		return
-	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	target := targetStep(step, r.PostForm.Get("go"))
+	if step == StepDocument {
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 		return
 	}
 	values := stepValues(r, step)
@@ -632,7 +692,7 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 	var ve *ValidationError
 	switch {
 	case err == nil:
-		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+nextStep(step), http.StatusSeeOther)
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 	case errors.As(err, &ve):
 		h.renderStep(w, r, s, a, step, http.StatusBadRequest, values, ve.Fields)
 	case errors.Is(err, ErrNotEditable):
@@ -658,6 +718,9 @@ func (h *PublicHandler) submit(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		h.sessions.Remove(r.Context(), sessionApplicant)
 		h.sessions.Put(r.Context(), sessionDone, done.RegistrationNumber)
+		// Akses cek status langsung, agar bukti pendaftaran bisa diunduh dari
+		// halaman selesai tanpa mengetik nomor dan tanggal lahir lagi.
+		h.sessions.Put(r.Context(), sessionStatus, s.ID+"|"+done.ID)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/selesai", http.StatusSeeOther)
 	case errors.As(err, &ve):
 		h.renderStep(w, r, s, a, StepReview, http.StatusBadRequest, nil, nil)
@@ -672,6 +735,8 @@ func (h *PublicHandler) submit(w http.ResponseWriter, r *http.Request) {
 type doneView struct {
 	School   schoolInfo
 	Number   string
+	Name     string
+	Timeline []timelineItem
 	Steps    []stepNav
 	StepName string
 	Error    string
@@ -688,7 +753,49 @@ func (h *PublicHandler) done(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
 		return
 	}
-	h.render.Render(w, r, http.StatusOK, "admission/public_done", doneView{School: s, Number: number})
+	view := doneView{School: s, Number: number}
+	school, id, _ := strings.Cut(h.sessions.GetString(r.Context(), sessionStatus), "|")
+	if school == s.ID && id != "" {
+		a, err := h.applicants.Load(r.Context(), s.ID, id)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			h.serverError(w, r, "load applicant", err)
+			return
+		}
+		if err == nil && a.RegistrationNumber == number {
+			if view, err = h.doneDetails(r.Context(), s, a, view); err != nil {
+				h.serverError(w, r, "done details", err)
+				return
+			}
+		}
+	}
+	if view.Timeline == nil {
+		view.Timeline = nextSteps(nil, "", false)
+	}
+	h.render.Render(w, r, http.StatusOK, "admission/public_done", view)
+}
+
+// doneDetails melengkapi halaman selesai dengan nama, biaya, dan tes.
+func (h *PublicHandler) doneDetails(ctx context.Context, s schoolInfo, a Applicant, view doneView) (doneView, error) {
+	p, err := h.periods.Get(ctx, s.ID, a.PeriodID)
+	if err != nil {
+		return view, err
+	}
+	usesTest := false
+	for _, t := range p.Tracks {
+		if t.ID == a.TrackID {
+			usesTest = t.UsesTest
+		}
+	}
+	var fee int64
+	if err := h.db.QueryRow(ctx, `SELECT fee_amount FROM applicants WHERE school_id = $1 AND id = $2`, s.ID, a.ID).Scan(&fee); err != nil {
+		return view, err
+	}
+	feeText := ""
+	if fee > 0 {
+		feeText = money.FormatRupiah(fee)
+	}
+	view.Name, view.Timeline = a.FullName, nextSteps(a.SubmittedAt, feeText, usesTest)
+	return view, nil
 }
 
 func (h *PublicHandler) serverError(w http.ResponseWriter, r *http.Request, op string, err error) {

@@ -17,17 +17,51 @@
 <label class="choice"><input type="checkbox" name="uses_test"{{if .Form.UsesTest}} checked{{end}}> Jalur ini memakai tes seleksi</label>
 {{end}}
 
-{{/* admission_public_head menampilkan nama sekolah dan langkah formulir. Argumen: view publik (School, Steps, StepName). */}}
-{{define "admission_public_head"}}
-<div class="page-header">
-<div>
-<p class="muted">Pendaftaran siswa baru</p>
-<h1>{{.School.Name}}</h1>
-{{with .StepName}}<p class="muted">{{.}}</p>{{end}}
+{{/* admission_logo menampilkan logo sekolah, atau inisial jika belum ada logo. Argumen: schoolInfo. */}}
+{{define "admission_logo"}}<span class="adm-logo">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="Logo {{.Name}}">{{else}}<span aria-hidden="true">{{.Initials}}</span>{{end}}</span>{{end}}
+
+{{/* admission_public_bar adalah kepala halaman langkah formulir dan cek status. Argumen: view publik (School). */}}
+{{define "admission_public_bar"}}
+<header class="adm-bar">
+<div class="adm-bar-inner">
+<a class="adm-school no-underline text-slate-900" href="/s/{{.School.Code}}/daftar">
+{{template "admission_logo" .School}}
+<span class="min-w-0"><span class="adm-school-name">{{.School.Name}}</span><span class="adm-school-sub">Pendaftaran Siswa Baru</span></span>
+</a>
 </div>
-</div>
-{{$n := len .Steps}}{{range $i, $s := .Steps}}{{if $s.Current}}<p class="muted" aria-current="step">Langkah {{inc $i}} dari {{$n}}</p>{{end}}{{end}}
+</header>
 {{end}}
+
+{{/* admission_hero adalah kepala halaman awal dan selesai. Argumen: view publik (School). */}}
+{{define "admission_hero_school"}}
+<div class="adm-school">
+{{template "admission_logo" .School}}
+<span class="min-w-0"><span class="adm-school-name text-white">{{.School.Name}}</span>{{with .School.Address}}<span class="adm-school-sub">{{.}}</span>{{end}}</span>
+</div>
+{{end}}
+
+{{/* admission_stepper menampilkan progres dan daftar langkah. Di langkah isian, langkah lain berupa tombol yang menyimpan dulu (form "step-form"); di halaman dokumen dan periksa berupa tautan. Argumen: stepView. */}}
+{{define "admission_stepper"}}
+{{$n := len .Steps}}
+<nav aria-label="Langkah pendaftaran">
+<div class="adm-progress-head"><strong aria-current="step">Langkah {{.StepNumber}} dari {{$n}} · {{.StepName}}</strong></div>
+<div class="adm-progress" style="--steps: {{$n}}" aria-hidden="true">{{range .Steps}}<span class="{{if .Current}}is-current{{else if .Done}}is-done{{else if .Missing}}is-warn{{end}}"></span>{{end}}</div>
+<ol class="adm-steps" x-data x-init="const c = $el.querySelector('[aria-current]'); if (c) $el.scrollLeft = c.parentElement.offsetLeft - 16">
+{{$form := and (ne .Step "dokumen") (ne .Step "kirim")}}
+{{range .Steps}}
+{{$cls := printf "adm-step%s" (or (and .Current " is-current") (and .Done " is-done") (and .Missing " is-warn") "")}}
+<li>{{if .Current}}<span class="{{$cls}}" aria-current="step">{{template "admission_step_num" .}}{{.Title}}</span>{{else if $form}}<button type="submit" form="step-form" name="go" value="{{.Key}}" class="{{$cls}}">{{template "admission_step_num" .}}{{.Title}}</button>{{else}}<a class="{{$cls}}" href="{{$.Base}}/isi/{{.Key}}">{{template "admission_step_num" .}}{{.Title}}</a>{{end}}</li>
+{{end}}
+</ol>
+</nav>
+{{end}}
+
+{{define "admission_step_num"}}<span class="adm-step-num">{{if and .Done (not .Current)}}{{template "icon" "check"}}<span class="visually-hidden">selesai:</span>{{else}}{{.Number}}{{end}}</span>{{end}}
+
+{{define "admission_footer"}}<p class="adm-footer">Didukung AKRA · Data pribadi dilindungi dan disimpan terenkripsi</p>{{end}}
+
+{{/* admission_doc_icon memilih ikon per jenis dokumen. Argumen: kunci dokumen. */}}
+{{define "admission_doc_icon"}}{{if eq . "kk"}}{{template "icon" "id-card"}}{{else if eq . "foto"}}{{template "icon" "image"}}{{else if eq . "kip"}}{{template "icon" "id-card"}}{{else}}{{template "icon" "file-text"}}{{end}}{{end}}
 
 {{/* applicant_status menampilkan status pendaftar sebagai badge. Argumen: kode status. */}}
 {{define "applicant_status"}}{{if eq . "diterima"}}<span class="badge badge-success">Diterima</span>{{else if eq . "diverifikasi"}}<span class="badge badge-info">Diverifikasi</span>{{else if eq . "dikirim"}}<span class="badge badge-info">Dikirim</span>{{else if eq . "perlu_perbaikan"}}<span class="badge badge-warning">Perlu perbaikan</span>{{else if eq . "cadangan"}}<span class="badge badge-warning">Cadangan</span>{{else if eq . "ditolak"}}<span class="badge badge-danger">Ditolak</span>{{else if eq . "mundur"}}<span class="badge">Mundur</span>{{else}}<span class="badge">Draf</span>{{end}}{{end}}

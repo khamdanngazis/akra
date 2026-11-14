@@ -1,11 +1,11 @@
-{{/* profile_fields merender input data rinci (students.FieldView). Argumen: dict Fields, Prefix (awalan id), Disabled. */}}
+{{/* profile_fields merender input data rinci (students.FieldView). Argumen: dict Fields, Prefix (awalan id), Disabled, Optional (true: tandai isian tidak wajib dengan "(opsional)" alih-alih badge Wajib, untuk formulir publik T111). */}}
 {{define "profile_fields"}}
 <div class="field-grid">
 {{range .Fields}}
 {{$id := printf "%s-%s" $.Prefix .Key}}
 {{if eq .Input "multi"}}
 <fieldset class="field{{if .Error}} has-error{{end}}">
-<legend>{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</legend>
+<legend>{{.Label}}{{template "profile_field_mark" dict "Required" .Required "Optional" $.Optional}}</legend>
 <div class="check-grid">
 {{$f := .}}{{range .Options}}<label class="choice"><input type="checkbox" name="{{$f.Key}}" value="{{.Value}}"{{if index $f.Checked .Value}} checked{{end}}{{if $.Disabled}} disabled{{end}}> {{.Label}}</label>{{end}}
 </div>
@@ -18,7 +18,7 @@
 </div>
 {{else}}
 <div class="field{{if .Error}} has-error{{end}}">
-<label for="{{$id}}">{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</label>
+<label for="{{$id}}">{{.Label}}{{template "profile_field_mark" dict "Required" .Required "Optional" $.Optional}}</label>
 {{if eq .Input "select"}}
 <select id="{{$id}}" name="{{.Key}}"{{if $.Disabled}} disabled{{end}}>
 <option value="">Tidak diisi</option>
@@ -33,3 +33,6 @@
 {{end}}
 </div>
 {{end}}
+
+{{/* profile_field_mark menandai isian wajib (badge) atau opsional. Argumen: dict Required, Optional. */}}
+{{define "profile_field_mark"}}{{if .Optional}}{{if not .Required}} <span class="muted">(opsional)</span>{{end}}{{else if .Required}} <span class="badge badge-info">Wajib</span>{{end}}{{end}}

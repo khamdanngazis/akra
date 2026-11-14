@@ -411,6 +411,10 @@ func TestPublicFlow(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(body, "Mulai pendaftaran") || !strings.Contains(body, "Jalur Reguler") {
 		t.Fatalf("start page: %d", code)
 	}
+	// Halaman awal menampilkan kartu periode dan inisial sekolah (tanpa logo).
+	if !strings.Contains(body, p.Name) || !strings.Contains(body, "Biaya formulir") || !strings.Contains(body, `class="adm-logo"`) || strings.Contains(body, "/logo?v=") {
+		t.Error("start page: period card or initials missing")
+	}
 	// Tanpa sesi draf: langkah diarahkan ke halaman awal.
 	if code, _ := c.get(base + "/isi/calon"); code != http.StatusSeeOther {
 		t.Errorf("step without session: %d", code)
@@ -452,6 +456,23 @@ func TestPublicFlow(t *testing.T) {
 			t.Fatalf("step %s: %d %s\n%s", s.step, code, loc, body)
 		}
 	}
+	// Tombol Kembali menyimpan lalu ke langkah sebelumnya; penunjuk
+	// langkah (go=<kunci>) menyimpan lalu lompat ke langkah itu.
+	back := url.Values{"previous_school": {"TK Melati"}, "email": {"budi@contoh.id"}, "go": {"prev"}}
+	if code, loc, _ := c.post(base+"/isi/sekolah", back); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/orangtua") {
+		t.Errorf("back: %d %s", code, loc)
+	}
+	back.Set("go", "calon")
+	if code, loc, _ := c.post(base+"/isi/sekolah", back); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/calon") {
+		t.Errorf("jump: %d %s", code, loc)
+	}
+	back.Set("go", "bukan-langkah")
+	if code, loc, _ := c.post(base+"/isi/sekolah", back); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/dokumen") {
+		t.Errorf("unknown go: %d %s", code, loc)
+	}
+	if code, loc, _ := c.post(base+"/isi/dokumen", url.Values{"go": {"prev"}}); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/sekolah") {
+		t.Errorf("documents back: %d %s", code, loc)
+	}
 	// Error validasi: isian ditampilkan ulang.
 	if code, _, body := c.post(base+"/isi/calon", url.Values{"full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "nik": {"12"}}); code != http.StatusBadRequest || !strings.Contains(body, "NIK harus 16 digit") {
 		t.Errorf("invalid step: %d", code)
@@ -462,6 +483,15 @@ func TestPublicFlow(t *testing.T) {
 	code, body = c.get(base + "/isi/kirim")
 	if code != http.StatusOK || !strings.Contains(body, "Kirim pendaftaran") {
 		t.Fatalf("review: %d\n%s", code, body)
+	}
+	// Ringkasan: data utama per langkah dengan tautan Ubah; NIK tersamar.
+	for _, want := range []string{"Budi Santoso", "Jl. Melati 5", "Sari", "TK Melati", `href="/s/test-adm-a/daftar/isi/alamat"`, pii.Mask(childNIK)} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review summary missing %q", want)
+		}
+	}
+	if strings.Contains(body, childNIK) {
+		t.Error("review shows full NIK")
 	}
 
 	// Melanjutkan dari "HP lain" (klien baru) dengan HP + kode.
@@ -478,8 +508,20 @@ func TestPublicFlow(t *testing.T) {
 		t.Fatalf("submit: %d %s", code, loc)
 	}
 	code, body = c.get(base + "/selesai")
-	if code != http.StatusOK || !regexp.MustCompile(`SPMB-2027-\d{4}`).MatchString(body) {
+	if code != http.StatusOK || !regexp.MustCompile(`SPMB-2027-\d{4}`).MatchString(body) || !strings.Contains(body, "Langkah berikutnya") {
 		t.Errorf("done page: %d", code)
+	}
+	// Bukti pendaftaran bisa langsung diunduh dari halaman selesai.
+	res, err := c.client.Get(c.srv.URL + "/s/test-adm-a/status/bukti.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "application/pdf" {
+		t.Errorf("proof after submit: %d %s", res.StatusCode, res.Header.Get("Content-Type"))
+	}
+	if code, body := c.get("/s/test-adm-a/status/"); code != http.StatusOK || !strings.Contains(body, "tone-info") || !strings.Contains(body, "Riwayat") {
+		t.Errorf("status after submit: %d", code)
 	}
 	// Setelah kirim, langkah tidak bisa dibuka lagi.
 	if code, _ := c.get(base + "/isi/calon"); code != http.StatusSeeOther {

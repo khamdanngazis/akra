@@ -1,11 +1,42 @@
 {{define "title"}}Pendaftaran Terkirim{{end}}
+{{define "header"}}
+<header class="adm-hero">
+<div class="adm-hero-inner text-center">
+<div class="text-left">{{template "admission_hero_school" .}}</div>
+<div class="adm-done-mark mt-6">{{template "icon" "check"}}</div>
+<h1 class="mt-5">Pendaftaran terkirim</h1>
+<p>Terima kasih.{{with .Name}} Data {{.}} sudah diterima sekolah.{{end}}</p>
+</div>
+</header>
+{{end}}
 {{define "content"}}
-{{template "admission_public_head" .}}
-<section class="card">
-<h2>Pendaftaran terkirim</h2>
-<p>Nomor pendaftaran: <strong>{{.Number}}</strong></p>
-<p>Simpan nomor ini. Sekolah akan memeriksa data dan menghubungi Anda melalui nomor HP yang didaftarkan.</p>
-<p>Pantau status dan unduh bukti pendaftaran di halaman <a href="/s/{{.School.Code}}/status">cek status</a> dengan nomor ini dan tanggal lahir calon siswa.</p>
-<p><a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar">Kembali ke halaman pendaftaran</a></p>
+<div class="adm-shell adm-lift">
+<section class="adm-card adm-card-raised text-center" x-data="{ copied: false }">
+<span class="text-[13px] text-slate-600">Nomor pendaftaran</span>
+<strong class="adm-number" id="nomor">{{.Number}}</strong>
+<p class="mt-1 mb-4 text-[13px] text-slate-500">Simpan nomor ini untuk cek status.</p>
+<div class="grid grid-cols-2 gap-2">
+<button type="button" class="btn btn-ghost" x-cloak x-show="navigator.clipboard" @click="navigator.clipboard.writeText('{{.Number}}').then(() => { copied = true; setTimeout(() => copied = false, 2000) })">{{template "icon" "copy"}}<span x-text="copied ? 'Tersalin' : 'Salin'">Salin</span></button>
+<a class="btn btn-primary" href="/s/{{.School.Code}}/status/bukti.pdf">{{template "icon" "download"}}Unduh bukti</a>
+</div>
 </section>
+
+<section class="adm-card">
+<h2>Langkah berikutnya</h2>
+<ol class="adm-timeline">
+{{range $i, $t := .Timeline}}
+<li class="{{if eq .State "done"}}is-done{{else if eq .State "current"}}is-current{{end}}">
+<span class="adm-timeline-dot" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{inc $i}}{{end}}</span>
+<span><strong>{{.Title}}</strong>{{with .Desc}}<small>{{.}}</small>{{end}}</span>
+</li>
+{{end}}
+</ol>
+</section>
+
+<div class="flex flex-col gap-2.5">
+<a class="btn btn-ghost btn-lg" href="/s/{{.School.Code}}/status">Cek status pendaftaran</a>
+<a class="text-center text-sm py-2" href="/s/{{.School.Code}}/daftar">Daftarkan anak lain</a>
+</div>
+{{template "admission_footer"}}
+</div>
 {{end}}

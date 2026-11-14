@@ -11,6 +11,26 @@
 
 {{template "flash" .}}
 
+<section class="card">
+<h2 class="section-title">Halaman pendaftaran publik</h2>
+<div class="flex flex-wrap items-center gap-4">
+<span class="adm-logo size-16 text-lg">{{if .LogoURL}}<img src="{{.LogoURL}}" alt="Logo sekolah">{{else}}<span aria-hidden="true">Logo</span>{{end}}</span>
+<div class="min-w-0 flex-1">
+<p class="mb-1">Tautan untuk orang tua: <a href="/s/{{.SchoolCode}}/daftar" target="_blank" rel="noopener"><strong>/s/{{.SchoolCode}}/daftar</strong></a></p>
+<p class="muted mb-0 text-sm">{{if .LogoURL}}Logo sekolah tampil di kepala halaman pendaftaran.{{else}}Belum ada logo. Halaman pendaftaran menampilkan inisial nama sekolah.{{end}}</p>
+</div>
+</div>
+{{if .CanEdit}}
+<form method="post" action="/pendaftaran/periode/logo" enctype="multipart/form-data" class="action-row mt-4">
+{{ csrfField }}
+<input type="file" name="logo" accept="image/png,image/jpeg" aria-label="File logo sekolah" class="max-w-sm">
+<button type="submit" class="btn btn-ghost btn-sm">{{template "icon" "upload"}}{{if .LogoURL}}Ganti logo{{else}}Unggah logo{{end}}</button>
+</form>
+<p class="hint mb-0">PNG atau JPG, maksimal 512 KB. Sebaiknya persegi dengan latar putih atau transparan.</p>
+{{if .LogoURL}}<form method="post" action="/pendaftaran/periode/logo/hapus" class="mt-2">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus logo</button></form>{{end}}
+{{end}}
+</section>
+
 {{if .Periods}}
 <div class="card card-flush">
 <div class="table-wrap">

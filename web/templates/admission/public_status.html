@@ -1,37 +1,51 @@
 {{define "title"}}Status Pendaftaran{{end}}
+{{define "header"}}{{template "admission_public_bar" .}}{{end}}
 {{define "content"}}
-{{template "admission_public_head" .}}
+<div class="adm-shell">
 {{template "flash" .}}
 {{if .Found}}
-<section class="card">
-<h2>{{.Applicant.FullName}}</h2>
-<p class="muted">No. {{.Applicant.RegistrationNumber}} · {{.Period}} · Jalur {{.Track}}</p>
-<p>{{template "applicant_status" .Applicant.Status}}</p>
-<p>{{.Explain}}</p>
-{{with .Note}}<div class="alert" role="status"><strong>Catatan dari sekolah:</strong> {{.}}</div>{{end}}
-{{if eq .Applicant.Status "perlu_perbaikan"}}<p><a class="btn btn-primary" href="/s/{{.School.Code}}/daftar/lanjut">Perbaiki formulir</a></p>{{end}}
-{{if .MissingDocs}}<p class="field-error">Dokumen belum diunggah: {{range $i, $d := .MissingDocs}}{{if $i}}, {{end}}{{$d}}{{end}}</p>{{end}}
+<div class="adm-title"><h1>Status pendaftaran</h1><p>No. {{.Applicant.RegistrationNumber}} · {{.Period}} · Jalur {{.Track}}</p></div>
+<section class="adm-status tone-{{.Tone}}">
+<span class="adm-status-label">{{.StatusLabel}}</span>
+<h2 class="mt-1 mb-1">{{.Applicant.FullName}}</h2>
+<p class="mb-0 text-sm text-slate-700">{{.Explain}}</p>
+{{with .Note}}<div class="alert mt-3 mb-0" role="status"><strong>Catatan dari sekolah:</strong> {{.}}</div>{{end}}
+{{if .MissingDocs}}<p class="mt-3 mb-0 text-sm font-semibold text-amber-700">Dokumen belum diunggah: {{range $i, $d := .MissingDocs}}{{if $i}}, {{end}}{{$d}}{{end}}</p>{{end}}
+{{if eq .Applicant.Status "perlu_perbaikan"}}<a class="btn btn-primary btn-block mt-4" href="/s/{{.School.Code}}/daftar/lanjut">Perbaiki formulir</a>{{end}}
 </section>
-{{if .Tests}}
-<section class="card">
-<h2>Jadwal tes</h2>
-<ul>{{range .Tests}}<li>{{.}}</li>{{end}}</ul>
-</section>
-{{end}}
 {{with .FeeAmount}}
-<section class="card">
-<h2>Biaya formulir</h2>
-<p>{{.}} · {{if $.FeePaid}}<span class="badge badge-success">Lunas</span>{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}</p>
-{{if not $.FeePaid}}<p class="hint">Lakukan pembayaran sesuai petunjuk sekolah.</p>{{end}}
+<section class="adm-card">
+<div class="adm-card-head"><h2>Biaya formulir</h2>{{if $.FeePaid}}<span class="badge badge-success">Lunas</span>{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}</div>
+<p class="mb-0 text-lg font-bold text-navy-900">{{.}}</p>
+{{if not $.FeePaid}}<p class="hint mb-0">Lakukan pembayaran sesuai petunjuk sekolah.</p>{{end}}
 </section>
 {{end}}
-<div class="action-row">
-<a class="btn btn-ghost" href="/s/{{.School.Code}}/status/bukti.pdf">Unduh bukti pendaftaran</a>
-<form method="post" action="/s/{{.School.Code}}/status/keluar">{{ csrfField }}<button type="submit" class="btn btn-ghost">Selesai</button></form>
+{{if .Tests}}
+<section class="adm-card">
+<h2>Jadwal tes</h2>
+<ul class="adm-checklist">{{range .Tests}}<li><span class="adm-ico is-navy">{{template "icon" "calendar"}}</span>{{.}}</li>{{end}}</ul>
+</section>
+{{end}}
+{{if .History}}
+<section class="adm-card">
+<h2>Riwayat</h2>
+<ol class="adm-timeline">
+{{range $i, $h := .History}}
+<li class="{{if eq (inc $i) (len $.History)}}is-current{{else}}is-done{{end}}">
+<span class="adm-timeline-dot" aria-hidden="true">{{if eq (inc $i) (len $.History)}}{{inc $i}}{{else}}{{template "icon" "check"}}{{end}}</span>
+<span><strong>{{.Label}}</strong><small>{{.At}} WIB</small></span>
+</li>
+{{end}}
+</ol>
+</section>
+{{end}}
+<div class="flex flex-col gap-2.5">
+<a class="btn btn-primary btn-lg" href="/s/{{.School.Code}}/status/bukti.pdf">{{template "icon" "download"}}Unduh bukti pendaftaran</a>
+<form method="post" action="/s/{{.School.Code}}/status/keluar">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-lg btn-block">Selesai</button></form>
 </div>
 {{else}}
-<section class="card form-card">
-<h2>Cek status pendaftaran</h2>
+<div class="adm-title"><h1>Cek status pendaftaran</h1><p>Masukkan nomor pendaftaran dan tanggal lahir calon siswa.</p></div>
+<section class="adm-card">
 <form method="post" action="/s/{{.School.Code}}/status" class="stack" novalidate>
 {{ csrfField }}
 <div class="field">
@@ -42,11 +56,11 @@
 <label for="birth_date">Tanggal lahir calon siswa</label>
 <input id="birth_date" type="date" name="birth_date" value="{{.BirthDate}}" required>
 </div>
-<div class="action-row">
-<button type="submit" class="btn btn-primary">Cek status</button>
-<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar">Halaman pendaftaran</a>
-</div>
+<button type="submit" class="btn btn-primary btn-lg btn-block">Cek status</button>
 </form>
 </section>
+<p class="text-center"><a class="text-sm" href="/s/{{.School.Code}}/daftar">Halaman pendaftaran</a></p>
 {{end}}
+{{template "admission_footer"}}
+</div>
 {{end}}
