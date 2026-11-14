@@ -1,17 +1,64 @@
 {{define "title"}}Pendaftaran {{.School.Name}}{{end}}
+{{define "header"}}
+<header class="adm-hero">
+<div class="adm-hero-inner">
+{{template "admission_hero_school" .}}
+<div class="mt-5">
+{{if .Open}}<span class="adm-pill">Pendaftaran dibuka</span>{{else}}<span class="adm-pill adm-pill-muted">Pendaftaran belum dibuka</span>{{end}}
+<h1>Pendaftaran Siswa Baru{{with .Year}}<br>Tahun Ajaran {{.}}{{end}}</h1>
+<p>Daftar online dari HP. Data tersimpan otomatis dan bisa dilanjutkan kapan saja.</p>
+</div>
+</div>
+</header>
+{{end}}
 {{define "content"}}
-{{template "admission_public_head" .}}
+<div class="adm-shell adm-lift">
 {{template "flash" .}}
 {{if not .Open}}
-<section class="card empty-state">
-<p>Pendaftaran siswa baru belum dibuka atau sudah ditutup.</p>
-<p class="muted">Hubungi sekolah untuk informasi jadwal pendaftaran.</p>
-<p><a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar/lanjut">Lanjutkan draf yang sudah ada</a> <a class="btn btn-ghost" href="/s/{{.School.Code}}/status">Cek status pendaftaran</a></p>
+<section class="adm-card adm-card-raised">
+<h2>Pendaftaran belum dibuka atau sudah ditutup</h2>
+<p class="muted mb-0">Hubungi sekolah untuk informasi jadwal pendaftaran.</p>
 </section>
+<div class="flex flex-col gap-2.5">
+<a class="btn btn-ghost btn-lg" href="/s/{{.School.Code}}/daftar/lanjut">Lanjutkan draf yang tersimpan</a>
+<a class="btn btn-ghost btn-lg" href="/s/{{.School.Code}}/status">Cek status pendaftaran</a>
+</div>
 {{else}}
-<section class="card form-card">
+{{range $i, $p := .Periods}}
+<section class="adm-card{{if eq $i 0}} adm-card-raised{{end}}">
+<div class="adm-card-head"><h2>{{$p.Name}}</h2><span class="text-[13px] text-slate-600">Kelas {{$p.Grade}}</span></div>
+<div class="adm-tiles">
+<div class="adm-tile"><span>Ditutup</span><strong>{{$p.Closes}}</strong></div>
+<div class="adm-tile"><span>Biaya formulir</span><strong>{{if $p.Fee}}{{$p.Fee}}{{else}}Gratis{{end}}</strong></div>
+</div>
+{{if $p.Tracks}}
+<p class="mt-3 mb-1.5 text-[13px] font-semibold text-slate-700">Jalur yang tersedia</p>
+<div class="adm-tags">{{range $p.Tracks}}<span class="adm-tag">{{.Name}}{{if .Quota}} · {{.Quota}} kursi{{end}}{{if .UsesTest}} · dengan tes{{end}}</span>{{end}}</div>
+{{end}}
+</section>
+{{end}}
+
+<section class="adm-card">
+<h2>Siapkan dulu</h2>
+<p class="mt-1 mb-3 text-[13px] text-slate-600">Foto dokumen dengan HP, pastikan tulisannya terbaca.</p>
+<ul class="adm-checklist">
+{{range .Docs}}<li><span class="adm-ico">{{template "admission_doc_icon" .Key}}</span>{{.Label}}</li>{{end}}
+<li><span class="adm-ico is-navy">{{template "icon" "clock"}}</span>Waktu mengisi sekitar 15 menit</li>
+</ul>
+</section>
+
+<section class="adm-card">
+<h2>Langkahnya</h2>
+<ol class="adm-numbered">
+<li><span>1</span><span>Isi data awal di bawah, lalu lengkapi data anak, alamat, dan orang tua</span></li>
+<li><span>2</span><span>Foto dan unggah dokumen</span></li>
+<li><span>3</span><span>Periksa, kirim, dapat nomor pendaftaran, lalu pantau statusnya</span></li>
+</ol>
+</section>
+
+<section class="adm-card" id="mulai">
 <h2>Mulai pendaftaran</h2>
-<p class="muted">Isi data awal. Setelah itu Anda mendapat <strong>kode lanjut</strong> untuk melengkapi formulir kapan saja dari HP ini atau HP lain.</p>
+<p class="mt-1 text-sm text-slate-600">Isi data awal. Setelah itu Anda mendapat <strong>kode lanjut</strong> untuk melengkapi formulir kapan saja, dari HP ini atau HP lain.</p>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
 <form method="post" action="/s/{{.School.Code}}/daftar" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
@@ -23,8 +70,9 @@
 {{with .Errors.track_id}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 <div class="field{{if .Errors.full_name}} has-error{{end}}">
-<label for="full_name">Nama lengkap calon siswa (sesuai akta)</label>
+<label for="full_name">Nama lengkap calon siswa</label>
 <input id="full_name" name="full_name" value="{{.Form.FullName}}" maxlength="100" autocomplete="off" required>
+<p class="hint">Sesuai akta kelahiran, tanpa singkatan.</p>
 {{with .Errors.full_name}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 <div class="field-grid">
@@ -57,11 +105,15 @@
 <label class="choice"><input type="checkbox" name="consent"{{if .Form.Consent}} checked{{end}}> Saya menyetujui {{.School.Name}} mengolah data pribadi calon siswa dan orang tua/wali untuk keperluan pendaftaran dan pelaporan Dapodik, sesuai UU Pelindungan Data Pribadi.</label>
 {{with .Errors.consent}}<p class="field-error">{{.}}</p>{{end}}
 </div>
-<div class="action-row">
-<button type="submit" class="btn btn-primary" :disabled="submitting">Mulai pendaftaran</button>
-<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar/lanjut">Saya sudah punya kode lanjut</a>
-</div>
+<button type="submit" class="btn btn-primary btn-lg btn-block" :disabled="submitting">Mulai pendaftaran {{template "icon" "arrow-right"}}</button>
 </form>
 </section>
+
+<div class="flex flex-col gap-2.5">
+<a class="btn btn-ghost btn-lg" href="/s/{{.School.Code}}/daftar/lanjut">Lanjutkan draf yang tersimpan</a>
+<a class="text-center text-sm py-2" href="/s/{{.School.Code}}/status">Sudah mendaftar? Cek status pendaftaran</a>
+</div>
 {{end}}
+{{template "admission_footer"}}
+</div>
 {{end}}

@@ -1,70 +1,107 @@
 {{define "title"}}{{.StepName}} · Pendaftaran{{end}}
-{{define "header"}}{{if .Staff}}{{template "app_header" .User}}{{end}}{{end}}
+{{define "header"}}{{if .Staff}}{{template "app_header" .User}}{{else}}{{template "admission_public_bar" .}}{{end}}{{end}}
 {{define "content"}}
-{{template "admission_public_head" .}}
+<div class="adm-shell">
+{{if .Staff}}<p class="breadcrumb"><a href="/pendaftaran/{{.Applicant.ID}}">← Kembali ke detail pendaftar</a></p>{{end}}
+{{template "admission_stepper" .}}
 {{template "flash" .}}
 {{with .ResumeCode}}
-<section class="card" role="status">
+<section class="adm-resume" role="status">
 <h2>Kode lanjut Anda: <strong>{{.}}</strong></h2>
 <p>Catat atau foto kode ini. Dengan nomor HP dan kode ini, Anda bisa melanjutkan pendaftaran kapan saja. Kode hanya ditampilkan sekali.</p>
 </section>
 {{end}}
-<p class="muted">{{.Applicant.FullName}} · {{.Period}} · Jalur {{.Track}}</p>
 
 {{if eq .Step "kirim"}}
-<section class="card">
-<h2>Periksa dan kirim</h2>
-{{if .Missing}}
-<div class="alert alert-error" role="alert">Masih ada isian wajib yang kosong:</div>
-<ul>{{range .Missing}}<li>{{.Label}}</li>{{end}}</ul>
-<p class="muted">Lengkapi lewat langkah sebelumnya, lalu kembali ke halaman ini.</p>
-{{else}}
-<p>Semua isian wajib sudah lengkap. Setelah dikirim, data tidak bisa diubah kecuali sekolah meminta perbaikan.</p>
-<form method="post" action="{{.Base}}/kirim" x-data="{ submitting: false }" @submit="submitting = true">
-{{ csrfField }}
-<button type="submit" class="btn btn-primary" :disabled="submitting">Kirim pendaftaran</button>
-</form>
-{{end}}
-<div class="action-row">
-{{range .Steps}}{{if ne .Key "kirim"}}<a class="btn btn-ghost btn-sm" href="{{$.Base}}/isi/{{.Key}}">Ubah {{.Title}}</a>{{end}}{{end}}
+<div class="adm-title">
+<h1>Periksa sebelum dikirim</h1>
+<p>{{.Applicant.FullName}} · {{.Period}} · Jalur {{.Track}}. Setelah dikirim, data tidak bisa diubah sendiri kecuali sekolah meminta perbaikan.</p>
 </div>
+{{if .Groups}}
+<section class="adm-warn" role="alert">
+<h2>{{template "icon" "warning"}}Masih ada {{len .Missing}} yang perlu dilengkapi</h2>
+{{range .Groups}}{{$g := .}}{{range .Items}}
+<a class="adm-fix" href="{{$.Base}}/isi/{{$g.Step}}"><span><small>{{$g.Title}}</small>{{.}}</span><span>Lengkapi ›</span></a>
+{{end}}{{end}}
 </section>
+{{end}}
+{{range .Summary}}
+<section class="adm-card{{if .Missing}} is-warn{{end}}">
+<div class="adm-card-head">
+<h2 class="adm-sum-title">{{if .Missing}}<span class="adm-dot is-warn" aria-hidden="true">!</span>{{else}}<span class="adm-dot" aria-hidden="true">{{template "icon" "check"}}</span>{{end}}{{.Title}}</h2>
+<a href="{{$.Base}}/isi/{{.Step}}" aria-label="Ubah {{.Title}}">Ubah</a>
+</div>
+{{if .Docs}}
+<div class="adm-tags">{{range .Docs}}{{if .Uploaded}}<span class="adm-chip">{{template "icon" "check"}}{{.Label}}</span>{{else if .Required}}<span class="adm-chip is-missing">{{.Label}} belum ada</span>{{else}}<span class="adm-chip is-optional">{{.Label}} (opsional)</span>{{end}}{{end}}</div>
+{{else if .Rows}}
+<dl class="adm-sum">
+{{range .Rows}}<dt>{{.Label}}</dt><dd>{{if and .Empty .Required}}<span class="is-empty">belum diisi</span>{{else if .Empty}}<span class="muted">tidak diisi</span>{{else}}{{.Value}}{{end}}</dd>{{end}}
+</dl>
+{{end}}
+</section>
+{{end}}
+<form method="post" action="{{.Base}}/kirim" class="adm-actions" x-data="{ ok: false, submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+{{if .Groups}}
+<a class="btn btn-ghost" href="{{.Base}}/isi/{{.Prev}}">{{template "icon" "arrow-left"}}Kembali</a>
+<button type="button" class="btn btn-primary adm-next" disabled>Lengkapi {{len .Missing}} isian dulu</button>
+{{else}}
+<label class="choice"><input type="checkbox" x-model="ok"> Saya menyatakan data di atas benar dan sesuai dokumen.</label>
+<a class="btn btn-ghost" href="{{.Base}}/isi/{{.Prev}}">{{template "icon" "arrow-left"}}Kembali</a>
+<button type="submit" class="btn btn-primary adm-next" :disabled="!ok || submitting">Kirim pendaftaran</button>
+{{end}}
+</form>
+
 {{else if eq .Step "dokumen"}}
-<section class="card">
-<h2>Dokumen</h2>
-<p class="hint">Foto (JPG/PNG) atau PDF, maksimal 2 MB per file. Pastikan tulisan terbaca jelas. Dokumen disimpan terenkripsi dan hanya bisa dibuka petugas sekolah.</p>
-<ul class="guardian-list">
+<div class="adm-title">
+<h1>Dokumen</h1>
+<p>Foto (JPG/PNG) atau PDF, maksimal 2 MB per file. Pilih file lalu tekan Unggah.</p>
+</div>
+<ul class="adm-docs">
 {{range .Documents}}
-<li>
-<div><strong>{{.Label}}</strong>{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}
-{{if .Uploaded}} <span class="badge badge-success">Sudah diunggah</span>{{end}}</div>
-<form method="post" action="{{$.Base}}/dokumen/{{.Key}}" enctype="multipart/form-data" class="action-row">
+{{$err := index $.DocErrors .Key}}
+<li class="adm-doc{{if $err}} is-error{{else if .Uploaded}} is-ok{{end}}" id="dok-{{.Key}}">
+<div class="adm-doc-head">
+<span class="adm-doc-ico">{{template "admission_doc_icon" .Key}}</span>
+<div class="min-w-0">
+<span class="adm-doc-name">{{.Label}}{{if not .Required}} <span class="text-[13px] font-normal text-slate-500">(opsional)</span>{{end}}</span>
+{{if $err}}<span class="adm-doc-state">{{template "icon" "alert"}}Gagal: {{$err}}</span>
+{{else if .Uploaded}}<span class="adm-doc-state">{{template "icon" "check"}}Terunggah</span>
+{{else}}<span class="adm-doc-state">Belum diunggah</span>{{end}}
+</div>
+</div>
+<form method="post" action="{{$.Base}}/dokumen/{{.Key}}" enctype="multipart/form-data">
 {{ csrfField }}
 <input type="file" name="file" accept="image/jpeg,image/png,application/pdf" aria-label="File {{.Label}}">
-<button type="submit" class="btn btn-ghost btn-sm">{{if .Uploaded}}Ganti{{else}}Unggah{{end}}</button>
+<button type="submit" class="btn {{if .Uploaded}}btn-ghost{{else}}btn-primary{{end}} btn-sm">{{template "icon" "upload"}}{{if .Uploaded}}Ganti{{else}}Unggah{{end}}</button>
 </form>
-{{with index $.DocErrors .Key}}<p class="field-error">{{.}}</p>{{end}}
 </li>
 {{end}}
 </ul>
-<form method="post" action="{{.Base}}/isi/dokumen">
+<p class="flex gap-2 text-[13px] text-slate-600">{{template "icon" "info"}}Foto dokumen utuh, tidak terpotong, tidak buram. Dokumen disimpan terenkripsi dan hanya bisa dibuka petugas sekolah.</p>
+<form method="post" action="{{.Base}}/isi/dokumen" class="adm-actions">
 {{ csrfField }}
-<button type="submit" class="btn btn-primary">Lanjut ke pemeriksaan</button>
+<button type="submit" name="go" value="prev" class="btn btn-ghost">{{template "icon" "arrow-left"}}Kembali</button>
+<button type="submit" class="btn btn-primary adm-next">Lanjut periksa {{template "icon" "arrow-right"}}</button>
 </form>
-</section>
+
 {{else}}
-<form method="post" action="{{.Base}}/isi/{{.Step}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+<div class="adm-title"><h1>{{.StepName}}</h1></div>
+<form method="post" action="{{.Base}}/isi/{{.Step}}" id="step-form" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
 {{range .Sections}}
-<section class="card" id="{{.Key}}">
+<section class="adm-card" id="{{.Key}}">
 <h2>{{.Title}}</h2>
-{{with .Hint}}<p class="hint">{{.}}</p>{{end}}
-{{template "profile_fields" dict "Fields" .Fields "Prefix" .Key "Disabled" false}}
+{{with .Hint}}<p class="hint mt-1">{{.}}</p>{{end}}
+{{template "profile_fields" dict "Fields" .Fields "Prefix" .Key "Disabled" false "Optional" true}}
 </section>
 {{end}}
-<div class="action-row">
-<button type="submit" class="btn btn-primary" :disabled="submitting">{{.NextLabel}}</button>
+<div class="adm-actions">
+{{if .Prev}}<button type="submit" name="go" value="prev" class="btn btn-ghost">{{template "icon" "arrow-left"}}Kembali</button>{{end}}
+<button type="submit" class="btn btn-primary adm-next" :disabled="submitting">{{.NextLabel}} {{template "icon" "arrow-right"}}</button>
 </div>
 </form>
 {{end}}
+{{if not .Staff}}{{template "admission_footer"}}{{end}}
+</div>
 {{end}}

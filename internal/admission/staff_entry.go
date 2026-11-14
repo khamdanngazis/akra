@@ -153,13 +153,14 @@ func (h *Handler) staffSaveStep(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	base := applicantsPath + "/" + a.ID
-	if step == StepDocument {
-		http.Redirect(w, r, base+"/isi/"+StepReview, http.StatusSeeOther)
-		return
-	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	target := targetStep(step, r.PostForm.Get("go"))
+	if step == StepDocument {
+		http.Redirect(w, r, base+"/isi/"+target, http.StatusSeeOther)
 		return
 	}
 	values := stepValues(r, step)
@@ -167,7 +168,7 @@ func (h *Handler) staffSaveStep(w http.ResponseWriter, r *http.Request) {
 	var ve *ValidationError
 	switch {
 	case err == nil:
-		http.Redirect(w, r, base+"/isi/"+nextStep(step), http.StatusSeeOther)
+		http.Redirect(w, r, base+"/isi/"+target, http.StatusSeeOther)
 	case errors.As(err, &ve):
 		h.renderStaffStep(w, r, id, s, a, step, http.StatusBadRequest, values, ve.Fields)
 	case errors.Is(err, ErrNotEditable):

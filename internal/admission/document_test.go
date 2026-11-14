@@ -171,7 +171,7 @@ func TestPublicDocumentUpload(t *testing.T) {
 		t.Errorf("unknown type: %d", code)
 	}
 	_, body := c.get(base + "/isi/dokumen")
-	if !strings.Contains(body, "Sudah diunggah") {
+	if !strings.Contains(body, "Terunggah") {
 		t.Error("uploaded badge missing")
 	}
 }

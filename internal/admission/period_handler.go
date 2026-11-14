@@ -29,6 +29,7 @@ type Handler struct {
 	periods    *Service
 	applicants *ApplicantService
 	documents  *DocumentService
+	logos      *LogoService
 	sessions   *scs.SessionManager
 	render     page.Renderer
 	logger     *slog.Logger
@@ -37,7 +38,8 @@ type Handler struct {
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, periods: periods, applicants: applicants, documents: documents, sessions: sessions, render: render, logger: logger}
+	return &Handler{db: db, periods: periods, applicants: applicants, documents: documents, logos: logoServiceFor(db, documents),
+		sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route pendaftaran staf ke r.
@@ -123,6 +125,10 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Get("/baru", h.newPeriod)
 		// Peran: admin_tu.
 		r.Post("/", h.createPeriod)
+		// Peran: admin_tu. Logo sekolah untuk halaman pendaftaran (T111).
+		r.Post("/logo", h.uploadLogo)
+		// Peran: admin_tu.
+		r.Post("/logo/hapus", h.removeLogo)
 		// Peran: admin_tu.
 		r.Get("/{id}/ubah", h.editPeriod)
 		// Peran: admin_tu.
@@ -163,11 +169,13 @@ type periodRow struct {
 }
 
 type periodListView struct {
-	User    auth.Identity
-	CanEdit bool
-	Periods []periodRow
-	Flash   string
-	Error   string
+	User       auth.Identity
+	CanEdit    bool
+	Periods    []periodRow
+	SchoolCode string
+	LogoURL    string
+	Flash      string
+	Error      string
 }
 
 type periodFormView struct {
@@ -217,19 +225,35 @@ func toRow(p Period) periodRow {
 }
 
 func (h *Handler) listPeriods(w http.ResponseWriter, r *http.Request) {
+	h.renderPeriods(w, r, http.StatusOK, "")
+}
+
+func (h *Handler) renderPeriods(w http.ResponseWriter, r *http.Request, status int, errMsg string) {
 	id, _ := auth.CurrentUser(r.Context())
 	list, err := h.periods.List(r.Context(), id.SchoolID)
 	if err != nil {
 		h.serverError(w, r, "list periods", err)
 		return
 	}
-	view := periodListView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Flash: auth.PopFlash(r.Context(), h.sessions)}
+	view := periodListView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Flash: auth.PopFlash(r.Context(), h.sessions), Error: errMsg}
+	if err := h.db.QueryRow(r.Context(), `SELECT code FROM schools WHERE id = $1`, id.SchoolID).Scan(&view.SchoolCode); err != nil {
+		h.serverError(w, r, "school code", err)
+		return
+	}
+	logo, ok, err := h.logos.Get(r.Context(), id.SchoolID)
+	if err != nil {
+		h.serverError(w, r, "get logo", err)
+		return
+	}
+	if ok {
+		view.LogoURL = "/s/" + view.SchoolCode + "/logo?v=" + logoVersion(logo.Key)
+	}
 	for _, p := range list {
 		row := toRow(p)
 		row.OpenNow = p.IsOpen(h.periods.Today())
 		view.Periods = append(view.Periods, row)
 	}
-	h.render.Render(w, r, http.StatusOK, "admission/periods", view)
+	h.render.Render(w, r, status, "admission/periods", view)
 }
 
 func (h *Handler) periodDetail(w http.ResponseWriter, r *http.Request) {
