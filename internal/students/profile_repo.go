@@ -30,6 +30,7 @@ func PIIColumns() []pii.Column {
 			cols = append(cols, pii.Column{Table: "student_profiles", Key: "student_id", Column: f.Column + "_enc", AADName: f.aad()})
 		}
 	}
+	cols = append(cols, pii.Column{Table: "guardians", Key: "id", Column: "nik_enc", AADName: guardianNIKAAD})
 	return cols
 }
 

@@ -60,6 +60,8 @@ type StudentGuardian struct {
 	Guardian
 	Relationship string
 	IsPrimary    bool
+	// IsBiological bermakna untuk ayah/ibu: true jika orang tua kandung.
+	IsBiological bool
 	// AccountStatus adalah status akun portal wali (AccountNone,
 	// AccountPending, AccountActive, atau AccountDisabled).
 	AccountStatus string
@@ -209,7 +211,7 @@ func ListByStudent(ctx context.Context, q database.DBTX, schoolID, studentID str
 		return nil, nil
 	}
 	rows, err := q.Query(ctx, `
-		SELECT `+guardianColumns+`, sg.relationship, sg.is_primary,
+		SELECT `+guardianColumns+`, sg.relationship, sg.is_primary, sg.is_biological,
 		       CASE WHEN u.id IS NULL THEN ''
 		            WHEN u.is_active THEN 'active'
 		            WHEN u.password_hash = '' THEN 'pending'
@@ -226,7 +228,7 @@ func ListByStudent(ctx context.Context, q database.DBTX, schoolID, studentID str
 		var sg StudentGuardian
 		g := &sg.Guardian
 		err := row.Scan(&g.ID, &g.SchoolID, &g.FullName, &g.Phone, &g.Email, &g.Address, &g.CreatedAt, &g.UpdatedAt,
-			&sg.Relationship, &sg.IsPrimary, &sg.AccountStatus)
+			&sg.Relationship, &sg.IsPrimary, &sg.IsBiological, &sg.AccountStatus)
 		return sg, err
 	})
 	if err != nil {
@@ -278,6 +280,8 @@ func mapGuardianError(op string, err error) error {
 		switch {
 		case pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == "student_one_primary":
 			return ErrDuplicatePrimary
+		case pgErr.Code == pgUniqueViolation && (pgErr.ConstraintName == "student_one_biological_father" || pgErr.ConstraintName == "student_one_biological_mother"):
+			return ErrDuplicateBiological
 		case pgErr.Code == pgCheckViolation && pgErr.ConstraintName == "student_guardians_relationship_check":
 			return ErrInvalidRelationship
 		case pgErr.Code == "23503" && pgErr.ConstraintName == "student_guardians_student_fkey":

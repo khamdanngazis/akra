@@ -43,8 +43,8 @@ func TestProfileFieldsWellFormed(t *testing.T) {
 			t.Errorf("%s must be sensitive", k)
 		}
 	}
-	if len(PIIColumns()) != 5 {
-		t.Errorf("PIIColumns = %d, want 5", len(PIIColumns()))
+	if len(PIIColumns()) != 6 {
+		t.Errorf("PIIColumns = %d, want 6", len(PIIColumns()))
 	}
 }
 
