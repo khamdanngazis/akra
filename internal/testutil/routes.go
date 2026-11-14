@@ -534,6 +534,25 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur/{trackID}/hapus", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTrack("/hapus")},
 
+	// Tes seleksi (T93a).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes"} })},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes" }, func(*School) url.Values {
+			return url.Values{"test_name": {"Lintas"}, "weight": {"10"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("", url.Values{"test_name": {"Diubah"}, "weight": {"100"}})},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: schoolData,
+		Requests: func(own, o *School) []Request {
+			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/nilai"}}
+		}},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("/nilai", url.Values{})},
+	// Tes fixture punya nilai, jadi kontrol positif mendapat 409.
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("/hapus", url.Values{})},
+
 	// Siswa.
 	{Method: "GET", Pattern: "/siswa/", Kind: KindPage, Roles: schoolData,
 		Requests: paths(func(o *School) []string {
@@ -597,6 +616,18 @@ func admissionTrack(suffix string) func(own, other *School) []Request {
 		reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form}}
 		if own.ID != o.ID { // kontrol positif memanggil dengan own == other
 			reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form})
+		}
+		return reqs
+	}
+}
+
+// admissionTest menguji tes sekolah lain, termasuk tes sekolah lain di bawah
+// periode sekolah sendiri.
+func admissionTest(suffix string, form url.Values) func(own, other *School) []Request {
+	return func(own, o *School) []Request {
+		reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + suffix, Form: form}}
+		if own.ID != o.ID {
+			reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + suffix, Form: form})
 		}
 		return reqs
 	}

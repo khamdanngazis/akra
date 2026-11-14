@@ -37,6 +37,7 @@ var exactDecimalColumns = map[string]map[string]string{
 	"000036_grades.up.sql": {"score": "numeric(5,2)"}, // nilai siswa 0–100 dua desimal (T70)
 	// Koordinat tempat tinggal dan jarak ke sekolah (F-PD Dapodik, T86).
 	"000042_student_profiles.up.sql": {"latitude": "numeric(9,6)", "longitude": "numeric(9,6)", "distance_km": "numeric(6,2)"},
+	"000048_admission_tests.up.sql":  {"score": "numeric(6,2)"}, // nilai tes seleksi (T93a)
 }
 
 // floatInSQL menangkap tipe atau cast pecahan di string SQL.

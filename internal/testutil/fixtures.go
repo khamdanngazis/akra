@@ -78,6 +78,8 @@ type School struct {
 	// satu dokumen ApplicantDocID (T93).
 	ApplicantID    string
 	ApplicantDocID string
+	// AdmissionTestID adalah tes seleksi di AdmissionPeriodID (T93a).
+	AdmissionTestID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -179,9 +181,14 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		VALUES ($1, $2, $3, 1, '2026-12-01', '2027-02-28', 'buka', $4) RETURNING id`, s.ID, s.YearID, "Gelombang "+marker, s.Admin.ID)
 	s.AdmissionTrackID = one(`INSERT INTO admission_tracks (school_id, period_id, name, quota) VALUES ($1, $2, $3, 30) RETURNING id`,
 		s.ID, s.AdmissionPeriodID, "Reguler "+marker)
+	s.AdmissionTestID = one(`INSERT INTO admission_tests (school_id, period_id, name, weight) VALUES ($1, $2, $3, 100) RETURNING id`,
+		s.ID, s.AdmissionPeriodID, "Tes "+marker)
 	s.ApplicantID = one(`INSERT INTO applicants (school_id, period_id, track_id, registration_number, status, full_name, gender, birth_date,
 		contact_phone, consent_at, submitted_at) VALUES ($1, $2, $3, $4, 'dikirim', $5, 'L', '2019-05-17', '+6281200000009', now(), now()) RETURNING id`,
 		s.ID, s.AdmissionPeriodID, s.AdmissionTrackID, "SPMB-"+marker, "Pendaftar "+marker)
+	// Satu nilai agar kontrol "hapus tes" ditolak (409) dan tes tetap ada.
+	exec(`INSERT INTO applicant_test_scores (school_id, applicant_id, test_id, score, recorded_by) VALUES ($1, $2, $3, 80, $4)`,
+		s.ID, s.ApplicantID, s.AdmissionTestID, s.Admin.ID)
 	s.ApplicantDocID = one(`INSERT INTO applicant_documents (school_id, applicant_id, doc_type, storage_key, content_type, size_bytes, sha256)
 		VALUES ($1, $2, 'kk', $3, 'image/png', 10, '\x00') RETURNING id`, s.ID, s.ApplicantID, "schools/"+s.ID+"/applicants/fixture.enc")
 	s.GradeComponentID = one(`INSERT INTO grade_components (school_id, academic_year_id, subject_id, name, weight_percent) VALUES ($1, $2, $3, 'Ujian', 100) RETURNING id`,
