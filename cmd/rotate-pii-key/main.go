@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"akra/internal/admission"
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
 	"akra/internal/students"
@@ -29,7 +30,7 @@ import (
 // piiColumns adalah semua kolom terenkripsi. Paket yang menambah kolom
 // ciphertext wajib menambahkan daftarnya di sini.
 func piiColumns() []pii.Column {
-	return students.PIIColumns()
+	return append(students.PIIColumns(), admission.PIIColumns()...)
 }
 
 func main() {

@@ -51,19 +51,21 @@ type routerDeps struct {
 	reportSaved  *builder.ConfigHandler
 	students     *students.Handler
 	admission    *admission.Handler
-	activation   *auth.ActivationHandler
-	portal       *portal.Handler
-	attendance   *attendance.Handler
-	feeTypes     *billing.FeeTypeHandler
-	bulkInvoice  *billing.BulkHandler
-	arrears      *billing.ArrearsHandler
-	payments     *payments.Handler
-	auditLog     *auditview.Handler
-	reports      *reports.Handler
-	announce     *announcements.Handler
-	home         *home.Handler
-	importer     *importer.Handler
-	mappings     *importer.MappingHandler
+	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
+	admissionPublic *admission.PublicHandler
+	activation      *auth.ActivationHandler
+	portal          *portal.Handler
+	attendance      *attendance.Handler
+	feeTypes        *billing.FeeTypeHandler
+	bulkInvoice     *billing.BulkHandler
+	arrears         *billing.ArrearsHandler
+	payments        *payments.Handler
+	auditLog        *auditview.Handler
+	reports         *reports.Handler
+	announce        *announcements.Handler
+	home            *home.Handler
+	importer        *importer.Handler
+	mappings        *importer.MappingHandler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -73,7 +75,8 @@ type routerDeps struct {
 // newRouter menyusun semua route aplikasi.
 //
 // Route publik: /healthz, /healthz/db, /static/, /login, /logout,
-// /lupa-password, /reset-password, dan /aktivasi. /portal hanya untuk orang
+// /lupa-password, /reset-password, /aktivasi, dan formulir pendaftaran
+// /s/{code}/daftar (T90). /portal hanya untuk orang
 // tua; route lain menolak orang tua dengan 403.
 // Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
@@ -110,6 +113,7 @@ func newRouter(d routerDeps) http.Handler {
 		d.authHandler.Routes(r)
 		d.resetHandler.Routes(r)
 		d.activation.Routes(r)
+		d.admissionPublic.Routes(r)
 
 		// Wajib login.
 		r.Group(func(r chi.Router) {

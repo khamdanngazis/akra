@@ -294,6 +294,12 @@ func (s *GuardianDetailService) load(ctx context.Context, q database.DBTX, schoo
 }
 
 func (s *GuardianDetailService) validate(f GuardianDetailsForm) (GuardianDetails, error) {
+	return ValidateGuardianDetails(f, s.today())
+}
+
+// ValidateGuardianDetails memeriksa data rinci wali tanpa menyimpannya.
+// Dipakai juga formulir pendaftaran (T90).
+func ValidateGuardianDetails(f GuardianDetailsForm, today time.Time) (GuardianDetails, error) {
 	fields := map[string]string{}
 	var d GuardianDetails
 
@@ -305,7 +311,7 @@ func (s *GuardianDetailService) validate(f GuardianDetailsForm) (GuardianDetails
 	}
 	if y := strings.TrimSpace(f.BirthYear); y != "" {
 		n, err := strconv.Atoi(y)
-		if max := s.today().Year() - 10; err != nil || n < 1930 || n > max {
+		if max := today.Year() - 10; err != nil || n < 1930 || n > max {
 			fields["birth_year"] = fmt.Sprintf("Tahun lahir harus antara 1930 dan %d.", max)
 		}
 		d.BirthYear = n

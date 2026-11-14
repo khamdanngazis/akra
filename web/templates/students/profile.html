@@ -44,38 +44,7 @@
 </div>
 {{end}}
 {{end}}
-<div class="field-grid">
-{{range .Fields}}
-{{$id := printf "%s-%s" $sec.Key .Key}}
-{{if eq .Input "multi"}}
-<fieldset class="field{{if .Error}} has-error{{end}}">
-<legend>{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</legend>
-<div class="check-grid">
-{{$f := .}}{{range .Options}}<label class="choice"><input type="checkbox" name="{{$f.Key}}" value="{{.Value}}"{{if index $f.Checked .Value}} checked{{end}}{{if not $.CanEdit}} disabled{{end}}> {{.Label}}</label>{{end}}
-</div>
-{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
-</fieldset>
-{{else if eq .Input "checkbox"}}
-<div class="field{{if .Error}} has-error{{end}}">
-<label class="choice"><input type="checkbox" id="{{$id}}" name="{{.Key}}"{{if eq .Value "true"}} checked{{end}}{{if not $.CanEdit}} disabled{{end}}> {{.Label}}</label>
-{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
-</div>
-{{else}}
-<div class="field{{if .Error}} has-error{{end}}">
-<label for="{{$id}}">{{.Label}}{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}</label>
-{{if eq .Input "select"}}
-<select id="{{$id}}" name="{{.Key}}"{{if not $.CanEdit}} disabled{{end}}>
-<option value="">Tidak diisi</option>
-{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-</select>
-{{else}}
-<input id="{{$id}}" type="{{.Input}}" name="{{.Key}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}}{{if .Max}} maxlength="{{.Max}}"{{end}} autocomplete="off"{{if .Error}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}{{if not $.CanEdit}} disabled{{end}}>
-{{end}}
-{{with .Error}}<p class="field-error" id="{{$id}}-error">{{.}}</p>{{end}}
-</div>
-{{end}}
-{{end}}
-</div>
+{{template "profile_fields" dict "Fields" .Fields "Prefix" .Key "Disabled" (not $.CanEdit)}}
 {{if $.CanEdit}}
 <div class="action-row">
 <button type="submit" class="btn btn-primary btn-sm" :disabled="submitting">Simpan {{.Lower}}</button>

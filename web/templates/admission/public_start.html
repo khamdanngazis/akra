@@ -1,0 +1,67 @@
+{{define "title"}}Pendaftaran {{.School.Name}}{{end}}
+{{define "content"}}
+{{template "admission_public_head" .}}
+{{template "flash" .}}
+{{if not .Open}}
+<section class="card empty-state">
+<p>Pendaftaran siswa baru belum dibuka atau sudah ditutup.</p>
+<p class="muted">Hubungi sekolah untuk informasi jadwal pendaftaran.</p>
+<p><a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar/lanjut">Lanjutkan draf yang sudah ada</a></p>
+</section>
+{{else}}
+<section class="card form-card">
+<h2>Mulai pendaftaran</h2>
+<p class="muted">Isi data awal. Setelah itu Anda mendapat <strong>kode lanjut</strong> untuk melengkapi formulir kapan saja dari HP ini atau HP lain.</p>
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="/s/{{.School.Code}}/daftar" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field{{if .Errors.track_id}} has-error{{end}}">
+<label for="choice">Gelombang dan jalur</label>
+<select id="choice" name="choice">
+{{range .Tracks}}<option value="{{.PeriodID}}|{{.TrackID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+{{with .Errors.track_id}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.full_name}} has-error{{end}}">
+<label for="full_name">Nama lengkap calon siswa (sesuai akta)</label>
+<input id="full_name" name="full_name" value="{{.Form.FullName}}" maxlength="100" autocomplete="off" required>
+{{with .Errors.full_name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.gender}} has-error{{end}}">
+<label for="gender">Jenis kelamin</label>
+<select id="gender" name="gender">
+<option value="">Pilih</option>
+<option value="L"{{if eq .Form.Gender "L"}} selected{{end}}>Laki-laki</option>
+<option value="P"{{if eq .Form.Gender "P"}} selected{{end}}>Perempuan</option>
+</select>
+{{with .Errors.gender}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.birth_date}} has-error{{end}}">
+<label for="birth_date">Tanggal lahir</label>
+<input id="birth_date" type="date" name="birth_date" value="{{.Form.BirthDate}}" required>
+{{with .Errors.birth_date}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field{{if .Errors.phone}} has-error{{end}}">
+<label for="phone">Nomor HP orang tua/wali</label>
+<input id="phone" name="phone" value="{{.Form.Phone}}" inputmode="tel" autocomplete="tel" placeholder="0812-3456-7890" required>
+{{with .Errors.phone}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Dipakai sekolah untuk menghubungi Anda dan untuk melanjutkan draf.</p>
+</div>
+<div class="visually-hidden" aria-hidden="true">
+<label for="website">Jangan diisi</label>
+<input id="website" name="website" tabindex="-1" autocomplete="off">
+</div>
+<div class="field{{if .Errors.consent}} has-error{{end}}">
+<label class="choice"><input type="checkbox" name="consent"{{if .Form.Consent}} checked{{end}}> Saya menyetujui {{.School.Name}} mengolah data pribadi calon siswa dan orang tua/wali untuk keperluan pendaftaran dan pelaporan Dapodik, sesuai UU Pelindungan Data Pribadi.</label>
+{{with .Errors.consent}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Mulai pendaftaran</button>
+<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar/lanjut">Saya sudah punya kode lanjut</a>
+</div>
+</form>
+</section>
+{{end}}
+{{end}}

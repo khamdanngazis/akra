@@ -16,3 +16,15 @@
 </div>
 <label class="choice"><input type="checkbox" name="uses_test"{{if .Form.UsesTest}} checked{{end}}> Jalur ini memakai tes seleksi</label>
 {{end}}
+
+{{/* admission_public_head menampilkan nama sekolah dan langkah formulir. Argumen: view publik (School, Steps, StepName). */}}
+{{define "admission_public_head"}}
+<div class="page-header">
+<div>
+<p class="muted">Pendaftaran siswa baru</p>
+<h1>{{.School.Name}}</h1>
+{{with .StepName}}<p class="muted">{{.}}</p>{{end}}
+</div>
+</div>
+{{$n := len .Steps}}{{range $i, $s := .Steps}}{{if $s.Current}}<p class="muted" aria-current="step">Langkah {{inc $i}} dari {{$n}}</p>{{end}}{{end}}
+{{end}}

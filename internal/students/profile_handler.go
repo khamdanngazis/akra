@@ -43,7 +43,7 @@ type profileView struct {
 type sectionView struct {
 	Key, Title, Hint string
 	Lower            string // Title huruf kecil, untuk kalimat
-	Fields           []fieldView
+	Fields           []FieldView
 	// Parent diisi untuk bagian ayah, ibu, dan wali.
 	Parent *parentView
 	Failed bool // bagian ini gagal disimpan
@@ -55,7 +55,9 @@ type parentView struct {
 	Error    string
 }
 
-type fieldView struct {
+// FieldView adalah satu input di form data rinci; dipakai partial
+// "profile_fields" di halaman siswa dan formulir pendaftaran.
+type FieldView struct {
 	Key, Label string
 	// Input adalah jenis input: text, email, number, date, select, multi,
 	// atau checkbox.
@@ -63,7 +65,7 @@ type fieldView struct {
 	InputMode string
 	Value     string
 	Checked   map[string]bool // untuk multi
-	Options   []option
+	Options   []Option
 	Max       int
 	Required  bool // wajib untuk Dapodik
 	Error     string
@@ -204,7 +206,7 @@ func (h *Handler) renderProfile(w http.ResponseWriter, r *http.Request, id auth.
 				}
 				sv.Parent.Error = errs["full_name"]
 			}
-			sv.Fields = guardianFieldViews(values, errsFor(sv.Failed, errs))
+			sv.Fields = GuardianFieldViews(values, errsFor(sv.Failed, errs))
 		} else {
 			for _, f := range ProfileFields {
 				if f.Section == s.Key {
@@ -218,7 +220,7 @@ func (h *Handler) renderProfile(w http.ResponseWriter, r *http.Request, id auth.
 					values[k] = v
 				}
 			}
-			sv.Fields = profileFieldViews(s.Key, values, errsFor(sv.Failed, errs))
+			sv.Fields = ProfileFieldViews(s.Key, values, errsFor(sv.Failed, errs))
 		}
 		view.Sections = append(view.Sections, sv)
 	}
@@ -232,13 +234,14 @@ func errsFor(failed bool, errs map[string]string) map[string]string {
 	return nil
 }
 
-func profileFieldViews(section string, values, errs map[string]string) []fieldView {
-	var out []fieldView
+// ProfileFieldViews membuat input untuk satu bagian data rinci.
+func ProfileFieldViews(section string, values, errs map[string]string) []FieldView {
+	var out []FieldView
 	for _, f := range ProfileFields {
 		if f.Section != section {
 			continue
 		}
-		fv := fieldView{Key: f.Key, Label: f.Label, Value: values[f.Key], Error: errs[f.Key], Required: requiredKeys[f.Key], Input: "text"}
+		fv := FieldView{Key: f.Key, Label: f.Label, Value: values[f.Key], Error: errs[f.Key], Required: requiredKeys[f.Key], Input: "text"}
 		switch f.Kind {
 		case kindText:
 			fv.Max = int(f.Max)
@@ -280,8 +283,9 @@ func guardianValues(d GuardianDetails) map[string]string {
 	return v
 }
 
-func guardianFieldViews(values, errs map[string]string) []fieldView {
-	return []fieldView{
+// GuardianFieldViews membuat input data rinci wali.
+func GuardianFieldViews(values, errs map[string]string) []FieldView {
+	return []FieldView{
 		{Key: "nik", Label: "NIK", Input: "text", InputMode: "numeric", Value: values["nik"], Error: errs["nik"]},
 		{Key: "birth_year", Label: "Tahun lahir", Input: "number", Value: values["birth_year"], Error: errs["birth_year"]},
 		{Key: "education", Label: "Pendidikan terakhir", Input: "select", Value: values["education"], Options: refOptions(ref.Pendidikan, values["education"]), Error: errs["education"]},
@@ -291,10 +295,10 @@ func guardianFieldViews(values, errs map[string]string) []fieldView {
 	}
 }
 
-func refOptions(l ref.List, selected string) []option {
-	opts := make([]option, 0, len(l.Options))
+func refOptions(l ref.List, selected string) []Option {
+	opts := make([]Option, 0, len(l.Options))
 	for _, o := range l.Options {
-		opts = append(opts, option{Value: o.Code, Label: o.Label, Selected: o.Code == selected})
+		opts = append(opts, Option{Value: o.Code, Label: o.Label, Selected: o.Code == selected})
 	}
 	return opts
 }

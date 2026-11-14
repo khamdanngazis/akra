@@ -77,7 +77,8 @@ func (h *Handler) Routes(r chi.Router) {
 	})
 }
 
-type option struct {
+// Option adalah satu pilihan di select atau checkbox.
+type Option struct {
 	Value, Label string
 	Selected     bool
 }
@@ -88,9 +89,9 @@ type indexView struct {
 	Flash      string
 	Error      string
 	Query      string
-	Years      []option
-	Classes    []option
-	Statuses   []option
+	Years      []Option
+	Classes    []Option
+	Statuses   []Option
 	YearName   string
 	Page       Page
 	Rows       []ListRow
@@ -108,7 +109,7 @@ type formView struct {
 	Form     Form
 	YearName string   // tahun aktif, saat membuat
 	Classes  []string // nama kelas tahun aktif, untuk datalist
-	Statuses []option
+	Statuses []Option
 	Errors   map[string]string
 	Error    string
 	Flash    string
@@ -181,7 +182,7 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 			if c.ID == q.Get("kelas") {
 				f.ClassID = c.ID
 			}
-			view.Classes = append(view.Classes, option{Value: c.ID, Label: c.Name, Selected: c.ID == q.Get("kelas")})
+			view.Classes = append(view.Classes, Option{Value: c.ID, Label: c.Name, Selected: c.ID == q.Get("kelas")})
 		}
 	}
 	for _, y := range years {
@@ -189,7 +190,7 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 		if y.IsActive {
 			label += " (aktif)"
 		}
-		view.Years = append(view.Years, option{Value: y.ID, Label: label, Selected: year != nil && y.ID == year.ID})
+		view.Years = append(view.Years, Option{Value: y.ID, Label: label, Selected: year != nil && y.ID == year.ID})
 	}
 	view.Statuses = statusOptions(f.Status, "Semua status")
 
@@ -482,13 +483,13 @@ var statusLabels = map[string]string{StatusActive: "Aktif", StatusTransferred: "
 
 // statusOptions menyusun pilihan status. allLabel diisi untuk filter
 // ("Semua status"); kosong untuk form.
-func statusOptions(selected, allLabel string) []option {
-	var opts []option
+func statusOptions(selected, allLabel string) []Option {
+	var opts []Option
 	if allLabel != "" {
-		opts = append(opts, option{Value: "", Label: allLabel, Selected: selected == ""})
+		opts = append(opts, Option{Value: "", Label: allLabel, Selected: selected == ""})
 	}
 	for _, s := range Statuses {
-		opts = append(opts, option{Value: s, Label: statusLabels[s], Selected: s == selected})
+		opts = append(opts, Option{Value: s, Label: statusLabels[s], Selected: s == selected})
 	}
 	return opts
 }

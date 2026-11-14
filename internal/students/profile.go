@@ -154,10 +154,17 @@ var (
 // validate menormalisasi dan memeriksa semua field, lalu mengembalikan
 // nilai kanonik. Pesan error per field dalam bahasa Indonesia.
 func (s *ProfileService) validate(in map[string]string) (map[string]string, error) {
+	return ValidateProfile(in, s.today())
+}
+
+// ValidateProfile memeriksa dan menormalisasi data rinci siswa tanpa
+// menyimpannya. Field yang tidak ada di in dianggap kosong. Dipakai juga
+// formulir pendaftaran (T90) agar aturannya sama persis dengan data siswa.
+func ValidateProfile(in map[string]string, today time.Time) (map[string]string, error) {
 	out := make(map[string]string, len(ProfileFields))
 	fields := map[string]string{}
 	for _, f := range ProfileFields {
-		v, msg := normalizeField(f, in[f.Key], s.today())
+		v, msg := normalizeField(f, in[f.Key], today)
 		if msg != "" {
 			fields[f.Key] = msg
 			continue

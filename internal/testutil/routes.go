@@ -108,6 +108,16 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/healthz", Kind: KindPublic},
 	{Method: "GET", Pattern: "/healthz/db", Kind: KindPublic},
 	{Method: "GET", Pattern: "/static/*", Kind: KindPublic},
+	// Formulir pendaftaran publik (T90). Akses draf dibatasi sesi; diuji di
+	// paket admission (TestPublicFlow).
+	{Method: "GET", Pattern: "/s/{code}/daftar/", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/lanjut", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/lanjut", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/kirim", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/selesai", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},
