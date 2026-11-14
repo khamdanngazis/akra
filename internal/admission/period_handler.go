@@ -85,6 +85,10 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Get("/{id}/tes", h.listTests)
 		// Peran: admin_tu, kepala_sekolah (hanya baca).
 		r.Get("/{id}/tes/{testID}/nilai", h.scores)
+		// Peran: admin_tu, kepala_sekolah (hanya baca). Peringkat (T93b).
+		r.Get("/{id}/hasil", h.results)
+		// Peran: admin_tu, kepala_sekolah.
+		r.Get("/{id}/hasil.xlsx", h.exportResults)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireRole(auth.RoleAdminTU))
@@ -114,6 +118,8 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Post("/{id}/tes/{testID}/hapus", h.deleteTest)
 		// Peran: admin_tu.
 		r.Post("/{id}/tes/{testID}/nilai", h.saveScores)
+		// Peran: admin_tu.
+		r.Post("/{id}/hasil", h.applyResults)
 	})
 }
 

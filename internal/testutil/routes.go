@@ -549,6 +549,21 @@ var Routes = []Route{
 		}},
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTest("/nilai", url.Values{})},
+	// Peringkat dan hasil (T93b).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/hasil", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil"} })},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/hasil.xlsx", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil.xlsx"}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/hasil", Kind: KindByID, Roles: adminTU,
+		Requests: func(own, o *School) []Request {
+			reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil", Form: url.Values{}}}
+			if own.ID != o.ID { // pendaftar sekolah lain lewat periode sendiri
+				reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/hasil", Form: url.Values{"result_" + o.ApplicantID: {"diterima"}}})
+			}
+			return reqs
+		}},
 	// Tes fixture punya nilai, jadi kontrol positif mendapat 409.
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/hapus", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTest("/hapus", url.Values{})},

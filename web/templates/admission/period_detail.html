@@ -46,7 +46,7 @@
 
 <section class="card" id="jalur">
 <h2>Jalur pendaftaran</h2>
-<p class="action-row"><a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{.Period.ID}}/tes">Tes seleksi</a><a class="btn btn-ghost btn-sm" href="/pendaftaran?periode={{.Period.ID}}">Pendaftar periode ini</a></p>
+<p class="action-row"><a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{.Period.ID}}/tes">Tes seleksi</a><a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{.Period.ID}}/hasil">Peringkat dan hasil</a><a class="btn btn-ghost btn-sm" href="/pendaftaran?periode={{.Period.ID}}">Pendaftar periode ini</a></p>
 {{if .Tracks}}
 <ul class="guardian-list">
 {{range .Tracks}}
