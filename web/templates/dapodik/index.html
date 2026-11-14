@@ -10,6 +10,7 @@
 {{template "flash" .}}
 <div class="action-row">
 {{if .CanEdit}}<a class="btn btn-ghost btn-sm" href="/dapodik/impor">Impor dari ekspor Dapodik</a><a class="btn btn-ghost btn-sm" href="/dapodik/nilai">Nilai ke Dapodik</a>{{end}}
+<a class="btn btn-ghost btn-sm" href="/dapodik/cek">Cek kesiapan</a>
 <a class="btn btn-ghost btn-sm" href="/dapodik/fpd-kosong.pdf">Unduh F-PD kosong</a>
 <a class="btn btn-ghost btn-sm" href="/dapodik/ekspor-pd.xlsx{{with .ClassID}}?kelas={{.}}{{end}}">Ekspor format Daftar PD (Excel)</a>
 {{with .ClassID}}<a class="btn btn-ghost btn-sm" href="/dapodik/kelas/{{.}}/fpd.pdf">Unduh F-PD terisi kelas ini</a>{{end}}

@@ -55,6 +55,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
 			// Peran: admin_tu, kepala_sekolah. Daftar siswa dan status Dapodik.
 			r.Get("/", h.index)
+			// Peran: admin_tu, kepala_sekolah. Cek kesiapan (T103).
+			r.Get("/cek", h.checkPage)
 			// Peran: admin_tu, kepala_sekolah. F-PD terisi (T99), memuat NIK.
 			r.Get("/siswa/{id}/fpd.pdf", h.studentFPD)
 			// Peran: admin_tu, kepala_sekolah.

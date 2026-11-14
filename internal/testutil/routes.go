@@ -482,6 +482,7 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/dapodik/kelas/{classID}/fpd.pdf", Kind: KindByID, Roles: schoolData,
 		Requests: paths(func(o *School) []string { return []string{"/dapodik/kelas/" + o.ClassID + "/fpd.pdf"} })},
 	{Method: "GET", Pattern: "/dapodik/fpd-kosong.pdf", Kind: KindPage, Roles: schoolData},
+	{Method: "GET", Pattern: "/dapodik/cek", Kind: KindPage, Roles: schoolData},
 	{Method: "GET", Pattern: "/dapodik/ekspor-pd.xlsx", Kind: KindPage, Roles: schoolData,
 		Requests: paths(func(o *School) []string {
 			return []string{"/dapodik/ekspor-pd.xlsx", "/dapodik/ekspor-pd.xlsx?kelas=" + o.ClassID}

@@ -1,0 +1,30 @@
+{{define "title"}}Cek Kesiapan Dapodik{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
+<div class="page-header">
+<div>
+<h1>Cek kesiapan Dapodik</h1>
+<p class="muted">{{.Checked}} siswa aktif diperiksa · {{.WithError}} siswa punya data yang kemungkinan ditolak Dapodik. Perbaiki sebelum memasukkan ke Dapodik.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{if .Classes}}
+{{range .Classes}}
+<section class="card">
+<h2>{{.Name}}</h2>
+<ul class="guardian-list">
+{{range .Students}}
+<li>
+<div><strong>{{.FullName}}</strong> <span class="muted">· NIS {{.NIS}}</span>{{if $.CanEdit}} · <a href="/siswa/{{.ID}}/data-rinci">Perbaiki</a>{{end}}</div>
+{{range .Errors}}<div class="field-error">{{.Message}}</div>{{end}}
+{{range .Warnings}}<div class="muted small">Peringatan: {{.Message}}</div>{{end}}
+</li>
+{{end}}
+</ul>
+</section>
+{{end}}
+{{else}}
+<section class="card empty-state"><p>Tidak ada masalah yang ditemukan. Data siswa siap dimasukkan ke Dapodik.</p></section>
+{{end}}
+{{end}}
