@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -23,6 +24,7 @@ func TestLoad_AllSet(t *testing.T) {
 	t.Setenv("ARGON2_MEMORY_KIB", "65536")
 	t.Setenv("ARGON2_ITERATIONS", "3")
 	t.Setenv("ARGON2_PARALLELISM", "4")
+	setPII(t)
 
 	cfg, err := Load()
 	if err != nil {
@@ -34,6 +36,7 @@ func TestLoad_AllSet(t *testing.T) {
 		BaseURL: "https://app.akra.id", RiverWorkers: 8,
 		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
 		StorageDriver: "r2", R2AccountID: "acc", R2Bucket: "akra-private", R2AccessKeyID: "key", R2SecretAccessKey: "secret",
+		PIIEncKeys: os.Getenv("PII_ENC_KEYS"), PIIIndexKey: os.Getenv("PII_INDEX_KEY"),
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -138,6 +141,7 @@ func TestLoad_WebDirOnlyInDevelopment(t *testing.T) {
 	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
 	t.Setenv("RESEND_API_KEY", "re_test")
 	setR2(t)
+	setPII(t)
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "WEB_DIR") {
 		t.Errorf("production with WEB_DIR: error = %v, want error mentioning WEB_DIR", err)
 	}
@@ -183,6 +187,7 @@ func TestLoad_Mail(t *testing.T) {
 			t.Setenv("MAIL_FROM", tc.from)
 			t.Setenv("RESEND_API_KEY", tc.key)
 			setR2(t)
+			setPII(t)
 
 			_, err := Load()
 			if tc.wantInErr == "" {
@@ -255,4 +260,65 @@ func setR2(t *testing.T) {
 	t.Setenv("R2_BUCKET", "akra-private")
 	t.Setenv("R2_ACCESS_KEY_ID", "key")
 	t.Setenv("R2_SECRET_ACCESS_KEY", "secret")
+}
+
+// setPII mengisi kunci data pribadi yang wajib di staging dan production.
+func setPII(t *testing.T) {
+	t.Helper()
+	t.Setenv("PII_ENC_KEYS", "1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=")
+	t.Setenv("PII_INDEX_KEY", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=")
+}
+
+func TestLoad_PIIKeys(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "")
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("PII_ENC_KEYS", "")
+	t.Setenv("PII_INDEX_KEY", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("development without keys: %v", err)
+	}
+	if k, err := cfg.Keyring(); err != nil || k == nil {
+		t.Errorf("development Keyring() = %v, %v; want dev keyring", k, err)
+	}
+
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "PII_ENC_KEYS") {
+		t.Errorf("staging without keys: error = %v, want error mentioning PII_ENC_KEYS", err)
+	}
+
+	secret := "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI="
+	for _, tc := range []struct{ enc, idx string }{
+		{"1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", ""},                                                                                            // indeks kosong
+		{"", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM="},                                                                                              // kunci enkripsi kosong
+		{"1:" + secret[:20], "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM="},                                                                              // kunci terlalu pendek
+		{"0:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM="},                                                // versi 0
+		{"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM="},                                                  // tanpa versi
+		{"1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=,1:AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM="}, // versi ganda
+		{"1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="},                                                // indeks sama dengan kunci enkripsi
+	} {
+		t.Setenv("PII_ENC_KEYS", tc.enc)
+		t.Setenv("PII_INDEX_KEY", tc.idx)
+		_, err := Load()
+		if err == nil {
+			t.Errorf("PII_ENC_KEYS=%q PII_INDEX_KEY=%q: error = nil", tc.enc, tc.idx)
+			continue
+		}
+		if strings.Contains(err.Error(), "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=") || strings.Contains(err.Error(), secret) {
+			t.Errorf("error leaks key material: %v", err)
+		}
+	}
+
+	t.Setenv("PII_ENC_KEYS", "1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=, 2:AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=")
+	t.Setenv("PII_INDEX_KEY", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("staging with keys: %v", err)
+	}
+	k, err := cfg.Keyring()
+	if err != nil || k.ActiveVersion() != 2 {
+		t.Errorf("Keyring() active = %v, %v; want version 2", k, err)
+	}
 }

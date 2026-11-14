@@ -23,6 +23,7 @@ import (
 	"akra/internal/platform/health"
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
@@ -48,6 +49,7 @@ type appDeps struct {
 	logger   *slog.Logger
 	jobs     *jobs.Client  // untuk memasukkan job latar belakang
 	store    storage.Store // file privat (bukti transfer)
+	pii      *pii.Keyring  // enkripsi data pribadi (T85b)
 	dev      bool          // APP_ENV=development: pasang route /dev
 }
 

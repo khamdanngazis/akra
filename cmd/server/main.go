@@ -84,6 +84,15 @@ func run(logger *slog.Logger) error {
 		logger.Info("client IP read from proxy header", "header", cfg.ClientIPHeader)
 	}
 
+	keys, err := cfg.Keyring()
+	if err != nil {
+		return err
+	}
+	if cfg.PIIEncKeys == "" {
+		logger.Warn("using development PII keys; never use this outside development")
+	}
+	logger.Info("PII encryption configured", "active_key_version", keys.ActiveVersion())
+
 	store, err := storage.New(cfg)
 	if err != nil {
 		return err
@@ -108,7 +117,7 @@ func run(logger *slog.Logger) error {
 	r, err := newApp(appDeps{
 		db: pool, pinger: pool, sessions: sessions, render: rd, static: static,
 		mailer: mailer, hasher: hasher, secure: secure, baseURL: cfg.BaseURL, logger: logger,
-		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment, store: store,
+		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment, store: store, pii: keys,
 	})
 	if err != nil {
 		return err
