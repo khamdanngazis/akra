@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 	"unicode"
 
@@ -52,8 +51,8 @@ func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantSer
 func (h *PublicHandler) Routes(r chi.Router) {
 	r.Route("/s/{code}/daftar", func(r chi.Router) {
 		// Publik: halaman awal dan pembuatan draf.
-		r.Get("/", h.start)
-		r.Post("/", h.createDraft)
+		r.Get("/", h.start(KindNew))
+		r.Post("/", h.createDraft(KindNew))
 		// Publik: melanjutkan draf dengan nomor HP + kode lanjut.
 		r.Get("/lanjut", h.resumeForm)
 		r.Post("/lanjut", h.resume)
@@ -64,6 +63,12 @@ func (h *PublicHandler) Routes(r chi.Router) {
 		r.Post("/kirim", h.submit)
 		// Publik: konfirmasi setelah kirim (nomor dari sesi).
 		r.Get("/selesai", h.done)
+	})
+	r.Route("/s/{code}/pindah", func(r chi.Router) {
+		// Publik: halaman awal dan pembuatan draf siswa pindahan (T109).
+		// Langkah berikutnya memakai /s/{kode}/daftar/isi/... yang sama.
+		r.Get("/", h.start(KindTransfer))
+		r.Post("/", h.createDraft(KindTransfer))
 	})
 	r.Route("/s/{code}/status", func(r chi.Router) {
 		// Publik: cek status dengan nomor pendaftaran + tanggal lahir (T95).
@@ -145,40 +150,58 @@ func (h *PublicHandler) resolveSchool(w http.ResponseWriter, r *http.Request) (s
 
 type trackOption struct {
 	PeriodID, TrackID, Label string
+	Kind                     string
 	Selected                 bool
 }
 
 type startView struct {
 	School   schoolInfo
-	Open     bool
-	Year     string
-	Periods  []periodCard
-	Docs     []docCard
-	Tracks   []trackOption
-	Form     DraftForm
-	Choice   string // "<period_id>|<track_id>"
-	Errors   map[string]string
-	Error    string
-	Flash    string
-	Steps    []stepNav
-	StepName string
+	Kind     string
+	FormPath string // /s/{kode}/daftar atau /s/{kode}/pindah
+	// OtherPath adalah formulir jenis lain jika sedang dibuka (mis. tautan
+	// ke formulir pindahan dari halaman siswa baru).
+	OtherPath string
+	Open      bool
+	Year      string
+	Periods   []periodCard
+	Docs      []docCard
+	Tracks    []trackOption
+	Form      DraftForm
+	Choice    string // "<period_id>|<track_id>"
+	Errors    map[string]string
+	Error     string
+	Flash     string
+	Steps     []stepNav
+	StepName  string
 }
 
-func (h *PublicHandler) start(w http.ResponseWriter, r *http.Request) {
-	s, ok := h.resolveSchool(w, r)
-	if !ok {
-		return
+// start menampilkan halaman awal formulir untuk jenis kind.
+func (h *PublicHandler) start(kind string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, ok := h.resolveSchool(w, r)
+		if !ok {
+			return
+		}
+		h.renderStart(w, r, s, http.StatusOK, startView{Kind: kind})
 	}
-	h.renderStart(w, r, s, http.StatusOK, startView{})
 }
 
 func (h *PublicHandler) renderStart(w http.ResponseWriter, r *http.Request, s schoolInfo, status int, view startView) {
-	open, err := h.periods.OpenPeriods(r.Context(), s.ID)
+	all, err := h.periods.OpenPeriods(r.Context(), s.ID)
 	if err != nil {
 		h.serverError(w, r, "list open periods", err)
 		return
 	}
+	var open []Period
+	for _, p := range all {
+		if p.Kind == view.Kind {
+			open = append(open, p)
+		} else if view.OtherPath == "" {
+			view.OtherPath = "/s/" + s.Code + publicFormPath(p.Kind)
+		}
+	}
 	view.School, view.Open = s, len(open) > 0
+	view.FormPath = "/s/" + s.Code + publicFormPath(view.Kind)
 	view.Periods, view.Docs, view.Year = startInfo(open)
 	if view.Flash == "" {
 		view.Flash = auth.PopFlash(r.Context(), h.sessions)
@@ -196,11 +219,17 @@ func (h *PublicHandler) renderStart(w http.ResponseWriter, r *http.Request, s sc
 	h.render.Render(w, r, status, "admission/public_start", view)
 }
 
-func (h *PublicHandler) createDraft(w http.ResponseWriter, r *http.Request) {
+// createDraft membuat draf dari halaman awal formulir jenis kind.
+func (h *PublicHandler) createDraft(kind string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) { h.createDraftKind(w, r, kind) }
+}
+
+func (h *PublicHandler) createDraftKind(w http.ResponseWriter, r *http.Request, kind string) {
 	s, ok := h.resolveSchool(w, r)
 	if !ok {
 		return
 	}
+	formPath := "/s/" + s.Code + publicFormPath(kind)
 	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -209,7 +238,7 @@ func (h *PublicHandler) createDraft(w http.ResponseWriter, r *http.Request) {
 	ip := auth.ClientIP(r)
 	choice := r.PostForm.Get("choice")
 	periodID, trackID, _ := strings.Cut(choice, "|")
-	f := DraftForm{PeriodID: periodID, TrackID: trackID, FullName: r.PostForm.Get("full_name"), Gender: r.PostForm.Get("gender"),
+	f := DraftForm{Kind: kind, PeriodID: periodID, TrackID: trackID, FullName: r.PostForm.Get("full_name"), Gender: r.PostForm.Get("gender"),
 		BirthDate: r.PostForm.Get("birth_date"), Phone: r.PostForm.Get("phone"), Consent: r.PostForm.Has("consent")}
 
 	// Honeypot: manusia tidak melihat field ini. Bot yang mengisinya
@@ -217,7 +246,7 @@ func (h *PublicHandler) createDraft(w http.ResponseWriter, r *http.Request) {
 	if r.PostForm.Get("website") != "" {
 		_ = h.limiter.Record(r.Context(), s.ID, attemptDraft, "", ip, false)
 		auth.SetFlash(r.Context(), h.sessions, "Terima kasih. Data Anda sedang diproses.")
-		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
+		http.Redirect(w, r, formPath, http.StatusSeeOther)
 		return
 	}
 	phoneKey, _ := students.NormalizePhone(f.Phone)
@@ -227,7 +256,7 @@ func (h *PublicHandler) createDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !allowed {
-		h.renderStart(w, r, s, http.StatusTooManyRequests, startView{Form: f, Choice: choice, Error: "Terlalu banyak percobaan. Coba lagi dalam satu jam, atau hubungi sekolah."})
+		h.renderStart(w, r, s, http.StatusTooManyRequests, startView{Kind: kind, Form: f, Choice: choice, Error: "Terlalu banyak percobaan. Coba lagi dalam satu jam, atau hubungi sekolah."})
 		return
 	}
 
@@ -244,9 +273,9 @@ func (h *PublicHandler) createDraft(w http.ResponseWriter, r *http.Request) {
 		h.sessions.Put(r.Context(), sessionCode, code)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepChild, http.StatusSeeOther)
 	case errors.As(err, &ve):
-		h.renderStart(w, r, s, http.StatusBadRequest, startView{Form: f, Choice: choice, Errors: ve.Fields})
+		h.renderStart(w, r, s, http.StatusBadRequest, startView{Kind: kind, Form: f, Choice: choice, Errors: ve.Fields})
 	case errors.Is(err, ErrClosed):
-		h.renderStart(w, r, s, http.StatusConflict, startView{Form: f, Error: "Periode pendaftaran ini sudah ditutup."})
+		h.renderStart(w, r, s, http.StatusConflict, startView{Kind: kind, Form: f, Error: "Periode pendaftaran ini sudah ditutup."})
 	default:
 		h.serverError(w, r, "create draft", err)
 	}
@@ -323,21 +352,28 @@ type stepNav struct {
 type publicSection struct {
 	Key, Title, Hint string
 	Fields           []students.FieldView
+	// XData adalah objek Alpine.js untuk isian kondisional di bagian ini;
+	// ShowIf menyembunyikan seluruh bagian (mis. wali).
+	XData, ShowIf string
 }
 
 type stepView struct {
 	// Base adalah alamat dasar form: /s/{kode}/daftar (publik) atau
 	// /pendaftaran/{id} (TU, T92).
-	Base       string
-	Staff      bool
-	User       auth.Identity
-	School     schoolInfo
-	Applicant  Applicant
-	Step       string
-	StepName   string
-	Steps      []stepNav
-	Sections   []publicSection
-	Missing    []students.RequiredField
+	Base      string
+	Staff     bool
+	User      auth.Identity
+	School    schoolInfo
+	Applicant Applicant
+	Step      string
+	StepName  string
+	Steps     []stepNav
+	Sections  []publicSection
+	Missing   []students.RequiredField
+	// Kind adalah jenis pendaftar; FormData variabel Alpine.js tingkat form
+	// (mis. showWali).
+	Kind       string
+	FormData   string
 	Groups     []missingGroup
 	Summary    []summaryCard
 	StepNumber int
@@ -412,7 +448,7 @@ func (h *PublicHandler) stepForm(w http.ResponseWriter, r *http.Request) {
 // buildStepView menyusun halaman satu langkah formulir. Dipakai formulir
 // publik (T90) dan input oleh TU (T92) agar isian dan aturannya sama.
 func buildStepView(ctx context.Context, periods *Service, documents *DocumentService, s schoolInfo, a Applicant, step string, submitted, errs map[string]string) (stepView, error) {
-	view := stepView{School: s, Applicant: a, Step: step}
+	view := stepView{School: s, Applicant: a, Step: step, Kind: a.Kind}
 	if errs != nil && step != StepDocument {
 		view.Error = "Data belum disimpan. Periksa isian yang ditandai."
 	}
@@ -452,6 +488,9 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 			values[role+"."+k] = v
 		}
 	}
+	for k, v := range a.Transfer {
+		values[k] = v
+	}
 	for k, v := range submitted {
 		values[k] = v
 	}
@@ -466,38 +505,19 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 			{Key: "birth_date", Label: "Tanggal lahir", Input: "date", Value: values["birth_date"], Error: errs["birth_date"], Required: true},
 		}
 		view.Sections = append(view.Sections, publicSection{Key: "dasar", Title: "Identitas", Fields: basics})
-		view.Sections = append(view.Sections, publicSection{Key: students.SectionIdentity, Title: "Data pribadi",
-			Hint: "NIK dan No KK tercantum di Kartu Keluarga. Kosongkan NISN jika belum punya.", Fields: students.ProfileFieldViews(students.SectionIdentity, values, errs)})
-	case StepAddress:
-		view.Sections = append(view.Sections,
-			publicSection{Key: students.SectionAddress, Title: "Alamat tempat tinggal", Fields: students.ProfileFieldViews(students.SectionAddress, values, errs)},
-			publicSection{Key: students.SectionFamily, Title: "Keluarga dan bantuan", Fields: students.ProfileFieldViews(students.SectionFamily, values, errs)})
-	case StepParents:
-		titles := map[string]string{students.RelationFather: "Ayah kandung", students.RelationMother: "Ibu kandung", students.RelationGuardian: "Wali (jika ada)"}
-		hints := map[string]string{students.RelationMother: "Nama ibu kandung wajib diisi. Hindari gelar (Almh., Hj., Dra.).", students.RelationFather: "Kosongkan jika tidak ada.", students.RelationGuardian: "Isi jika calon siswa tinggal bersama wali."}
-		for _, role := range students.ParentRoles {
-			gv := map[string]string{}
-			ge := map[string]string{}
-			for _, k := range guardianFields {
-				gv[k] = values[role+"."+k]
-				ge[k] = errs[role+"."+k]
-			}
-			fields := []students.FieldView{
-				{Key: "full_name", Label: "Nama lengkap", Input: "text", Max: maxNameLen, Value: gv["full_name"], Error: ge["full_name"], Required: role == students.RelationMother},
-				{Key: "phone", Label: "Nomor HP", Input: "text", InputMode: "tel", Value: gv["phone"], Error: ge["phone"]},
-			}
-			fields = append(fields, students.GuardianFieldViews(gv, ge)...)
-			for i := range fields {
-				fields[i].Key = role + "." + fields[i].Key
-			}
-			view.Sections = append(view.Sections, publicSection{Key: role, Title: titles[role], Hint: hints[role], Fields: fields})
+		identity := publicSection{Key: students.SectionIdentity, Title: "Data pribadi",
+			Hint: "NIK dan No KK tercantum di Kartu Keluarga. Kosongkan NISN jika belum punya.", Fields: students.ProfileFieldViews(students.SectionIdentity, values, errs)}
+		if a.Kind == KindTransfer {
+			identity.Hint = "NIK dan No KK tercantum di Kartu Keluarga. NISN wajib diisi jika sudah punya (lihat rapor atau nisn.data.kemdikbud.go.id)."
 		}
+		view.Sections = append(view.Sections, identity)
+	case StepAddress:
+		view.Sections = addressSections(values, errs)
+	case StepParents:
+		view.Sections = parentSections(values, errs)
+		view.FormData = "showWali: " + jsBool(showGuardian(a, values, errs))
 	case StepSchool:
-		reg := students.ProfileFieldViews(students.SectionRegistration, values, errs)
-		reg = slices.DeleteFunc(reg, func(f students.FieldView) bool { return slices.Contains(schoolManagedFields, f.Key) })
-		view.Sections = append(view.Sections,
-			publicSection{Key: students.SectionRegistration, Title: "Sekolah asal", Hint: "Untuk siswa pindahan, isi sekolah sebelumnya.", Fields: reg},
-			publicSection{Key: students.SectionContact, Title: "Kontak calon siswa", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)})
+		view.Sections = schoolSections(a.Kind, p.TargetGrade, values, errs)
 	case StepDocument, StepReview:
 		view.Documents, view.DocErrors = docRows(p, docs), errs
 		if step == StepReview {
@@ -557,6 +577,14 @@ func stepValues(r *http.Request, step string) map[string]string {
 				default:
 					values[f.Key] = r.PostForm.Get(f.Key)
 				}
+			}
+		}
+		if step == StepAddress && !r.PostForm.Has("has_kks") {
+			values["kks_number"] = "" // "Punya KKS/PKH" tidak dicentang
+		}
+		if step == StepSchool {
+			for _, k := range transferKeys {
+				values[k] = r.PostForm.Get(k)
 			}
 		}
 	}

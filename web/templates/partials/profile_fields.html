@@ -1,10 +1,10 @@
-{{/* profile_fields merender input data rinci (students.FieldView). Argumen: dict Fields, Prefix (awalan id), Disabled, Optional (true: tandai isian tidak wajib dengan "(opsional)" alih-alih badge Wajib, untuk formulir publik T111). */}}
+{{/* profile_fields merender input data rinci (students.FieldView). Argumen: dict Fields, Prefix (awalan id), Disabled, Optional (true: tandai isian tidak wajib dengan "(opsional)" alih-alih badge Wajib, untuk formulir publik T111). Field dengan Model/ShowIf memakai Alpine.js (formulir publik T109); variabelnya disiapkan x-data pemanggil. */}}
 {{define "profile_fields"}}
 <div class="field-grid">
 {{range .Fields}}
 {{$id := printf "%s-%s" $.Prefix .Key}}
 {{if eq .Input "multi"}}
-<fieldset class="field{{if .Error}} has-error{{end}}">
+<fieldset class="field{{if .Error}} has-error{{end}}"{{with .ShowIf}} x-show="{{.}}"{{end}}>
 <legend>{{.Label}}{{template "profile_field_mark" dict "Required" .Required "Optional" $.Optional}}</legend>
 <div class="check-grid">
 {{$f := .}}{{range .Options}}<label class="choice"><input type="checkbox" name="{{$f.Key}}" value="{{.Value}}"{{if index $f.Checked .Value}} checked{{end}}{{if $.Disabled}} disabled{{end}}> {{.Label}}</label>{{end}}
@@ -12,21 +12,23 @@
 {{with .Error}}<p class="field-error">{{.}}</p>{{end}}
 </fieldset>
 {{else if eq .Input "checkbox"}}
-<div class="field{{if .Error}} has-error{{end}}">
-<label class="choice"><input type="checkbox" id="{{$id}}" name="{{.Key}}"{{if eq .Value "true"}} checked{{end}}{{if $.Disabled}} disabled{{end}}> {{.Label}}</label>
+<div class="field{{if .Error}} has-error{{end}}"{{with .ShowIf}} x-show="{{.}}"{{end}}>
+<label class="choice"><input type="checkbox" id="{{$id}}" name="{{.Key}}"{{if eq .Value "true"}} checked{{end}}{{with .Model}} x-model="{{.}}"{{end}}{{if $.Disabled}} disabled{{end}}> {{.Label}}</label>
+{{with .Hint}}<p class="hint">{{.}}</p>{{end}}
 {{with .Error}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 {{else}}
-<div class="field{{if .Error}} has-error{{end}}">
+<div class="field{{if .Error}} has-error{{end}}"{{with .ShowIf}} x-show="{{.}}"{{end}}>
 <label for="{{$id}}">{{.Label}}{{template "profile_field_mark" dict "Required" .Required "Optional" $.Optional}}</label>
 {{if eq .Input "select"}}
-<select id="{{$id}}" name="{{.Key}}"{{if $.Disabled}} disabled{{end}}>
+<select id="{{$id}}" name="{{.Key}}"{{with .Model}} x-model="{{.}}"{{end}}{{if $.Disabled}} disabled{{end}}>
 <option value="">Tidak diisi</option>
 {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
 </select>
 {{else}}
 <input id="{{$id}}" type="{{.Input}}" name="{{.Key}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}}{{if .Max}} maxlength="{{.Max}}"{{end}} autocomplete="off"{{if .Error}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}{{if $.Disabled}} disabled{{end}}>
 {{end}}
+{{with .Hint}}<p class="hint">{{.}}</p>{{end}}
 {{with .Error}}<p class="field-error" id="{{$id}}-error">{{.}}</p>{{end}}
 </div>
 {{end}}

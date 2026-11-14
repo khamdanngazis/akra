@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"akra/internal/dapodik/ref"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
@@ -56,7 +57,7 @@ var Steps = []struct{ Key, Title string }{
 // stepSections memetakan langkah ke bagian students.ProfileFields.
 var stepSections = map[string][]string{
 	StepChild:   {students.SectionIdentity},
-	StepAddress: {students.SectionAddress, students.SectionFamily},
+	StepAddress: {students.SectionAddress, students.SectionFamily, students.SectionAssistance},
 	StepSchool:  {students.SectionRegistration, students.SectionContact},
 }
 
@@ -106,11 +107,15 @@ type Applicant struct {
 	BirthDate          time.Time
 	Values             map[string]string
 	Guardians          map[string]map[string]string
-	ContactPhone       string
-	EnteredBy          string
-	ConsentAt          time.Time
-	SubmittedAt        *time.Time
-	CreatedAt          time.Time
+	// Kind adalah jenis pendaftar (KindNew/KindTransfer), sama dengan jenis
+	// periodenya; Transfer berisi isian khusus pindahan (T109).
+	Kind         string
+	Transfer     map[string]string
+	ContactPhone string
+	EnteredBy    string
+	ConsentAt    time.Time
+	SubmittedAt  *time.Time
+	CreatedAt    time.Time
 }
 
 // Editable melaporkan apakah pendaftar masih bisa mengubah isian.
@@ -120,6 +125,10 @@ func (a Applicant) Editable() bool {
 
 // DraftForm adalah isian langkah awal formulir.
 type DraftForm struct {
+	// Kind adalah jenis formulir yang dipakai (KindNew/KindTransfer);
+	// periode yang dipilih harus berjenis sama. Kosong berarti jenis
+	// mengikuti periode (input TU).
+	Kind      string
 	PeriodID  string
 	TrackID   string
 	FullName  string
@@ -212,15 +221,15 @@ func (s *ApplicantService) CreateDraft(ctx context.Context, schoolID string, f D
 		if enteredBy == "" && !p.IsOpen(s.periods.Today()) {
 			return ErrClosed
 		}
-		if !slices.ContainsFunc(p.Tracks, func(t Track) bool { return t.ID == f.TrackID }) {
+		if !slices.ContainsFunc(p.Tracks, func(t Track) bool { return t.ID == f.TrackID }) || (f.Kind != "" && f.Kind != p.Kind) {
 			return fieldErr("track_id", "Pilih jalur pendaftaran.")
 		}
-		profile, _ := json.Marshal(map[string]string{"registration_type": registrationNew})
+		profile, _ := json.Marshal(map[string]string{"registration_type": registrationFor(p.Kind)})
 		err = tx.QueryRow(ctx, `
-			INSERT INTO applicants (school_id, period_id, track_id, full_name, gender, birth_date, profile,
+			INSERT INTO applicants (school_id, period_id, track_id, kind, full_name, gender, birth_date, profile,
 			       contact_phone, consent_at, entered_by)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-			schoolID, p.ID, f.TrackID, name, gender, birth, profile, phone, s.now(), nullIfEmpty(enteredBy)).Scan(&id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+			schoolID, p.ID, f.TrackID, p.Kind, name, gender, birth, profile, phone, s.now(), nullIfEmpty(enteredBy)).Scan(&id)
 		if err != nil {
 			return err
 		}
@@ -247,18 +256,19 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	}
 	sql := `SELECT id, school_id, period_id, track_id, coalesce(registration_number, ''), status, full_name,
 		       coalesce(gender, ''), birth_date, profile, guardians, nik_enc, kk_enc, birth_cert_enc, kip_enc, kks_enc,
-		       guardian_niks_enc, contact_phone, coalesce(entered_by::text, ''), consent_at, submitted_at, created_at
+		       guardian_niks_enc, contact_phone, coalesce(entered_by::text, ''), consent_at, submitted_at, created_at,
+		       kind, transfer
 		FROM applicants WHERE school_id = $1 AND id = $2`
 	if forUpdate {
 		sql += ` FOR UPDATE`
 	}
 	var a Applicant
-	var profile, guardians []byte
+	var profile, guardians, transfer []byte
 	enc := make([][]byte, len(sensitive))
 	var gNIKs []byte
 	err := q.QueryRow(ctx, sql, schoolID, id).Scan(&a.ID, &a.SchoolID, &a.PeriodID, &a.TrackID, &a.RegistrationNumber,
 		&a.Status, &a.FullName, &a.Gender, &a.BirthDate, &profile, &guardians, &enc[0], &enc[1], &enc[2], &enc[3], &enc[4],
-		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt)
+		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer)
 	if err != nil {
 		return Applicant{}, mapApplicantError(err)
 	}
@@ -269,6 +279,10 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	}
 	if err := json.Unmarshal(guardians, &a.Guardians); err != nil {
 		return Applicant{}, fmt.Errorf("admission: decode guardians: %w", err)
+	}
+	a.Transfer = map[string]string{}
+	if err := json.Unmarshal(transfer, &a.Transfer); err != nil {
+		return Applicant{}, fmt.Errorf("admission: decode transfer: %w", err)
 	}
 	for i, f := range sensitive {
 		if enc[i] == nil {
@@ -325,16 +339,25 @@ func (s *ApplicantService) SaveStep(ctx context.Context, schoolID, id, step stri
 			}
 			for _, sec := range stepSections[step] {
 				for _, f := range students.ProfileFields {
-					if f.Section == sec && !slices.Contains(schoolManagedFields, f.Key) {
+					if f.Section == sec && !slices.Contains(schoolManagedFields, f.Key) && !slices.Contains(publicHiddenFields, f.Key) {
 						merged[f.Key] = values[f.Key]
 					}
 				}
 			}
 			clean, err := students.ValidateProfile(merged, clock.Today())
+			var transfer map[string]string
+			if step == StepSchool && a.Kind == KindTransfer {
+				var terr error
+				transfer, terr = validateTransfer(values, merged["previous_school"], clock.Today())
+				err = joinValidation(onlyStepErrors(err, step), terr)
+			}
 			if err != nil {
 				return onlyStepErrors(err, step)
 			}
 			a.Values = clean
+			if transfer != nil {
+				a.Transfer = transfer
+			}
 		case StepParents:
 			g, err := validateGuardians(values)
 			if err != nil {
@@ -408,6 +431,17 @@ func validateGuardians(v map[string]string) (map[string]map[string]string, error
 				fields[role+".full_name"] = "Nama ibu kandung wajib diisi."
 			}
 			continue
+		}
+		if get("occupation") == ref.KodeMeninggal {
+			// Orang tua sudah meninggal: HP, NIK, penghasilan, dan kebutuhan
+			// khusus tidak relevan dan disembunyikan di formulir (T109).
+			inner := get
+			get = func(k string) string {
+				if slices.Contains(guardianDeceasedHidden, k) {
+					return ""
+				}
+				return inner(k)
+			}
 		}
 		g := map[string]string{}
 		name := strings.Join(strings.Fields(get("full_name")), " ")
@@ -509,20 +543,36 @@ func (s *ApplicantService) write(ctx context.Context, tx pgx.Tx, a Applicant) er
 	}
 	profile, _ := json.Marshal(plain)
 	gjson, _ := json.Marshal(guardians)
+	transfer := map[string]string{}
+	for k, v := range a.Transfer {
+		if v != "" {
+			transfer[k] = v
+		}
+	}
+	tjson, _ := json.Marshal(transfer)
 	_, err := tx.Exec(ctx, `
 		UPDATE applicants SET full_name = $3, gender = $4, birth_date = $5, profile = $6, guardians = $7,
 		       nik_enc = $8, nik_idx = $9, kk_enc = $10, birth_cert_enc = $11, kip_enc = $12, kks_enc = $13,
-		       guardian_niks_enc = $14, updated_at = now()
+		       guardian_niks_enc = $14, transfer = $15, updated_at = now()
 		WHERE school_id = $1 AND id = $2`,
 		a.SchoolID, a.ID, a.FullName, nullIfEmpty(a.Gender), a.BirthDate, profile, gjson,
-		enc[0], nikIdx, enc[1], enc[2], enc[3], enc[4], gNIKs)
+		enc[0], nikIdx, enc[1], enc[2], enc[3], enc[4], gNIKs, tjson)
 	return err
 }
 
 // Missing mengembalikan isian wajib yang belum diisi sebelum pendaftaran
-// bisa dikirim: field wajib Dapodik yang diisi pendaftar, dan nama ibu
-// kandung. Kunci field mengikuti nama input formulir.
+// bisa dikirim: field wajib Dapodik yang diisi pendaftar, nama ibu
+// kandung, dan untuk pindahan isian sekolah asal (T109). Kunci field
+// mengikuti nama input formulir.
 func Missing(a Applicant) []students.RequiredField {
+	out := missingProfile(a)
+	if a.Kind == KindTransfer {
+		out = append(out, missingTransfer(a)...)
+	}
+	return out
+}
+
+func missingProfile(a Applicant) []students.RequiredField {
 	var out []students.RequiredField
 	for _, f := range students.DapodikRequired {
 		switch f.Key {
@@ -585,9 +635,9 @@ func (s *ApplicantService) SubmitBy(ctx context.Context, schoolID, id, actorID s
 			}
 			var seq int
 			err = tx.QueryRow(ctx, `
-				INSERT INTO admission_counters (school_id, academic_year_id, last_seq) VALUES ($1, $2, 1)
-				ON CONFLICT (school_id, academic_year_id) DO UPDATE SET last_seq = admission_counters.last_seq + 1
-				RETURNING last_seq`, schoolID, p.AcademicYearID).Scan(&seq)
+				INSERT INTO admission_counters (school_id, academic_year_id, kind, last_seq) VALUES ($1, $2, $3, 1)
+				ON CONFLICT (school_id, academic_year_id, kind) DO UPDATE SET last_seq = admission_counters.last_seq + 1
+				RETURNING last_seq`, schoolID, p.AcademicYearID, a.Kind).Scan(&seq)
 			if err != nil {
 				return err
 			}
@@ -595,7 +645,7 @@ func (s *ApplicantService) SubmitBy(ctx context.Context, schoolID, id, actorID s
 			if i := strings.IndexAny(year, "/-"); i > 0 {
 				year = year[:i]
 			}
-			number := fmt.Sprintf("SPMB-%s-%04d", year, seq)
+			number := fmt.Sprintf("%s-%s-%04d", numberPrefix(a.Kind), year, seq)
 			// Biaya formulir di-snapshot saat pertama kali dikirim (T94).
 			_, err = tx.Exec(ctx, `UPDATE applicants SET status = 'dikirim', registration_number = $2, submitted_at = $3,
 				resume_code_hash = NULL, fee_amount = $4, updated_at = now() WHERE id = $1`, id, number, s.now(), p.FeeAmount)

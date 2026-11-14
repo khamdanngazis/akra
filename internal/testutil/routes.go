@@ -120,6 +120,8 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/s/{code}/daftar/kirim", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/daftar/selesai", Kind: KindPublic},
 	// Cek status publik (T95): akses dibatasi nomor + tanggal lahir di sesi.
+	{Method: "GET", Pattern: "/s/{code}/pindah/", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/pindah/", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/status/", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/status/", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/status/bukti.pdf", Kind: KindPublic},

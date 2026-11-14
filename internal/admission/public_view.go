@@ -70,6 +70,9 @@ func stepOfField(key string) string {
 	if strings.HasPrefix(key, "doc_") {
 		return StepDocument
 	}
+	if isTransferKey(key) {
+		return StepSchool
+	}
 	for _, f := range students.ProfileFields {
 		if f.Key != key {
 			continue
@@ -128,6 +131,10 @@ func stepTouched(a Applicant, step string, docs []Document) bool {
 		return false
 	case StepDocument:
 		return len(docs) > 0
+	case StepSchool:
+		if len(a.Transfer) > 0 {
+			return true
+		}
 	}
 	for _, f := range students.ProfileFields {
 		if slices.Contains(schoolManagedFields, f.Key) {
@@ -232,6 +239,18 @@ func reviewSummary(a Applicant, missing []students.RequiredField, docs []docRow)
 			}
 		case StepSchool:
 			c.Rows = []summaryRow{optionalRow("Sekolah asal", v["previous_school"])}
+			if a.Kind == KindTransfer {
+				t := a.Transfer
+				move := ""
+				if t[TransferLastGrade] != "" && t[TransferTargetGrade] != "" {
+					move = "Kelas " + t[TransferLastGrade] + " → kelas " + t[TransferTargetGrade]
+				}
+				entry := ""
+				if d, ok := plannedEntry(a); ok {
+					entry = clock.FormatDateID(d)
+				}
+				c.Rows = []summaryRow{row("Sekolah asal", v["previous_school"]), row("Kelas", move), row("Alasan", t[TransferReason]), row("Rencana masuk", entry)}
+			}
 			if contact := joinNonEmpty(" · ", v["mobile_phone"], v["email"]); contact != "" {
 				c.Rows = append(c.Rows, row("Kontak", contact))
 			}

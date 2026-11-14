@@ -5,7 +5,7 @@
 <div class="page-header">
 <div>
 <h1>{{.Applicant.FullName}}</h1>
-<p class="muted">{{if .Applicant.RegistrationNumber}}{{.Applicant.RegistrationNumber}} · {{end}}{{.Period.Name}} · Jalur {{.Track.Name}} · {{template "applicant_status" .Applicant.Status}}</p>
+<p class="muted">{{if .Applicant.RegistrationNumber}}{{.Applicant.RegistrationNumber}} · {{end}}{{if eq .Applicant.Kind "pindahan"}}<span class="badge badge-info">Pindahan</span> · {{end}}{{.Period.Name}} · Jalur {{.Track.Name}} · {{template "applicant_status" .Applicant.Status}}</p>
 </div>
 <div class="action-row">
 {{if .Applicant.RegistrationNumber}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/bukti.pdf">Bukti pendaftaran</a>{{end}}

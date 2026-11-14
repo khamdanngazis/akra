@@ -1,12 +1,12 @@
-{{define "title"}}Pendaftaran {{.School.Name}}{{end}}
+{{define "title"}}{{if eq .Kind "pindahan"}}Pendaftaran Siswa Pindahan{{else}}Pendaftaran{{end}} {{.School.Name}}{{end}}
 {{define "header"}}
 <header class="adm-hero">
 <div class="adm-hero-inner">
 {{template "admission_hero_school" .}}
 <div class="mt-5">
 {{if .Open}}<span class="adm-pill">Pendaftaran dibuka</span>{{else}}<span class="adm-pill adm-pill-muted">Pendaftaran belum dibuka</span>{{end}}
-<h1>Pendaftaran Siswa Baru{{with .Year}}<br>Tahun Ajaran {{.}}{{end}}</h1>
-<p>Daftar online dari HP. Data tersimpan otomatis dan bisa dilanjutkan kapan saja.</p>
+<h1>{{if eq .Kind "pindahan"}}Pendaftaran Siswa Pindahan{{else}}Pendaftaran Siswa Baru{{end}}{{with .Year}}<br>Tahun Ajaran {{.}}{{end}}</h1>
+<p>{{if eq .Kind "pindahan"}}Untuk calon siswa yang pindah dari sekolah lain. {{end}}Daftar online dari HP. Data tersimpan otomatis dan bisa dilanjutkan kapan saja.</p>
 </div>
 </div>
 </header>
@@ -26,7 +26,7 @@
 {{else}}
 {{range $i, $p := .Periods}}
 <section class="adm-card{{if eq $i 0}} adm-card-raised{{end}}">
-<div class="adm-card-head"><h2>{{$p.Name}}</h2><span class="text-[13px] text-slate-600">Kelas {{$p.Grade}}</span></div>
+<div class="adm-card-head"><h2>{{$p.Name}}</h2>{{if $p.Grade}}<span class="text-[13px] text-slate-600">Kelas {{$p.Grade}}</span>{{end}}</div>
 <div class="adm-tiles">
 <div class="adm-tile"><span>Ditutup</span><strong>{{$p.Closes}}</strong></div>
 <div class="adm-tile"><span>Biaya formulir</span><strong>{{if $p.Fee}}{{$p.Fee}}{{else}}Gratis{{end}}</strong></div>
@@ -50,7 +50,7 @@
 <section class="adm-card">
 <h2>Langkahnya</h2>
 <ol class="adm-numbered">
-<li><span>1</span><span>Isi data awal di bawah, lalu lengkapi data anak, alamat, dan orang tua</span></li>
+<li><span>1</span><span>Isi data awal di bawah, lalu lengkapi data anak, alamat, orang tua{{if eq .Kind "pindahan"}}, dan sekolah asal{{end}}</span></li>
 <li><span>2</span><span>Foto dan unggah dokumen</span></li>
 <li><span>3</span><span>Periksa, kirim, dapat nomor pendaftaran, lalu pantau statusnya</span></li>
 </ol>
@@ -60,7 +60,7 @@
 <h2>Mulai pendaftaran</h2>
 <p class="mt-1 text-sm text-slate-600">Isi data awal. Setelah itu Anda mendapat <strong>kode lanjut</strong> untuk melengkapi formulir kapan saja, dari HP ini atau HP lain.</p>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
-<form method="post" action="/s/{{.School.Code}}/daftar" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+<form method="post" action="{{.FormPath}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
 <div class="field{{if .Errors.track_id}} has-error{{end}}">
 <label for="choice">Gelombang dan jalur</label>
@@ -114,6 +114,7 @@
 <a class="text-center text-sm py-2" href="/s/{{.School.Code}}/status">Sudah mendaftar? Cek status pendaftaran</a>
 </div>
 {{end}}
+{{with .OtherPath}}<p class="mt-2 text-center text-sm">{{if eq $.Kind "pindahan"}}Mendaftar sebagai siswa baru? <a href="{{.}}">Buka formulir siswa baru</a>{{else}}Pindah dari sekolah lain? <a href="{{.}}">Buka formulir siswa pindahan</a>{{end}}</p>{{end}}
 {{template "admission_footer"}}
 </div>
 {{end}}

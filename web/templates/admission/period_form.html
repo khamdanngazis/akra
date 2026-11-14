@@ -8,8 +8,21 @@
 {{if not .Years}}
 <p>Belum ada tahun ajaran. <a href="/pengaturan/tahun-ajaran/baru">Buat tahun ajaran</a> untuk siswa baru dulu.</p>
 {{else}}
-<form method="post" action="{{if .IsNew}}/pendaftaran/periode{{else}}/pendaftaran/periode/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+<form method="post" action="{{if .IsNew}}/pendaftaran/periode{{else}}/pendaftaran/periode/{{.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false, kind: '{{if eq .Form.Kind "pindahan"}}pindahan{{else}}baru{{end}}' }" @submit="submitting = true">
 {{ csrfField }}
+{{if .IsNew}}
+<fieldset class="field{{if .Errors.kind}} has-error{{end}}">
+<legend>Jenis pendaftaran</legend>
+<div class="choice-row">
+<label class="choice"><input type="radio" name="kind" value="baru" x-model="kind"{{if ne .Form.Kind "pindahan"}} checked{{end}}> Siswa baru</label>
+<label class="choice"><input type="radio" name="kind" value="pindahan" x-model="kind"{{if eq .Form.Kind "pindahan"}} checked{{end}}> Siswa pindahan</label>
+</div>
+<p class="hint">Siswa pindahan memakai formulir terpisah dengan isian sekolah asal, kelas terakhir, dan alasan pindah. Jenis tidak bisa diubah setelah periode dibuat.</p>
+{{with .Errors.kind}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{else}}
+<p class="mb-0"><span class="muted">Jenis pendaftaran:</span> <strong>{{if eq .Form.Kind "pindahan"}}Siswa pindahan{{else}}Siswa baru{{end}}</strong></p>
+{{end}}
 <div class="field-grid">
 <div class="field{{if .Errors.name}} has-error{{end}}">
 <label for="name">Nama periode</label>
@@ -25,7 +38,7 @@
 </div>
 </div>
 <div class="field-grid">
-<div class="field{{if .Errors.target_grade}} has-error{{end}}">
+<div class="field{{if .Errors.target_grade}} has-error{{end}}" x-show="kind !== 'pindahan'">
 <label for="target_grade">Tingkat tujuan</label>
 <input id="target_grade" type="number" name="target_grade" value="{{.Form.TargetGrade}}" min="1" max="12" required>
 {{with .Errors.target_grade}}<p class="field-error">{{.}}</p>{{end}}

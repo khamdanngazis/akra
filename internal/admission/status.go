@@ -229,6 +229,7 @@ type ListFilter struct {
 	PeriodID string
 	TrackID  string
 	Status   string
+	Kind     string // KindNew/KindTransfer; kosong = semua (T109)
 	Query    string // nama mengandung, atau nomor pendaftaran diawali
 }
 
@@ -240,6 +241,8 @@ type ListRow struct {
 	PreviousSchool     string
 	PeriodName         string
 	TrackName          string
+	Kind               string
+	TargetGrade        string // kelas tujuan pindahan
 	Status             string
 	DocsUploaded       int
 	DocsRequired       int
@@ -252,7 +255,7 @@ func (s *ApplicantService) List(ctx context.Context, schoolID string, f ListFilt
 	q := strings.TrimSpace(f.Query)
 	rows, err := s.db.Query(ctx, `
 		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, coalesce(a.profile->>'previous_school', ''),
-		       p.name, t.name, a.status,
+		       p.name, t.name, a.kind, coalesce(a.transfer->>'target_grade', ''), a.status,
 		       (SELECT count(*) FROM applicant_documents d WHERE d.applicant_id = a.id AND d.doc_type = ANY (p.required_docs)),
 		       cardinality(p.required_docs), a.submitted_at
 		FROM applicants a
@@ -263,15 +266,16 @@ func (s *ApplicantService) List(ctx context.Context, schoolID string, f ListFilt
 		  AND ($3::uuid IS NULL OR a.track_id = $3::uuid)
 		  AND (CASE WHEN $4 = '' THEN a.status <> 'draf' ELSE a.status = $4 END)
 		  AND ($5 = '' OR a.full_name ILIKE '%' || $6 || '%' OR a.registration_number ILIKE $6 || '%')
+		  AND ($7 = '' OR a.kind = $7)
 		ORDER BY a.submitted_at DESC NULLS LAST, a.created_at DESC
 		LIMIT 500`,
-		schoolID, uuidOrNil(f.PeriodID), uuidOrNil(f.TrackID), f.Status, q, escapeLike(q))
+		schoolID, uuidOrNil(f.PeriodID), uuidOrNil(f.TrackID), f.Status, q, escapeLike(q), f.Kind)
 	if err != nil {
 		return nil, mapApplicantError(err)
 	}
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (ListRow, error) {
 		var x ListRow
-		return x, r.Scan(&x.ID, &x.RegistrationNumber, &x.FullName, &x.PreviousSchool, &x.PeriodName, &x.TrackName, &x.Status,
+		return x, r.Scan(&x.ID, &x.RegistrationNumber, &x.FullName, &x.PreviousSchool, &x.PeriodName, &x.TrackName, &x.Kind, &x.TargetGrade, &x.Status,
 			&x.DocsUploaded, &x.DocsRequired, &x.SubmittedAt)
 	})
 	if err != nil {
