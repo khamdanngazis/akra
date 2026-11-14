@@ -18,6 +18,9 @@ const (
 	ActionSettingsUpdate    = "settings.update"
 	// ActionReceiptDownloadParent dicatat portal orang tua (T46).
 	ActionReceiptDownloadParent = "receipt.download_parent"
+	// Biaya formulir pendaftaran (T94).
+	ActionAdmissionFeePayment = "admission.fee_payment"
+	ActionAdmissionFeeVoid    = "admission.fee_void"
 )
 
 // FinanceActions adalah semua aksi keuangan, urut tampil di filter.
@@ -25,7 +28,7 @@ var FinanceActions = []string{
 	ActionPaymentCreate, ActionVoidRequest, ActionVoidApprove, ActionVoidReject,
 	ActionProofUpload, ActionProofView, ActionInvoiceCreate, ActionBulkCreate,
 	ActionFeeTypeCreate, ActionFeeTypeUpdate, ActionFeeTypeDeactivate, ActionFeeTypeActivate,
-	ActionSettingsUpdate, ActionReceiptDownloadParent,
+	ActionSettingsUpdate, ActionReceiptDownloadParent, ActionAdmissionFeePayment, ActionAdmissionFeeVoid,
 }
 
 // ActionLabels adalah nama aksi untuk ditampilkan.
@@ -44,4 +47,6 @@ var ActionLabels = map[string]string{
 	ActionVoidReject:            "Pembatalan ditolak",
 	ActionSettingsUpdate:        "Pengaturan keuangan diubah",
 	ActionReceiptDownloadParent: "Kuitansi diunduh orang tua",
+	ActionAdmissionFeePayment:   "Biaya formulir dibayar",
+	ActionAdmissionFeeVoid:      "Biaya formulir dibatalkan",
 }

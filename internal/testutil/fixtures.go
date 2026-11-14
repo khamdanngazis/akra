@@ -80,6 +80,8 @@ type School struct {
 	ApplicantDocID string
 	// AdmissionTestID adalah tes seleksi di AdmissionPeriodID (T93a).
 	AdmissionTestID string
+	// ApplicantFeePaymentID adalah pembayaran biaya formulir ApplicantID (T94).
+	ApplicantFeePaymentID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -189,6 +191,9 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	// Satu nilai agar kontrol "hapus tes" ditolak (409) dan tes tetap ada.
 	exec(`INSERT INTO applicant_test_scores (school_id, applicant_id, test_id, score, recorded_by) VALUES ($1, $2, $3, 80, $4)`,
 		s.ID, s.ApplicantID, s.AdmissionTestID, s.Admin.ID)
+	exec(`UPDATE applicants SET fee_amount = 150000 WHERE id = $1`, s.ApplicantID)
+	s.ApplicantFeePaymentID = one(`INSERT INTO applicant_fee_payments (school_id, applicant_id, amount, paid_on, method, receipt_number, recorded_by)
+		VALUES ($1, $2, 150000, '2026-11-01', 'tunai', $3, $4) RETURNING id`, s.ID, s.ApplicantID, "KW/2026/F"+marker, s.Treasurer.ID)
 	s.ApplicantDocID = one(`INSERT INTO applicant_documents (school_id, applicant_id, doc_type, storage_key, content_type, size_bytes, sha256)
 		VALUES ($1, $2, 'kk', $3, 'image/png', 10, '\x00') RETURNING id`, s.ID, s.ApplicantID, "schools/"+s.ID+"/applicants/fixture.enc")
 	s.GradeComponentID = one(`INSERT INTO grade_components (school_id, academic_year_id, subject_id, name, weight_percent) VALUES ($1, $2, $3, 'Ujian', 100) RETURNING id`,

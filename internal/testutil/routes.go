@@ -482,6 +482,26 @@ var Routes = []Route{
 				{Path: "/pendaftaran/" + own.ApplicantID + "/dokumen/" + o.ApplicantDocID},
 			}
 		}},
+	// Biaya formulir (T94). Urutan penting untuk kontrol positif: kuitansi
+	// dan catat (409, sudah lunas) sebelum batal.
+	{Method: "GET", Pattern: "/pendaftaran/biaya", Kind: KindPage, Roles: []string{Treasurer, Admin, Principal}},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/biaya/{paymentID}/kuitansi", Kind: KindByID, Roles: []string{Treasurer, Admin, Principal},
+		Requests: func(own, o *School) []Request {
+			reqs := []Request{{Path: "/pendaftaran/" + o.ApplicantID + "/biaya/" + o.ApplicantFeePaymentID + "/kuitansi"}}
+			if own.ID != o.ID {
+				reqs = append(reqs, Request{Path: "/pendaftaran/" + own.ApplicantID + "/biaya/" + o.ApplicantFeePaymentID + "/kuitansi"})
+			}
+			return reqs
+		}},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/biaya", Kind: KindByID, Roles: []string{Treasurer},
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/biaya" }, func(*School) url.Values {
+			return url.Values{"paid_on": {"2026-11-01"}, "method": {"tunai"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/biaya/batal", Kind: KindByID, Roles: []string{Treasurer},
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/biaya/batal" }, func(*School) url.Values {
+			return url.Values{"void_reason": {"Uji lintas"}}
+		})},
+
 	// Input pendaftar oleh TU (T92). Pendaftar fixture berstatus dikirim,
 	// jadi kontrol positif diarahkan (303) ke halaman detail.
 	{Method: "GET", Pattern: "/pendaftaran/baru", Kind: KindPage, Roles: adminTU},

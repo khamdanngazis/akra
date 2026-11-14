@@ -12,6 +12,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/dapodik/ref"
 	"akra/internal/platform/clock"
+	"akra/internal/platform/money"
 	"akra/internal/platform/page"
 	"akra/internal/students"
 )
@@ -107,6 +108,9 @@ type applicantDetailView struct {
 	MissingDocs []string
 	Events      []eventRow
 	Next        []option
+	FeeAmount   string
+	FeePayments []FeePayment
+	FeePaid     bool
 	Note        string
 	Errors      map[string]string
 	ResumeCode  string
@@ -168,6 +172,21 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		view.Next = append(view.Next, option{Value: s, Label: StatusLabels[s]})
 	}
 	view.Sections = displayApplicant(a)
+	var feeAmount int64
+	if err := h.db.QueryRow(ctx, `SELECT fee_amount FROM applicants WHERE id = $1`, a.ID).Scan(&feeAmount); err != nil {
+		h.serverError(w, r, "fee amount", err)
+		return
+	}
+	if feeAmount > 0 {
+		view.FeeAmount = money.FormatRupiah(feeAmount)
+		if view.FeePayments, err = h.fees().History(ctx, id.SchoolID, a.ID); err != nil {
+			h.serverError(w, r, "fee history", err)
+			return
+		}
+		for _, p := range view.FeePayments {
+			view.FeePaid = view.FeePaid || (p.VoidedAt == nil && p.Amount == feeAmount)
+		}
+	}
 	h.render.Render(w, r, status, "admission/applicant_detail", view)
 }
 

@@ -44,6 +44,21 @@ func NewHandler(db database.DB, periods *Service, applicants *ApplicantService, 
 func (h *Handler) Routes(r chi.Router) {
 	r.Route(applicantsPath, func(r chi.Router) {
 		r.Route("/periode", h.periodRoutes)
+		// Biaya formulir (T94).
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah))
+			// Peran: bendahara, admin_tu, kepala_sekolah (baca).
+			r.Get("/biaya", h.listFees)
+			// Peran: bendahara, admin_tu, kepala_sekolah.
+			r.Get("/{id}/biaya/{paymentID}/kuitansi", h.feeReceipt)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireRole(auth.RoleBendahara))
+			// Peran: bendahara.
+			r.Post("/{id}/biaya", h.recordFee)
+			// Peran: bendahara.
+			r.Post("/{id}/biaya/batal", h.voidFee)
+		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
 			// Peran: admin_tu, kepala_sekolah (hanya baca).

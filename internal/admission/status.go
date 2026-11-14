@@ -162,8 +162,7 @@ func (s *ApplicantService) Transition(ctx context.Context, actor school.Actor, i
 }
 
 // checkFee menolak verifikasi jika periode mewajibkan biaya formulir lunas
-// dan tagihan pendaftar belum lunas. Tagihan dibuat di T94; sebelum ada
-// tagihan, aturan ini tidak memblokir.
+// dan biaya pendaftar belum lunas (T94).
 func (s *ApplicantService) checkFee(ctx context.Context, tx pgx.Tx, a Applicant) error {
 	if s.feePaid == nil {
 		return nil

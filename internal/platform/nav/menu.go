@@ -51,6 +51,7 @@ var Items = []MenuItem{
 	{Label: "Jadwal Saya", Path: "/jadwal/saya", Icon: "schedule", Short: "Jadwal", Desc: "Jadwal mengajar minggu ini", Roles: []string{guru}},
 	{Label: "Pembayaran", Path: "/keuangan/pembayaran/baru", Icon: "wallet", Short: "Bayar", Desc: "Catat pembayaran siswa", Roles: []string{bendahara}},
 	{Label: "Tagihan Massal", Path: "/keuangan/tagihan-massal", Icon: "receipt", Short: "Tagihan", Desc: "Buat tagihan untuk satu kelas", Roles: []string{bendahara}},
+	{Label: "Biaya Pendaftaran", Path: "/pendaftaran/biaya", Icon: "receipt", Short: "Formulir", Desc: "Catat biaya formulir pendaftar", Roles: []string{bendahara}},
 	{Label: "Rekap Pembayaran", Path: "/keuangan/rekap-pembayaran", Icon: "money", Short: "Rekap", Desc: "Total pembayaran harian dan bulanan", Roles: []string{bendahara, kepala}},
 	{Label: "Tunggakan", Path: "/keuangan/tunggakan", Icon: "arrears", Desc: "Tagihan yang lewat jatuh tempo", Roles: []string{bendahara, adminTU, kepala}},
 	{Label: "Jenis Tagihan", Path: "/keuangan/jenis-tagihan", Icon: "tags", Short: "Jenis", Desc: "SPP dan jenis biaya lain", Roles: []string{bendahara, adminTU, kepala}},

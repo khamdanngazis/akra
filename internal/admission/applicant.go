@@ -142,7 +142,7 @@ type ApplicantService struct {
 
 // NewApplicantService mengembalikan ApplicantService.
 func NewApplicantService(db database.DB, keys *pii.Keyring, periods *Service) *ApplicantService {
-	return &ApplicantService{db: db, keys: keys, periods: periods, now: time.Now}
+	return &ApplicantService{db: db, keys: keys, periods: periods, now: time.Now, feePaid: feePaidTx}
 }
 
 // sensitive adalah field data rinci yang disimpan terenkripsi, dengan kolom
@@ -596,8 +596,9 @@ func (s *ApplicantService) SubmitBy(ctx context.Context, schoolID, id, actorID s
 				year = year[:i]
 			}
 			number := fmt.Sprintf("SPMB-%s-%04d", year, seq)
+			// Biaya formulir di-snapshot saat pertama kali dikirim (T94).
 			_, err = tx.Exec(ctx, `UPDATE applicants SET status = 'dikirim', registration_number = $2, submitted_at = $3,
-				resume_code_hash = NULL, updated_at = now() WHERE id = $1`, id, number, s.now())
+				resume_code_hash = NULL, fee_amount = $4, updated_at = now() WHERE id = $1`, id, number, s.now(), p.FeeAmount)
 			if err != nil {
 				return err
 			}

@@ -43,6 +43,7 @@ func (e *env) openPeriod(t *testing.T) (Period, Track) {
 	f := e.form()
 	f.Name = "Gelombang " + fmt.Sprint(time.Now().UnixNano())
 	f.RequiredDocs = nil // dokumen wajib diuji di TestDocuments
+	f.FeeAmount = ""     // biaya formulir diuji di TestFees
 	p, err := e.svc.Create(ctx, e.actor, f)
 	if err != nil {
 		t.Fatal(err)
