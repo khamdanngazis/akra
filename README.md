@@ -222,6 +222,7 @@ Styling memakai **Tailwind CSS v4 standalone CLI** (binary, tanpa Node), sesuai 
   - Tanpa JavaScript menu tampil biasa di atas konten dan bottom navigation disembunyikan.
 - **Beranda** ([home.html](web/templates/home.html)): sapaan "Selamat datang kembali", kartu ringkasan per peran (`home.KPI`: siswa aktif, guru, kelas, pengumuman; tunggakan dan pembayaran hari ini; kelas wali dan absensi), kehadiran minggu ini, pembayaran terbaru (bendahara), pengumuman terbaru, dan "Akses cepat" dari `nav.Shortcuts` (maks. 6 item menu yang punya `Desc`). Semua angka dari data sebenarnya; tidak ada grafik atau notifikasi contoh.
 - **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html); pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
+- **Data wilayah** (provinsi sampai desa/kelurahan, kode pos) untuk isian alamat: dari [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah) dan [cahyadsn/wilayah_kodepos](https://github.com/cahyadsn/wilayah_kodepos) (MIT), disertakan di [internal/wilayah/data](internal/wilayah/data/LICENSE.md) dan diimpor otomatis saat server start; dilayani sendiri di `GET /wilayah?induk=`, tanpa layanan pihak ketiga. Pembaruan: lihat `cmd/import-wilayah`.
 - **Login** dan halaman akun lain: latar terang, logo dengan tagline, satu card form dengan ikon di input dan tombol lihat password (partial `auth_logo` dan `password_field`, dipanggil dengan `dict`).
 
 ## Tahun Ajaran

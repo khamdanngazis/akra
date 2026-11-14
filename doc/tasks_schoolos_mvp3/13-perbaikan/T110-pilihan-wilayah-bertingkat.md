@@ -30,10 +30,21 @@ Kecamatan dan desa/kelurahan saat ini diketik bebas, sehingga ejaan tidak seraga
 - `web/templates/partials/` (komponen alamat), `web/templates/admission/public_step.html`, `web/templates/students/profile.html`
 
 ## Kriteria selesai
-- [ ] Lisensi dan versi data tercatat; impor data bisa diulang tanpa duplikasi
-- [ ] Pilihan bertingkat bekerja di formulir pendaftaran dan form data rinci, termasuk pencarian dengan mengetik
-- [ ] Kode pos terisi otomatis dari desa
-- [ ] Isian manual tetap mungkin dan ditandai
-- [ ] Lembar salin, F-PD, dan ekspor Dapodik tetap menampilkan nama kecamatan/desa yang sama
-- [ ] Formulir tidak memanggil layanan pihak ketiga
-- [ ] Endpoint wilayah masuk daftar route (publik/terautentikasi) dan diuji
+- [x] Lisensi dan versi data tercatat; impor data bisa diulang tanpa duplikasi
+- [x] Pilihan bertingkat bekerja di formulir pendaftaran dan form data rinci, termasuk pencarian dengan mengetik
+- [x] Kode pos terisi otomatis dari desa
+- [x] Isian manual tetap mungkin dan ditandai
+- [x] Lembar salin, F-PD, dan ekspor Dapodik tetap menampilkan nama kecamatan/desa yang sama
+- [x] Formulir tidak memanggil layanan pihak ketiga
+- [x] Endpoint wilayah masuk daftar route (publik/terautentikasi) dan diuji
+
+## Catatan implementasi
+- **Lisensi dan versi:** kedua dataset berlisensi MIT; sumber, tanggal pengambilan, versi Kepmendagri (README repo menyebut 300.2.2-2430/2025, header berkas masih 300.2.2-2138/2025), dan teks lisensi dicatat di `internal/wilayah/data/LICENSE.md`. 91.599 wilayah: 38 provinsi, 514 kabupaten/kota, 7.285 kecamatan, 83.762 desa/kelurahan, semua desa punya kode pos.
+- **Data disertakan** sebagai `internal/wilayah/data/wilayah.tsv.gz` (±690 KB, di-embed). `cmd/import-wilayah -convert` membuatnya dari berkas SQL sumber; tanpa flag, mengimpor ulang ke `DATABASE_URL`.
+- **Impor otomatis:** server mengimpor di latar belakang saat start jika sidik data berbeda dengan `wilayah_meta.versi` (advisory lock, upsert, aman diulang). Kode yang hilang di data baru ditandai `aktif = false`, tidak dihapus. Selama data belum ada, isian alamat otomatis jatuh ke mode manual. Tidak perlu langkah deploy tambahan.
+- **Tabel** `wilayah(kode, nama, tingkat, induk, kode_pos, aktif)` tanpa FK ke induk; kolom baru `student_profiles.wilayah_kode` (pendaftar menyimpannya di jsonb profil).
+- **Endpoint** `GET /wilayah?induk=` (publik, JSON, cache 1 hari) mengembalikan wilayah di bawah satu kode. Pencarian dengan mengetik dilakukan di browser pada daftar desa (daftar per kecamatan kecil); tidak ada endpoint pencarian global dan belum ada rate limit khusus karena datanya publik dan bisa di-cache.
+- **Komponen** `wilayah_picker` (`web/static/js/wilayah.js`) menggantikan isian bebas desa, kecamatan, dan kode pos di formulir pendaftaran dan form data rinci staf: Provinsi → Kab/Kota → Kecamatan → Desa, kode pos terisi otomatis (bisa diubah), kotak "Desa tidak ada di daftar, isi manual". Tanpa JavaScript yang tampil isian manual.
+- **Validasi server:** kode harus format desa dan ada di tabel; nama desa/kecamatan yang disimpan diambil dari tabel (`wilayah.Apply`), kode pos diisi bila kosong. Lembar salin, F-PD, dan ekspor tetap memakai kolom `village`/`district`.
+- **Data lama dan impor:** alamat tanpa kode dicocokkan dengan nama desa + kecamatan bila hasilnya unik, sebagai saran di form (perlu disimpan ulang). Impor ekspor Dapodik (T101) mengisi `wilayah_kode` dengan cara yang sama; jika tidak unik, tetap manual. Detail pendaftar menandai "Desa/kecamatan diisi manual, periksa ejaannya".
+

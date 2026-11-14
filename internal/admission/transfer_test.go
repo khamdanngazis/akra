@@ -300,3 +300,60 @@ func TestNewStudentFormSimplified(t *testing.T) {
 		t.Error("guardian section closed although living with guardian")
 	}
 }
+
+func TestAddressWilayah(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if _, err := e.tx.Exec(ctx, `INSERT INTO wilayah (kode, nama, tingkat, induk, kode_pos) VALUES
+		('32', 'Jawa Barat', 1, NULL, NULL), ('32.73', 'Kota Bandung', 2, '32', NULL),
+		('32.73.04', 'Bojongloa Kaler', 3, '32.73', NULL), ('32.73.04.1001', 'Kopo', 4, '32.73.04', '40233')
+		ON CONFLICT (kode) DO NOTHING`); err != nil {
+		t.Fatal(err)
+	}
+	p, tr := e.openPeriod(t)
+	c := newPublicServer(t, e)
+	base := "/s/test-adm-a/daftar"
+	start := url.Values{"choice": {p.ID + "|" + tr.ID}, "full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "phone": {"081234567890"}, "consent": {"on"}}
+	if code, _, _ := c.post(base+"/", start); code != http.StatusSeeOther {
+		t.Fatal("create draft")
+	}
+	_, body := c.get(base + "/isi/alamat")
+	if !strings.Contains(body, "js/wilayah.js") || !strings.Contains(body, `x-data="wilayahPicker($el)"`) || !strings.Contains(body, "Desa tidak ada di daftar") {
+		t.Error("address step without wilayah picker")
+	}
+	addr := url.Values{"street": {"Jl. Melati 5"}, "wilayah_kode": {"32.73.04.9999"}}
+	if code, _, body := c.post(base+"/isi/alamat", addr); code != http.StatusBadRequest || !strings.Contains(body, "tidak ditemukan di daftar wilayah") {
+		t.Errorf("unknown code: %d", code)
+	}
+	addr.Set("wilayah_kode", "32.73.04.1001")
+	addr.Set("village", "ketikan bebas")
+	if code, _, body := c.post(base+"/isi/alamat", addr); code != http.StatusSeeOther {
+		t.Fatalf("save address: %d\n%s", code, body)
+	}
+	apps := NewApplicantService(e.tx, pii.DevKeyring(), e.svc)
+	var id string
+	_ = e.tx.QueryRow(ctx, `SELECT id FROM applicants WHERE school_id = $1 ORDER BY created_at DESC LIMIT 1`, e.schoolA).Scan(&id)
+	a, _ := apps.Load(ctx, e.schoolA, id)
+	if a.Values["village"] != "Kopo" || a.Values["district"] != "Bojongloa Kaler" || a.Values["postal_code"] != "40233" {
+		t.Errorf("applicant address = %v", a.Values)
+	}
+	// Manual (desa tidak ada di daftar): nama disimpan apa adanya, ditandai di detail TU.
+	manual := url.Values{"street": {"Jl. Melati 5"}, "village": {"Desa Pemekaran"}, "district": {"Bojongloa Kaler"}}
+	if code, _, _ := c.post(base+"/isi/alamat", manual); code != http.StatusSeeOther {
+		t.Fatal("manual address")
+	}
+	a, _ = apps.Load(ctx, e.schoolA, id)
+	if a.Values["village"] != "Desa Pemekaran" || a.Values["wilayah_kode"] != "" {
+		t.Errorf("manual address = %v", a.Values)
+	}
+	rows := displayApplicant(a)
+	flagged := false
+	for _, s := range rows {
+		for _, r := range s.Rows {
+			flagged = flagged || strings.Contains(r.Value, "diisi manual")
+		}
+	}
+	if !flagged {
+		t.Error("manual address not flagged for staff")
+	}
+}

@@ -32,6 +32,13 @@ func exportFile(t *testing.T, rows []ExportRow) []byte {
 func TestPlanAndApplyPD(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
+	// Data wilayah untuk pencocokan kode desa (T110).
+	if _, err := e.tx.Exec(ctx, `INSERT INTO wilayah (kode, nama, tingkat, induk, kode_pos) VALUES
+		('32', 'Jawa Barat', 1, NULL, NULL), ('32.73', 'Kota Bandung', 2, '32', NULL),
+		('32.73.04', 'Bojongloa Kaler', 3, '32.73', NULL), ('32.73.04.1001', 'Kopo', 4, '32.73.04', '40233')
+		ON CONFLICT (kode) DO NOTHING`); err != nil {
+		t.Fatal(err)
+	}
 	// Budi sudah punya agama berbeda di AKRA; alamat masih kosong.
 	if _, err := students.NewProfileService(e.tx, e.keys).Save(ctx, e.actor, e.budi, map[string]string{"religion": "02"}); err != nil {
 		t.Fatal(err)
@@ -45,7 +52,7 @@ func TestPlanAndApplyPD(t *testing.T) {
 		}},
 		{ClassName: "1A", Input: Input{ // siswa baru
 			Student: students.Student{FullName: "Dewi", NIS: "050", Gender: "P", BirthDate: &birth},
-			Profile: students.ProfileForTest(map[string]string{"nisn": "0091234567", "residence_type": "01"}),
+			Profile: students.ProfileForTest(map[string]string{"nisn": "0091234567", "residence_type": "01", "village": "Kopo", "district": "Bojongloa Kaler"}),
 		}},
 	})
 	plan, err := PlanPD(ctx, e.tx, e.keys, e.schoolA, bytes.NewReader(file))
@@ -76,6 +83,9 @@ func TestPlanAndApplyPD(t *testing.T) {
 	var dewi string
 	if err := e.tx.QueryRow(ctx, `SELECT id FROM students WHERE school_id = $1 AND nis = '050'`, e.schoolA).Scan(&dewi); err != nil {
 		t.Fatal("new student not created")
+	}
+	if dp, _ := students.NewProfileService(e.tx, e.keys).Get(ctx, e.schoolA, dewi); dp.Get("wilayah_kode") != "32.73.04.1001" || dp.Get("village") != "Kopo" {
+		t.Errorf("imported village code = %q village = %q", dp.Get("wilayah_kode"), dp.Get("village"))
 	}
 	hist, _ := students.ListEnrollments(ctx, e.tx, e.schoolA, dewi)
 	if len(hist) != 1 || hist[0].ClassName != "1A" {

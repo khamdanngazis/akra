@@ -30,6 +30,7 @@ import (
 	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
+	"akra/internal/wilayah"
 )
 
 type routerDeps struct {
@@ -55,19 +56,21 @@ type routerDeps struct {
 	dapodik      *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
-	activation      *auth.ActivationHandler
-	portal          *portal.Handler
-	attendance      *attendance.Handler
-	feeTypes        *billing.FeeTypeHandler
-	bulkInvoice     *billing.BulkHandler
-	arrears         *billing.ArrearsHandler
-	payments        *payments.Handler
-	auditLog        *auditview.Handler
-	reports         *reports.Handler
-	announce        *announcements.Handler
-	home            *home.Handler
-	importer        *importer.Handler
-	mappings        *importer.MappingHandler
+	// wilayah adalah daftar wilayah untuk isian alamat (T110), publik.
+	wilayah     *wilayah.Handler
+	activation  *auth.ActivationHandler
+	portal      *portal.Handler
+	attendance  *attendance.Handler
+	feeTypes    *billing.FeeTypeHandler
+	bulkInvoice *billing.BulkHandler
+	arrears     *billing.ArrearsHandler
+	payments    *payments.Handler
+	auditLog    *auditview.Handler
+	reports     *reports.Handler
+	announce    *announcements.Handler
+	home        *home.Handler
+	importer    *importer.Handler
+	mappings    *importer.MappingHandler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -116,6 +119,7 @@ func newRouter(d routerDeps) http.Handler {
 		d.resetHandler.Routes(r)
 		d.activation.Routes(r)
 		d.admissionPublic.Routes(r)
+		d.wilayah.Routes(r)
 
 		// Wajib login.
 		r.Group(func(r chi.Router) {

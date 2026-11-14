@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/mail"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
+	"akra/internal/wilayah"
 	"akra/web"
 )
 
@@ -64,6 +65,20 @@ func run(logger *slog.Logger) error {
 	}
 	defer pool.Close()
 	logger.Info("connected to database", "max_conns", cfg.DBMaxConns)
+
+	// Data wilayah (T110) diimpor di latar belakang bila versinya berubah;
+	// selama belum ada, isian alamat jatuh ke isian manual.
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		loaded, err := wilayah.EnsureLoaded(ctx, pool)
+		switch {
+		case err != nil:
+			logger.Error("load wilayah data", "error", err)
+		case loaded:
+			logger.Info("wilayah data imported", "version", wilayah.DataVersion())
+		}
+	}()
 
 	hasher := auth.NewHasher(auth.PasswordParams{
 		MemoryKiB:   cfg.Argon2MemoryKiB,

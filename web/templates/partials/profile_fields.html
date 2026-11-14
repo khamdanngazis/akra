@@ -3,7 +3,9 @@
 <div class="field-grid">
 {{range .Fields}}
 {{$id := printf "%s-%s" $.Prefix .Key}}
-{{if eq .Input "multi"}}
+{{if eq .Input "wilayah"}}
+{{template "wilayah_picker" dict "F" . "Prefix" $.Prefix "Disabled" $.Disabled "Optional" $.Optional}}
+{{else if eq .Input "multi"}}
 <fieldset class="field{{if .Error}} has-error{{end}}"{{with .ShowIf}} x-show="{{.}}"{{end}}>
 <legend>{{.Label}}{{template "profile_field_mark" dict "Required" .Required "Optional" $.Optional}}</legend>
 <div class="check-grid">
@@ -38,3 +40,43 @@
 
 {{/* profile_field_mark menandai isian wajib (badge) atau opsional. Argumen: dict Required, Optional. */}}
 {{define "profile_field_mark"}}{{if .Optional}}{{if not .Required}} <span class="muted">(opsional)</span>{{end}}{{else if .Required}} <span class="badge badge-info">Wajib</span>{{end}}{{end}}
+
+{{/* wilayah_picker adalah isian alamat bertingkat Provinsi → Kab/Kota → Kecamatan → Desa (T110), dengan pilihan isi manual. Tanpa JavaScript (atau daftar gagal dimuat) yang tampil isian manual desa dan kecamatan. Butuh js/wilayah.js. Argumen: dict F (FieldView Input "wilayah"), Prefix, Disabled, Optional. */}}
+{{define "wilayah_picker"}}
+{{$f := .F}}{{$id := printf "%s-wilayah" .Prefix}}
+<fieldset class="field wilayah-field{{if or $f.Error (index $f.SubErr "village") (index $f.SubErr "district")}} has-error{{end}}"
+{{if not .Disabled}} x-data="wilayahPicker($el)" data-kode="{{$f.Value}}" data-suggest="{{index $f.Sub "suggest"}}" data-manual="{{if and (not $f.Value) (not (index $f.Sub "suggest")) (index $f.Sub "village")}}true{{end}}"{{end}}>
+<legend>Wilayah{{template "profile_field_mark" dict "Required" $f.Required "Optional" .Optional}}</legend>
+{{if not .Disabled}}
+<input type="hidden" name="wilayah_kode" value="{{$f.Value}}" :value="manual ? '' : desa">
+<div class="wilayah-grid" x-cloak x-show="!manual">
+<div><label for="{{$id}}-prov" class="wilayah-label">Provinsi</label>
+<select id="{{$id}}-prov" x-model="prov" @change="pick(1)" :disabled="loading === 1"><option value="">Pilih provinsi</option><template x-for="o in lists[1]" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
+<div><label for="{{$id}}-kab" class="wilayah-label">Kabupaten/kota</label>
+<select id="{{$id}}-kab" x-model="kab" @change="pick(2)" :disabled="!prov || loading === 2"><option value="">Pilih kabupaten/kota</option><template x-for="o in lists[2]" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
+<div><label for="{{$id}}-kec" class="wilayah-label">Kecamatan</label>
+<select id="{{$id}}-kec" x-model="kec" @change="pick(3)" :disabled="!kab || loading === 3"><option value="">Pilih kecamatan</option><template x-for="o in lists[3]" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
+<div><label for="{{$id}}-desa" class="wilayah-label">Desa/kelurahan</label>
+<input type="search" class="wilayah-search" x-show="lists[4].length > 15" x-model="q" placeholder="Ketik untuk mencari desa" aria-label="Cari desa/kelurahan" autocomplete="off">
+<select id="{{$id}}-desa" x-model="desa" @change="pick(4)" :disabled="!kec || loading === 4"><option value="">Pilih desa/kelurahan</option><template x-for="o in desaOptions" :key="o.kode"><option :value="o.kode" x-text="o.nama"></option></template></select></div>
+</div>
+<p class="hint" x-cloak x-show="failed">Daftar wilayah tidak bisa dimuat. Silakan isi nama desa dan kecamatan secara manual.</p>
+{{end}}
+<div class="wilayah-grid"{{if not .Disabled}} x-show="manual"{{end}}>
+<div><label for="{{$id}}-village" class="wilayah-label">Desa/kelurahan</label>
+<input id="{{$id}}-village" name="village" value="{{index $f.Sub "village"}}" maxlength="50" autocomplete="off"{{if .Disabled}} disabled{{end}}>
+{{with index $f.SubErr "village"}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div><label for="{{$id}}-district" class="wilayah-label">Kecamatan</label>
+<input id="{{$id}}-district" name="district" value="{{index $f.Sub "district"}}" maxlength="50" autocomplete="off"{{if .Disabled}} disabled{{end}}>
+{{with index $f.SubErr "district"}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+<div class="wilayah-grid">
+<div><label for="{{$id}}-pos" class="wilayah-label">Kode pos <span class="muted">(terisi otomatis, bisa diubah)</span></label>
+<input id="{{$id}}-pos" name="postal_code" value="{{index $f.Sub "postal_code"}}"{{if not .Disabled}} x-model="pos"{{end}} inputmode="numeric" maxlength="5" autocomplete="off"{{if .Disabled}} disabled{{end}}>
+{{with index $f.SubErr "postal_code"}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+{{if not .Disabled}}<label class="choice" x-cloak x-show="!failed"><input type="checkbox" x-model="manual"> Desa tidak ada di daftar, isi manual</label>{{end}}
+{{with $f.Hint}}<p class="hint">{{.}}</p>{{end}}
+{{with $f.Error}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{end}}

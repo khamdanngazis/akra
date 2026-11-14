@@ -11,7 +11,10 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/dapodik/ref"
+	"akra/internal/platform/database"
 	"akra/internal/platform/page"
+	"akra/internal/wilayah"
+	"context"
 )
 
 // Bagian form data rinci, berurutan seperti F-PD (T88). Bagian ayah, ibu,
@@ -71,6 +74,9 @@ type FieldView struct {
 	Required  bool // wajib untuk Dapodik
 	Error     string
 	Hint      string
+	// Sub berisi nilai isian pendamping untuk input gabungan "wilayah"
+	// (village, district, postal_code, suggest) dan SubErr error-nya.
+	Sub, SubErr map[string]string
 	// Model mengikat checkbox atau select ke variabel Alpine.js, dan ShowIf
 	// adalah ekspresi Alpine.js yang menampilkan field (formulir publik
 	// T109). Keduanya kosong di form staf.
@@ -226,6 +232,12 @@ func (h *Handler) renderProfile(w http.ResponseWriter, r *http.Request, id auth.
 					values[k] = v
 				}
 			}
+			if s.Key == SectionAddress {
+				if err := SuggestWilayah(ctx, h.profiles.db, values); err != nil {
+					h.serverError(w, r, "suggest wilayah", err)
+					return
+				}
+			}
 			sv.Fields = ProfileFieldViews(s.Key, values, errsFor(sv.Failed, errs))
 		}
 		view.Sections = append(view.Sections, sv)
@@ -245,6 +257,15 @@ func ProfileFieldViews(section string, values, errs map[string]string) []FieldVi
 	var out []FieldView
 	for _, f := range ProfileFields {
 		if f.Section != section {
+			continue
+		}
+		// Desa, kecamatan, dan kode pos digabung dalam satu isian wilayah
+		// bertingkat (T110).
+		switch f.Key {
+		case "village", "district", "postal_code":
+			continue
+		case "wilayah_kode":
+			out = append(out, wilayahFieldView(values, errs))
 			continue
 		}
 		fv := FieldView{Key: f.Key, Label: f.Label, Value: values[f.Key], Error: errs[f.Key], Required: requiredKeys[f.Key], Input: "text"}
@@ -317,4 +338,38 @@ func checkedSet(csv string) map[string]bool {
 		}
 	}
 	return m
+}
+
+// WilayahSuggestKey adalah kunci values untuk kode desa hasil pencocokan
+// otomatis data lama (diisi pemanggil, tidak disimpan).
+const WilayahSuggestKey = "wilayah_saran"
+
+// wilayahFieldView menyusun isian alamat bertingkat: kode desa dari daftar
+// wilayah, atau nama desa/kecamatan manual, plus kode pos.
+func wilayahFieldView(values, errs map[string]string) FieldView {
+	fv := FieldView{Key: "wilayah_kode", Label: "Desa/kelurahan", Input: "wilayah", Value: values["wilayah_kode"],
+		Required: requiredKeys["village"] || requiredKeys["district"], Error: errs["wilayah_kode"],
+		Sub: map[string]string{"village": values["village"], "district": values["district"], "postal_code": values["postal_code"],
+			"suggest": values[WilayahSuggestKey]},
+		SubErr: map[string]string{"village": errs["village"], "district": errs["district"], "postal_code": errs["postal_code"]}}
+	if fv.Value == "" && fv.Sub["suggest"] != "" {
+		fv.Hint = "Alamat lama dicocokkan otomatis dengan daftar wilayah. Periksa pilihannya, lalu simpan."
+	}
+	return fv
+}
+
+// SuggestWilayah mengisi values[WilayahSuggestKey] dengan kode desa yang
+// cocok unik dengan nama desa dan kecamatan, untuk data lama tanpa kode.
+func SuggestWilayah(ctx context.Context, q database.DBTX, values map[string]string) error {
+	if values["wilayah_kode"] != "" || values["village"] == "" || values["district"] == "" {
+		return nil
+	}
+	kode, ok, err := wilayah.Match(ctx, q, values["district"], values["village"])
+	if err != nil {
+		return err
+	}
+	if ok {
+		values[WilayahSuggestKey] = kode
+	}
+	return nil
 }
