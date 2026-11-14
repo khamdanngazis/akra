@@ -319,8 +319,9 @@ func TestAddressWilayah(t *testing.T) {
 	}
 	_, body := c.get(base + "/isi/alamat")
 	// T106: lintang/bujur satu kelompok dengan tombol ambil lokasi.
-	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Titik lokasi rumah") || !strings.Contains(body, "getCurrentPosition") {
-		t.Error("address step without location button")
+	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Titik lokasi rumah") || !strings.Contains(body, "getCurrentPosition") ||
+		!strings.Contains(body, `<input type="hidden" name="latitude"`) || !strings.Contains(body, `<input type="hidden" name="longitude"`) {
+		t.Error("address step without location button or with visible coordinate inputs")
 	}
 	if code, _, body := c.post(base+"/isi/alamat", url.Values{"street": {"Jl. Melati 5"}, "latitude": {"48.85"}, "longitude": {"2.35"}}); code != http.StatusBadRequest || !strings.Contains(body, "Lintang") {
 		t.Errorf("coordinates outside Indonesia: %d", code)
