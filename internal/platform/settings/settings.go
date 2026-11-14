@@ -39,6 +39,9 @@ const (
 	// ReportPortalComponents: "true" jika portal orang tua menampilkan nilai
 	// per komponen, bukan hanya nilai akhir (T75). Belum diatur = tidak.
 	ReportPortalComponents = "report.portal_components"
+	// AdmissionNISFormat: pola NIS otomatis untuk pendaftar yang diterima
+	// (T96), mis. "{yyyy}{seq:3}". Belum diatur berarti pola bawaan itu.
+	AdmissionNISFormat = "admission.nis_format"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.

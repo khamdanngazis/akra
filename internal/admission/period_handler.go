@@ -63,6 +63,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
 			// Peran: admin_tu, kepala_sekolah (hanya baca).
 			r.Get("/", h.listApplicants)
+			// Peran: admin_tu, kepala_sekolah (hanya baca). Penerimaan (T96).
+			r.Get("/terima", h.enrollPage)
 			// Peran: admin_tu, kepala_sekolah (hanya baca). Memuat NIK utuh.
 			r.Get("/{id}", h.applicantDetail)
 			// Peran: admin_tu, kepala_sekolah. Dokumen didekripsi dan diaudit.
@@ -74,6 +76,10 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
 			// Peran: admin_tu.
 			r.Post("/{id}/status", h.setApplicantStatus)
+			// Peran: admin_tu.
+			r.Post("/terima", h.enroll)
+			// Peran: admin_tu.
+			r.Post("/format-nis", h.saveNISFormat)
 			// Peran: admin_tu. Input pendaftar oleh TU (T92).
 			r.Get("/baru", h.staffNew)
 			// Peran: admin_tu.

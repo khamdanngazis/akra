@@ -1,0 +1,67 @@
+{{define "title"}}Penerimaan Siswa Baru{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+<div class="page-header">
+<div>
+<h1>Jadikan siswa</h1>
+<p class="muted">Pendaftar berstatus diterima yang belum menjadi siswa. Data rinci dan orang tua ikut dipindahkan, jadi tidak perlu diinput ulang.</p>
+</div>
+</div>
+{{template "flash" .}}
+
+{{if .Results}}
+<section class="card">
+<h2>Hasil: {{.Succeeded}} dari {{len .Results}} berhasil</h2>
+<ul class="guardian-list">
+{{range .Results}}<li>{{if .Err}}<span class="badge badge-danger">Gagal</span> {{.FullName}}: {{.ErrText}}{{else}}<span class="badge badge-success">Berhasil</span> <a href="/siswa/{{.StudentID}}">{{.FullName}}</a> · NIS {{.NIS}}{{end}}</li>{{end}}
+</ul>
+</section>
+{{end}}
+
+<section class="card">
+<h2>Format NIS otomatis</h2>
+{{if .CanEdit}}
+<form method="post" action="/pendaftaran/format-nis" class="stack" novalidate>
+{{ csrfField }}
+<div class="field{{if .Errors.nis_format}} has-error{{end}}">
+<label for="nis_format">Format</label>
+<input id="nis_format" name="nis_format" value="{{.Format}}" maxlength="40" autocomplete="off">
+{{with .Errors.nis_format}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">{yyyy} = tahun mulai tahun ajaran, {yy} = dua digit tahun, {seq:3} = nomor urut 3 digit. {{with .Preview}}Contoh NIS pertama: <strong>{{.}}</strong>.{{end}}</p>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-ghost btn-sm">Simpan format</button></div>
+</form>
+{{else}}<p>{{.Format}}{{with .Preview}} · contoh {{.}}{{end}}</p>{{end}}
+</section>
+
+{{if .Rows}}
+<form method="post" action="/pendaftaran/terima" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr>{{if .CanEdit}}<th><span class="visually-hidden">Pilih</span></th>{{end}}<th>Nomor</th><th>Nama</th><th>Periode · Jalur</th>{{if .CanEdit}}<th>NIS <span class="muted">(kosong = otomatis)</span></th><th>Kelas <span class="muted">(opsional)</span></th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}
+<tr>
+{{if $.CanEdit}}<td><input type="checkbox" name="pick" value="{{.ApplicantID}}" checked aria-label="Pilih {{.FullName}}"></td>{{end}}
+<td class="nowrap"><a href="/pendaftaran/{{.ApplicantID}}">{{.RegistrationNumber}}</a></td>
+<td>{{.FullName}}</td>
+<td>{{.PeriodName}} · {{.TrackName}}</td>
+{{if $.CanEdit}}
+<td><input name="nis_{{.ApplicantID}}" maxlength="30" autocomplete="off" aria-label="NIS {{.FullName}}"></td>
+<td><select name="class_{{.ApplicantID}}" aria-label="Kelas {{.FullName}}"><option value="">Belum</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></td>
+{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Jadikan siswa</button></div>{{end}}
+</form>
+{{else}}
+<section class="card empty-state"><p>Tidak ada pendaftar diterima yang menunggu dijadikan siswa.</p></section>
+{{end}}
+{{end}}

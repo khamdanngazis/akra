@@ -509,6 +509,17 @@ var Routes = []Route{
 			return url.Values{"void_reason": {"Uji lintas"}}
 		})},
 
+	// Penerimaan menjadi siswa (T96).
+	{Method: "GET", Pattern: "/pendaftaran/terima", Kind: KindPage, Roles: schoolData},
+	{Method: "POST", Pattern: "/pendaftaran/terima", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/terima" }, func(o *School) url.Values {
+			return url.Values{"pick": {o.ApplicantID}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/format-nis", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/format-nis" }, func(*School) url.Values {
+			return url.Values{"nis_format": {"{yyyy}{seq:4}"}}
+		})},
+
 	// Input pendaftar oleh TU (T92). Pendaftar fixture berstatus dikirim,
 	// jadi kontrol positif diarahkan (303) ke halaman detail.
 	{Method: "GET", Pattern: "/pendaftaran/baru", Kind: KindPage, Roles: adminTU},
