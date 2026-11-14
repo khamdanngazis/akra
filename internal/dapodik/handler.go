@@ -59,6 +59,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/kelas/{classID}/fpd.pdf", h.classFPD)
 			// Peran: admin_tu, kepala_sekolah. F-PD kosong.
 			r.Get("/fpd-kosong.pdf", h.blankFPD)
+			// Peran: admin_tu, kepala_sekolah. Ekspor Daftar PD (T100), memuat NIK; diaudit.
+			r.Get("/ekspor-pd.xlsx", h.exportPD)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
