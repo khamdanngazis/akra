@@ -1,0 +1,75 @@
+{{define "title"}}Pendaftar{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Pendaftar</h1>
+<p class="muted">Pendaftar siswa baru yang sudah mengirim formulir.</p>
+</div>
+<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/periode">Periode dan jalur</a></div>
+</div>
+
+{{template "flash" .}}
+
+<form method="get" action="/pendaftaran" class="filter-bar filter-grid" x-data>
+<div class="field">
+<label for="q">Cari nama atau nomor</label>
+<input id="q" type="search" name="q" value="{{.Query}}" placeholder="mis. Budi atau SPMB-2027" autocomplete="off">
+</div>
+<div class="field">
+<label for="periode">Periode</label>
+<select id="periode" name="periode" @change="$el.form.jalur && ($el.form.jalur.value=''); $el.form.submit()">
+<option value="">Semua periode</option>
+{{range .Periods}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+{{if .Tracks}}
+<div class="field">
+<label for="jalur">Jalur</label>
+<select id="jalur" name="jalur" @change="$el.form.submit()">
+<option value="">Semua jalur</option>
+{{range .Tracks}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+{{end}}
+<div class="field">
+<label for="status">Status</label>
+<select id="status" name="status" @change="$el.form.submit()">
+<option value="">Semua (kecuali draf)</option>
+{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+</select>
+</div>
+<div class="filter-actions">
+<button type="submit" class="btn btn-ghost">Cari</button>
+{{if .Filtered}}<a class="btn btn-ghost" href="/pendaftaran">Reset</a>{{end}}
+</div>
+</form>
+
+{{if .Rows}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nomor</th><th>Nama</th><th>Sekolah asal</th><th>Periode · Jalur</th><th>Dokumen</th><th>Dikirim</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr>
+<td class="nowrap">{{if .RegistrationNumber}}{{.RegistrationNumber}}{{else}}<span class="muted">Draf</span>{{end}}</td>
+<td><a href="/pendaftaran/{{.ID}}"><strong>{{.FullName}}</strong></a></td>
+<td>{{if .PreviousSchool}}{{.PreviousSchool}}{{else}}<span class="muted">–</span>{{end}}</td>
+<td>{{.PeriodName}} · {{.TrackName}}</td>
+<td class="nowrap">{{if .DocsRequired}}{{if eq .DocsUploaded .DocsRequired}}<span class="badge badge-success">Lengkap</span>{{else}}<span class="badge badge-warning">{{.DocsUploaded}}/{{.DocsRequired}}</span>{{end}}{{else}}<span class="muted">–</span>{{end}}</td>
+<td class="nowrap">{{.Submitted}}</td>
+<td>{{template "applicant_status" .Status}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+{{if .Filtered}}<p>Tidak ada pendaftar yang cocok.</p>{{else}}<p>Belum ada pendaftar yang mengirim formulir.</p>
+<p class="muted">Bagikan tautan pendaftaran sekolah kepada orang tua: <code>/s/kode-sekolah/daftar</code>.</p>{{end}}
+</section>
+{{end}}
+{{end}}

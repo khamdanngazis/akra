@@ -21,6 +21,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/database"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/school"
 	"akra/web"
@@ -73,6 +74,13 @@ func newEnv(t *testing.T) *env {
 	e.svc.today = func() time.Time { return time.Date(2026, 12, 10, 0, 0, 0, 0, time.UTC) }
 	e.actor = school.Actor{SchoolID: e.schoolA, UserID: userA, IP: netip.MustParseAddr("192.0.2.1")}
 
+	e.router = e.routerWith(t, NewApplicantService(tx, pii.DevKeyring(), e.svc), NewDocumentService(tx, nil, pii.DevKeyring()))
+	return e
+}
+
+// routerWith membuat router staf dengan identitas dari header X-Role.
+func (e *env) routerWith(t *testing.T, apps *ApplicantService, docs *DocumentService) http.Handler {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	templates, _ := fs.Sub(web.FS, "templates")
 	static, _ := fs.Sub(web.FS, "static")
@@ -81,7 +89,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
-	h := NewHandler(tx, e.svc, sm, rd, logger)
+	h := NewHandler(e.tx, e.svc, apps, docs, sm, rd, logger)
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
 	r.Use(func(next http.Handler) http.Handler {
@@ -91,8 +99,7 @@ func newEnv(t *testing.T) *env {
 		})
 	})
 	h.Routes(r)
-	e.router = r
-	return e
+	return r
 }
 
 func (e *env) do(method, path, role string, form url.Values) *httptest.ResponseRecorder {

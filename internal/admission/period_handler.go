@@ -25,50 +25,71 @@ const (
 
 // Handler melayani halaman pendaftaran untuk staf sekolah.
 type Handler struct {
-	db       database.DB
-	periods  *Service
-	sessions *scs.SessionManager
-	render   page.Renderer
-	logger   *slog.Logger
+	db         database.DB
+	periods    *Service
+	applicants *ApplicantService
+	documents  *DocumentService
+	sessions   *scs.SessionManager
+	render     page.Renderer
+	logger     *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(db database.DB, periods *Service, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, periods: periods, sessions: sessions, render: render, logger: logger}
+func NewHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, periods: periods, applicants: applicants, documents: documents, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route pendaftaran staf ke r.
 func (h *Handler) Routes(r chi.Router) {
-	r.Route(periodsPath, func(r chi.Router) {
+	r.Route(applicantsPath, func(r chi.Router) {
+		r.Route("/periode", h.periodRoutes)
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
 			// Peran: admin_tu, kepala_sekolah (hanya baca).
-			r.Get("/", h.listPeriods)
-			// Peran: admin_tu, kepala_sekolah (hanya baca).
-			r.Get("/{id}", h.periodDetail)
+			r.Get("/", h.listApplicants)
+			// Peran: admin_tu, kepala_sekolah (hanya baca). Memuat NIK utuh.
+			r.Get("/{id}", h.applicantDetail)
+			// Peran: admin_tu, kepala_sekolah. Dokumen didekripsi dan diaudit.
+			r.Get("/{id}/dokumen/{docID}", h.openDocument)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
 			// Peran: admin_tu.
-			r.Get("/baru", h.newPeriod)
-			// Peran: admin_tu.
-			r.Post("/", h.createPeriod)
-			// Peran: admin_tu.
-			r.Get("/{id}/ubah", h.editPeriod)
-			// Peran: admin_tu.
-			r.Post("/{id}", h.updatePeriod)
-			// Peran: admin_tu.
-			r.Post("/{id}/status", h.setStatus)
-			// Peran: admin_tu.
-			r.Post("/{id}/hapus", h.deletePeriod)
-			// Peran: admin_tu.
-			r.Post("/{id}/jalur", h.addTrack)
-			// Peran: admin_tu.
-			r.Post("/{id}/jalur/{trackID}", h.updateTrack)
-			// Peran: admin_tu.
-			r.Post("/{id}/jalur/{trackID}/hapus", h.deleteTrack)
+			r.Post("/{id}/status", h.setApplicantStatus)
 		})
+	})
+}
+
+// periodRoutes mendaftarkan route periode dan jalur (T89).
+func (h *Handler) periodRoutes(r chi.Router) {
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
+		// Peran: admin_tu, kepala_sekolah (hanya baca).
+		r.Get("/", h.listPeriods)
+		// Peran: admin_tu, kepala_sekolah (hanya baca).
+		r.Get("/{id}", h.periodDetail)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireRole(auth.RoleAdminTU))
+		// Peran: admin_tu.
+		r.Get("/baru", h.newPeriod)
+		// Peran: admin_tu.
+		r.Post("/", h.createPeriod)
+		// Peran: admin_tu.
+		r.Get("/{id}/ubah", h.editPeriod)
+		// Peran: admin_tu.
+		r.Post("/{id}", h.updatePeriod)
+		// Peran: admin_tu.
+		r.Post("/{id}/status", h.setStatus)
+		// Peran: admin_tu.
+		r.Post("/{id}/hapus", h.deletePeriod)
+		// Peran: admin_tu.
+		r.Post("/{id}/jalur", h.addTrack)
+		// Peran: admin_tu.
+		r.Post("/{id}/jalur/{trackID}", h.updateTrack)
+		// Peran: admin_tu.
+		r.Post("/{id}/jalur/{trackID}/hapus", h.deleteTrack)
 	})
 }
 

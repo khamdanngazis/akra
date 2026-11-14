@@ -28,3 +28,6 @@
 </div>
 {{$n := len .Steps}}{{range $i, $s := .Steps}}{{if $s.Current}}<p class="muted" aria-current="step">Langkah {{inc $i}} dari {{$n}}</p>{{end}}{{end}}
 {{end}}
+
+{{/* applicant_status menampilkan status pendaftar sebagai badge. Argumen: kode status. */}}
+{{define "applicant_status"}}{{if eq . "diterima"}}<span class="badge badge-success">Diterima</span>{{else if eq . "diverifikasi"}}<span class="badge badge-info">Diverifikasi</span>{{else if eq . "dikirim"}}<span class="badge badge-info">Dikirim</span>{{else if eq . "perlu_perbaikan"}}<span class="badge badge-warning">Perlu perbaikan</span>{{else if eq . "cadangan"}}<span class="badge badge-warning">Cadangan</span>{{else if eq . "ditolak"}}<span class="badge badge-danger">Ditolak</span>{{else if eq . "mundur"}}<span class="badge">Mundur</span>{{else}}<span class="badge">Draf</span>{{end}}{{end}}

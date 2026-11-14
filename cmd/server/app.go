@@ -65,6 +65,8 @@ func newApp(d appDeps) (http.Handler, error) {
 		return nil, err
 	}
 	periods := admission.NewService(d.db)
+	applicants := admission.NewApplicantService(d.db, d.pii, periods)
+	documents := admission.NewDocumentService(d.db, d.store, d.pii)
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
 	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
 	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
@@ -98,23 +100,22 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewProfileService(d.db, d.pii),
 			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
-		admission: admission.NewHandler(d.db, periods, d.sessions, d.render, d.logger),
-		admissionPublic: admission.NewPublicHandler(d.db, periods, admission.NewApplicantService(d.db, d.pii, periods),
-			admission.NewDocumentService(d.db, d.store, d.pii), d.sessions, d.render, d.logger),
-		portal:      portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
-		dev:         devRoutes(d),
-		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
-		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
-		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
-		arrears:     billing.NewArrearsHandler(d.db, d.render, d.logger),
-		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
-		storage:     localStorageHandler(d.store),
-		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
-		home:        home.NewHandler(d.db, d.render, d.sessions, d.logger),
-		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
-		reports:     reportsHandler,
-		importer:    importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
-		mappings:    importer.NewMappingHandler(importer.NewMappingService(d.db), d.sessions, d.render, d.logger),
+		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
+		dev:             devRoutes(d),
+		attendance:      attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		feeTypes:        billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
+		bulkInvoice:     billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
+		arrears:         billing.NewArrearsHandler(d.db, d.render, d.logger),
+		payments:        payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
+		storage:         localStorageHandler(d.store),
+		auditLog:        auditview.NewHandler(d.db, d.render, d.logger),
+		home:            home.NewHandler(d.db, d.render, d.sessions, d.logger),
+		announce:        announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
+		reports:         reportsHandler,
+		importer:        importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
+		mappings:        importer.NewMappingHandler(importer.NewMappingService(d.db), d.sessions, d.render, d.logger),
 	}), nil
 }
 

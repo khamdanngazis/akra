@@ -466,6 +466,27 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 
+	// Pendaftar (T93).
+	{Method: "GET", Pattern: "/pendaftaran/", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/", "/pendaftaran/?periode=" + o.AdmissionPeriodID + "&jalur=" + o.AdmissionTrackID, "/pendaftaran/?q=SPMB"}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/{id}", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID} })},
+	// Kontrol positif dilewati: fixture tidak punya objek terenkripsi di
+	// storage. Jalur sukses diuji di paket admission (TestDocuments).
+	{Method: "GET", Pattern: "/pendaftaran/{id}/dokumen/{docID}", Kind: KindByID, Roles: schoolData, ControlRoles: []string{},
+		Requests: func(own, o *School) []Request {
+			return []Request{
+				{Path: "/pendaftaran/" + o.ApplicantID + "/dokumen/" + o.ApplicantDocID},
+				{Path: "/pendaftaran/" + own.ApplicantID + "/dokumen/" + o.ApplicantDocID},
+			}
+		}},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/status", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/status" }, func(*School) url.Values {
+			return url.Values{"status": {"diverifikasi"}}
+		})},
+
 	// Pendaftaran (T89).
 	{Method: "GET", Pattern: "/pendaftaran/periode/", Kind: KindPage, Roles: schoolData},
 	{Method: "GET", Pattern: "/pendaftaran/periode/baru", Kind: KindPage, Roles: adminTU},

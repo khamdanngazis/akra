@@ -135,6 +135,9 @@ type ApplicantService struct {
 	keys    *pii.Keyring
 	periods *Service
 	now     func() time.Time
+	// feePaid melaporkan apakah biaya formulir pendaftar sudah lunas (T94).
+	// nil berarti belum ada tagihan pendaftaran, jadi tidak memblokir.
+	feePaid func(ctx context.Context, tx pgx.Tx, a Applicant) (bool, error)
 }
 
 // NewApplicantService mengembalikan ApplicantService.
@@ -565,7 +568,7 @@ func (s *ApplicantService) Submit(ctx context.Context, schoolID, id string) (App
 		}
 		if a.Status == ApplicantFix {
 			// Kiriman ulang setelah perbaikan memakai nomor yang sama.
-			_, err := tx.Exec(ctx, `UPDATE applicants SET status = 'dikirim', updated_at = now() WHERE id = $1`, id)
+			_, err := tx.Exec(ctx, `UPDATE applicants SET status = 'dikirim', resume_code_hash = NULL, updated_at = now() WHERE id = $1`, id)
 			if err != nil {
 				return err
 			}
@@ -593,6 +596,9 @@ func (s *ApplicantService) Submit(ctx context.Context, schoolID, id string) (App
 				return err
 			}
 		}
+		if err := recordEvent(ctx, tx, schoolID, id, a.Status, ApplicantSubmitted, "", ""); err != nil {
+			return err
+		}
 		out, err = s.load(ctx, tx, schoolID, id, false)
 		return err
 	})
@@ -612,7 +618,7 @@ func (s *ApplicantService) Resume(ctx context.Context, schoolID, phone, code str
 		return Applicant{}, ErrNotFound
 	}
 	rows, err := s.db.Query(ctx, `SELECT id, resume_code_hash, resume_locked_until FROM applicants
-		WHERE school_id = $1 AND contact_phone = $2 AND status = 'draf' AND resume_code_hash IS NOT NULL`, schoolID, norm)
+		WHERE school_id = $1 AND contact_phone = $2 AND status IN ('draf', 'perlu_perbaikan') AND resume_code_hash IS NOT NULL`, schoolID, norm)
 	if err != nil {
 		return Applicant{}, mapApplicantError(err)
 	}

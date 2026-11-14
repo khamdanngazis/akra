@@ -288,7 +288,7 @@ func TestSubmitConcurrentNumbers(t *testing.T) {
 	}
 	must(pool.QueryRow(ctx, `INSERT INTO schools (name, code) VALUES ('C', $1) RETURNING id`, code).Scan(&schoolID))
 	t.Cleanup(func() {
-		for _, q := range []string{`DELETE FROM applicants WHERE school_id = $1`, `DELETE FROM admission_counters WHERE school_id = $1`,
+		for _, q := range []string{`DELETE FROM applicant_events WHERE school_id = $1`, `DELETE FROM applicants WHERE school_id = $1`, `DELETE FROM admission_counters WHERE school_id = $1`,
 			`DELETE FROM admission_tracks WHERE school_id = $1`, `DELETE FROM admission_periods WHERE school_id = $1`,
 			`DELETE FROM academic_years WHERE school_id = $1`, `DELETE FROM users WHERE school_id = $1`, `DELETE FROM schools WHERE id = $1`} {
 			if _, err := pool.Exec(ctx, q, schoolID); err != nil {
