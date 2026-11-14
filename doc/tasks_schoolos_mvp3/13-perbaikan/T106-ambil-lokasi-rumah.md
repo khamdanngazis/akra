@@ -24,7 +24,15 @@ Solusinya tombol **"Ambil lokasi saya"** yang mengisi lintang dan bujur dari GPS
 - `internal/students/profile_handler.go` (penanda field lokasi di `FieldView`, jika perlu)
 
 ## Kriteria selesai
-- [ ] Tombol mengisi lintang dan bujur di formulir pendaftaran dan form data rinci
-- [ ] Izin lokasi ditolak menampilkan pesan yang jelas; form tetap bisa disimpan tanpa koordinat
-- [ ] Label menunjukkan field ini opsional
-- [ ] Uji handler: halaman memuat tombol; penyimpanan koordinat tetap tervalidasi seperti sebelumnya
+- [x] Tombol mengisi lintang dan bujur di formulir pendaftaran dan form data rinci
+- [x] Izin lokasi ditolak menampilkan pesan yang jelas; form tetap bisa disimpan tanpa koordinat
+- [x] Label menunjukkan field ini opsional
+- [x] Uji handler: halaman memuat tombol; penyimpanan koordinat tetap tervalidasi seperti sebelumnya
+
+## Catatan implementasi
+- Lintang dan bujur ditampilkan sebagai satu kelompok "Titik lokasi rumah (opsional)" (`FieldView` Input `lokasi`, partial `lokasi_picker`) di formulir pendaftaran dan form data rinci staf, di bawah isian wilayah T110.
+- Input lintang dan bujur **disembunyikan** (permintaan 2026-11-15): koordinat hanya diisi lewat tombol. Yang tampil: petunjuk, ringkasan "Lokasi tersimpan: lintang, bujur", tombol "Ambil ulang lokasi" dan "Hapus lokasi". Error validasi server tetap tampil di bawah kelompok ini. Di form staf yang hanya-baca, koordinat tampil sebagai teks.
+- Tombol "Ambil lokasi saya" memakai `navigator.geolocation.getCurrentPosition` (akurasi tinggi, batas 15 detik) dan mengisi kedua input dengan 6 angka di belakang koma; status sedang mengambil, berhasil (akurasi dalam meter), atau gagal (izin ditolak, lokasi tidak tersedia, waktu habis) dalam bahasa Indonesia. Diuji di Chrome dengan izin diberikan dan ditolak.
+- Di koneksi tidak aman (bukan HTTPS/localhost) atau browser tanpa geolocation, tombol disembunyikan dan diganti pesan; bagian ini boleh dikosongkan.
+- Validasi server tidak berubah (lintang −11..6, bujur 95..141); koordinat tidak dikirim ke layanan lain dan tidak ada peta eksternal.
+
