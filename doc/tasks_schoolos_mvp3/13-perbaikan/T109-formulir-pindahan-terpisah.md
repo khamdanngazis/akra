@@ -34,6 +34,11 @@ Formulir pendaftaran yang sekarang **hanya untuk siswa baru**. Siswa pindahan me
    - **Keluarga:** anak ke-berapa, jumlah saudara kandung.
    - **Bantuan pemerintah (opsional):** pertanyaan "Punya KIP?"; nomor dan nama di KIP baru muncul jika Ya. Hal yang sama untuk KKS/PKH. Petunjuk: "Isi jika keluarga menerima kartu bantuan dari pemerintah. Kosongkan jika tidak."
    - **Layak PIP (usulan dari sekolah) dan alasan PIP** diisi sekolah: disembunyikan dari formulir orang tua, tetap ada di form data rinci staf.
+8. Bagian orang tua/wali menyesuaikan isian sebelumnya:
+   - **Wali** hanya tampil jika "Tempat tinggal" (langkah Alamat) diisi "Wali"; untuk pilihan lain disembunyikan, dengan tautan "+ Tambah data wali" untuk kasus khusus (mis. panti asuhan, orang tua wafat).
+   - Data wali yang sudah terisi tetap tampil dan tidak dihapus saat tempat tinggal diubah.
+   - **Ayah/ibu dengan pekerjaan "Meninggal Dunia":** NIK, penghasilan, dan isian lain yang tidak relevan disembunyikan.
+   - "Mempunyai wali" di lembar salin Dapodik tetap mengikuti ada tidaknya data wali.
 
 ## File yang disentuh
 - `db/migrations/0000XX_admission_kind.up.sql` (jenis periode/pendaftar, isian pindahan)
@@ -47,4 +52,6 @@ Formulir pendaftaran yang sekarang **hanya untuk siswa baru**. Siswa pindahan me
 - [ ] Pindahan yang diterima menjadi siswa dengan jenis pendaftaran "Pindahan" dan kelas tujuan
 - [ ] Bagian Keluarga dan Bantuan pemerintah terpisah; isian KIP/KKS hanya muncul jika dijawab Ya
 - [ ] Layak PIP dan alasan PIP tidak tampil di formulir orang tua
+- [ ] Bagian Wali hanya tampil jika tinggal bersama wali (atau ditambahkan manual); data wali yang ada tidak hilang
+- [ ] Isian orang tua yang meninggal disederhanakan
 - [ ] Route baru masuk daftar uji T58/T59; uji handler untuk kedua formulir
