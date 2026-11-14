@@ -36,7 +36,7 @@ Task MVP 3 **tidak dimulai** sebelum:
 | `10-pendaftaran/` | T89–T97 (+T93a, T93b) | Periode dan jalur, formulir publik, dokumen, verifikasi, tes seleksi, perankingan, biaya, status, penerimaan jadi siswa, rekap | 3,5 minggu |
 | `11-bantu-dapodik/` | T98–T103 | Lembar salin, F-PD PDF, ekspor daftar PD, impor ekspor Dapodik, isi format import nilai, cek kesiapan | 2 minggu |
 | `12-uji/` | T104–T105 | Uji lintas sekolah dan privasi, uji dengan Dapodik asli | 0,5–1 minggu |
-| `13-perbaikan/` | T106– | Perbaikan dari hasil pengecekan setelah MVP 3 (T106: tombol ambil lokasi untuk lintang/bujur; T107: halaman periksa dan kirim yang jelas) | sesuai kebutuhan |
+| `13-perbaikan/` | T106– | Perbaikan dari hasil pengecekan setelah MVP 3 (T106: tombol ambil lokasi untuk lintang/bujur; T107: halaman periksa dan kirim yang jelas; T108: unggah dokumen otomatis dan foto dikecilkan) | sesuai kebutuhan |
 
 Total perkiraan: 8,5–9,5 minggu.
 
