@@ -372,9 +372,14 @@ type stepView struct {
 	Missing   []students.RequiredField
 	// Kind adalah jenis pendaftar; FormData variabel Alpine.js tingkat form
 	// (mis. showWali).
-	Kind       string
-	FormData   string
-	Groups     []missingGroup
+	Kind     string
+	FormData string
+	Groups   []missingGroup
+	// Highlight: halaman dibuka dari tombol "Lengkapi" dan isian yang
+	// kurang ditandai (T107). Discard adalah langkah tujuan untuk tombol
+	// "Kembali tanpa menyimpan" saat isian halaman ini belum valid.
+	Highlight  bool
+	Discard    string
 	Summary    []summaryCard
 	StepNumber int
 	Prev       string
@@ -442,7 +447,8 @@ func (h *PublicHandler) stepForm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	h.renderStep(w, r, s, a, step, http.StatusOK, nil, nil)
+	errs, opts := highlightMissing(r)
+	h.renderStep(w, r, s, a, step, http.StatusOK, nil, errs, opts...)
 }
 
 // buildStepView menyusun halaman satu langkah formulir. Dipakai formulir
@@ -528,11 +534,14 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 	return view, nil
 }
 
-func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string) {
+func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string, opts ...stepOpt) {
 	view, err := buildStepView(r.Context(), h.periods, h.documents, s, a, step, submitted, errs)
 	if err != nil {
 		h.serverError(w, r, "build step view", err)
 		return
+	}
+	for _, o := range opts {
+		o(&view)
 	}
 	view.Base = "/s/" + s.Code + "/daftar"
 	view.Flash = auth.PopFlash(r.Context(), h.sessions)
@@ -643,7 +652,7 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
-		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepDocument, http.StatusSeeOther)
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+uploadReturn(r), http.StatusSeeOther)
 	case docErrorMessage(err) != "":
 		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: docErrorMessage(err)})
 	case errors.Is(err, ErrNotEditable):
@@ -710,7 +719,11 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	target := targetStep(step, r.PostForm.Get("go"))
+	goTo := r.PostForm.Get("go")
+	target := targetStep(step, goTo)
+	if goTo == goDraft {
+		auth.SetFlash(r.Context(), h.sessions, draftSavedPublic)
+	}
 	if step == StepDocument {
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 		return
@@ -722,7 +735,8 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 	case errors.As(err, &ve):
-		h.renderStep(w, r, s, a, step, http.StatusBadRequest, values, ve.Fields)
+		_ = auth.PopFlash(r.Context(), h.sessions) // belum tersimpan
+		h.renderStep(w, r, s, a, step, http.StatusBadRequest, values, ve.Fields, withDiscard(step, goTo))
 	case errors.Is(err, ErrNotEditable):
 		auth.SetFlash(r.Context(), h.sessions, editableMessage)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)

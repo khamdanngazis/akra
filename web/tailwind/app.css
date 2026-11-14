@@ -1748,6 +1748,22 @@
     @apply mt-2;
   }
 
+  .adm-fix-doc {
+    @apply flex-col items-stretch gap-2;
+  }
+
+  .adm-fix-doc form {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .adm-fix-doc input[type="file"] {
+    @apply flex-1 basis-40 text-[13px];
+  }
+
+  .adm-draft {
+    @apply w-full cursor-pointer border-0 bg-transparent py-1 text-center font-sans text-[13px] font-semibold text-blue-700 underline-offset-[3px] hover:underline;
+  }
+
   .adm-fix small {
     @apply block text-xs text-amber-800;
   }

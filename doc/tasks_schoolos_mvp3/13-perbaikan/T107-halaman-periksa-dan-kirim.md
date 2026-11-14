@@ -34,10 +34,19 @@ Masalahnya:
 - `web/templates/admission/public_step.html`, `web/templates/partials/admission.html`
 
 ## Kriteria selesai
-- [ ] Setiap kekurangan menyebut langkahnya dan punya tombol langsung ke langkah itu
-- [ ] Dokumen disebut "belum diunggah", isian "belum diisi"
-- [ ] Dokumen wajib bisa diunggah langsung dari halaman "Periksa dan kirim"
-- [ ] Field yang kurang tersorot saat langkahnya dibuka dari tombol
-- [ ] Setiap langkah punya tombol Kembali yang menyimpan isian; daftar langkah bisa diklik
-- [ ] Simpan draf tersedia di setiap langkah
-- [ ] Uji handler untuk formulir publik dan input TU
+- [x] Setiap kekurangan menyebut langkahnya dan punya tombol langsung ke langkah itu
+- [x] Dokumen disebut "belum diunggah", isian "belum diisi"
+- [x] Dokumen wajib bisa diunggah langsung dari halaman "Periksa dan kirim"
+- [x] Field yang kurang tersorot saat langkahnya dibuka dari tombol
+- [x] Setiap langkah punya tombol Kembali yang menyimpan isian; daftar langkah bisa diklik
+- [x] Simpan draf tersedia di setiap langkah
+- [x] Uji handler untuk formulir publik dan input TU
+
+## Catatan implementasi
+- Sebagian sudah dikerjakan di T111: kekurangan per langkah dengan "belum diisi"/"belum diunggah", status ✓/kurang di penunjuk langkah, tombol Kembali dan daftar langkah yang bisa diklik (keduanya menyimpan isian dulu).
+- **Sorot isian:** tombol "Lengkapi" membuka langkah dengan `?kurang=nik,religion,...`; isian itu ditandai "Wajib diisi agar pendaftaran bisa dikirim", halaman bergulir ke isian pertama dan memberi fokus. Nama ibu (`mother_name`) dipetakan ke `ibu.full_name`.
+- **Unggah dari halaman periksa:** dokumen wajib yang belum ada punya form unggah langsung (`/dokumen/{jenis}?kembali=kirim`), setelah berhasil kembali ke halaman periksa.
+- **Kembali tanpa menyimpan:** jika Kembali atau lompat langkah gagal karena format isian salah, halaman tetap terbuka dengan tanda error dan tautan "Kembali tanpa menyimpan halaman ini" (di atas dan di bar bawah).
+- **Simpan draf** (`go=draf`): menyimpan lalu tetap di langkah yang sama dengan pesan cara melanjutkan (nomor HP + kode lanjut). Untuk TU pesannya mengarah ke detail pendaftar.
+- Semua berlaku juga untuk input oleh TU.
+

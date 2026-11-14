@@ -141,6 +141,9 @@ func TestDocuments(t *testing.T) {
 func TestPublicDocumentUpload(t *testing.T) {
 	e := newEnv(t)
 	p, tr := e.openPeriod(t)
+	if _, err := e.tx.Exec(context.Background(), `UPDATE admission_periods SET required_docs = '{kk,akta}' WHERE id = $1`, p.ID); err != nil {
+		t.Fatal(err)
+	}
 	c := newPublicServer(t, e)
 	base := "/s/test-adm-a/daftar"
 	start := map[string][]string{"choice": {p.ID + "|" + tr.ID}, "full_name": {"Ani"}, "gender": {"P"}, "birth_date": {"2019-05-17"}, "phone": {"081234567891"}, "consent": {"on"}}
@@ -169,6 +172,24 @@ func TestPublicDocumentUpload(t *testing.T) {
 	}
 	if code, _ := upload("ktp", pngBytes(t, "")); code != http.StatusNotFound {
 		t.Errorf("unknown type: %d", code)
+	}
+	// Unggah langsung dari halaman periksa kembali ke halaman periksa (T107).
+	_, review := c.get(base + "/isi/kirim")
+	if !strings.Contains(review, `action="`+base+`/dokumen/akta?kembali=kirim"`) {
+		t.Error("review page without inline upload for missing document")
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, _ := mw.CreateFormFile("file", "akta.png")
+	_, _ = fw.Write(pngBytes(t, ""))
+	_ = mw.Close()
+	res, err := c.client.Post(c.srv.URL+base+"/dokumen/akta?kembali=kirim", mw.FormDataContentType(), &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusSeeOther || !strings.HasSuffix(res.Header.Get("Location"), "/isi/kirim") {
+		t.Errorf("upload from review: %d %s", res.StatusCode, res.Header.Get("Location"))
 	}
 	_, body := c.get(base + "/isi/dokumen")
 	if !strings.Contains(body, "Terunggah") {

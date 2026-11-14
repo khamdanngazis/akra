@@ -56,6 +56,16 @@ func TestStaffEntry(t *testing.T) {
 		{"sekolah", url.Values{}},
 		{"dokumen", url.Values{}},
 	}
+	// Simpan draf (T107): tetap di langkah yang sama.
+	draft := url.Values{"full_name": {"Citra"}, "gender": {"P"}, "birth_date": {"2019-02-02"}, "go": {"draf"}}
+	if rec := e.do(http.MethodPost, base+"/isi/calon", "admin_tu", draft); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != base+"/isi/calon" {
+		t.Errorf("staff draft: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	// Halaman periksa menandai isian yang kurang per langkah.
+	review := e.do(http.MethodGet, base+"/isi/kirim", "admin_tu", nil).Body.String()
+	if !strings.Contains(review, base+"/isi/calon?kurang=") {
+		t.Error("staff review without fix links")
+	}
 	for _, s := range steps {
 		if rec := e.do(http.MethodPost, base+"/isi/"+s.step, "admin_tu", s.form); rec.Code != http.StatusSeeOther {
 			t.Fatalf("step %s: %d\n%s", s.step, rec.Code, rec.Body.String())

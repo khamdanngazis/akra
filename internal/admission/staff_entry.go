@@ -114,11 +114,14 @@ func (h *Handler) editable(w http.ResponseWriter, r *http.Request, id auth.Ident
 	return a, schoolInfo{ID: id.SchoolID, Name: id.SchoolName}, true
 }
 
-func (h *Handler) renderStaffStep(w http.ResponseWriter, r *http.Request, id auth.Identity, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string) {
+func (h *Handler) renderStaffStep(w http.ResponseWriter, r *http.Request, id auth.Identity, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string, opts ...stepOpt) {
 	view, err := buildStepView(r.Context(), h.periods, h.documents, s, a, step, submitted, errs)
 	if err != nil {
 		h.serverError(w, r, "build step view", err)
 		return
+	}
+	for _, o := range opts {
+		o(&view)
 	}
 	view.Base, view.Staff, view.User = applicantsPath+"/"+a.ID, true, id
 	view.Flash = auth.PopFlash(r.Context(), h.sessions)
@@ -137,7 +140,8 @@ func (h *Handler) staffStep(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	h.renderStaffStep(w, r, id, s, a, step, http.StatusOK, nil, nil)
+	errs, opts := highlightMissing(r)
+	h.renderStaffStep(w, r, id, s, a, step, http.StatusOK, nil, errs, opts...)
 }
 
 // staffSaveStep menyimpan satu langkah formulir. Peran: admin_tu.
@@ -158,7 +162,11 @@ func (h *Handler) staffSaveStep(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	target := targetStep(step, r.PostForm.Get("go"))
+	goTo := r.PostForm.Get("go")
+	target := targetStep(step, goTo)
+	if goTo == goDraft {
+		auth.SetFlash(r.Context(), h.sessions, "Draf tersimpan. Lanjutkan kapan saja dari detail pendaftar.")
+	}
 	if step == StepDocument {
 		http.Redirect(w, r, base+"/isi/"+target, http.StatusSeeOther)
 		return
@@ -170,7 +178,8 @@ func (h *Handler) staffSaveStep(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		http.Redirect(w, r, base+"/isi/"+target, http.StatusSeeOther)
 	case errors.As(err, &ve):
-		h.renderStaffStep(w, r, id, s, a, step, http.StatusBadRequest, values, ve.Fields)
+		_ = auth.PopFlash(r.Context(), h.sessions) // belum tersimpan
+		h.renderStaffStep(w, r, id, s, a, step, http.StatusBadRequest, values, ve.Fields, withDiscard(step, goTo))
 	case errors.Is(err, ErrNotEditable):
 		http.Redirect(w, r, base, http.StatusSeeOther)
 	default:
@@ -201,7 +210,7 @@ func (h *Handler) staffUpload(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
-		http.Redirect(w, r, applicantsPath+"/"+a.ID+"/isi/"+StepDocument, http.StatusSeeOther)
+		http.Redirect(w, r, applicantsPath+"/"+a.ID+"/isi/"+uploadReturn(r), http.StatusSeeOther)
 	case docErrorMessage(err) != "":
 		h.renderStaffStep(w, r, id, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: docErrorMessage(err)})
 	case errors.Is(err, ErrNotEditable):

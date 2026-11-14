@@ -473,6 +473,28 @@ func TestPublicFlow(t *testing.T) {
 	if code, loc, _ := c.post(base+"/isi/dokumen", url.Values{"go": {"prev"}}); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/sekolah") {
 		t.Errorf("documents back: %d %s", code, loc)
 	}
+	// T107: Simpan draf tetap di langkah yang sama dengan pesan.
+	if code, loc, _ := c.post(base+"/isi/alamat", url.Values{"street": {"Jl. Melati 5"}, "village": {"Sukajadi"}, "district": {"Sukasari"},
+		"residence_type": {"01"}, "transport_mode": {"02"}, "go": {"draf"}}); code != http.StatusSeeOther || !strings.HasSuffix(loc, "/isi/alamat") {
+		t.Errorf("draft: %d %s", code, loc)
+	}
+	if _, body := c.get(base + "/isi/alamat"); !strings.Contains(body, "Draf tersimpan") {
+		t.Error("draft saved message missing")
+	}
+	// Kembali dengan isian salah: tidak disimpan, ada pilihan kembali tanpa
+	// menyimpan.
+	if code, _, body := c.post(base+"/isi/calon", url.Values{"full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "nik": {"12"}, "go": {"sekolah"}}); code != http.StatusBadRequest ||
+		!strings.Contains(body, "Kembali tanpa menyimpan") || !strings.Contains(body, base+"/isi/sekolah") || strings.Contains(body, "Draf tersimpan") {
+		t.Errorf("invalid jump: %d", code)
+	}
+	// Tombol Lengkapi: isian yang kurang ditandai tanpa pesan "belum disimpan".
+	if _, body := c.get(base + "/isi/calon?kurang=religion,birth_place"); !strings.Contains(body, "Wajib diisi agar pendaftaran bisa dikirim") ||
+		strings.Contains(body, "Data belum disimpan") || !strings.Contains(body, "Lengkapi isian yang ditandai") {
+		t.Error("highlight missing fields")
+	}
+	if _, body := c.get(base + "/isi/orangtua?kurang=mother_name"); !strings.Contains(body, "Wajib diisi agar") {
+		t.Error("mother name not highlighted")
+	}
 	// Error validasi: isian ditampilkan ulang.
 	if code, _, body := c.post(base+"/isi/calon", url.Values{"full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "nik": {"12"}}); code != http.StatusBadRequest || !strings.Contains(body, "NIK harus 16 digit") {
 		t.Errorf("invalid step: %d", code)
