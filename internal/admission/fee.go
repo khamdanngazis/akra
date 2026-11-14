@@ -81,11 +81,15 @@ func NewFeeService(db database.DB) *FeeService {
 // feePaidTx melaporkan apakah biaya formulir pendaftar sudah lunas. Dipakai
 // aturan "wajib lunas sebelum verifikasi" (T93/T94).
 func feePaidTx(ctx context.Context, tx pgx.Tx, a Applicant) (bool, error) {
+	return feePaid(ctx, tx, a.ID)
+}
+
+func feePaid(ctx context.Context, q database.DBTX, applicantID string) (bool, error) {
 	var paid bool
-	err := tx.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT a.fee_amount = 0 OR EXISTS (
 			SELECT 1 FROM applicant_fee_payments f WHERE f.applicant_id = a.id AND f.voided_at IS NULL AND f.amount = a.fee_amount)
-		FROM applicants a WHERE a.id = $1`, a.ID).Scan(&paid)
+		FROM applicants a WHERE a.id = $1`, applicantID).Scan(&paid)
 	return paid, err
 }
 

@@ -119,6 +119,11 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/s/{code}/daftar/dokumen/{type}", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/daftar/kirim", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/daftar/selesai", Kind: KindPublic},
+	// Cek status publik (T95): akses dibatasi nomor + tanggal lahir di sesi.
+	{Method: "GET", Pattern: "/s/{code}/status/", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/status/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/status/bukti.pdf", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/status/keluar", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},
@@ -471,6 +476,8 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string {
 			return []string{"/pendaftaran/", "/pendaftaran/?periode=" + o.AdmissionPeriodID + "&jalur=" + o.AdmissionTrackID, "/pendaftaran/?q=SPMB"}
 		})},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/bukti.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID + "/bukti.pdf"} })},
 	{Method: "GET", Pattern: "/pendaftaran/{id}", Kind: KindByID, Roles: schoolData,
 		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID} })},
 	// Kontrol positif dilewati: fixture tidak punya objek terenkripsi di

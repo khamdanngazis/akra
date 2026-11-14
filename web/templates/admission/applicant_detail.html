@@ -7,7 +7,10 @@
 <h1>{{.Applicant.FullName}}</h1>
 <p class="muted">{{if .Applicant.RegistrationNumber}}{{.Applicant.RegistrationNumber}} · {{end}}{{.Period.Name}} · Jalur {{.Track.Name}} · {{template "applicant_status" .Applicant.Status}}</p>
 </div>
+<div class="action-row">
+{{if .Applicant.RegistrationNumber}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/bukti.pdf">Bukti pendaftaran</a>{{end}}
 {{if and .CanEdit .Applicant.Editable}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/isi/calon">Ubah isian</a>{{end}}
+</div>
 </div>
 
 {{template "flash" .}}

@@ -63,6 +63,14 @@ func (h *PublicHandler) Routes(r chi.Router) {
 		// Publik: konfirmasi setelah kirim (nomor dari sesi).
 		r.Get("/selesai", h.done)
 	})
+	r.Route("/s/{code}/status", func(r chi.Router) {
+		// Publik: cek status dengan nomor pendaftaran + tanggal lahir (T95).
+		r.Get("/", h.statusPage)
+		r.Post("/", h.checkStatus)
+		// Publik, hanya sesi yang sudah lolos cek: bukti pendaftaran.
+		r.Get("/bukti.pdf", h.statusProof)
+		r.Post("/keluar", h.statusLogout)
+	})
 }
 
 type schoolInfo struct {

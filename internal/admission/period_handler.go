@@ -67,6 +67,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/{id}", h.applicantDetail)
 			// Peran: admin_tu, kepala_sekolah. Dokumen didekripsi dan diaudit.
 			r.Get("/{id}/dokumen/{docID}", h.openDocument)
+			// Peran: admin_tu, kepala_sekolah. Bukti pendaftaran (T95).
+			r.Get("/{id}/bukti.pdf", h.staffProof)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
