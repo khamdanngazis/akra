@@ -36,3 +36,6 @@ Siswa punya data lengkap sesuai F-PD Dapodik, tanpa membuat tabel `students` men
 - [ ] Audit log tidak memuat NIK atau No KK dalam bentuk utuh
 - [ ] Kolom `nik_enc`, `kk_enc`, `birth_cert_enc` di database tidak berisi teks NIK/KK/akta (dicek langsung dengan SQL di test)
 - [ ] Siswa tanpa profil tetap tampil normal di semua halaman lama
+
+## Catatan implementasi
+Tanpa `db/queries`; SQL inline seperti paket lain. Audit hanya mencatat nama field yang berubah. Audit menolak kunci NIK/KK/akta bertipe teks.

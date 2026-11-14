@@ -24,3 +24,6 @@ TU bisa mengisi data rinci siswa dan orang tua di satu halaman, dan langsung tah
 - [ ] Error validasi di bagian Alamat tidak menghapus isian bagian lain
 - [ ] Filter "Belum lengkap" hanya menampilkan siswa < 100% di sekolah sendiri
 - [ ] Route baru masuk daftar uji T58 dan T59
+
+## Catatan implementasi
+Definisi field wajib (`DapodikRequired`) ada di paket `students` (bukan `internal/dapodik`) karena dipakai query daftar siswa; satu definisi SQL dipakai halaman detail dan filter. Bagian ayah/ibu/wali di form bisa menambahkan orang tua jika belum ada. Wali kelas (guru) belum punya akses ke halaman siswa, jadi versi ter-mask untuk guru tidak dibuat.

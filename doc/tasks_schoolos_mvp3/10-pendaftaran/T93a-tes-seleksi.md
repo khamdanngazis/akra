@@ -28,3 +28,6 @@ Sekolah bisa mengatur tes seleksi (mis. tes tertulis, wawancara, baca Al-Qur'an)
 - [ ] Skor akhir dihitung dengan uji unit (termasuk nilai kosong)
 - [ ] Pendaftar yang belum diverifikasi tidak muncul di grid nilai
 - [ ] Route baru masuk daftar uji T58 dan T59
+
+## Catatan implementasi
+Nilai `numeric(6,2)`; skor akhir dihitung di aplikasi. Baris nilai kosong tidak menghalangi hapus tes.

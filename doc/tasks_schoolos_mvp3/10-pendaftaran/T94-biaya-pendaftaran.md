@@ -25,3 +25,6 @@ Diatur per periode lewat `fee_required_before_verify` (T89), 2026-11-14.
 - [ ] Kirim ulang setelah `perlu_perbaikan` tidak membuat tagihan kedua
 - [ ] Semua uji aturan keuangan T60 tetap lulus
 - [ ] Kuitansi biaya formulir bisa dicetak seperti kuitansi biasa
+
+## Catatan implementasi
+Dipilih tabel terpisah `applicant_fee_payments` (bukan `invoices`) agar aturan billing T60 tidak berubah. Nominal di-snapshot saat pertama kali dikirim. Lunas penuh saja (tanpa cicilan). Nomor kuitansi memakai seri `KW/...` yang sama (`payments.NextReceiptNumber`) dan PDF kuitansi yang sama (varian "Calon siswa"). Pembatalan oleh bendahara dengan alasan wajib, tanpa alur persetujuan kepala sekolah. Aksi masuk daftar audit keuangan.

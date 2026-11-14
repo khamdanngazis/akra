@@ -60,3 +60,6 @@ NISN **tidak** dienkripsi. NISN adalah nomor pendidikan yang bisa dicek publik d
 ## Catatan
 - Enkripsi ini melindungi dari kebocoran database dan backup. Tidak melindungi dari pengguna yang sah tapi menyalahgunakan aksesnya; itu tetap diatur lewat peran, mask, dan audit (T86).
 - Jangan pakai `pgcrypto` dengan kunci dikirim di query: kunci bisa muncul di log PostgreSQL dan `pg_stat_statements`.
+
+## Catatan implementasi
+Paket `internal/platform/pii`. Di development tanpa kunci, aplikasi memakai kunci dev bawaan (dengan peringatan di log); staging/production wajib `PII_ENC_KEYS` dan `PII_INDEX_KEY`. Daftar kolom rotasi ada di `cmd/rotate-pii-key` (`students.PIIColumns`, `admission.PIIColumns`). File dokumen pendaftar (T91) juga dienkripsi; rotasi kunci belum mencakup file (file lama tetap terbaca selama kunci lamanya masih ada di `PII_ENC_KEYS`).

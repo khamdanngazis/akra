@@ -22,3 +22,6 @@ Pendaftar bisa mengunggah dokumen persyaratan, dan hanya TU yang bisa melihatnya
 - [ ] File .exe yang diganti nama menjadi .pdf ditolak (cek isi, bukan ekstensi)
 - [ ] URL dokumen tidak bisa ditebak dan kedaluwarsa
 - [ ] `guru` dan `orang_tua` mendapat 403 saat membuka dokumen pendaftar
+
+## Catatan implementasi
+Isi file dienkripsi (AES-GCM, kunci PII) sebelum masuk storage; dibuka staf lewat handler yang mendekripsi dan mencatat audit, bukan URL presign. `storage.Store` mendapat metode `Get`.

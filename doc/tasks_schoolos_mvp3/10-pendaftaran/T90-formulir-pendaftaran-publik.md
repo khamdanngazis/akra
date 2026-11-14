@@ -36,3 +36,6 @@ Orang tua mengisi data lengkap F-PD; bagian non-wajib boleh dilewati (2026-11-14
 - [ ] Kode sekolah salah menampilkan 404 tanpa membocorkan sekolah lain
 - [ ] Tanpa persetujuan data pribadi, form tidak bisa dikirim
 - [ ] Kolom `profile` dan `guardians` (jsonb) tidak memuat NIK, No KK, atau no akta
+
+## Catatan implementasi
+Nomor pendaftaran `SPMB-{tahun mulai TA}-{urut 4 digit}` per sekolah per tahun ajaran (tabel `admission_counters`). Rate limit disimpan di tabel `admission_attempts`.
