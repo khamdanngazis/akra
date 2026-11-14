@@ -25,9 +25,19 @@ Selain itu foto kamera HP umumnya 3–8 MB, sedangkan batas dokumen 2 MB, jadi b
 - `web/static/js/` jika skrip kompresi dipisah dari template
 
 ## Kriteria selesai
-- [ ] Memilih file langsung mengunggah tanpa tombol tambahan, dengan status yang jelas
-- [ ] Foto HP 5 MB berhasil terunggah (dikecilkan) dan tulisan tetap terbaca
-- [ ] Unggah gagal menampilkan alasan dan tombol Coba lagi
-- [ ] "Lanjut" memperingatkan jika ada unggahan yang belum selesai/gagal
-- [ ] Tanpa JavaScript, unggah lewat form biasa tetap bisa
-- [ ] Uji handler untuk respons JSON dan form biasa (publik dan TU)
+- [x] Memilih file langsung mengunggah tanpa tombol tambahan, dengan status yang jelas
+- [x] Foto HP 5 MB berhasil terunggah (dikecilkan) dan tulisan tetap terbaca
+- [x] Unggah gagal menampilkan alasan dan tombol Coba lagi
+- [x] "Lanjut" memperingatkan jika ada unggahan yang belum selesai/gagal
+- [x] Tanpa JavaScript, unggah lewat form biasa tetap bisa
+- [x] Uji handler untuk respons JSON dan form biasa (publik dan TU)
+
+## Catatan implementasi
+- Skrip `web/static/js/admission-upload.js` (komponen Alpine `docUpload`), dimuat hanya di langkah Dokumen. Unggah lewat XHR (agar ada progres) ke route yang sama dengan header `Accept: application/json` dan `X-CSRF-Token`; server membalas JSON `{ok, message}` (200/400/409/500) untuk publik dan TU, sedangkan form biasa tetap redirect/halaman seperti sebelumnya.
+- Setiap kartu dokumen punya tombol **Ambil foto** (kamera HP, `capture`) dan **Pilih file** (foto/PDF), status Belum diunggah → Mengecilkan foto…/Mengunggah… (batang progres) → Terunggah (pratinjau foto) atau Gagal + **Coba lagi**. Petunjuk foto per jenis dokumen.
+- Foto di atas 1 MB (atau selain JPG/PNG yang bisa dibaca browser) dikecilkan ke sisi terpanjang 1600 px, JPEG 0,8 (turun ke 0,6 jika masih terlalu besar). Diuji di Chrome: foto 4000×3000 sebesar 5,3 MB terunggah sebagai sekitar 235 KB. PDF tidak diubah; PDF di atas 2 MB ditolak di browser dengan saran memotret dokumennya.
+- "Lanjut periksa" menahan jika ada unggahan yang berjalan atau gagal, dengan pilihan **Tetap lanjut**. Tombol Kembali tidak ditahan.
+- Tanpa JavaScript, form unggah biasa dengan tombol Unggah tetap tampil dan bekerja.
+- Surat keterangan pindah dan rapor tidak ditawarkan di formulir siswa baru kecuali diwajibkan periode.
+- Unggah dari halaman periksa (T107) masih memakai form biasa.
+

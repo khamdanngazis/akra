@@ -602,8 +602,20 @@ func stepValues(r *http.Request, step string) map[string]string {
 
 type docRow struct {
 	Key, Label string
+	Hint       string
 	Required   bool
 	Uploaded   *Document
+}
+
+// docHints adalah petunjuk foto per jenis dokumen (T108).
+var docHints = map[string]string{
+	"kk":           "Seluruh halaman KK terlihat, tidak terpotong dan tidak buram.",
+	"akta":         "Halaman yang memuat nama dan tanggal lahir.",
+	"ijazah":       "Halaman depan ijazah atau surat keterangan lulus.",
+	"foto":         "Foto wajah calon siswa, latar polos, tampak jelas.",
+	"kip":          "Sisi kartu yang memuat nomor KIP.",
+	"surat_pindah": "Surat keterangan pindah bercap sekolah asal.",
+	"rapor":        "Halaman identitas dan nilai semester terakhir.",
 }
 
 // docRows menampilkan dokumen wajib periode dulu, lalu dokumen opsional.
@@ -615,12 +627,17 @@ func docRows(p Period, docs []Document) []docRow {
 	var rows []docRow
 	for _, d := range Docs {
 		if p.Requires(d.Key) {
-			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Required: true, Uploaded: byType[d.Key]})
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Hint: docHints[d.Key], Required: true, Uploaded: byType[d.Key]})
 		}
 	}
 	for _, d := range Docs {
+		// Dokumen khusus pindahan tidak ditawarkan di formulir siswa baru
+		// kecuali diwajibkan periode.
+		if (d.Key == "surat_pindah" || d.Key == "rapor") && p.Kind != KindTransfer {
+			continue
+		}
 		if !p.Requires(d.Key) {
-			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Uploaded: byType[d.Key]})
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Hint: docHints[d.Key], Uploaded: byType[d.Key]})
 		}
 	}
 	return rows
@@ -642,22 +659,36 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, MaxDocumentSize+64<<10)
+	js := wantsJSON(r)
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Pilih file yang akan diunggah (maksimal 2 MB)."})
+		if js {
+			writeUploadJSON(w, http.StatusBadRequest, false, msgPickFile)
+			return
+		}
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: msgPickFile})
 		return
 	}
 	defer file.Close()
 	_, err = h.documents.Upload(r.Context(), s.ID, a.ID, docType, file)
 	switch {
+	case err == nil && js:
+		writeUploadJSON(w, http.StatusOK, true, DocLabel(docType)+" berhasil diunggah.")
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+uploadReturn(r), http.StatusSeeOther)
+	case docErrorMessage(err) != "" && js:
+		writeUploadJSON(w, http.StatusBadRequest, false, docErrorMessage(err))
 	case docErrorMessage(err) != "":
 		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: docErrorMessage(err)})
+	case errors.Is(err, ErrNotEditable) && js:
+		writeUploadJSON(w, http.StatusConflict, false, editableMessage)
 	case errors.Is(err, ErrNotEditable):
 		auth.SetFlash(r.Context(), h.sessions, editableMessage)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
+	case js:
+		h.logger.ErrorContext(r.Context(), "upload document", "error", err)
+		writeUploadJSON(w, http.StatusInternalServerError, false, msgUploadError)
 	default:
 		h.serverError(w, r, "upload document", err)
 	}
@@ -668,7 +699,7 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 func docErrorMessage(err error) string {
 	switch {
 	case errors.Is(err, ErrDocTooLarge):
-		return "Ukuran file maksimal 2 MB."
+		return "Ukuran file maksimal 2 MB. Untuk PDF besar, foto dokumennya dengan kamera HP."
 	case errors.Is(err, ErrDocType), errors.Is(err, ErrDocEmpty):
 		return "File harus berupa foto (JPG/PNG) atau PDF."
 	}

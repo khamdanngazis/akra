@@ -1,8 +1,11 @@
 package admission
 
 import (
+	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -65,6 +68,21 @@ func TestStaffEntry(t *testing.T) {
 	review := e.do(http.MethodGet, base+"/isi/kirim", "admin_tu", nil).Body.String()
 	if !strings.Contains(review, base+"/isi/calon?kurang=") {
 		t.Error("staff review without fix links")
+	}
+	// Unggah dokumen oleh TU lewat XHR (T108): respons JSON.
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, _ := mw.CreateFormFile("file", "kk.png")
+	_, _ = fw.Write(pngBytes(t, ""))
+	_ = mw.Close()
+	req := httptest.NewRequest(http.MethodPost, base+"/dokumen/kk", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Role", "admin_tu")
+	jrec := httptest.NewRecorder()
+	e.router.ServeHTTP(jrec, req)
+	if jrec.Code != http.StatusOK || !strings.Contains(jrec.Body.String(), `"ok":true`) || jrec.Header().Get("Location") != "" {
+		t.Errorf("staff json upload: %d %s", jrec.Code, jrec.Body.String())
 	}
 	for _, s := range steps {
 		if rec := e.do(http.MethodPost, base+"/isi/"+s.step, "admin_tu", s.form); rec.Code != http.StatusSeeOther {

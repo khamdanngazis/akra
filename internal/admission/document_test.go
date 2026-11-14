@@ -3,6 +3,7 @@ package admission
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"image"
 	"image/color"
@@ -172,6 +173,41 @@ func TestPublicDocumentUpload(t *testing.T) {
 	}
 	if code, _ := upload("ktp", pngBytes(t, "")); code != http.StatusNotFound {
 		t.Errorf("unknown type: %d", code)
+	}
+	// Unggah lewat XHR (T108): respons JSON, tanpa redirect.
+	uploadJSON := func(docType string, data []byte, withFile bool) (int, uploadResult) {
+		var buf bytes.Buffer
+		mw := multipart.NewWriter(&buf)
+		if withFile {
+			fw, _ := mw.CreateFormFile("file", "dok.jpg")
+			_, _ = fw.Write(data)
+		}
+		_ = mw.Close()
+		req, _ := http.NewRequest(http.MethodPost, c.srv.URL+base+"/dokumen/"+docType, &buf)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		req.Header.Set("Accept", "application/json")
+		res, err := c.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var out uploadResult
+		if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+			t.Fatalf("json response for %s: %v", docType, err)
+		}
+		return res.StatusCode, out
+	}
+	if code, out := uploadJSON("foto", pngBytes(t, ""), true); code != http.StatusOK || !out.OK || !strings.Contains(out.Message, "Pas foto") {
+		t.Errorf("json upload: %d %+v", code, out)
+	}
+	if code, out := uploadJSON("foto", []byte("bukan gambar"), true); code != http.StatusBadRequest || out.OK || !strings.Contains(out.Message, "JPG/PNG") {
+		t.Errorf("json bad type: %d %+v", code, out)
+	}
+	if code, out := uploadJSON("foto", nil, false); code != http.StatusBadRequest || out.OK || out.Message == "" {
+		t.Errorf("json without file: %d %+v", code, out)
+	}
+	if _, body := c.get(base + "/isi/dokumen"); !strings.Contains(body, "js/admission-upload.js") || !strings.Contains(body, `data-url="`+base+`/dokumen/kk"`) || strings.Contains(body, "Surat keterangan pindah") {
+		t.Error("document step without auto-upload component")
 	}
 	// Unggah langsung dari halaman periksa kembali ke halaman periksa (T107).
 	_, review := c.get(base + "/isi/kirim")

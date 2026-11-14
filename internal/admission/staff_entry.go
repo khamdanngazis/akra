@@ -200,14 +200,28 @@ func (h *Handler) staffUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, MaxDocumentSize+64<<10)
+	js := wantsJSON(r)
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		h.renderStaffStep(w, r, id, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Pilih file yang akan diunggah (maksimal 2 MB)."})
+		if js {
+			writeUploadJSON(w, http.StatusBadRequest, false, msgPickFile)
+			return
+		}
+		h.renderStaffStep(w, r, id, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: msgPickFile})
 		return
 	}
 	defer file.Close()
 	_, err = h.documents.Upload(r.Context(), id.SchoolID, a.ID, docType, file)
 	switch {
+	case err == nil && js:
+		writeUploadJSON(w, http.StatusOK, true, DocLabel(docType)+" berhasil diunggah.")
+	case docErrorMessage(err) != "" && js:
+		writeUploadJSON(w, http.StatusBadRequest, false, docErrorMessage(err))
+	case errors.Is(err, ErrNotEditable) && js:
+		writeUploadJSON(w, http.StatusConflict, false, editableMessage)
+	case err != nil && js && docErrorMessage(err) == "" && !errors.Is(err, ErrNotEditable):
+		h.logger.ErrorContext(r.Context(), "upload document", "error", err)
+		writeUploadJSON(w, http.StatusInternalServerError, false, msgUploadError)
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
 		http.Redirect(w, r, applicantsPath+"/"+a.ID+"/isi/"+uploadReturn(r), http.StatusSeeOther)

@@ -1,4 +1,5 @@
 {{define "title"}}{{.StepName}} · Pendaftaran{{end}}
+{{define "head"}}{{if eq .Step "dokumen"}}<script src="{{ asset "js/admission-upload.js" }}"></script>{{end}}{{end}}
 {{define "header"}}{{if .Staff}}{{template "app_header" .User}}{{else}}{{template "admission_public_bar" .}}{{end}}{{end}}
 {{define "content"}}
 <div class="adm-shell">
@@ -68,22 +69,29 @@
 {{else if eq .Step "dokumen"}}
 <div class="adm-title">
 <h1>Dokumen</h1>
-<p>Foto (JPG/PNG) atau PDF, maksimal 2 MB per file. Pilih file lalu tekan Unggah.</p>
+<p>Foto dengan kamera HP atau pilih file (foto/PDF). File langsung terunggah; foto besar otomatis diperkecil.</p>
 </div>
 <ul class="adm-docs">
 {{range .Documents}}
 {{$err := index $.DocErrors .Key}}
-<li class="adm-doc{{if $err}} is-error{{else if .Uploaded}} is-ok{{end}}" id="dok-{{.Key}}">
+<li class="adm-doc{{if $err}} is-error{{else if .Uploaded}} is-ok{{end}}" id="dok-{{.Key}}"
+ x-data="docUpload($el)" data-url="{{$.Base}}/dokumen/{{.Key}}" data-state="{{if $err}}error{{else if .Uploaded}}ok{{else}}empty{{end}}" data-message="{{if $err}}Gagal: {{$err}}{{else if .Uploaded}}Terunggah{{end}}"
+ :class="{ 'is-ok': state === 'ok', 'is-error': state === 'error' }">
 <div class="adm-doc-head">
-<span class="adm-doc-ico">{{template "admission_doc_icon" .Key}}</span>
+<span class="adm-doc-ico"><img class="adm-doc-thumb" x-cloak x-show="preview" :src="preview" alt=""><span x-show="!preview">{{template "admission_doc_icon" .Key}}</span></span>
 <div class="min-w-0">
 <span class="adm-doc-name">{{.Label}}{{if not .Required}} <span class="text-[13px] font-normal text-slate-500">(opsional)</span>{{end}}</span>
-{{if $err}}<span class="adm-doc-state">{{template "icon" "alert"}}Gagal: {{$err}}</span>
-{{else if .Uploaded}}<span class="adm-doc-state">{{template "icon" "check"}}Terunggah</span>
-{{else}}<span class="adm-doc-state">Belum diunggah</span>{{end}}
+<span class="adm-doc-state" role="status"><span x-cloak x-show="state === 'ok'">{{template "icon" "check"}}</span><span x-cloak x-show="state === 'error'">{{template "icon" "alert"}}</span><span x-text="message || 'Belum diunggah'">{{if $err}}Gagal: {{$err}}{{else if .Uploaded}}Terunggah{{else}}Belum diunggah{{end}}</span></span>
 </div>
 </div>
-<form method="post" action="{{$.Base}}/dokumen/{{.Key}}" enctype="multipart/form-data">
+{{with .Hint}}<p class="adm-doc-hint">{{.}}</p>{{end}}
+<div class="adm-doc-bar" x-cloak x-show="state === 'uploading'" aria-hidden="true"><span :style="'width: ' + progress + '%'"></span></div>
+<div class="adm-doc-actions" x-cloak x-show="state !== 'uploading'">
+<label class="btn btn-primary btn-sm relative">{{template "icon" "camera"}}<span x-text="state === 'ok' ? 'Foto ulang' : 'Ambil foto'">Ambil foto</span><input type="file" accept="image/*" capture="environment" class="visually-hidden" aria-label="Ambil foto {{.Label}}" @change="pick($event)"></label>
+<label class="btn btn-ghost btn-sm relative">{{template "icon" "upload"}}<span x-text="state === 'ok' ? 'Ganti file' : 'Pilih file'">Pilih file</span><input type="file" accept="image/*,application/pdf" class="visually-hidden" aria-label="Pilih file {{.Label}}" @change="pick($event)"></label>
+<button type="button" class="btn btn-ghost btn-sm" x-show="state === 'error' && last" @click="retry()">Coba lagi</button>
+</div>
+<form method="post" action="{{$.Base}}/dokumen/{{.Key}}" enctype="multipart/form-data" x-show="false">
 {{ csrfField }}
 <input type="file" name="file" accept="image/jpeg,image/png,application/pdf" aria-label="File {{.Label}}">
 <button type="submit" class="btn {{if .Uploaded}}btn-ghost{{else}}btn-primary{{end}} btn-sm">{{template "icon" "upload"}}{{if .Uploaded}}Ganti{{else}}Unggah{{end}}</button>
@@ -92,8 +100,10 @@
 {{end}}
 </ul>
 <p class="flex gap-2 text-[13px] text-slate-600">{{template "icon" "info"}}Foto dokumen utuh, tidak terpotong, tidak buram. Dokumen disimpan terenkripsi dan hanya bisa dibuka petugas sekolah.</p>
-<form method="post" action="{{.Base}}/isi/dokumen" class="adm-actions">
+<form method="post" action="{{.Base}}/isi/dokumen" class="adm-actions" x-data="{ warn: '', force: false }"
+ @submit="if (!force && !($event.submitter && $event.submitter.value === 'prev')) { const m = window.docUploadBlocker ? docUploadBlocker() : ''; if (m) { $event.preventDefault(); warn = m } }">
 {{ csrfField }}
+<p class="adm-actions-note" x-cloak x-show="warn" role="alert"><span x-text="warn"></span> <button type="button" class="adm-draft inline w-auto" @click="force = true; $nextTick(() => $root.requestSubmit())">Tetap lanjut</button></p>
 <button type="submit" name="go" value="prev" class="btn btn-ghost">{{template "icon" "arrow-left"}}Kembali</button>
 <button type="submit" class="btn btn-primary adm-next">Lanjut periksa {{template "icon" "arrow-right"}}</button>
 </form>
