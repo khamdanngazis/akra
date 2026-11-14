@@ -1,8 +1,11 @@
 package admission
 
 import (
+	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -55,6 +58,31 @@ func TestStaffEntry(t *testing.T) {
 		{"orangtua", url.Values{"ibu.full_name": {"Dewi"}}},
 		{"sekolah", url.Values{}},
 		{"dokumen", url.Values{}},
+	}
+	// Simpan draf (T107): tetap di langkah yang sama.
+	draft := url.Values{"full_name": {"Citra"}, "gender": {"P"}, "birth_date": {"2019-02-02"}, "go": {"draf"}}
+	if rec := e.do(http.MethodPost, base+"/isi/calon", "admin_tu", draft); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != base+"/isi/calon" {
+		t.Errorf("staff draft: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	// Halaman periksa menandai isian yang kurang per langkah.
+	review := e.do(http.MethodGet, base+"/isi/kirim", "admin_tu", nil).Body.String()
+	if !strings.Contains(review, base+"/isi/calon?kurang=") {
+		t.Error("staff review without fix links")
+	}
+	// Unggah dokumen oleh TU lewat XHR (T108): respons JSON.
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, _ := mw.CreateFormFile("file", "kk.png")
+	_, _ = fw.Write(pngBytes(t, ""))
+	_ = mw.Close()
+	req := httptest.NewRequest(http.MethodPost, base+"/dokumen/kk", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Role", "admin_tu")
+	jrec := httptest.NewRecorder()
+	e.router.ServeHTTP(jrec, req)
+	if jrec.Code != http.StatusOK || !strings.Contains(jrec.Body.String(), `"ok":true`) || jrec.Header().Get("Location") != "" {
+		t.Errorf("staff json upload: %d %s", jrec.Code, jrec.Body.String())
 	}
 	for _, s := range steps {
 		if rec := e.do(http.MethodPost, base+"/isi/"+s.step, "admin_tu", s.form); rec.Code != http.StatusSeeOther {

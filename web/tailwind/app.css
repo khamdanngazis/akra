@@ -1723,6 +1723,30 @@
     @apply size-4;
   }
 
+  .adm-doc-thumb {
+    @apply size-full rounded-xl object-cover;
+  }
+
+  .adm-doc-ico {
+    @apply overflow-hidden;
+  }
+
+  .adm-doc-hint {
+    @apply mt-2 mb-0 text-[13px] text-slate-500;
+  }
+
+  .adm-doc-actions {
+    @apply mt-3 flex flex-wrap gap-2;
+  }
+
+  .adm-doc-bar {
+    @apply mt-3 h-1.5 overflow-hidden rounded-full bg-blue-100;
+  }
+
+  .adm-doc-bar span {
+    @apply block h-full bg-blue-600 transition-[width];
+  }
+
   .adm-doc form {
     @apply mt-3 flex flex-wrap items-center gap-2;
   }
@@ -1746,6 +1770,22 @@
 
   .adm-fix + .adm-fix {
     @apply mt-2;
+  }
+
+  .adm-fix-doc {
+    @apply flex-col items-stretch gap-2;
+  }
+
+  .adm-fix-doc form {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .adm-fix-doc input[type="file"] {
+    @apply flex-1 basis-40 text-[13px];
+  }
+
+  .adm-draft {
+    @apply w-full cursor-pointer border-0 bg-transparent py-1 text-center font-sans text-[13px] font-semibold text-blue-700 underline-offset-[3px] hover:underline;
   }
 
   .adm-fix small {

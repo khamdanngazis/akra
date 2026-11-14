@@ -372,9 +372,14 @@ type stepView struct {
 	Missing   []students.RequiredField
 	// Kind adalah jenis pendaftar; FormData variabel Alpine.js tingkat form
 	// (mis. showWali).
-	Kind       string
-	FormData   string
-	Groups     []missingGroup
+	Kind     string
+	FormData string
+	Groups   []missingGroup
+	// Highlight: halaman dibuka dari tombol "Lengkapi" dan isian yang
+	// kurang ditandai (T107). Discard adalah langkah tujuan untuk tombol
+	// "Kembali tanpa menyimpan" saat isian halaman ini belum valid.
+	Highlight  bool
+	Discard    string
 	Summary    []summaryCard
 	StepNumber int
 	Prev       string
@@ -442,7 +447,8 @@ func (h *PublicHandler) stepForm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	h.renderStep(w, r, s, a, step, http.StatusOK, nil, nil)
+	errs, opts := highlightMissing(r)
+	h.renderStep(w, r, s, a, step, http.StatusOK, nil, errs, opts...)
 }
 
 // buildStepView menyusun halaman satu langkah formulir. Dipakai formulir
@@ -528,11 +534,14 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 	return view, nil
 }
 
-func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string) {
+func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s schoolInfo, a Applicant, step string, status int, submitted, errs map[string]string, opts ...stepOpt) {
 	view, err := buildStepView(r.Context(), h.periods, h.documents, s, a, step, submitted, errs)
 	if err != nil {
 		h.serverError(w, r, "build step view", err)
 		return
+	}
+	for _, o := range opts {
+		o(&view)
 	}
 	view.Base = "/s/" + s.Code + "/daftar"
 	view.Flash = auth.PopFlash(r.Context(), h.sessions)
@@ -593,8 +602,20 @@ func stepValues(r *http.Request, step string) map[string]string {
 
 type docRow struct {
 	Key, Label string
+	Hint       string
 	Required   bool
 	Uploaded   *Document
+}
+
+// docHints adalah petunjuk foto per jenis dokumen (T108).
+var docHints = map[string]string{
+	"kk":           "Seluruh halaman KK terlihat, tidak terpotong dan tidak buram.",
+	"akta":         "Halaman yang memuat nama dan tanggal lahir.",
+	"ijazah":       "Halaman depan ijazah atau surat keterangan lulus.",
+	"foto":         "Foto wajah calon siswa, latar polos, tampak jelas.",
+	"kip":          "Sisi kartu yang memuat nomor KIP.",
+	"surat_pindah": "Surat keterangan pindah bercap sekolah asal.",
+	"rapor":        "Halaman identitas dan nilai semester terakhir.",
 }
 
 // docRows menampilkan dokumen wajib periode dulu, lalu dokumen opsional.
@@ -606,12 +627,17 @@ func docRows(p Period, docs []Document) []docRow {
 	var rows []docRow
 	for _, d := range Docs {
 		if p.Requires(d.Key) {
-			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Required: true, Uploaded: byType[d.Key]})
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Hint: docHints[d.Key], Required: true, Uploaded: byType[d.Key]})
 		}
 	}
 	for _, d := range Docs {
+		// Dokumen khusus pindahan tidak ditawarkan di formulir siswa baru
+		// kecuali diwajibkan periode.
+		if (d.Key == "surat_pindah" || d.Key == "rapor") && p.Kind != KindTransfer {
+			continue
+		}
 		if !p.Requires(d.Key) {
-			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Uploaded: byType[d.Key]})
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Hint: docHints[d.Key], Uploaded: byType[d.Key]})
 		}
 	}
 	return rows
@@ -633,22 +659,36 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, MaxDocumentSize+64<<10)
+	js := wantsJSON(r)
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Pilih file yang akan diunggah (maksimal 2 MB)."})
+		if js {
+			writeUploadJSON(w, http.StatusBadRequest, false, msgPickFile)
+			return
+		}
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: msgPickFile})
 		return
 	}
 	defer file.Close()
 	_, err = h.documents.Upload(r.Context(), s.ID, a.ID, docType, file)
 	switch {
+	case err == nil && js:
+		writeUploadJSON(w, http.StatusOK, true, DocLabel(docType)+" berhasil diunggah.")
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
-		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepDocument, http.StatusSeeOther)
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+uploadReturn(r), http.StatusSeeOther)
+	case docErrorMessage(err) != "" && js:
+		writeUploadJSON(w, http.StatusBadRequest, false, docErrorMessage(err))
 	case docErrorMessage(err) != "":
 		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: docErrorMessage(err)})
+	case errors.Is(err, ErrNotEditable) && js:
+		writeUploadJSON(w, http.StatusConflict, false, editableMessage)
 	case errors.Is(err, ErrNotEditable):
 		auth.SetFlash(r.Context(), h.sessions, editableMessage)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
+	case js:
+		h.logger.ErrorContext(r.Context(), "upload document", "error", err)
+		writeUploadJSON(w, http.StatusInternalServerError, false, msgUploadError)
 	default:
 		h.serverError(w, r, "upload document", err)
 	}
@@ -659,7 +699,7 @@ func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
 func docErrorMessage(err error) string {
 	switch {
 	case errors.Is(err, ErrDocTooLarge):
-		return "Ukuran file maksimal 2 MB."
+		return "Ukuran file maksimal 2 MB. Untuk PDF besar, foto dokumennya dengan kamera HP."
 	case errors.Is(err, ErrDocType), errors.Is(err, ErrDocEmpty):
 		return "File harus berupa foto (JPG/PNG) atau PDF."
 	}
@@ -710,7 +750,11 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	target := targetStep(step, r.PostForm.Get("go"))
+	goTo := r.PostForm.Get("go")
+	target := targetStep(step, goTo)
+	if goTo == goDraft {
+		auth.SetFlash(r.Context(), h.sessions, draftSavedPublic)
+	}
 	if step == StepDocument {
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 		return
@@ -722,7 +766,8 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+target, http.StatusSeeOther)
 	case errors.As(err, &ve):
-		h.renderStep(w, r, s, a, step, http.StatusBadRequest, values, ve.Fields)
+		_ = auth.PopFlash(r.Context(), h.sessions) // belum tersimpan
+		h.renderStep(w, r, s, a, step, http.StatusBadRequest, values, ve.Fields, withDiscard(step, goTo))
 	case errors.Is(err, ErrNotEditable):
 		auth.SetFlash(r.Context(), h.sessions, editableMessage)
 		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)

@@ -1,6 +1,8 @@
 package admission
 
 import (
+	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -89,7 +91,15 @@ func stepOfField(key string) string {
 // missingGroup adalah kekurangan satu langkah di halaman periksa.
 type missingGroup struct {
 	Step, Title string
-	Items       []string // kalimat siap tampil, mis. "Pas foto belum diunggah"
+	Items       []missingItem
+	// Query adalah ?kurang=... untuk menandai isian di langkah itu.
+	Query string
+}
+
+// missingItem adalah satu kekurangan. Doc berisi jenis dokumen jika yang
+// kurang adalah dokumen (bisa diunggah langsung dari halaman periksa).
+type missingItem struct {
+	Text, Key, Doc string
 }
 
 // groupMissing mengelompokkan kekurangan per langkah, urut langkah.
@@ -97,15 +107,20 @@ func groupMissing(missing []students.RequiredField) []missingGroup {
 	var out []missingGroup
 	for _, s := range Steps {
 		g := missingGroup{Step: s.Key, Title: s.Title}
+		var keys []string
 		for _, m := range missing {
 			if stepOfField(m.Key) != s.Key {
 				continue
 			}
-			if strings.HasPrefix(m.Key, "doc_") {
-				g.Items = append(g.Items, m.Label+" belum diunggah")
+			if doc, ok := strings.CutPrefix(m.Key, "doc_"); ok {
+				g.Items = append(g.Items, missingItem{Text: m.Label + " belum diunggah", Key: m.Key, Doc: doc})
 			} else {
-				g.Items = append(g.Items, m.Label+" belum diisi")
+				g.Items = append(g.Items, missingItem{Text: m.Label + " belum diisi", Key: m.Key})
+				keys = append(keys, m.Key)
 			}
+		}
+		if len(keys) > 0 {
+			g.Query = "?kurang=" + url.QueryEscape(strings.Join(keys, ","))
 		}
 		if len(g.Items) > 0 {
 			out = append(out, g)
@@ -330,10 +345,20 @@ func publicHistory(events []Event) []historyItem {
 	return out
 }
 
+// goDraft adalah nilai go untuk tombol "Simpan draf": simpan lalu tetap di
+// langkah yang sama.
+const goDraft = "draf"
+
+// draftSavedPublic adalah pesan setelah orang tua menyimpan draf.
+const draftSavedPublic = "Draf tersimpan. Untuk melanjutkan nanti, buka halaman pendaftaran, pilih \"Lanjutkan draf yang tersimpan\", lalu masukkan nomor HP dan kode lanjut."
+
 // targetStep menentukan tujuan setelah langkah disimpan: tombol Kembali
-// (go=prev), lompat ke langkah lain lewat penunjuk langkah (go=<kunci>),
-// atau langkah berikutnya.
+// (go=prev), Simpan draf (go=draf), lompat ke langkah lain lewat penunjuk
+// langkah (go=<kunci>), atau langkah berikutnya.
 func targetStep(step, goTo string) string {
+	if goTo == goDraft {
+		return step
+	}
 	if goTo == "prev" {
 		if p := prevStep(step); p != "" {
 			return p
@@ -357,4 +382,50 @@ func prevStep(step string) string {
 		}
 	}
 	return ""
+}
+
+// stepOpt mengubah tampilan langkah setelah disusun.
+type stepOpt func(*stepView)
+
+// withDiscard menawarkan "Kembali tanpa menyimpan" ke tujuan go (Kembali
+// atau lompat langkah) jika isian halaman ini belum valid.
+func withDiscard(step, goTo string) stepOpt {
+	return func(v *stepView) {
+		if goTo == "" || goTo == goDraft {
+			return
+		}
+		if t := targetStep(step, goTo); t != step {
+			v.Discard = t
+		}
+	}
+}
+
+// highlightMissing membaca ?kurang=a,b dari tombol "Lengkapi" di halaman
+// periksa (T107) dan menandai isian itu, tanpa pesan "belum disimpan".
+func highlightMissing(r *http.Request) (map[string]string, []stepOpt) {
+	raw := r.URL.Query().Get("kurang")
+	if raw == "" {
+		return nil, nil
+	}
+	errs := map[string]string{}
+	for _, k := range strings.Split(raw, ",") {
+		k = strings.TrimSpace(k)
+		if k == "mother_name" {
+			k = students.RelationMother + ".full_name"
+		}
+		if k != "" && len(errs) < 50 {
+			errs[k] = "Wajib diisi agar pendaftaran bisa dikirim."
+		}
+	}
+	return errs, []stepOpt{func(v *stepView) { v.Error, v.Highlight = "", true }}
+}
+
+// uploadReturn mengembalikan langkah tujuan setelah unggah dokumen:
+// halaman periksa jika diunggah dari sana (?kembali=kirim), selain itu
+// langkah Dokumen.
+func uploadReturn(r *http.Request) string {
+	if r.URL.Query().Get("kembali") == StepReview {
+		return StepReview
+	}
+	return StepDocument
 }

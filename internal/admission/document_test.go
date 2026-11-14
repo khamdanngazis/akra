@@ -3,6 +3,7 @@ package admission
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"image"
 	"image/color"
@@ -141,6 +142,9 @@ func TestDocuments(t *testing.T) {
 func TestPublicDocumentUpload(t *testing.T) {
 	e := newEnv(t)
 	p, tr := e.openPeriod(t)
+	if _, err := e.tx.Exec(context.Background(), `UPDATE admission_periods SET required_docs = '{kk,akta}' WHERE id = $1`, p.ID); err != nil {
+		t.Fatal(err)
+	}
 	c := newPublicServer(t, e)
 	base := "/s/test-adm-a/daftar"
 	start := map[string][]string{"choice": {p.ID + "|" + tr.ID}, "full_name": {"Ani"}, "gender": {"P"}, "birth_date": {"2019-05-17"}, "phone": {"081234567891"}, "consent": {"on"}}
@@ -169,6 +173,59 @@ func TestPublicDocumentUpload(t *testing.T) {
 	}
 	if code, _ := upload("ktp", pngBytes(t, "")); code != http.StatusNotFound {
 		t.Errorf("unknown type: %d", code)
+	}
+	// Unggah lewat XHR (T108): respons JSON, tanpa redirect.
+	uploadJSON := func(docType string, data []byte, withFile bool) (int, uploadResult) {
+		var buf bytes.Buffer
+		mw := multipart.NewWriter(&buf)
+		if withFile {
+			fw, _ := mw.CreateFormFile("file", "dok.jpg")
+			_, _ = fw.Write(data)
+		}
+		_ = mw.Close()
+		req, _ := http.NewRequest(http.MethodPost, c.srv.URL+base+"/dokumen/"+docType, &buf)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		req.Header.Set("Accept", "application/json")
+		res, err := c.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var out uploadResult
+		if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+			t.Fatalf("json response for %s: %v", docType, err)
+		}
+		return res.StatusCode, out
+	}
+	if code, out := uploadJSON("foto", pngBytes(t, ""), true); code != http.StatusOK || !out.OK || !strings.Contains(out.Message, "Pas foto") {
+		t.Errorf("json upload: %d %+v", code, out)
+	}
+	if code, out := uploadJSON("foto", []byte("bukan gambar"), true); code != http.StatusBadRequest || out.OK || !strings.Contains(out.Message, "JPG/PNG") {
+		t.Errorf("json bad type: %d %+v", code, out)
+	}
+	if code, out := uploadJSON("foto", nil, false); code != http.StatusBadRequest || out.OK || out.Message == "" {
+		t.Errorf("json without file: %d %+v", code, out)
+	}
+	if _, body := c.get(base + "/isi/dokumen"); !strings.Contains(body, "js/admission-upload.js") || !strings.Contains(body, `data-url="`+base+`/dokumen/kk"`) || strings.Contains(body, "Surat keterangan pindah") {
+		t.Error("document step without auto-upload component")
+	}
+	// Unggah langsung dari halaman periksa kembali ke halaman periksa (T107).
+	_, review := c.get(base + "/isi/kirim")
+	if !strings.Contains(review, `action="`+base+`/dokumen/akta?kembali=kirim"`) {
+		t.Error("review page without inline upload for missing document")
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, _ := mw.CreateFormFile("file", "akta.png")
+	_, _ = fw.Write(pngBytes(t, ""))
+	_ = mw.Close()
+	res, err := c.client.Post(c.srv.URL+base+"/dokumen/akta?kembali=kirim", mw.FormDataContentType(), &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusSeeOther || !strings.HasSuffix(res.Header.Get("Location"), "/isi/kirim") {
+		t.Errorf("upload from review: %d %s", res.StatusCode, res.Header.Get("Location"))
 	}
 	_, body := c.get(base + "/isi/dokumen")
 	if !strings.Contains(body, "Terunggah") {
