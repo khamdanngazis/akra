@@ -22,3 +22,6 @@ Membuktikan bahwa bantuan Dapodik benar-benar bekerja di aplikasi Dapodik 2027, 
 - [ ] Input 10 siswa dengan lembar salin lebih cepat daripada dari formulir kertas
 - [ ] Tidak ada perbedaan urutan atau label yang belum dicatat
 - [ ] Pilot pendaftaran selesai sampai siswa memiliki NIS dan profil lengkap
+
+## Catatan implementasi
+Panduan dan lembar hasil ada di `doc/uji-mvp3.md`.

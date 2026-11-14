@@ -1,0 +1,89 @@
+{{define "title"}}Lembar Salin · {{.Student.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
+<div class="page-header">
+<div>
+<h1>{{.Student.FullName}}</h1>
+<p class="muted">NIS {{.Student.NIS}}{{with .ClassName}} · {{.}}{{end}} · urutan field mengikuti form Peserta Didik Dapodik {{.Version}}</p>
+</div>
+<div class="action-row">
+<a class="btn btn-ghost" href="/siswa/{{.Student.ID}}/data-rinci">Lengkapi data</a>
+<a class="btn btn-ghost" href="/dapodik/siswa/{{.Student.ID}}/fpd.pdf">F-PD (PDF)</a>
+{{if .NextID}}<a class="btn btn-ghost" href="/dapodik/siswa/{{.NextID}}">Berikutnya: {{.NextName}} →</a>{{end}}
+</div>
+</div>
+{{template "flash" .}}
+{{if not .Readiness.Complete}}<div class="alert" role="status">Data belum lengkap ({{.Readiness.Percent}}%): {{range $i, $f := .Readiness.Missing}}{{if $i}}, {{end}}{{$f.Label}}{{end}}.</div>{{end}}
+
+<div x-data="copySheet()" @keydown.window="key($event)">
+<section class="card">
+<p>Klik <strong>Salin</strong> pada field, lalu tempel di form Dapodik. Atau pakai <strong>Salin berikutnya</strong> (tombol pintas <kbd>n</kbd>) untuk menyalin field satu per satu sesuai urutan; field kosong dilewati.</p>
+<div class="action-row">
+<button type="button" class="btn btn-primary" @click="next()">Salin berikutnya</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="reset()">Mulai dari awal</button>
+<span class="muted" x-text="status" aria-live="polite"></span>
+</div>
+</section>
+
+{{range .Sections}}
+<section class="card">
+<h2>{{.Title}}</h2>
+<dl class="data-list">
+{{range .Fields}}
+<dt>{{.Label}}</dt>
+<dd>
+{{if .Unsupported}}<span class="muted">{{.Note}}</span>
+{{else if .Value}}<span data-copy="{{.Value}}" data-label="{{.Label}}">{{.Value}}</span> <button type="button" class="btn btn-ghost btn-sm" @click="copy($el.previousElementSibling)">Salin</button>
+{{else}}<span class="muted">Kosong</span>{{end}}
+</dd>
+{{end}}
+</dl>
+</section>
+{{end}}
+</div>
+
+<section class="card">
+<h2>Status Dapodik</h2>
+{{if .EnteredAt}}<p><span class="badge badge-success">Sudah dimasukkan · {{.EnteredAt}}</span></p>{{end}}
+<form method="post" action="/dapodik/siswa/{{.Student.ID}}/tandai" class="action-row">
+{{ csrfField }}
+{{if .EnteredAt}}
+<input type="hidden" name="entered" value="0">
+<button type="submit" class="btn btn-ghost btn-sm">Batalkan tanda</button>
+{{else}}
+<input type="hidden" name="entered" value="1">
+<button type="submit" class="btn btn-primary btn-sm">Tandai sudah masuk Dapodik</button>
+{{if .NextID}}<button type="submit" name="next" value="{{.NextID}}" class="btn btn-ghost btn-sm">Tandai lalu ke siswa berikutnya</button>{{end}}
+{{end}}
+</form>
+</section>
+
+<script>
+function copySheet() {
+  return {
+    idx: -1, status: "",
+    items() { return Array.from(document.querySelectorAll("[data-copy]")); },
+    mark(el) {
+      this.items().forEach(x => x.classList.remove("badge", "badge-info"));
+      el.classList.add("badge", "badge-info");
+    },
+    async copy(el) {
+      this.idx = this.items().indexOf(el);
+      this.mark(el);
+      try { await navigator.clipboard.writeText(el.dataset.copy); this.status = "Tersalin: " + el.dataset.label; }
+      catch (e) { this.status = "Gagal menyalin. Salin manual dari teks di halaman."; }
+    },
+    next() {
+      const list = this.items();
+      const i = this.idx + 1;
+      if (i >= list.length) { this.status = "Semua field sudah disalin."; return; }
+      this.copy(list[i]);
+      list[i].scrollIntoView({ block: "center" });
+    },
+    reset() { this.idx = -1; this.status = ""; this.items().forEach(x => x.classList.remove("badge", "badge-info")); },
+    key(e) { if (e.key === "n" && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); this.next(); } }
+  };
+}
+</script>
+{{end}}

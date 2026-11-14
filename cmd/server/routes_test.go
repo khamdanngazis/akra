@@ -18,18 +18,21 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/dapodik"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/portal"
 	"akra/internal/reports"
@@ -98,20 +101,24 @@ func newTestRouter(t *testing.T) http.Handler {
 		reportSaved:  builder.NewConfigHandler(builder.NewConfigService(nil, builder.Default), nil, sessions, rd, logger),
 		classes:      classes.NewHandler(classes.NewService(nil), nil, sessions, rd, logger),
 		students: students.NewHandler(students.NewService(nil), students.NewGuardianService(nil),
-			students.NewGuardianAccountService(nil, nil, logger), sessions, rd, logger),
-		activation:  auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
-		portal:      portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
-		attendance:  attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
-		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
-		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(nil, nil), sessions, rd, logger),
-		arrears:     billing.NewArrearsHandler(nil, rd, logger),
-		payments:    payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), payments.NewVoidService(nil), sessions, rd, logger),
-		auditLog:    auditview.NewHandler(nil, rd, logger),
-		reports:     reports.NewHandler(nil, nil, nil, rd, logger),
-		announce:    announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
-		home:        home.NewHandler(nil, rd, sessions, logger),
-		importer:    importer.NewHandler(importer.NewService(nil, nil), sessions, rd, logger),
-		mappings:    importer.NewMappingHandler(importer.NewMappingService(nil), sessions, rd, logger),
+			students.NewGuardianAccountService(nil, nil, logger), students.NewProfileService(nil, pii.DevKeyring()),
+			students.NewGuardianDetailService(nil, pii.DevKeyring()), sessions, rd, logger),
+		activation:      auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
+		admission:       admission.NewHandler(nil, admission.NewService(nil), nil, nil, sessions, rd, logger),
+		dapodik:         dapodik.NewHandler(nil, pii.DevKeyring(), nil, sessions, rd, logger),
+		admissionPublic: admission.NewPublicHandler(nil, admission.NewService(nil), admission.NewApplicantService(nil, pii.DevKeyring(), admission.NewService(nil)), admission.NewDocumentService(nil, nil, pii.DevKeyring()), sessions, rd, logger),
+		portal:          portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
+		attendance:      attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
+		feeTypes:        billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),
+		bulkInvoice:     billing.NewBulkHandler(billing.NewBulkService(nil, nil), sessions, rd, logger),
+		arrears:         billing.NewArrearsHandler(nil, rd, logger),
+		payments:        payments.NewHandler(payments.NewService(nil), payments.NewProofService(nil, nil), payments.NewVoidService(nil), sessions, rd, logger),
+		auditLog:        auditview.NewHandler(nil, rd, logger),
+		reports:         reports.NewHandler(nil, nil, nil, rd, logger),
+		announce:        announcements.NewHandler(announcements.NewService(nil), sessions, rd, logger),
+		home:            home.NewHandler(nil, rd, sessions, logger),
+		importer:        importer.NewHandler(importer.NewService(nil, nil), sessions, rd, logger),
+		mappings:        importer.NewMappingHandler(importer.NewMappingService(nil), sessions, rd, logger),
 		// Route driver storage local ikut didaftarkan agar daftar route lengkap (T58).
 		storage: http.NotFoundHandler(),
 	})

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -8,12 +9,14 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/dapodik"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -23,6 +26,7 @@ import (
 	"akra/internal/platform/health"
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
 	"akra/internal/portal"
@@ -48,15 +52,22 @@ type appDeps struct {
 	logger   *slog.Logger
 	jobs     *jobs.Client  // untuk memasukkan job latar belakang
 	store    storage.Store // file privat (bukti transfer)
+	pii      *pii.Keyring  // enkripsi data pribadi (T85b)
 	dev      bool          // APP_ENV=development: pasang route /dev
 }
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
 func newApp(d appDeps) (http.Handler, error) {
+	if d.pii == nil {
+		return nil, errors.New("app: PII keyring is required")
+	}
 	authSvc, err := auth.NewService(auth.NewRepository(d.db), d.hasher)
 	if err != nil {
 		return nil, err
 	}
+	periods := admission.NewService(d.db)
+	applicants := admission.NewApplicantService(d.db, d.pii, periods)
+	documents := admission.NewDocumentService(d.db, d.store, d.pii)
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
 	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
 	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
@@ -87,21 +98,26 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),
 			students.NewGuardianAccountService(d.db, activation, d.logger),
+			students.NewProfileService(d.db, d.pii),
+			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
-		portal:      portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
-		dev:         devRoutes(d),
-		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
-		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
-		bulkInvoice: billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
-		arrears:     billing.NewArrearsHandler(d.db, d.render, d.logger),
-		payments:    payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
-		storage:     localStorageHandler(d.store),
-		auditLog:    auditview.NewHandler(d.db, d.render, d.logger),
-		home:        home.NewHandler(d.db, d.render, d.sessions, d.logger),
-		announce:    announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
-		reports:     reportsHandler,
-		importer:    importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
-		mappings:    importer.NewMappingHandler(importer.NewMappingService(d.db), d.sessions, d.render, d.logger),
+		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		dapodik:         dapodik.NewHandler(d.db, d.pii, d.store, d.sessions, d.render, d.logger),
+		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
+		dev:             devRoutes(d),
+		attendance:      attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		feeTypes:        billing.NewFeeTypeHandler(billing.NewFeeTypeService(d.db), d.sessions, d.render, d.logger),
+		bulkInvoice:     billing.NewBulkHandler(billing.NewBulkService(d.db, d.jobs), d.sessions, d.render, d.logger),
+		arrears:         billing.NewArrearsHandler(d.db, d.render, d.logger),
+		payments:        payments.NewHandler(payments.NewService(d.db), payments.NewProofService(d.db, d.store), payments.NewVoidService(d.db), d.sessions, d.render, d.logger),
+		storage:         localStorageHandler(d.store),
+		auditLog:        auditview.NewHandler(d.db, d.render, d.logger),
+		home:            home.NewHandler(d.db, d.render, d.sessions, d.logger),
+		announce:        announcements.NewHandler(announcements.NewService(d.db), d.sessions, d.render, d.logger),
+		reports:         reportsHandler,
+		importer:        importer.NewHandler(importer.NewService(d.db, importJobs(d.jobs)), d.sessions, d.render, d.logger),
+		mappings:        importer.NewMappingHandler(importer.NewMappingService(d.db), d.sessions, d.render, d.logger),
 	}), nil
 }
 

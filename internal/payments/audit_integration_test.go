@@ -129,6 +129,10 @@ func TestFinanceAudit(t *testing.T) {
 
 	// Diuji di paket portal (TestParentReceipt), yang memanggil paket ini.
 	seen[audit.ActionReceiptDownloadParent] = true
+	// Biaya formulir pendaftaran diuji di paket admission (TestFees), yang
+	// memanggil paket ini untuk nomor dan PDF kuitansi.
+	seen[audit.ActionAdmissionFeePayment] = true
+	seen[audit.ActionAdmissionFeeVoid] = true
 	for _, a := range audit.FinanceActions {
 		if !seen[a] {
 			t.Errorf("finance action %s is not covered", a)

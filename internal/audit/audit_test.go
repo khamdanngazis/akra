@@ -45,6 +45,12 @@ func TestRecord_RejectsSensitiveKeys(t *testing.T) {
 		[]any{map[string]any{"api_key": "re_x"}},
 		map[string]any{"address": "Jl. Melati No. 5"},
 		map[string]any{"wali": map[string]any{"alamat_rumah": "Jl. Mawar 1"}},
+		map[string]any{"nik": "3201010101010001"},
+		map[string]any{"NIK": "3201010101010001"},
+		map[string]any{"ayah": map[string]any{"nik_ayah": "3201010101010001"}},
+		map[string]any{"guardian_nik": "3201010101010001"},
+		map[string]any{"kk_number": "3201010101010009"},
+		map[string]any{"birth_cert_number": "3201-LT-01"},
 		struct {
 			Name   string
 			Secret string `json:"client_secret"`
@@ -64,6 +70,12 @@ func TestRecord_AllowsAddressFlags(t *testing.T) {
 	e.After = map[string]any{"has_address": true, "email": "a@b.id"}
 	if _, err := encode("after", e.After); err != nil {
 		t.Errorf("boolean address flag rejected: %v", err)
+	}
+	// Tanda boolean NIK, daftar nama field, dan kata yang hanya mengandung
+	// "nik"/"kk" tetap boleh.
+	e.After = map[string]any{"has_nik": true, "changed_fields": []any{"nik", "kk_number"}, "teknik": "Teknik Mesin", "bukku": "x"}
+	if _, err := encode("after", e.After); err != nil {
+		t.Errorf("non-identity values rejected: %v", err)
 	}
 }
 

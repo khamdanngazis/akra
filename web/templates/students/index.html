@@ -37,6 +37,13 @@
 {{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
 </select>
 </div>
+<div class="field">
+<label for="dapodik">Data Dapodik</label>
+<select id="dapodik" name="dapodik" @change="$el.form.submit()">
+<option value="">Semua</option>
+<option value="belum"{{if .Incomplete}} selected{{end}}>Belum lengkap</option>
+</select>
+</div>
 <div class="filter-actions">
 <button type="submit" class="btn btn-ghost">Cari</button>
 {{if .HasFilters}}<a class="btn btn-ghost" href="/siswa">Reset</a>{{end}}
@@ -48,7 +55,7 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th></tr></thead>
+<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Dapodik</th></tr></thead>
 <tbody>
 {{range .Rows}}
 <tr>
@@ -56,6 +63,7 @@
 <td><a href="/siswa/{{.ID}}"><strong>{{.FullName}}</strong></a></td>
 <td>{{if .ClassName}}{{.ClassName}}{{else}}<span class="muted">Belum ada</span>{{end}}</td>
 <td>{{template "student_status" .Status}}</td>
+<td>{{if eq .DapodikPercent 100}}<span class="badge badge-success">Lengkap</span>{{else}}<a href="/siswa/{{.ID}}/data-rinci"><span class="badge badge-warning">{{.DapodikPercent}}%</span></a>{{end}}</td>
 </tr>
 {{end}}
 </tbody>

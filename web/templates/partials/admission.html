@@ -1,0 +1,65 @@
+{{/* Partial halaman pendaftaran (T89). */}}
+{{define "admission_period_status"}}{{if .OpenNow}}<span class="badge badge-success">Sedang dibuka</span>{{else if eq .Status "buka"}}<span class="badge badge-info">Dibuka (di luar tanggal)</span>{{else if eq .Status "tutup"}}<span class="badge">Ditutup</span>{{else}}<span class="badge badge-warning">Draf</span>{{end}}{{end}}
+
+{{define "admission_track_fields"}}
+<div class="field-grid">
+<div class="field{{if .Errors.track_name}} has-error{{end}}">
+<label for="track_name-{{.ID}}">Nama jalur</label>
+<input id="track_name-{{.ID}}" name="track_name" value="{{.Form.Name}}" maxlength="60" placeholder="mis. Reguler, Prestasi" autocomplete="off" required>
+{{with .Errors.track_name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.quota}} has-error{{end}}">
+<label for="quota-{{.ID}}">Kuota <span class="muted">(kosong = tanpa batas)</span></label>
+<input id="quota-{{.ID}}" type="number" name="quota" value="{{.Form.Quota}}" min="1">
+{{with .Errors.quota}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<label class="choice"><input type="checkbox" name="uses_test"{{if .Form.UsesTest}} checked{{end}}> Jalur ini memakai tes seleksi</label>
+{{end}}
+
+{{/* admission_public_head menampilkan nama sekolah dan langkah formulir. Argumen: view publik (School, Steps, StepName). */}}
+{{define "admission_public_head"}}
+<div class="page-header">
+<div>
+<p class="muted">Pendaftaran siswa baru</p>
+<h1>{{.School.Name}}</h1>
+{{with .StepName}}<p class="muted">{{.}}</p>{{end}}
+</div>
+</div>
+{{$n := len .Steps}}{{range $i, $s := .Steps}}{{if $s.Current}}<p class="muted" aria-current="step">Langkah {{inc $i}} dari {{$n}}</p>{{end}}{{end}}
+{{end}}
+
+{{/* applicant_status menampilkan status pendaftar sebagai badge. Argumen: kode status. */}}
+{{define "applicant_status"}}{{if eq . "diterima"}}<span class="badge badge-success">Diterima</span>{{else if eq . "diverifikasi"}}<span class="badge badge-info">Diverifikasi</span>{{else if eq . "dikirim"}}<span class="badge badge-info">Dikirim</span>{{else if eq . "perlu_perbaikan"}}<span class="badge badge-warning">Perlu perbaikan</span>{{else if eq . "cadangan"}}<span class="badge badge-warning">Cadangan</span>{{else if eq . "ditolak"}}<span class="badge badge-danger">Ditolak</span>{{else if eq . "mundur"}}<span class="badge">Mundur</span>{{else}}<span class="badge">Draf</span>{{end}}{{end}}
+
+{{define "admission_test_fields"}}
+<div class="field-grid">
+<div class="field{{if .Errors.test_name}} has-error{{end}}">
+<label for="test_name-{{.ID}}">Nama tes</label>
+<input id="test_name-{{.ID}}" name="test_name" value="{{.Form.Name}}" maxlength="60" placeholder="mis. Tes tertulis, Wawancara" autocomplete="off" required>
+{{with .Errors.test_name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.weight}} has-error{{end}}">
+<label for="weight-{{.ID}}">Bobot (%)</label>
+<input id="weight-{{.ID}}" type="number" name="weight" value="{{.Form.Weight}}" min="1" max="100" required>
+{{with .Errors.weight}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.max_score}} has-error{{end}}">
+<label for="max_score-{{.ID}}">Nilai maksimal</label>
+<input id="max_score-{{.ID}}" type="number" name="max_score" value="{{if .Form.MaxScore}}{{.Form.MaxScore}}{{else}}100{{end}}" min="1" max="1000">
+{{with .Errors.max_score}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.scheduled_at}} has-error{{end}}">
+<label for="scheduled_at-{{.ID}}">Jadwal <span class="muted">(opsional, WIB)</span></label>
+<input id="scheduled_at-{{.ID}}" type="datetime-local" name="scheduled_at" value="{{.Form.ScheduledAt}}">
+{{with .Errors.scheduled_at}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.location}} has-error{{end}}">
+<label for="location-{{.ID}}">Lokasi <span class="muted">(opsional)</span></label>
+<input id="location-{{.ID}}" name="location" value="{{.Form.Location}}" maxlength="120" autocomplete="off">
+{{with .Errors.location}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+{{end}}

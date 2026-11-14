@@ -1,0 +1,56 @@
+{{define "title"}}Hasil Seleksi · {{.Period.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran/periode/{{.Period.ID}}">← {{.Period.Name}}</a></p>
+<div class="page-header">
+<div>
+<h1>Peringkat dan hasil</h1>
+<p class="muted">Pendaftar diverifikasi dan cadangan, per jalur. Usulan otomatis mengikuti sisa kuota; ubah per baris sebelum menetapkan.</p>
+</div>
+<a class="btn btn-ghost" href="/pendaftaran/periode/{{.Period.ID}}/hasil.xlsx">Unduh Excel</a>
+</div>
+{{template "flash" .}}
+{{if and .HasTestTrack (not .TestsOK)}}<div class="alert alert-error" role="alert">Jumlah bobot tes belum 100%. Pendaftar di jalur dengan tes belum bisa diperingkat. <a href="/pendaftaran/periode/{{.Period.ID}}/tes">Atur tes</a>.</div>{{end}}
+
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/hasil" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+{{range .Tracks}}
+<section class="card card-flush">
+<div class="card-head"><div>
+<h2>Jalur {{.Track.Name}}</h2>
+<p class="muted">{{if .Track.Quota}}Kuota {{.Track.Quota}} · sudah diterima {{.Accepted}} · sisa {{.Remaining}}{{else}}Tanpa batas kuota · sudah diterima {{.Accepted}}{{end}}{{if .Track.UsesTest}} · urut skor tes{{else}} · urut waktu kirim{{end}}</p>
+</div></div>
+{{if .Rows}}
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Nomor</th><th>Nama</th>{{if .Track.UsesTest}}<th>Skor</th>{{end}}<th>Status</th><th>Hasil</th></tr></thead>
+<tbody>
+{{$test := .Track.UsesTest}}
+{{range .Rows}}
+<tr>
+<td>{{if .Rank}}{{.Rank}}{{else}}–{{end}}</td>
+<td class="nowrap"><a href="/pendaftaran/{{.ApplicantID}}">{{.RegistrationNumber}}</a></td>
+<td>{{.FullName}}</td>
+{{if $test}}<td class="nowrap">{{printf "%.2f" .Score}}{{if not .Complete}} <span class="badge badge-warning">Belum lengkap</span>{{end}}</td>{{end}}
+<td>{{template "applicant_status" .Status}}</td>
+<td>
+{{if $.CanEdit}}
+<select name="result_{{.ApplicantID}}" aria-label="Hasil {{.FullName}}">
+<option value=""{{if eq .Proposal ""}} selected{{end}}>Tetap</option>
+<option value="diterima"{{if eq .Proposal "diterima"}} selected{{end}}>Diterima</option>
+<option value="cadangan"{{if eq .Proposal "cadangan"}} selected{{end}}>Cadangan</option>
+<option value="ditolak">Ditolak</option>
+</select>
+{{else}}{{if .Proposal}}Usulan: {{.Proposal}}{{else}}–{{end}}{{end}}
+</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}<div class="empty-state"><p class="muted">Belum ada pendaftar diverifikasi di jalur ini.</p></div>{{end}}
+</section>
+{{end}}
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Tetapkan hasil</button></div>{{end}}
+</form>
+{{end}}

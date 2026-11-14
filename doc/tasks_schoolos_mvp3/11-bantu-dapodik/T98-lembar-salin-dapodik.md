@@ -36,3 +36,6 @@ Dapodik 2027 tidak punya import Excel untuk siswa. Penambahan siswa lewat form "
 
 ## Catatan
 - Pengisian otomatis ke Dapodik (extension atau autofill) di luar cakupan.
+
+## Catatan implementasi
+Urutan field diambil dari form `Admin.view._components.form.PesertaDidik`, `RegistrasiPesertaDidik`, dan `PesertaDidikLongitudinal` di `classic/app.js` Dapodik 2027 (`internal/dapodik/layout.go`, diuji urutannya). Semua halaman bantu Dapodik di bawah `/dapodik`.

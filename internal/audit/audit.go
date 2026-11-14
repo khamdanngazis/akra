@@ -46,6 +46,20 @@ var sensitiveKeys = []string{"password", "token", "secret", "api_key", "apikey"}
 // tetap boleh.
 var addressKeys = []string{"address", "alamat"}
 
+// identityKeys adalah nama kunci nomor identitas (NIK, No KK, no akta) yang
+// ditolak jika nilainya teks (T85b). Dicocokkan utuh atau sebagai awalan/
+// akhiran "_", agar kata seperti "teknik" tidak ikut tertolak.
+var identityKeys = []string{"nik", "kk", "kk_number", "no_kk", "birth_cert", "birth_cert_number", "no_akta", "kitas"}
+
+func isIdentityKey(lk string) bool {
+	for _, k := range identityKeys {
+		if lk == k || strings.HasPrefix(lk, k+"_") || strings.HasSuffix(lk, "_"+k) {
+			return true
+		}
+	}
+	return false
+}
+
 // Record menyimpan e di dalam transaksi tx.
 func Record(ctx context.Context, tx pgx.Tx, e Entry) error {
 	if err := validate(e); err != nil {
@@ -123,6 +137,9 @@ func findSensitiveKey(v any) (string, bool) {
 				}
 			}
 			if _, isText := child.(string); isText {
+				if isIdentityKey(lk) {
+					return k, true
+				}
 				for _, s := range addressKeys {
 					if strings.Contains(lk, s) {
 						return k, true

@@ -35,6 +35,10 @@ type Receipt struct {
 	BankAccount   string
 	Reference     string
 	Treasurer     string // nama pencatat pembayaran
+	// Applicant diisi untuk kuitansi biaya formulir pendaftaran (T94):
+	// baris "Siswa" diganti "Calon siswa" dengan teks ini, dan Period boleh
+	// kosong.
+	Applicant string
 	// VoidReason diisi jika pembayaran dibatalkan (pembatalan disetujui).
 	Voided     bool
 	VoidReason string
@@ -141,10 +145,16 @@ func WriteReceiptPDF(w io.Writer, r Receipt, compress bool) error {
 			method += " (ref. " + r.Reference + ")"
 		}
 	}
+	subject := [2]string{"Siswa", fmt.Sprintf("%s (NIS %s), kelas %s, %s", r.StudentName, r.NIS, r.ClassName, r.YearName)}
+	purpose := r.FeeNames + " " + billing.PeriodLabel(r.Period)
+	if r.Applicant != "" {
+		subject = [2]string{"Calon siswa", r.Applicant}
+		purpose = r.FeeNames
+	}
 	rows := [][2]string{
 		{"Telah terima dari", "Orang tua/wali " + r.StudentName},
-		{"Siswa", fmt.Sprintf("%s (NIS %s), kelas %s, %s", r.StudentName, r.NIS, r.ClassName, r.YearName)},
-		{"Untuk pembayaran", r.FeeNames + " " + billing.PeriodLabel(r.Period)},
+		subject,
+		{"Untuk pembayaran", purpose},
 		{"Tanggal bayar", clock.FormatDateID(r.PaidOn)},
 		{"Metode", method},
 	}

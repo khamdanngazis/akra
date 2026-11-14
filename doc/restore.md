@@ -43,6 +43,27 @@ restore.sh [-key ...]                # restore lalu compare (jika DATABASE_URL d
 
 `restore` menolak database tujuan yang sudah berisi tabel, dan memakai `--single-transaction`. Jika gagal di tengah, database tujuan tetap kosong.
 
+## Kunci enkripsi data pribadi
+
+Sejak T85b, NIK, No KK, no akta, dan nomor sejenis disimpan terenkripsi (AES-256-GCM) di database. Kuncinya **tidak** ada di database maupun di backup:
+
+| Variabel | Isi |
+|---|---|
+| `PII_ENC_KEYS` | kunci enkripsi berversi, `1:<base64>` atau `1:<lama>,2:<baru>` saat rotasi |
+| `PII_INDEX_KEY` | kunci blind index (pencarian dan cek NIK ganda), tidak dirotasi |
+
+- **Simpan kedua kunci di dua tempat terpisah dari backup**: variabel service `akra` di Railway dan password manager tim. Backup tanpa kunci bisa dipulihkan, tetapi kolom data pribadi tidak bisa dibaca dan aplikasi menampilkan error saat membukanya.
+- Kunci yang sama harus dipakai di database hasil pemulihan. Jangan membuat kunci baru saat memulihkan.
+- Jika `PII_INDEX_KEY` hilang tetapi `PII_ENC_KEYS` masih ada, data tetap terbaca; blind index harus dihitung ulang dari data yang didekripsi.
+- Jika `PII_ENC_KEYS` hilang, data pribadi yang terenkripsi **tidak bisa dipulihkan**. Data lain (siswa, keuangan, nilai) tidak terdampak.
+
+Membuat kunci: `openssl rand -base64 32` (jalankan dua kali; kunci indeks harus berbeda dari kunci enkripsi).
+
+Rotasi kunci (mis. setelah kunci mungkin bocor):
+1. Tambah versi baru di `PII_ENC_KEYS` (`1:<lama>,2:<baru>`), deploy. Data baru memakai versi 2; data lama tetap terbaca.
+2. Jalankan `akra-rotate-pii-key` di service `akra` (memakai `DATABASE_URL`, `PII_ENC_KEYS`, `PII_INDEX_KEY` yang sama). Aman diulang.
+3. Setelah selesai, hapus versi lama dari `PII_ENC_KEYS` dan deploy ulang. Backup yang dibuat sebelum rotasi masih butuh kunci lama; simpan kunci lama di password manager sampai backup tersebut melewati masa retensi (14 hari).
+
 ## Menyiapkan backup harian di Railway
 
 Satu kali, di project `natural-compassion`:
@@ -115,6 +136,7 @@ Perkiraan waktu total: sekitar 30 menit, sebagian besar untuk langkah manual di 
    - Jangan memulihkan ke database lama yang rusak; `restore` menolak database yang tidak kosong.
 4. **Sambungkan aplikasi.**
    - Ubah `DATABASE_URL` service `akra` ke database baru: `${{<nama Postgres baru>.DATABASE_URL}}`.
+   - **Jangan** mengubah `PII_ENC_KEYS` dan `PII_INDEX_KEY`. Jika service `akra` dibuat ulang, isi dengan kunci yang sama dari password manager (lihat [Kunci enkripsi data pribadi](#kunci-enkripsi-data-pribadi)).
    - Ubah juga `DATABASE_URL` service `akra-backup`.
    - Deploy. Pre-deploy `akra-migrate up` akan menjalankan migrasi yang belum ada di backup.
 5. **Verifikasi.**

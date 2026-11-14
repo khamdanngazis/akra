@@ -70,6 +70,18 @@ type School struct {
 	BulkRunID               string
 	ReportJobID             string
 	ImportBatchID           string
+	// AdmissionPeriodID adalah periode pendaftaran (buka) dengan satu jalur
+	// AdmissionTrackID (T89).
+	AdmissionPeriodID string
+	AdmissionTrackID  string
+	// ApplicantID adalah pendaftar berstatus dikirim di periode itu, dengan
+	// satu dokumen ApplicantDocID (T93).
+	ApplicantID    string
+	ApplicantDocID string
+	// AdmissionTestID adalah tes seleksi di AdmissionPeriodID (T93a).
+	AdmissionTestID string
+	// ApplicantFeePaymentID adalah pembayaran biaya formulir ApplicantID (T94).
+	ApplicantFeePaymentID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -166,6 +178,24 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
 	s.SlotID = one(`INSERT INTO schedule_slots (school_id, academic_year_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time)
 		VALUES ($1, $2, $3, $4, $5, 1, '07:00', '07:40') RETURNING id`, s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
+	// Berstatus buka agar kontrol "hapus periode" tidak menghapusnya.
+	s.AdmissionPeriodID = one(`INSERT INTO admission_periods (school_id, academic_year_id, name, target_grade, opens_on, closes_on, status, created_by)
+		VALUES ($1, $2, $3, 1, '2026-12-01', '2027-02-28', 'buka', $4) RETURNING id`, s.ID, s.YearID, "Gelombang "+marker, s.Admin.ID)
+	s.AdmissionTrackID = one(`INSERT INTO admission_tracks (school_id, period_id, name, quota) VALUES ($1, $2, $3, 30) RETURNING id`,
+		s.ID, s.AdmissionPeriodID, "Reguler "+marker)
+	s.AdmissionTestID = one(`INSERT INTO admission_tests (school_id, period_id, name, weight) VALUES ($1, $2, $3, 100) RETURNING id`,
+		s.ID, s.AdmissionPeriodID, "Tes "+marker)
+	s.ApplicantID = one(`INSERT INTO applicants (school_id, period_id, track_id, registration_number, status, full_name, gender, birth_date,
+		contact_phone, consent_at, submitted_at) VALUES ($1, $2, $3, $4, 'dikirim', $5, 'L', '2019-05-17', '+6281200000009', now(), now()) RETURNING id`,
+		s.ID, s.AdmissionPeriodID, s.AdmissionTrackID, "SPMB-"+marker, "Pendaftar "+marker)
+	// Satu nilai agar kontrol "hapus tes" ditolak (409) dan tes tetap ada.
+	exec(`INSERT INTO applicant_test_scores (school_id, applicant_id, test_id, score, recorded_by) VALUES ($1, $2, $3, 80, $4)`,
+		s.ID, s.ApplicantID, s.AdmissionTestID, s.Admin.ID)
+	exec(`UPDATE applicants SET fee_amount = 150000 WHERE id = $1`, s.ApplicantID)
+	s.ApplicantFeePaymentID = one(`INSERT INTO applicant_fee_payments (school_id, applicant_id, amount, paid_on, method, receipt_number, recorded_by)
+		VALUES ($1, $2, 150000, '2026-11-01', 'tunai', $3, $4) RETURNING id`, s.ID, s.ApplicantID, "KW/2026/F"+marker, s.Treasurer.ID)
+	s.ApplicantDocID = one(`INSERT INTO applicant_documents (school_id, applicant_id, doc_type, storage_key, content_type, size_bytes, sha256)
+		VALUES ($1, $2, 'kk', $3, 'image/png', 10, '\x00') RETURNING id`, s.ID, s.ApplicantID, "schools/"+s.ID+"/applicants/fixture.enc")
 	s.GradeComponentID = one(`INSERT INTO grade_components (school_id, academic_year_id, subject_id, name, weight_percent) VALUES ($1, $2, $3, 'Ujian', 100) RETURNING id`,
 		s.ID, s.YearID, s.SubjectID)
 	exec(`INSERT INTO grades (school_id, academic_year_id, enrollment_id, component_id, score, recorded_by) VALUES ($1, $2, $3, $4, 75, $5)`,

@@ -1,0 +1,54 @@
+{{define "title"}}Tes Seleksi · {{.Period.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran/periode/{{.Period.ID}}">← {{.Period.Name}}</a></p>
+<div class="page-header">
+<div>
+<h1>Tes seleksi</h1>
+<p class="muted">{{.Period.Name}} · Skor akhir = jumlah (nilai ÷ nilai maksimal × bobot). Jumlah bobot harus 100%.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{if not .UsesTest}}<div class="alert" role="status">Belum ada jalur yang memakai tes. Centang "memakai tes seleksi" pada jalur di halaman periode.</div>{{end}}
+{{if .Tests}}{{if ne .Total 100}}<div class="alert alert-error" role="alert">Jumlah bobot saat ini {{.Total}}%. Skor akhir baru bisa dihitung jika jumlahnya 100%.</div>{{end}}{{end}}
+
+<section class="card">
+<h2>Daftar tes</h2>
+{{if .Tests}}
+<ul class="guardian-list">
+{{range .Tests}}
+<li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
+<div x-show="!editing">
+<strong>{{.Name}}</strong> <span class="muted">· Bobot {{.Weight}}% · Nilai maks {{.MaxScore}}{{with .Schedule}} · {{.}}{{end}}{{with .Location}} · {{.}}{{end}}</span>
+<div class="action-row">
+<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if $.CanEdit}}Isi nilai{{else}}Lihat nilai{{end}}</a>
+{{if $.CanEdit}}
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
+{{end}}
+</div>
+</div>
+{{if $.CanEdit}}
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}" class="stack" x-show="editing" x-cloak novalidate>
+{{ csrfField }}
+{{template "admission_test_fields" dict "Form" .Form "Errors" .Errors "ID" .ID}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Simpan tes</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button>
+</div>
+</form>
+{{end}}
+</li>
+{{end}}
+</ul>
+{{else}}<p class="muted">Belum ada tes.</p>{{end}}
+{{if .CanEdit}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/tes" class="stack" novalidate>
+{{ csrfField }}
+<h3>Tambah tes</h3>
+{{template "admission_test_fields" dict "Form" .NewTest "Errors" .NewErrors "ID" "baru"}}
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Tambah tes</button></div>
+</form>
+{{end}}
+</section>
+{{end}}

@@ -222,7 +222,7 @@ func TestAdminAndPrincipalHome(t *testing.T) {
 		t.Error("admin summary: 3 active students and the active year")
 	}
 	sum, err := SchoolSummaryFor(ctx, f.tx, f.schoolA)
-	if err != nil || sum != (AdminSummary{ActiveStudents: 3, Teachers: 1, Classes: 2, Announcements: 1}) {
+	if err != nil || sum != (AdminSummary{ActiveStudents: 3, Teachers: 1, Classes: 2, Announcements: 1, DapodikIncomplete: 3}) {
 		t.Errorf("school summary = %+v, %v", sum, err)
 	}
 	ps, err := PrincipalFor(ctx, f.tx, f.schoolA, mustYear(t, f), f.today)

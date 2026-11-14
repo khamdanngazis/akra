@@ -1,0 +1,58 @@
+{{define "title"}}Impor dari Dapodik{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
+<div class="page-header">
+<div>
+<h1>Impor dari ekspor Dapodik</h1>
+<p class="muted">Unggah file Excel "Daftar Peserta Didik" yang diunduh dari Dapodik, apa adanya. Siswa dicocokkan lewat NIPD (NIS), lalu NISN, lalu NIK.</p>
+</div>
+</div>
+{{template "flash" .}}
+
+{{with .Result}}
+<section class="card">
+<h2>Impor selesai</h2>
+<p>{{.Created}} siswa baru dibuat, {{.Updated}} siswa diperbarui.</p>
+{{if .Failed}}<p class="field-error">{{len .Failed}} baris dilewati:</p><ul>{{range .Failed}}<li>{{.}}</li>{{end}}</ul>{{end}}
+<p><a class="btn btn-ghost" href="/dapodik">Kembali ke Dapodik</a></p>
+</section>
+{{else}}{{with .Plan}}
+<section class="card">
+<h2>Pratinjau</h2>
+<p>{{.Matched}} siswa cocok dengan data AKRA, {{.New}} siswa baru, {{.WithError}} baris bermasalah (dilewati).</p>
+<p class="hint">Field yang masih kosong di AKRA langsung diisi. Field yang berbeda hanya diganti jika dicentang. Data orang tua yang sudah ada tidak ditimpa.</p>
+</section>
+<form method="post" action="/dapodik/impor/terapkan" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+{{range .Rows}}
+{{$line := .Line}}
+<section class="card">
+<h3>Baris {{.Line}} · {{.Name}} <span class="muted">NIPD {{.NIS}}</span>
+{{if .Errors}}<span class="badge badge-danger">Dilewati</span>{{else if .StudentID}}<span class="badge badge-info">Cocok lewat {{.MatchBy}}</span>{{else}}<span class="badge badge-success">Siswa baru</span>{{end}}</h3>
+{{if .Errors}}<ul class="field-error">{{range .Errors}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{if .Fills}}<p class="muted small">Diisi: {{range $i, $c := .Fills}}{{if $i}}, {{end}}{{$c.Label}}{{end}}</p>{{end}}
+{{if .Conflicts}}
+<div class="table-wrap"><table>
+<thead><tr><th>Ganti?</th><th>Field</th><th>Di AKRA</th><th>Dari Dapodik</th></tr></thead>
+<tbody>{{range .Conflicts}}<tr><td><input type="checkbox" name="overwrite" value="{{$line}}:{{.Key}}" aria-label="Ganti {{.Label}}"></td><td>{{.Label}}</td><td>{{.Current}}</td><td>{{.Incoming}}</td></tr>{{end}}</tbody>
+</table></div>
+{{end}}
+</section>
+{{end}}
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Terapkan impor</button><a class="btn btn-ghost" href="/dapodik/impor">Batal</a></div>
+</form>
+{{else}}
+<section class="card form-card">
+<form method="post" action="/dapodik/impor" enctype="multipart/form-data" class="stack">
+{{ csrfField }}
+<div class="field">
+<label for="file">File ekspor Daftar Peserta Didik (.xlsx)</label>
+<input id="file" type="file" name="file" accept=".xlsx" required>
+<p class="hint">Tidak perlu mengedit file: baris judul dan header dua baris dikenali otomatis. File disimpan terenkripsi sementara sampai impor diterapkan.</p>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Periksa file</button></div>
+</form>
+</section>
+{{end}}{{end}}
+{{end}}

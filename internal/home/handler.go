@@ -23,6 +23,7 @@ import (
 	"akra/internal/platform/page"
 	"akra/internal/reports"
 	"akra/internal/school"
+	"akra/internal/students"
 )
 
 // Handler melayani halaman beranda.
@@ -60,6 +61,9 @@ type AdminSummary struct {
 	Teachers       int
 	Classes        int // kelas tahun ajaran aktif
 	Announcements  int // pengumuman tahun ajaran aktif
+	// DapodikIncomplete adalah siswa aktif yang data wajib Dapodik-nya
+	// belum lengkap (T88/T103).
+	DapodikIncomplete int
 }
 
 // KPI adalah satu kartu ringkasan di beranda: satu angka utama, label, dan
@@ -202,6 +206,7 @@ func kpis(v *view) []KPI {
 			KPI{Icon: "teacher", Value: strconv.Itoa(a.Teachers), Label: "Guru", Hint: "Akun guru aktif", Tone: "teal"},
 			KPI{Icon: "school", Value: strconv.Itoa(a.Classes), Label: "Kelas", Hint: year, Tone: "navy", Href: "/kelas"},
 			KPI{Icon: "megaphone", Value: strconv.Itoa(a.Announcements), Label: "Pengumuman", Hint: "Di tahun ajaran aktif", Tone: "amber", Href: "/pengumuman"},
+			KPI{Icon: "spreadsheet", Value: strconv.Itoa(a.DapodikIncomplete), Label: "Belum siap Dapodik", Hint: "Siswa aktif dengan data wajib kosong", Tone: "amber", Href: "/dapodik/cek"},
 		)
 	}
 	if t := v.Treasurer; t != nil {
@@ -238,7 +243,10 @@ func SchoolSummaryFor(ctx context.Context, q database.DBTX, schoolID string) (Ad
 		(SELECT count(*) FROM classes c JOIN academic_years y ON y.school_id = c.school_id AND y.id = c.academic_year_id
 		  WHERE c.school_id = $1 AND y.is_active),
 		(SELECT count(*) FROM announcements a JOIN academic_years y ON y.school_id = a.school_id AND y.id = a.academic_year_id
-		  WHERE a.school_id = $1 AND y.is_active)`, schoolID).Scan(&s.ActiveStudents, &s.Teachers, &s.Classes, &s.Announcements)
+		  WHERE a.school_id = $1 AND y.is_active),
+		(SELECT count(*) FROM students s LEFT JOIN student_profiles p ON p.school_id = s.school_id AND p.student_id = s.id
+		  WHERE s.school_id = $1 AND s.status = 'aktif' AND `+students.ReadinessPercentSQL()+` < 100)`, schoolID).
+		Scan(&s.ActiveStudents, &s.Teachers, &s.Classes, &s.Announcements, &s.DapodikIncomplete)
 	if err != nil {
 		return AdminSummary{}, fmt.Errorf("home: school summary: %w", err)
 	}

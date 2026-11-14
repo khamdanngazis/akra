@@ -1,0 +1,81 @@
+{{define "title"}}Biaya Pendaftaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Biaya Pendaftaran</h1>
+<p class="muted">Biaya formulir pendaftar yang sudah mengirim formulir. Pembayaran harus lunas penuh; kuitansi memakai nomor seri yang sama dengan pembayaran siswa.</p>
+</div>
+</div>
+{{template "flash" .}}
+<div class="action-row">
+<a class="btn {{if .UnpaidOnly}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/pendaftaran/biaya">Belum lunas</a>
+<a class="btn {{if not .UnpaidOnly}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/pendaftaran/biaya?status=semua">Semua</a>
+</div>
+{{if .Rows}}
+<ul class="pay-list">
+{{range .Rows}}
+<li class="card" x-data="{ open: {{if eq $.FailedID .ApplicantID}}true{{else}}false{{end}} }">
+<div class="page-header">
+<div>
+<strong>{{.FullName}}</strong> <span class="muted">· {{.RegistrationNumber}} · {{.PeriodName}}</span>
+<p class="muted">{{.AmountText}} · {{template "applicant_status" .Status}}</p>
+</div>
+<div>
+{{if .Payment}}
+<span class="badge badge-success">Lunas {{.PaidOnText}}</span>
+<a class="btn btn-ghost btn-sm" href="/pendaftaran/{{.ApplicantID}}/biaya/{{.Payment.ID}}/kuitansi">Kuitansi {{.Payment.ReceiptNumber}}</a>
+{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}
+{{if $.CanRecord}}<button type="button" class="btn btn-ghost btn-sm" x-show="!open" @click="open = true">{{if .Payment}}Batalkan{{else}}Catat pembayaran{{end}}</button>{{end}}
+</div>
+</div>
+{{if $.CanRecord}}
+{{if .Payment}}
+<form method="post" action="/pendaftaran/{{.ApplicantID}}/biaya/batal" class="stack" x-show="open" x-cloak novalidate>
+{{ csrfField }}
+<div class="field{{if and (eq $.FailedID .ApplicantID) $.Errors.void_reason}} has-error{{end}}">
+<label for="void-{{.ApplicantID}}">Alasan pembatalan</label>
+<input id="void-{{.ApplicantID}}" name="void_reason" maxlength="500" required>
+{{if eq $.FailedID .ApplicantID}}{{with $.Errors.void_reason}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Batalkan pembayaran</button><button type="button" class="btn btn-ghost btn-sm" @click="open = false">Batal</button></div>
+</form>
+{{else}}
+{{$failed := eq $.FailedID .ApplicantID}}
+<form method="post" action="/pendaftaran/{{.ApplicantID}}/biaya" class="stack" x-show="open" x-cloak novalidate x-data="{ method: '{{if $failed}}{{$.Form.Method}}{{else}}tunai{{end}}' }">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field{{if and $failed $.Errors.paid_on}} has-error{{end}}">
+<label for="paid-{{.ApplicantID}}">Tanggal bayar</label>
+<input id="paid-{{.ApplicantID}}" type="date" name="paid_on" value="{{if $failed}}{{$.Form.PaidOn}}{{else}}{{$.Today}}{{end}}" required>
+{{if $failed}}{{with $.Errors.paid_on}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+<div class="field{{if and $failed $.Errors.method}} has-error{{end}}">
+<label for="method-{{.ApplicantID}}">Metode</label>
+<select id="method-{{.ApplicantID}}" name="method" x-model="method"><option value="tunai">Tunai</option><option value="transfer">Transfer</option></select>
+{{if $failed}}{{with $.Errors.method}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+</div>
+<div class="field-grid" x-show="method === 'transfer'">
+<div class="field{{if and $failed $.Errors.bank_account}} has-error{{end}}">
+<label for="bank-{{.ApplicantID}}">Rekening tujuan</label>
+<input id="bank-{{.ApplicantID}}" name="bank_account" value="{{if $failed}}{{$.Form.BankAccount}}{{end}}" maxlength="100">
+{{if $failed}}{{with $.Errors.bank_account}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+<div class="field{{if and $failed $.Errors.reference}} has-error{{end}}">
+<label for="ref-{{.ApplicantID}}">Referensi <span class="muted">(opsional)</span></label>
+<input id="ref-{{.ApplicantID}}" name="reference" value="{{if $failed}}{{$.Form.Reference}}{{end}}" maxlength="100">
+{{if $failed}}{{with $.Errors.reference}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan pembayaran {{.AmountText}}</button><button type="button" class="btn btn-ghost btn-sm" @click="open = false">Batal</button></div>
+</form>
+{{end}}
+{{end}}
+</li>
+{{end}}
+</ul>
+{{else}}
+<section class="card empty-state"><p>{{if .UnpaidOnly}}Tidak ada biaya formulir yang belum lunas.{{else}}Belum ada pendaftar dengan biaya formulir.{{end}}</p></section>
+{{end}}
+{{end}}

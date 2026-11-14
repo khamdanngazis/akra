@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"akra/internal/platform/pii"
 )
 
 // Nilai yang valid untuk APP_ENV.
@@ -56,6 +58,12 @@ type Config struct {
 	// WebDir, jika diisi, membuat template dan aset dibaca dari disk (mis.
 	// "web") alih-alih dari binary. Hanya untuk development.
 	WebDir string
+
+	// Kunci enkripsi data pribadi (T85b). PIIEncKeys berformat
+	// "versi:base64,…" dan PIIIndexKey base64 32 byte. Wajib di staging dan
+	// production; di development boleh kosong dan memakai pii.DevKeyring.
+	PIIEncKeys  string
+	PIIIndexKey string
 
 	// Parameter biaya argon2id untuk hash password baru. Default mengikuti
 	// batas minimum OWASP (19 MiB, 2 iterasi, 1 lane).
@@ -177,11 +185,31 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("config: invalid STORAGE_DRIVER %q (allowed: local, r2)", cfg.StorageDriver)
 	}
 
+	cfg.PIIEncKeys = os.Getenv("PII_ENC_KEYS")
+	cfg.PIIIndexKey = os.Getenv("PII_INDEX_KEY")
+	if cfg.PIIEncKeys == "" && cfg.PIIIndexKey == "" {
+		if cfg.AppEnv != EnvDevelopment {
+			return Config{}, fmt.Errorf("config: environment variables PII_ENC_KEYS and PII_INDEX_KEY are required when APP_ENV=%s", cfg.AppEnv)
+		}
+	} else if _, err := pii.ParseKeyring(cfg.PIIEncKeys, cfg.PIIIndexKey); err != nil {
+		return Config{}, fmt.Errorf("config: %w", err)
+	}
+
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {
 		return Config{}, fmt.Errorf("config: WEB_DIR is only allowed when APP_ENV=development")
 	}
 
 	return cfg, nil
+}
+
+// Keyring membuat Keyring dari PIIEncKeys dan PIIIndexKey, atau kunci
+// development jika keduanya kosong (hanya mungkin di development, karena
+// Load menolak kondisi itu di lingkungan lain).
+func (c Config) Keyring() (*pii.Keyring, error) {
+	if c.PIIEncKeys == "" && c.PIIIndexKey == "" {
+		return pii.DevKeyring(), nil
+	}
+	return pii.ParseKeyring(c.PIIEncKeys, c.PIIIndexKey)
 }
 
 // positiveInt membaca key sebagai bilangan bulat positif yang muat dalam

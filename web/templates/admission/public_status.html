@@ -1,0 +1,52 @@
+{{define "title"}}Status Pendaftaran{{end}}
+{{define "content"}}
+{{template "admission_public_head" .}}
+{{template "flash" .}}
+{{if .Found}}
+<section class="card">
+<h2>{{.Applicant.FullName}}</h2>
+<p class="muted">No. {{.Applicant.RegistrationNumber}} · {{.Period}} · Jalur {{.Track}}</p>
+<p>{{template "applicant_status" .Applicant.Status}}</p>
+<p>{{.Explain}}</p>
+{{with .Note}}<div class="alert" role="status"><strong>Catatan dari sekolah:</strong> {{.}}</div>{{end}}
+{{if eq .Applicant.Status "perlu_perbaikan"}}<p><a class="btn btn-primary" href="/s/{{.School.Code}}/daftar/lanjut">Perbaiki formulir</a></p>{{end}}
+{{if .MissingDocs}}<p class="field-error">Dokumen belum diunggah: {{range $i, $d := .MissingDocs}}{{if $i}}, {{end}}{{$d}}{{end}}</p>{{end}}
+</section>
+{{if .Tests}}
+<section class="card">
+<h2>Jadwal tes</h2>
+<ul>{{range .Tests}}<li>{{.}}</li>{{end}}</ul>
+</section>
+{{end}}
+{{with .FeeAmount}}
+<section class="card">
+<h2>Biaya formulir</h2>
+<p>{{.}} · {{if $.FeePaid}}<span class="badge badge-success">Lunas</span>{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}</p>
+{{if not $.FeePaid}}<p class="hint">Lakukan pembayaran sesuai petunjuk sekolah.</p>{{end}}
+</section>
+{{end}}
+<div class="action-row">
+<a class="btn btn-ghost" href="/s/{{.School.Code}}/status/bukti.pdf">Unduh bukti pendaftaran</a>
+<form method="post" action="/s/{{.School.Code}}/status/keluar">{{ csrfField }}<button type="submit" class="btn btn-ghost">Selesai</button></form>
+</div>
+{{else}}
+<section class="card form-card">
+<h2>Cek status pendaftaran</h2>
+<form method="post" action="/s/{{.School.Code}}/status" class="stack" novalidate>
+{{ csrfField }}
+<div class="field">
+<label for="number">Nomor pendaftaran</label>
+<input id="number" name="number" value="{{.Number}}" placeholder="SPMB-2027-0001" autocomplete="off" autocapitalize="characters" required>
+</div>
+<div class="field">
+<label for="birth_date">Tanggal lahir calon siswa</label>
+<input id="birth_date" type="date" name="birth_date" value="{{.BirthDate}}" required>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary">Cek status</button>
+<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar">Halaman pendaftaran</a>
+</div>
+</form>
+</section>
+{{end}}
+{{end}}

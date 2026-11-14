@@ -22,6 +22,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/database"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
 	"akra/internal/testutil"
@@ -105,7 +106,7 @@ func newTenantApp(t *testing.T) (http.Handler, pgx.Tx, *testutil.School, *testut
 	app, err := newApp(appDeps{
 		db: tx, pinger: pool, sessions: auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger),
 		render: rd, static: mustSub(t, "static"), mailer: &captureMailer{}, hasher: hasher,
-		baseURL: "https://akra.test", logger: logger, store: store,
+		baseURL: "https://akra.test", logger: logger, store: store, pii: pii.DevKeyring(),
 	})
 	if err != nil {
 		t.Fatal(err)

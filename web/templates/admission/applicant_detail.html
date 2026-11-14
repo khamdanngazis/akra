@@ -1,0 +1,82 @@
+{{define "title"}}{{.Applicant.FullName}} · Pendaftar{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+<div class="page-header">
+<div>
+<h1>{{.Applicant.FullName}}</h1>
+<p class="muted">{{if .Applicant.RegistrationNumber}}{{.Applicant.RegistrationNumber}} · {{end}}{{.Period.Name}} · Jalur {{.Track.Name}} · {{template "applicant_status" .Applicant.Status}}</p>
+</div>
+<div class="action-row">
+{{if .Applicant.RegistrationNumber}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/bukti.pdf">Bukti pendaftaran</a>{{end}}
+{{if and .CanEdit .Applicant.Editable}}<a class="btn btn-ghost" href="/pendaftaran/{{.Applicant.ID}}/isi/calon">Ubah isian</a>{{end}}
+</div>
+</div>
+
+{{template "flash" .}}
+{{with .ResumeCode}}
+<div class="alert" role="status">Kode lanjut baru untuk orang tua: <strong>{{.}}</strong>. Berikan kode ini bersama nomor HP pendaftar agar mereka bisa memperbaiki formulir. Kode hanya ditampilkan sekali.</div>
+{{end}}
+
+<div class="detail-grid">
+<div class="stack">
+{{range .Sections}}
+<section class="card">
+<h2>{{.Title}}</h2>
+<dl class="data-list">
+{{range .Rows}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>{{end}}
+</dl>
+</section>
+{{end}}
+</div>
+
+<div class="stack">
+{{if and .CanEdit .Next}}
+<section class="card">
+<h2>Tindak lanjut</h2>
+<form method="post" action="/pendaftaran/{{.Applicant.ID}}/status" class="stack" novalidate>
+{{ csrfField }}
+<div class="field{{if .Errors.note}} has-error{{end}}">
+<label for="note">Catatan <span class="muted">(wajib untuk perlu perbaikan)</span></label>
+<textarea id="note" name="note" maxlength="1000">{{.Note}}</textarea>
+{{with .Errors.note}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Catatan perbaikan terlihat oleh orang tua di halaman status pendaftaran.</p>
+</div>
+<div class="action-row">
+{{range .Next}}<button type="submit" name="status" value="{{.Value}}" class="btn {{if eq .Value "diverifikasi" "diterima"}}btn-primary{{else}}btn-ghost{{end}} btn-sm">{{.Label}}</button>{{end}}
+</div>
+</form>
+</section>
+{{end}}
+
+{{with .FeeAmount}}
+<section class="card">
+<h2>Biaya formulir</h2>
+<p>{{.}} · {{if $.FeePaid}}<span class="badge badge-success">Lunas</span>{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}{{if $.Period.FeeRequiredBeforeVerify}} <span class="muted small">(wajib lunas sebelum verifikasi)</span>{{end}}</p>
+{{range $.FeePayments}}<p class="muted small"><a href="/pendaftaran/{{$.Applicant.ID}}/biaya/{{.ID}}/kuitansi">Kuitansi {{.ReceiptNumber}}</a>{{if .VoidedAt}} · dibatalkan: {{.VoidReason}}{{end}}</p>{{end}}
+<p class="hint">Pembayaran dicatat bendahara di menu Biaya Pendaftaran.</p>
+</section>
+{{end}}
+
+<section class="card">
+<h2>Dokumen</h2>
+{{if .Documents}}
+<ul class="guardian-list">
+{{range .Documents}}<li><a href="/pendaftaran/{{$.Applicant.ID}}/dokumen/{{.ID}}" target="_blank" rel="noopener">{{.Label}}</a> <span class="muted small">· {{.ContentType}}</span></li>{{end}}
+</ul>
+{{else}}<p class="muted">Belum ada dokumen.</p>{{end}}
+{{if .MissingDocs}}<p class="field-error">Belum diunggah: {{range $i, $d := .MissingDocs}}{{if $i}}, {{end}}{{$d}}{{end}}</p>{{end}}
+<p class="hint">Setiap kali dokumen dibuka, tercatat di jejak audit.</p>
+</section>
+
+<section class="card">
+<h2>Riwayat</h2>
+{{if .Events}}
+<ul class="timeline">
+{{range .Events}}<li><strong>{{.ToLabel}}</strong> <span class="muted">· {{.At}} · {{if .ActorName}}{{.ActorName}}{{else}}Pendaftar{{end}}</span>{{with .Note}}<br>{{.}}{{end}}</li>{{end}}
+</ul>
+{{else}}<p class="muted">Belum ada riwayat.</p>{{end}}
+</section>
+</div>
+</div>
+{{end}}

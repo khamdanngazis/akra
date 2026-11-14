@@ -184,7 +184,8 @@ func scanSheet(r io.Reader, header func(cells []string) ([]int, error), headerTr
 	}
 	defer iter.Close()
 
-	var cols []int // cols[i] = indeks kolom sheet untuk kolom baku ke-i
+	var cols []int       // cols[i] = indeks kolom sheet untuk kolom baku ke-i
+	var pending []string // baris header terakhir (untuk deteksi sub-header)
 	var firstErr error
 	tries := 0
 	var data []rawRow
@@ -208,16 +209,41 @@ func scanSheet(r io.Reader, header func(cells []string) ([]int, error), headerTr
 			if isEmpty(cells) {
 				continue
 			}
+			// Header bergrup dua baris (ekspor Dapodik): coba gabungan baris
+			// sebelumnya dengan baris ini dulu.
+			if pending != nil {
+				if combined, ok := combineGroupHeader(pending, cells); ok {
+					if c, err := header(combined); err == nil {
+						cols, pending = c, nil
+						continue
+					}
+				}
+			}
 			if cols, err = header(cells); err != nil {
 				cols = nil
+				pending = cells
 				if firstErr == nil {
 					firstErr = err
 				}
 				if tries++; tries >= headerTries {
 					return "", nil, nil, firstErr
 				}
+				continue
 			}
+			pending = cells
 			continue
+		}
+		if pending != nil {
+			// Baris tepat sesudah header yang merupakan sub-header grup tidak
+			// ikut sebagai data.
+			if _, ok := combineGroupHeader(pending, cells); ok {
+				if c, err := header(mustCombine(pending, cells)); err == nil {
+					cols = c
+				}
+				pending = nil
+				continue
+			}
+			pending = nil
 		}
 		switch {
 		case isEmpty(cells):
@@ -261,9 +287,17 @@ func scanSheet(r io.Reader, header func(cells []string) ([]int, error), headerTr
 	return sheet, data, skipped, nil
 }
 
-// ReadHeader mengembalikan isi baris header (baris pertama yang berisi) di
-// sheet pertama, untuk membuat mapping dari file contoh (T81). Sel kosong di
-// tengah ikut (string kosong); sel kosong di akhir dibuang.
+// headerScanRows adalah jumlah baris berisi pertama yang diperiksa untuk
+// mencari baris header di file contoh (T81, T101).
+const headerScanRows = 20
+
+// ReadHeader mengembalikan isi baris header di sheet pertama, untuk membuat
+// mapping dari file contoh (T81). Header adalah baris dengan sel berisi
+// terbanyak di antara headerScanRows baris berisi pertama, sehingga baris
+// judul laporan (mis. "Daftar Peserta Didik" di ekspor Dapodik) dilewati.
+// Jika baris sesudahnya berisi sub-header di bawah sel gabungan, keduanya
+// digabung menjadi "Grup / Sub" (T101). Sel kosong di tengah ikut (string
+// kosong); sel kosong di akhir dibuang.
 func ReadHeader(r io.Reader) ([]string, error) {
 	f, sheet, err := openSheet(r)
 	if err != nil {
@@ -275,7 +309,8 @@ func ReadHeader(r io.Reader) ([]string, error) {
 		return nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
 	}
 	defer iter.Close()
-	for line := 1; iter.Next() && line <= maxSheetRows; line++ {
+	var rows [][]string
+	for line := 1; iter.Next() && line <= maxSheetRows && len(rows) < headerScanRows+1; line++ {
 		cells, err := iter.Columns(excelize.Options{RawCellValue: true})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrNotXLSX, err)
@@ -286,12 +321,156 @@ func ReadHeader(r io.Reader) ([]string, error) {
 		if isEmpty(cells) {
 			continue
 		}
-		for len(cells) > 0 && cells[len(cells)-1] == "" {
-			cells = cells[:len(cells)-1]
-		}
-		return cells, nil
+		rows = append(rows, cells)
 	}
-	return nil, ErrNoHeader
+	if len(rows) == 0 {
+		return nil, ErrNoHeader
+	}
+	best := 0
+	for i, r := range rows[:min(len(rows), headerScanRows)] {
+		if filled(r) > filled(rows[best]) {
+			best = i
+		}
+	}
+	cells := rows[best]
+	if best+1 < len(rows) {
+		if combined, ok := combineGroupHeader(cells, rows[best+1]); ok {
+			cells = combined
+		}
+	}
+	for len(cells) > 0 && cells[len(cells)-1] == "" {
+		cells = cells[:len(cells)-1]
+	}
+	return cells, nil
+}
+
+func mustCombine(header, next []string) []string {
+	out, _ := combineGroupHeader(header, next)
+	return out
+}
+
+// Table adalah isi sheet pertama: header (sudah digabung untuk header
+// bergrup) dan baris data sesudahnya.
+type Table struct {
+	Header []string
+	Rows   [][]string // sudah di-trim; panjang bisa kurang dari Header
+	Lines  []int      // nomor baris Excel untuk setiap Rows
+}
+
+// ReadTable membaca header seperti ReadHeader lalu semua baris data
+// berisi sesudahnya (maksimal MaxDataRows). Dipakai impor ekspor Dapodik
+// (T101) yang memetakan kolom berdasarkan judul.
+func ReadTable(r io.Reader) (Table, error) {
+	f, sheet, err := openSheet(r)
+	if err != nil {
+		return Table{}, err
+	}
+	defer f.Close()
+	iter, err := f.Rows(sheet)
+	if err != nil {
+		return Table{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+	}
+	defer iter.Close()
+	type line struct {
+		n     int
+		cells []string
+	}
+	var rows []line
+	for n := 1; iter.Next(); n++ {
+		if n > maxSheetRows {
+			return Table{}, ErrTooManyRows
+		}
+		cells, err := iter.Columns(excelize.Options{RawCellValue: true})
+		if err != nil {
+			return Table{}, fmt.Errorf("%w: %v", ErrNotXLSX, err)
+		}
+		for i := range cells {
+			cells[i] = clean(cells[i])
+		}
+		if isEmpty(cells) {
+			continue
+		}
+		rows = append(rows, line{n, cells})
+	}
+	if len(rows) == 0 {
+		return Table{}, ErrNoHeader
+	}
+	best := 0
+	for i := range rows[:min(len(rows), headerScanRows)] {
+		if filled(rows[i].cells) > filled(rows[best].cells) {
+			best = i
+		}
+	}
+	t := Table{Header: rows[best].cells}
+	dataStart := best + 1
+	if dataStart < len(rows) {
+		if combined, ok := combineGroupHeader(t.Header, rows[dataStart].cells); ok {
+			t.Header, dataStart = combined, dataStart+1
+		}
+	}
+	for _, r := range rows[dataStart:] {
+		if hasExampleMarker(r.cells) {
+			continue
+		}
+		if len(t.Rows) == MaxDataRows {
+			return Table{}, ErrTooManyRows
+		}
+		t.Rows, t.Lines = append(t.Rows, r.cells), append(t.Lines, r.n)
+	}
+	if len(t.Rows) == 0 {
+		return Table{}, ErrNoData
+	}
+	return t, nil
+}
+
+// filled menghitung sel berisi.
+func filled(cells []string) int {
+	n := 0
+	for _, c := range cells {
+		if c != "" {
+			n++
+		}
+	}
+	return n
+}
+
+// combineGroupHeader menggabungkan header dengan baris sub-header di
+// bawahnya, seperti ekspor Dapodik ("Data Ibu" di atas "Nama", "NIK", ...).
+// next dianggap sub-header jika berisi minimal dua sel dan setiap selnya
+// berada di bawah sel grup (sel header berisi yang diikuti sel header
+// kosong) atau di bawah sel header kosong milik grup itu. Hasilnya: kolom
+// bergrup menjadi "Grup / Sub", kolom lain tetap.
+func combineGroupHeader(header, next []string) ([]string, bool) {
+	if filled(next) < 2 {
+		return nil, false
+	}
+	n := max(len(header), len(next))
+	at := func(cells []string, i int) string {
+		if i < len(cells) {
+			return cells[i]
+		}
+		return ""
+	}
+	out := make([]string, n)
+	group := ""
+	for i := 0; i < n; i++ {
+		h, sub := at(header, i), at(next, i)
+		switch {
+		case h != "" && at(header, i+1) == "" && at(next, i+1) != "" && sub != "":
+			group = h // awal grup
+		case h != "":
+			group = ""
+		}
+		switch {
+		case sub == "":
+			out[i] = h
+		case group != "":
+			out[i] = group + " / " + sub
+		default:
+			return nil, false // sub-header di bawah kolom biasa: bukan baris sub-header
+		}
+	}
+	return out, true
 }
 
 // matchHeader memetakan kolom baku ke posisinya di header.

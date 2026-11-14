@@ -108,6 +108,22 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/healthz", Kind: KindPublic},
 	{Method: "GET", Pattern: "/healthz/db", Kind: KindPublic},
 	{Method: "GET", Pattern: "/static/*", Kind: KindPublic},
+	// Formulir pendaftaran publik (T90). Akses draf dibatasi sesi; diuji di
+	// paket admission (TestPublicFlow).
+	{Method: "GET", Pattern: "/s/{code}/daftar/", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/lanjut", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/lanjut", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/dokumen/{type}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/kirim", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/daftar/selesai", Kind: KindPublic},
+	// Cek status publik (T95): akses dibatasi nomor + tanggal lahir di sesi.
+	{Method: "GET", Pattern: "/s/{code}/status/", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/status/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/s/{code}/status/bukti.pdf", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/status/keluar", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},
@@ -456,6 +472,186 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 
+	// Bantu Dapodik (T98).
+	{Method: "GET", Pattern: "/dapodik/", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/dapodik/", "/dapodik/?kelas=" + o.ClassID + "&status=belum"}
+		})},
+	{Method: "GET", Pattern: "/dapodik/siswa/{id}/fpd.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0] + "/fpd.pdf"} })},
+	{Method: "GET", Pattern: "/dapodik/kelas/{classID}/fpd.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/kelas/" + o.ClassID + "/fpd.pdf"} })},
+	{Method: "GET", Pattern: "/dapodik/fpd-kosong.pdf", Kind: KindPage, Roles: schoolData},
+	{Method: "GET", Pattern: "/dapodik/cek", Kind: KindPage, Roles: schoolData},
+	{Method: "GET", Pattern: "/dapodik/ekspor-pd.xlsx", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/dapodik/ekspor-pd.xlsx", "/dapodik/ekspor-pd.xlsx?kelas=" + o.ClassID}
+		})},
+	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
+	// Isi format import nilai (T102): kelas/mapel sekolah lain ditolak.
+	{Method: "GET", Pattern: "/dapodik/nilai", Kind: KindPage, Roles: []string{Admin, Teacher}},
+	{Method: "POST", Pattern: "/dapodik/nilai", Kind: KindFormRef, Roles: []string{Admin, Teacher},
+		Requests: post(func(*School) string { return "/dapodik/nilai" }, func(o *School) url.Values {
+			return url.Values{"class_id": {o.ClassID}, "subject_id": {o.SubjectID}}
+		})},
+	{Method: "GET", Pattern: "/dapodik/nilai/unduh", Kind: KindPage, Roles: []string{Admin, Teacher}},
+	// Impor ekspor Dapodik (T101): hanya data sekolah sendiri (file + sesi).
+	{Method: "GET", Pattern: "/dapodik/impor", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/dapodik/impor", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/dapodik/impor" }, func(*School) url.Values { return url.Values{} })},
+	{Method: "POST", Pattern: "/dapodik/impor/terapkan", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/dapodik/impor/terapkan" }, func(*School) url.Values { return url.Values{} })},
+	{Method: "POST", Pattern: "/dapodik/siswa/{id}/tandai", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/dapodik/siswa/" + o.StudentIDs[0] + "/tandai" }, func(*School) url.Values {
+			return url.Values{"entered": {"1"}}
+		})},
+
+	// Pendaftar (T93).
+	{Method: "GET", Pattern: "/pendaftaran/", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/", "/pendaftaran/?periode=" + o.AdmissionPeriodID + "&jalur=" + o.AdmissionTrackID, "/pendaftaran/?q=SPMB"}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/bukti.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID + "/bukti.pdf"} })},
+	{Method: "GET", Pattern: "/pendaftaran/{id}", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID} })},
+	// Kontrol positif dilewati: fixture tidak punya objek terenkripsi di
+	// storage. Jalur sukses diuji di paket admission (TestDocuments).
+	{Method: "GET", Pattern: "/pendaftaran/{id}/dokumen/{docID}", Kind: KindByID, Roles: schoolData, ControlRoles: []string{},
+		Requests: func(own, o *School) []Request {
+			return []Request{
+				{Path: "/pendaftaran/" + o.ApplicantID + "/dokumen/" + o.ApplicantDocID},
+				{Path: "/pendaftaran/" + own.ApplicantID + "/dokumen/" + o.ApplicantDocID},
+			}
+		}},
+	// Biaya formulir (T94). Urutan penting untuk kontrol positif: kuitansi
+	// dan catat (409, sudah lunas) sebelum batal.
+	{Method: "GET", Pattern: "/pendaftaran/biaya", Kind: KindPage, Roles: []string{Treasurer, Admin, Principal}},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/biaya/{paymentID}/kuitansi", Kind: KindByID, Roles: []string{Treasurer, Admin, Principal},
+		Requests: func(own, o *School) []Request {
+			reqs := []Request{{Path: "/pendaftaran/" + o.ApplicantID + "/biaya/" + o.ApplicantFeePaymentID + "/kuitansi"}}
+			if own.ID != o.ID {
+				reqs = append(reqs, Request{Path: "/pendaftaran/" + own.ApplicantID + "/biaya/" + o.ApplicantFeePaymentID + "/kuitansi"})
+			}
+			return reqs
+		}},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/biaya", Kind: KindByID, Roles: []string{Treasurer},
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/biaya" }, func(*School) url.Values {
+			return url.Values{"paid_on": {"2026-11-01"}, "method": {"tunai"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/biaya/batal", Kind: KindByID, Roles: []string{Treasurer},
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/biaya/batal" }, func(*School) url.Values {
+			return url.Values{"void_reason": {"Uji lintas"}}
+		})},
+
+	// Rekap pendaftaran (T97).
+	{Method: "GET", Pattern: "/pendaftaran/rekap", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/rekap", "/pendaftaran/rekap?periode=" + o.AdmissionPeriodID}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/rekap/pendaftar.xlsx", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/rekap/pendaftar.xlsx?periode=" + o.AdmissionPeriodID}
+		})},
+
+	// Penerimaan menjadi siswa (T96).
+	{Method: "GET", Pattern: "/pendaftaran/terima", Kind: KindPage, Roles: schoolData},
+	{Method: "POST", Pattern: "/pendaftaran/terima", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/terima" }, func(o *School) url.Values {
+			return url.Values{"pick": {o.ApplicantID}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/format-nis", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/format-nis" }, func(*School) url.Values {
+			return url.Values{"nis_format": {"{yyyy}{seq:4}"}}
+		})},
+
+	// Input pendaftar oleh TU (T92). Pendaftar fixture berstatus dikirim,
+	// jadi kontrol positif diarahkan (303) ke halaman detail.
+	{Method: "GET", Pattern: "/pendaftaran/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pendaftaran/baru", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/baru" }, func(o *School) url.Values {
+			return url.Values{"choice": {o.AdmissionPeriodID + "|" + o.AdmissionTrackID}, "full_name": {"Lintas"}, "gender": {"L"}, "birth_date": {"2019-01-01"}, "phone": {"081200000000"}, "consent": {"on"}}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/{id}/isi/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/" + o.ApplicantID + "/isi/calon"} })},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/isi/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/isi/alamat" }, func(*School) url.Values {
+			return url.Values{"street": {"Lintas"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/dokumen/{type}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/dokumen/kk" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/kirim", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/kirim" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/status", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/status" }, func(*School) url.Values {
+			return url.Values{"status": {"diverifikasi"}}
+		})},
+
+	// Pendaftaran (T89).
+	{Method: "GET", Pattern: "/pendaftaran/periode/", Kind: KindPage, Roles: schoolData},
+	{Method: "GET", Pattern: "/pendaftaran/periode/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pendaftaran/periode/", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/periode/" }, func(o *School) url.Values {
+			return url.Values{"name": {"Lintas"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID} })},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/ubah", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/ubah"} })},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID }, func(o *School) url.Values {
+			return url.Values{"name": {"Diubah"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/status", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/status" }, func(*School) url.Values {
+			return url.Values{"status": {"buka"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/hapus" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/jalur" }, func(*School) url.Values {
+			return url.Values{"track_name": {"Lintas"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur/{trackID}", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTrack("")},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur/{trackID}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTrack("/hapus")},
+
+	// Tes seleksi (T93a).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes"} })},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes" }, func(*School) url.Values {
+			return url.Values{"test_name": {"Lintas"}, "weight": {"10"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("", url.Values{"test_name": {"Diubah"}, "weight": {"100"}})},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: schoolData,
+		Requests: func(own, o *School) []Request {
+			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/nilai"}}
+		}},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("/nilai", url.Values{})},
+	// Peringkat dan hasil (T93b).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/hasil", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil"} })},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/hasil.xlsx", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil.xlsx"}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/hasil", Kind: KindByID, Roles: adminTU,
+		Requests: func(own, o *School) []Request {
+			reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil", Form: url.Values{}}}
+			if own.ID != o.ID { // pendaftar sekolah lain lewat periode sendiri
+				reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/hasil", Form: url.Values{"result_" + o.ApplicantID: {"diterima"}}})
+			}
+			return reqs
+		}},
+	// Tes fixture punya nilai, jadi kontrol positif mendapat 409.
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTest("/hapus", url.Values{})},
+
 	// Siswa.
 	{Method: "GET", Pattern: "/siswa/", Kind: KindPage, Roles: schoolData,
 		Requests: paths(func(o *School) []string {
@@ -478,6 +674,16 @@ var Routes = []Route{
 		})},
 	{Method: "GET", Pattern: "/siswa/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/ubah"} })},
+	{Method: "GET", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/data-rinci"} })},
+	{Method: "POST", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: adminTU,
+		Requests: func(_, o *School) []Request {
+			id := o.StudentIDs[0]
+			return []Request{
+				{Path: "/siswa/" + id + "/data-rinci", Form: url.Values{"section": {"identitas"}, "nik": {"3201010101019999"}, "religion": {"01"}}},
+				{Path: "/siswa/" + id + "/data-rinci", Form: url.Values{"section": {"ibu"}, "full_name": {"Ibu Lintas"}, "nik": {"3201010101018888"}}},
+			}
+		}},
 	{Method: "POST", Pattern: "/siswa/{id}/wali/{guardianID}/akun", Kind: KindByID, Roles: adminTU,
 		Requests: guardianAccount("/akun")},
 	{Method: "POST", Pattern: "/siswa/{id}/wali/{guardianID}/akun/kirim-ulang", Kind: KindByID, Roles: adminTU,
@@ -498,5 +704,30 @@ func guardianAccount(suffix string) func(own, other *School) []Request {
 			{Path: "/siswa/" + own.StudentIDs[0] + "/wali/" + o.GuardianID + suffix, Form: form},
 			{Path: "/siswa/" + o.StudentIDs[0] + "/wali/" + own.GuardianID + suffix, Form: form},
 		}
+	}
+}
+
+// admissionTrack menguji jalur sekolah lain, termasuk jalur sekolah lain di
+// bawah periode sekolah sendiri.
+func admissionTrack(suffix string) func(own, other *School) []Request {
+	return func(own, o *School) []Request {
+		form := url.Values{"track_name": {"Diubah"}}
+		reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form}}
+		if own.ID != o.ID { // kontrol positif memanggil dengan own == other
+			reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form})
+		}
+		return reqs
+	}
+}
+
+// admissionTest menguji tes sekolah lain, termasuk tes sekolah lain di bawah
+// periode sekolah sendiri.
+func admissionTest(suffix string, form url.Values) func(own, other *School) []Request {
+	return func(own, o *School) []Request {
+		reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + suffix, Form: form}}
+		if own.ID != o.ID {
+			reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + suffix, Form: form})
+		}
+		return reqs
 	}
 }

@@ -1,0 +1,70 @@
+{{define "title"}}{{.StepName}} · Pendaftaran{{end}}
+{{define "header"}}{{if .Staff}}{{template "app_header" .User}}{{end}}{{end}}
+{{define "content"}}
+{{template "admission_public_head" .}}
+{{template "flash" .}}
+{{with .ResumeCode}}
+<section class="card" role="status">
+<h2>Kode lanjut Anda: <strong>{{.}}</strong></h2>
+<p>Catat atau foto kode ini. Dengan nomor HP dan kode ini, Anda bisa melanjutkan pendaftaran kapan saja. Kode hanya ditampilkan sekali.</p>
+</section>
+{{end}}
+<p class="muted">{{.Applicant.FullName}} · {{.Period}} · Jalur {{.Track}}</p>
+
+{{if eq .Step "kirim"}}
+<section class="card">
+<h2>Periksa dan kirim</h2>
+{{if .Missing}}
+<div class="alert alert-error" role="alert">Masih ada isian wajib yang kosong:</div>
+<ul>{{range .Missing}}<li>{{.Label}}</li>{{end}}</ul>
+<p class="muted">Lengkapi lewat langkah sebelumnya, lalu kembali ke halaman ini.</p>
+{{else}}
+<p>Semua isian wajib sudah lengkap. Setelah dikirim, data tidak bisa diubah kecuali sekolah meminta perbaikan.</p>
+<form method="post" action="{{.Base}}/kirim" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<button type="submit" class="btn btn-primary" :disabled="submitting">Kirim pendaftaran</button>
+</form>
+{{end}}
+<div class="action-row">
+{{range .Steps}}{{if ne .Key "kirim"}}<a class="btn btn-ghost btn-sm" href="{{$.Base}}/isi/{{.Key}}">Ubah {{.Title}}</a>{{end}}{{end}}
+</div>
+</section>
+{{else if eq .Step "dokumen"}}
+<section class="card">
+<h2>Dokumen</h2>
+<p class="hint">Foto (JPG/PNG) atau PDF, maksimal 2 MB per file. Pastikan tulisan terbaca jelas. Dokumen disimpan terenkripsi dan hanya bisa dibuka petugas sekolah.</p>
+<ul class="guardian-list">
+{{range .Documents}}
+<li>
+<div><strong>{{.Label}}</strong>{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}
+{{if .Uploaded}} <span class="badge badge-success">Sudah diunggah</span>{{end}}</div>
+<form method="post" action="{{$.Base}}/dokumen/{{.Key}}" enctype="multipart/form-data" class="action-row">
+{{ csrfField }}
+<input type="file" name="file" accept="image/jpeg,image/png,application/pdf" aria-label="File {{.Label}}">
+<button type="submit" class="btn btn-ghost btn-sm">{{if .Uploaded}}Ganti{{else}}Unggah{{end}}</button>
+</form>
+{{with index $.DocErrors .Key}}<p class="field-error">{{.}}</p>{{end}}
+</li>
+{{end}}
+</ul>
+<form method="post" action="{{.Base}}/isi/dokumen">
+{{ csrfField }}
+<button type="submit" class="btn btn-primary">Lanjut ke pemeriksaan</button>
+</form>
+</section>
+{{else}}
+<form method="post" action="{{.Base}}/isi/{{.Step}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+{{range .Sections}}
+<section class="card" id="{{.Key}}">
+<h2>{{.Title}}</h2>
+{{with .Hint}}<p class="hint">{{.}}</p>{{end}}
+{{template "profile_fields" dict "Fields" .Fields "Prefix" .Key "Disabled" false}}
+</section>
+{{end}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">{{.NextLabel}}</button>
+</div>
+</form>
+{{end}}
+{{end}}

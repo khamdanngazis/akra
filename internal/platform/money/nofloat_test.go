@@ -33,8 +33,11 @@ var layoutFiles = map[string]bool{"../../payments/receipt_pdf.go": true}
 // exactDecimalColumns adalah kolom numeric di luar keuangan yang memang
 // diminta spesifikasi, per file migrasi. numeric adalah desimal eksak (bukan
 // float); uang tetap wajib bigint rupiah.
-var exactDecimalColumns = map[string]string{
-	"000036_grades.up.sql": "score", // nilai siswa 0–100 dua desimal (T70)
+var exactDecimalColumns = map[string]map[string]string{
+	"000036_grades.up.sql": {"score": "numeric(5,2)"}, // nilai siswa 0–100 dua desimal (T70)
+	// Koordinat tempat tinggal dan jarak ke sekolah (F-PD Dapodik, T86).
+	"000042_student_profiles.up.sql": {"latitude": "numeric(9,6)", "longitude": "numeric(9,6)", "distance_km": "numeric(6,2)"},
+	"000048_admission_tests.up.sql":  {"score": "numeric(6,2)"}, // nilai tes seleksi (T93a)
 }
 
 // floatInSQL menangkap tipe atau cast pecahan di string SQL.
@@ -119,8 +122,7 @@ func TestNoFloatInFinancePaths(t *testing.T) {
 		}
 		for i, line := range strings.Split(string(data), "\n") {
 			code, _, _ := strings.Cut(line, "--")
-			if col, ok := exactDecimalColumns[filepath.Base(m)]; ok && strings.HasPrefix(strings.TrimSpace(code), col+" ") &&
-				strings.Contains(code, "numeric(5,2)") {
+			if allowed(exactDecimalColumns[filepath.Base(m)], code) {
 				continue
 			}
 			if column.MatchString(code) {
@@ -128,6 +130,17 @@ func TestNoFloatInFinancePaths(t *testing.T) {
 			}
 		}
 	}
+}
+
+// allowed melaporkan apakah baris migrasi mendefinisikan salah satu kolom
+// desimal yang diizinkan dengan tipe yang tepat.
+func allowed(cols map[string]string, code string) bool {
+	fields := strings.Fields(code)
+	if len(fields) < 2 {
+		return false
+	}
+	typ, ok := cols[fields[0]]
+	return ok && strings.TrimSuffix(fields[1], ",") == typ
 }
 
 // Pemeriksa di atas memang menangkap pola yang dilarang.

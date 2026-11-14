@@ -21,6 +21,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/platform/database"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/web"
 )
@@ -97,7 +98,8 @@ func newHEnv(t *testing.T) *hEnv {
 	e.svc = NewService(tx)
 	activation := auth.NewActivationService(tx, auth.NewHasher(auth.PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1}),
 		&mail.LogMailer{Logger: logger}, "http://localhost:8080", logger)
-	h := NewHandler(e.svc, NewGuardianService(tx), NewGuardianAccountService(tx, activation, logger), sm, rd, logger)
+	h := NewHandler(e.svc, NewGuardianService(tx), NewGuardianAccountService(tx, activation, logger),
+		NewProfileService(tx, pii.DevKeyring()), NewGuardianDetailService(tx, pii.DevKeyring()), sm, rd, logger)
 
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)

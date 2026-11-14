@@ -29,3 +29,6 @@ Semua pilihan yang dipakai Dapodik (agama, pekerjaan, penghasilan, dan lainnya) 
 
 ## Catatan
 - Label harus persis sama dengan Dapodik, termasuk ejaan, karena dipakai untuk salin-tempel ke combobox Dapodik (T98).
+
+## Catatan implementasi
+Label combobox Dapodik diambil dari server saat aplikasi berjalan, tidak ada di `app.js`; sumber daftar adalah F-PD 2027. Kode "98 Meninggal Dunia" tidak tercetak di F-PD dan perlu dicocokkan di T105. Ada tambahan `List.Code(label)` untuk impor (T101).

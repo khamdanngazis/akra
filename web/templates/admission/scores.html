@@ -1,0 +1,38 @@
+{{define "title"}}Nilai {{.Test.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran/periode/{{.Period.ID}}/tes">← Tes seleksi</a></p>
+<div class="page-header">
+<div>
+<h1>Nilai {{.Test.Name}}</h1>
+<p class="muted">{{.Period.Name}} · Nilai 0–{{.Test.MaxScore}}. Kosongkan jika belum dinilai atau tidak hadir.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{if .Rows}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/tes/{{.Test.ID}}/nilai" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nomor</th><th>Nama</th><th>Jalur</th><th>Nilai</th></tr></thead>
+<tbody>
+{{range .Rows}}
+{{$err := index $.Errors (printf "score_%s" .ApplicantID)}}
+<tr>
+<td class="nowrap">{{.RegistrationNumber}}</td>
+<td>{{.FullName}}</td>
+<td>{{.TrackName}}</td>
+<td><input name="score_{{.ApplicantID}}" value="{{.Score}}" inputmode="decimal" aria-label="Nilai {{.FullName}}"{{if not $.CanEdit}} disabled{{end}}{{if $err}} aria-invalid="true"{{end}}>{{with $err}}<p class="field-error">{{.}}</p>{{end}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan nilai</button></div>{{end}}
+</form>
+{{else}}
+<section class="card empty-state"><p>Belum ada pendaftar yang bisa dinilai.</p><p class="muted">Hanya pendaftar berstatus diverifikasi di jalur yang memakai tes.</p></section>
+{{end}}
+{{end}}

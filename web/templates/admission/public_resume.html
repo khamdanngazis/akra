@@ -1,0 +1,24 @@
+{{define "title"}}Lanjutkan Pendaftaran{{end}}
+{{define "content"}}
+{{template "admission_public_head" .}}
+<section class="card form-card">
+<h2>Lanjutkan pendaftaran</h2>
+{{template "flash" .}}
+<form method="post" action="/s/{{.School.Code}}/daftar/lanjut" class="stack" novalidate>
+{{ csrfField }}
+<div class="field">
+<label for="phone">Nomor HP orang tua/wali</label>
+<input id="phone" name="phone" value="{{.Phone}}" inputmode="tel" autocomplete="tel" required>
+</div>
+<div class="field">
+<label for="code">Kode lanjut</label>
+<input id="code" name="code" maxlength="8" autocomplete="off" autocapitalize="characters" required>
+<p class="hint">6 huruf/angka yang ditampilkan saat Anda mulai mendaftar.</p>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary">Lanjutkan</button>
+<a class="btn btn-ghost" href="/s/{{.School.Code}}/daftar">Mulai pendaftaran baru</a>
+</div>
+</form>
+</section>
+{{end}}

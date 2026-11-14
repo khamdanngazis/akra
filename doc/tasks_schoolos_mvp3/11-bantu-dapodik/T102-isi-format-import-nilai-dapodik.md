@@ -41,3 +41,6 @@ Format import nilai Dapodik 2027 (`template-format-import-nilai.xlsx`, sheet "Fo
 
 ## Catatan
 - Kolom Pengetahuan/Keterampilan mengikuti format Dapodik 2027. Untuk sekolah Kurikulum Merdeka, pastikan di T105 bagaimana Dapodik memetakan nilai dan deskripsi capaian (T74b) ke kolom ini.
+
+## Catatan implementasi
+Hanya nilai dan predikat pengetahuan (G/H) dan KKM (E12, jika kosong) yang diisi; keterampilan dan sikap dibiarkan karena AKRA belum menyimpannya terpisah. Predikat hanya ditulis jika huruf A–D. Diuji dengan template asli dari installer lewat `DAPODIK_GRADE_TEMPLATE` (file tidak di-commit): proteksi, validasi, dan kolom tersembunyi tetap utuh.

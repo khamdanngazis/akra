@@ -8,12 +8,14 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/dapodik"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -49,19 +51,23 @@ type routerDeps struct {
 	reportConfig *grades.ReportConfigHandler
 	reportSaved  *builder.ConfigHandler
 	students     *students.Handler
-	activation   *auth.ActivationHandler
-	portal       *portal.Handler
-	attendance   *attendance.Handler
-	feeTypes     *billing.FeeTypeHandler
-	bulkInvoice  *billing.BulkHandler
-	arrears      *billing.ArrearsHandler
-	payments     *payments.Handler
-	auditLog     *auditview.Handler
-	reports      *reports.Handler
-	announce     *announcements.Handler
-	home         *home.Handler
-	importer     *importer.Handler
-	mappings     *importer.MappingHandler
+	admission    *admission.Handler
+	dapodik      *dapodik.Handler
+	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
+	admissionPublic *admission.PublicHandler
+	activation      *auth.ActivationHandler
+	portal          *portal.Handler
+	attendance      *attendance.Handler
+	feeTypes        *billing.FeeTypeHandler
+	bulkInvoice     *billing.BulkHandler
+	arrears         *billing.ArrearsHandler
+	payments        *payments.Handler
+	auditLog        *auditview.Handler
+	reports         *reports.Handler
+	announce        *announcements.Handler
+	home            *home.Handler
+	importer        *importer.Handler
+	mappings        *importer.MappingHandler
 	// storage menyajikan URL bertanda tangan driver storage local (nil untuk R2).
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
@@ -71,7 +77,8 @@ type routerDeps struct {
 // newRouter menyusun semua route aplikasi.
 //
 // Route publik: /healthz, /healthz/db, /static/, /login, /logout,
-// /lupa-password, /reset-password, dan /aktivasi. /portal hanya untuk orang
+// /lupa-password, /reset-password, /aktivasi, dan formulir pendaftaran
+// /s/{code}/daftar (T90). /portal hanya untuk orang
 // tua; route lain menolak orang tua dengan 403.
 // Semua route lain wajib berada di grup RequireLogin. Setiap route wajib
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
@@ -108,6 +115,7 @@ func newRouter(d routerDeps) http.Handler {
 		d.authHandler.Routes(r)
 		d.resetHandler.Routes(r)
 		d.activation.Routes(r)
+		d.admissionPublic.Routes(r)
 
 		// Wajib login.
 		r.Group(func(r chi.Router) {
@@ -125,6 +133,8 @@ func newRouter(d routerDeps) http.Handler {
 			d.reportConfig.Routes(r)
 			d.reportSaved.Routes(r)
 			d.students.Routes(r)
+			d.admission.Routes(r)
+			d.dapodik.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)
