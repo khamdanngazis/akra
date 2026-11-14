@@ -473,7 +473,14 @@ var Routes = []Route{
 
 	// Bantu Dapodik (T98).
 	{Method: "GET", Pattern: "/dapodik/", Kind: KindPage, Roles: schoolData,
-		Requests: paths(func(o *School) []string { return []string{"/dapodik/", "/dapodik/?kelas=" + o.ClassID + "&status=belum"} })},
+		Requests: paths(func(o *School) []string {
+			return []string{"/dapodik/", "/dapodik/?kelas=" + o.ClassID + "&status=belum"}
+		})},
+	{Method: "GET", Pattern: "/dapodik/siswa/{id}/fpd.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0] + "/fpd.pdf"} })},
+	{Method: "GET", Pattern: "/dapodik/kelas/{classID}/fpd.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/kelas/" + o.ClassID + "/fpd.pdf"} })},
+	{Method: "GET", Pattern: "/dapodik/fpd-kosong.pdf", Kind: KindPage, Roles: schoolData},
 	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
 	{Method: "POST", Pattern: "/dapodik/siswa/{id}/tandai", Kind: KindByID, Roles: adminTU,

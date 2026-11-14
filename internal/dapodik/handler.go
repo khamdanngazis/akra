@@ -53,6 +53,12 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah))
 			// Peran: admin_tu, kepala_sekolah. Daftar siswa dan status Dapodik.
 			r.Get("/", h.index)
+			// Peran: admin_tu, kepala_sekolah. F-PD terisi (T99), memuat NIK.
+			r.Get("/siswa/{id}/fpd.pdf", h.studentFPD)
+			// Peran: admin_tu, kepala_sekolah.
+			r.Get("/kelas/{classID}/fpd.pdf", h.classFPD)
+			// Peran: admin_tu, kepala_sekolah. F-PD kosong.
+			r.Get("/fpd-kosong.pdf", h.blankFPD)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))

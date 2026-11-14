@@ -8,6 +8,10 @@
 </div>
 </div>
 {{template "flash" .}}
+<div class="action-row">
+<a class="btn btn-ghost btn-sm" href="/dapodik/fpd-kosong.pdf">Unduh F-PD kosong</a>
+{{with .ClassID}}<a class="btn btn-ghost btn-sm" href="/dapodik/kelas/{{.}}/fpd.pdf">Unduh F-PD terisi kelas ini</a>{{end}}
+</div>
 <form method="get" action="/dapodik" class="filter-bar filter-grid" x-data>
 {{if .Classes}}
 <div class="field">
@@ -28,7 +32,7 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Kelengkapan</th><th>Dapodik</th></tr></thead>
+<thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Kelengkapan</th><th>Dapodik</th><th><span class="visually-hidden">F-PD</span></th></tr></thead>
 <tbody>
 {{range .Rows}}
 <tr>
@@ -37,6 +41,7 @@
 <td>{{if .ClassName}}{{.ClassName}}{{else}}<span class="muted">–</span>{{end}}</td>
 <td>{{if eq .Percent 100}}<span class="badge badge-success">Lengkap</span>{{else}}<a href="/siswa/{{.ID}}/data-rinci"><span class="badge badge-warning">{{.Percent}}%</span></a>{{end}}</td>
 <td>{{if .EnteredAt}}<span class="badge badge-success">Sudah · {{.EnteredAt}}</span>{{else}}<span class="badge">Belum</span>{{end}}</td>
+<td><a class="btn btn-ghost btn-sm" href="/dapodik/siswa/{{.ID}}/fpd.pdf">F-PD</a></td>
 </tr>
 {{end}}
 </tbody>
