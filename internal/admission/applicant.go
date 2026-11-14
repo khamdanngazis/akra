@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
 	"akra/internal/students"
+	"akra/internal/wilayah"
 )
 
 // Status pendaftar (perpindahannya diatur di T93).
@@ -353,6 +354,14 @@ func (s *ApplicantService) SaveStep(ctx context.Context, schoolID, id, step stri
 			}
 			if err != nil {
 				return onlyStepErrors(err, step)
+			}
+			if step == StepAddress {
+				// Nama desa/kecamatan dari data wilayah (T110).
+				if err := wilayah.Apply(ctx, tx, clean); errors.Is(err, wilayah.ErrNotFound) {
+					return fieldErr("wilayah_kode", "Desa/kelurahan tidak ditemukan di daftar wilayah. Pilih ulang atau isi manual.")
+				} else if err != nil {
+					return err
+				}
 			}
 			a.Values = clean
 			if transfer != nil {

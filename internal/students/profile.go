@@ -19,6 +19,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
 	"akra/internal/school"
+	"akra/internal/wilayah"
 )
 
 // ActionProfileUpdate dicatat setiap data rinci siswa berubah. Audit hanya
@@ -112,6 +113,13 @@ func (s *ProfileService) Save(ctx context.Context, actor school.Actor, studentID
 		}
 		clean, err := s.validate(merged)
 		if err != nil {
+			return err
+		}
+		// Desa dari daftar wilayah (T110): nama desa/kecamatan diambil dari
+		// data wilayah, bukan dari isian.
+		if err := wilayah.Apply(ctx, tx, clean); errors.Is(err, wilayah.ErrNotFound) {
+			return fieldErr("wilayah_kode", "Desa/kelurahan tidak ditemukan di daftar wilayah. Pilih ulang atau isi manual.")
+		} else if err != nil {
 			return err
 		}
 		var changed []string
@@ -301,6 +309,11 @@ func normalizeField(f ProfileField, raw string, today time.Time) (string, string
 		}
 		if len(v) < 6 || len(v) > 15 || !digitsRe.MatchString(v) {
 			return "", fmt.Sprintf("%s harus 6–15 digit angka.", f.Label)
+		}
+		return v, ""
+	case kindWilayah:
+		if !wilayah.ValidDesaKode(v) {
+			return "", "Pilih desa/kelurahan dari daftar."
 		}
 		return v, ""
 	case kindEmail:

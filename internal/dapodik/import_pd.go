@@ -18,6 +18,7 @@ import (
 	"akra/internal/platform/pii"
 	"akra/internal/school"
 	"akra/internal/students"
+	"akra/internal/wilayah"
 )
 
 // ActionImportPD dicatat setiap impor ekspor Daftar PD diterapkan (T101).
@@ -187,6 +188,17 @@ func PlanPD(ctx context.Context, db database.DB, keys *pii.Keyring, schoolID str
 		}
 		if row.NIS == "" {
 			row.Errors = append(row.Errors, "NIPD kosong")
+		}
+		// Kode desa (T110): dicocokkan dari nama desa + kecamatan bila unik;
+		// jika tidak, alamat tetap tersimpan sebagai isian manual.
+		if row.values["wilayah_kode"] == "" {
+			kode, ok, err := wilayah.Match(ctx, db, row.values["district"], row.values["village"])
+			if err != nil {
+				return Plan{}, err
+			}
+			if ok {
+				row.values["wilayah_kode"] = kode
+			}
 		}
 		if err := matchStudent(ctx, db, keys, schoolID, &row); err != nil {
 			return Plan{}, err

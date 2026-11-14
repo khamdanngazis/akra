@@ -214,6 +214,13 @@ func displayApplicant(a Applicant) []displaySection {
 			if f.Section != sec {
 				continue
 			}
+			if f.Key == "wilayah_kode" {
+				// Alamat tanpa kode wilayah: diisi manual, perlu diperiksa TU.
+				if a.Values["wilayah_kode"] == "" && a.Values["village"] != "" {
+					ds.Rows = append(ds.Rows, labelValue{"Wilayah", "Desa/kecamatan diisi manual, periksa ejaannya"})
+				}
+				continue
+			}
 			if v := displayValue(f.Ref, a.Values[f.Key]); v != "" && v != "false" {
 				if v == "true" {
 					v = "Ya"

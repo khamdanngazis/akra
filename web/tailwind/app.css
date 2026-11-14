@@ -1971,6 +1971,29 @@
   }
 }
 
+/* ---------- Isian wilayah bertingkat (T110) ---------- */
+@layer components {
+  .wilayah-field {
+    @apply sm:col-span-2;
+  }
+
+  .wilayah-field > * + * {
+    @apply mt-3;
+  }
+
+  .wilayah-grid {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  .wilayah-label {
+    @apply mb-1.5 block text-sm font-semibold text-slate-700;
+  }
+
+  .wilayah-search {
+    @apply mb-2 min-h-10 text-sm;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

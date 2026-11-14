@@ -21,6 +21,7 @@ const (
 	kindDate                      // YYYY-MM-DD
 	kindPhone                     // nomor telepon tanpa tanda baca
 	kindEmail
+	kindWilayah // kode desa/kelurahan (T110), mis. 32.73.04.1001
 )
 
 // ProfileField menjelaskan satu field data rinci siswa.
@@ -68,6 +69,7 @@ var ProfileFields = []ProfileField{
 	{Key: "rt", Label: "RT", Kind: kindDigits, Min: 1, Max: 3, Column: "rt", Section: SectionAddress},
 	{Key: "rw", Label: "RW", Kind: kindDigits, Min: 1, Max: 3, Column: "rw", Section: SectionAddress},
 	{Key: "hamlet", Label: "Nama dusun", Kind: kindText, Max: 50, Column: "hamlet", Section: SectionAddress},
+	{Key: "wilayah_kode", Label: "Kode wilayah desa", Kind: kindWilayah, Column: "wilayah_kode", Section: SectionAddress},
 	{Key: "village", Label: "Kelurahan/desa", Kind: kindText, Max: 50, Column: "village", Section: SectionAddress},
 	{Key: "district", Label: "Kecamatan", Kind: kindText, Max: 50, Column: "district", Section: SectionAddress},
 	{Key: "postal_code", Label: "Kode pos", Kind: kindDigits, Min: 5, Max: 5, Column: "postal_code", Section: SectionAddress},

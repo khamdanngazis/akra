@@ -127,6 +127,7 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/s/{code}/status/bukti.pdf", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/status/keluar", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/logo", Kind: KindPublic},
+	{Method: "GET", Pattern: "/wilayah", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
 	{Method: "GET", Pattern: "/login", Kind: KindPublic},
 	{Method: "POST", Pattern: "/login", Kind: KindPublic},

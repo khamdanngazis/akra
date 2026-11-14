@@ -35,6 +35,7 @@ import (
 	"akra/internal/schedule"
 	"akra/internal/school"
 	"akra/internal/students"
+	"akra/internal/wilayah"
 )
 
 // appDeps adalah dependensi luar aplikasi. Uji end-to-end memakai fungsi
@@ -104,6 +105,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
 		dapodik:         dapodik.NewHandler(d.db, d.pii, d.store, d.sessions, d.render, d.logger),
 		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		wilayah:         wilayah.NewHandler(d.db, d.logger),
 		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:             devRoutes(d),
 		attendance:      attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),

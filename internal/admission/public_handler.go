@@ -518,6 +518,9 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 		}
 		view.Sections = append(view.Sections, identity)
 	case StepAddress:
+		if err := students.SuggestWilayah(ctx, periods.db, values); err != nil {
+			return stepView{}, err
+		}
 		view.Sections = addressSections(values, errs)
 	case StepParents:
 		view.Sections = parentSections(values, errs)

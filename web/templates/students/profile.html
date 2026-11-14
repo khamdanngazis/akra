@@ -1,4 +1,5 @@
 {{define "title"}}Data Rinci {{.Student.FullName}}{{end}}
+{{define "head"}}{{if .CanEdit}}<script src="{{ asset "js/wilayah.js" }}"></script>{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 <p class="breadcrumb"><a href="/siswa/{{.Student.ID}}">← {{.Student.FullName}}</a></p>
