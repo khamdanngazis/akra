@@ -103,7 +103,7 @@ func newTestRouter(t *testing.T) http.Handler {
 			students.NewGuardianDetailService(nil, pii.DevKeyring()), sessions, rd, logger),
 		activation:      auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
 		admission:       admission.NewHandler(nil, admission.NewService(nil), sessions, rd, logger),
-		admissionPublic: admission.NewPublicHandler(nil, admission.NewService(nil), admission.NewApplicantService(nil, pii.DevKeyring(), admission.NewService(nil)), sessions, rd, logger),
+		admissionPublic: admission.NewPublicHandler(nil, admission.NewService(nil), admission.NewApplicantService(nil, pii.DevKeyring(), admission.NewService(nil)), admission.NewDocumentService(nil, nil, pii.DevKeyring()), sessions, rd, logger),
 		portal:          portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
 		attendance:      attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
 		feeTypes:        billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),

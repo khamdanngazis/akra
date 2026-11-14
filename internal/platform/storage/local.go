@@ -76,6 +76,15 @@ func (l *Local) Put(_ context.Context, key string, body io.Reader, _ int64, _ st
 	return os.Rename(f.Name(), p)
 }
 
+// Get membuka objek untuk dibaca.
+func (l *Local) Get(_ context.Context, key string) (io.ReadCloser, error) {
+	p, err := l.path(key)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(p)
+}
+
 // Delete menghapus objek; objek yang tidak ada bukan error.
 func (l *Local) Delete(_ context.Context, key string) error {
 	p, err := l.path(key)

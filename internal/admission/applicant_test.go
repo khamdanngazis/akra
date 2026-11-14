@@ -26,6 +26,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
+	"akra/internal/platform/storage"
 	"akra/web"
 )
 
@@ -41,6 +42,7 @@ func (e *env) openPeriod(t *testing.T) (Period, Track) {
 	ctx := context.Background()
 	f := e.form()
 	f.Name = "Gelombang " + fmt.Sprint(time.Now().UnixNano())
+	f.RequiredDocs = nil // dokumen wajib diuji di TestDocuments
 	p, err := e.svc.Create(ctx, e.actor, f)
 	if err != nil {
 		t.Fatal(err)
@@ -359,7 +361,11 @@ func newPublicServer(t *testing.T, e *env) *publicClient {
 		t.Fatal(err)
 	}
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
-	h := NewPublicHandler(e.tx, e.svc, NewApplicantService(e.tx, pii.DevKeyring(), e.svc), sm, rd, logger)
+	store, err := storage.NewLocal(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewPublicHandler(e.tx, e.svc, NewApplicantService(e.tx, pii.DevKeyring(), e.svc), NewDocumentService(e.tx, store, pii.DevKeyring()), sm, rd, logger)
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
 	h.Routes(r)
@@ -436,7 +442,8 @@ func TestPublicFlow(t *testing.T) {
 		{"calon", url.Values{"full_name": {"Budi Santoso"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "nik": {childNIK}, "kk_number": {childKK}, "birth_place": {"Bandung"}, "religion": {"01"}, "special_needs": {"01"}}, "alamat"},
 		{"alamat", url.Values{"street": {"Jl. Melati 5"}, "village": {"Sukajadi"}, "district": {"Sukasari"}, "residence_type": {"01"}, "transport_mode": {"02"}, "has_kip": {"on"}, "kip_number": {"KIP1"}}, "orangtua"},
 		{"orangtua", url.Values{"ibu.full_name": {"Sari"}, "ibu.nik": {motherNIK}, "ayah.full_name": {"Joko"}, "ayah.occupation": {"98"}}, "sekolah"},
-		{"sekolah", url.Values{"previous_school": {"TK Melati"}, "email": {"budi@contoh.id"}}, "kirim"},
+		{"sekolah", url.Values{"previous_school": {"TK Melati"}, "email": {"budi@contoh.id"}}, "dokumen"},
+		{"dokumen", url.Values{}, "kirim"},
 	}
 	for _, s := range steps {
 		code, loc, body := c.post(base+"/isi/"+s.step, s.form)

@@ -30,6 +30,9 @@ type Store interface {
 	// Presign mengembalikan URL yang bisa dibuka tanpa login selama ttl.
 	// URL ini tidak boleh disimpan di database.
 	Presign(ctx context.Context, key string, ttl time.Duration, opts PresignOptions) (string, error)
+	// Get membuka objek untuk dibaca; pemanggil wajib menutupnya. Dipakai
+	// untuk file terenkripsi yang harus didekripsi aplikasi (T91).
+	Get(ctx context.Context, key string) (io.ReadCloser, error)
 }
 
 // New memilih driver dari konfigurasi.

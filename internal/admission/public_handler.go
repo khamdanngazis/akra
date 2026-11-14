@@ -33,6 +33,7 @@ type PublicHandler struct {
 	db         database.DB
 	periods    *Service
 	applicants *ApplicantService
+	documents  *DocumentService
 	limiter    *Limiter
 	sessions   *scs.SessionManager
 	render     page.Renderer
@@ -41,8 +42,8 @@ type PublicHandler struct {
 
 // NewPublicHandler mengembalikan PublicHandler. Route-nya publik (di luar
 // RequireLogin) tetapi tetap memakai sesi dan CSRF.
-func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *PublicHandler {
-	return &PublicHandler{db: db, periods: periods, applicants: applicants, limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger}
+func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *PublicHandler {
+	return &PublicHandler{db: db, periods: periods, applicants: applicants, documents: documents, limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route publik pendaftaran ke r.
@@ -57,6 +58,7 @@ func (h *PublicHandler) Routes(r chi.Router) {
 		// Publik, hanya pemilik draf (sesi): isian per langkah dan kirim.
 		r.Get("/isi/{step}", h.stepForm)
 		r.Post("/isi/{step}", h.saveStep)
+		r.Post("/dokumen/{type}", h.uploadDocument)
 		r.Post("/kirim", h.submit)
 		// Publik: konfirmasi setelah kirim (nomor dari sesi).
 		r.Get("/selesai", h.done)
@@ -277,6 +279,8 @@ type stepView struct {
 	Steps      []stepNav
 	Sections   []publicSection
 	Missing    []students.RequiredField
+	Documents  []docRow
+	DocErrors  map[string]string
 	ResumeCode string
 	NextLabel  string
 	Error      string
@@ -348,12 +352,15 @@ func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s sch
 	if errs != nil {
 		view.Error = "Data belum disimpan. Periksa isian yang ditandai."
 	}
-	if p, err := h.periods.Get(r.Context(), s.ID, a.PeriodID); err == nil {
-		view.Period = p.Name
-		for _, t := range p.Tracks {
-			if t.ID == a.TrackID {
-				view.Track = t.Name
-			}
+	p, err := h.periods.Get(r.Context(), s.ID, a.PeriodID)
+	if err != nil {
+		h.serverError(w, r, "get period", err)
+		return
+	}
+	view.Period = p.Name
+	for _, t := range p.Tracks {
+		if t.ID == a.TrackID {
+			view.Track = t.Name
 		}
 	}
 	view.Steps, view.StepName = navFor(step)
@@ -413,10 +420,86 @@ func (h *PublicHandler) renderStep(w http.ResponseWriter, r *http.Request, s sch
 		view.Sections = append(view.Sections,
 			publicSection{Key: students.SectionRegistration, Title: "Sekolah asal", Hint: "Untuk siswa pindahan, isi sekolah sebelumnya.", Fields: reg},
 			publicSection{Key: students.SectionContact, Title: "Kontak calon siswa", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)})
-	case StepReview:
-		view.Missing = Missing(a)
+	case StepDocument, StepReview:
+		docs, err := h.documents.List(r.Context(), s.ID, a.ID)
+		if err != nil {
+			h.serverError(w, r, "list documents", err)
+			return
+		}
+		view.Documents, view.DocErrors = docRows(p, docs), errs
+		if step == StepReview {
+			view.Missing = Missing(a)
+			for _, k := range MissingDocs(p, docs) {
+				view.Missing = append(view.Missing, students.RequiredField{Key: "doc_" + k, Label: DocLabel(k)})
+			}
+		}
 	}
 	h.render.Render(w, r, status, "admission/public_step", view)
+}
+
+type docRow struct {
+	Key, Label string
+	Required   bool
+	Uploaded   *Document
+}
+
+// docRows menampilkan dokumen wajib periode dulu, lalu dokumen opsional.
+func docRows(p Period, docs []Document) []docRow {
+	byType := map[string]*Document{}
+	for i := range docs {
+		byType[docs[i].DocType] = &docs[i]
+	}
+	var rows []docRow
+	for _, d := range Docs {
+		if p.Requires(d.Key) {
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Required: true, Uploaded: byType[d.Key]})
+		}
+	}
+	for _, d := range Docs {
+		if !p.Requires(d.Key) {
+			rows = append(rows, docRow{Key: d.Key, Label: d.Label, Uploaded: byType[d.Key]})
+		}
+	}
+	return rows
+}
+
+// uploadDocument menerima satu dokumen (multipart, field "file").
+func (h *PublicHandler) uploadDocument(w http.ResponseWriter, r *http.Request) {
+	s, ok := h.resolveSchool(w, r)
+	if !ok {
+		return
+	}
+	a, ok := h.owned(w, r, s)
+	if !ok {
+		return
+	}
+	docType := chi.URLParam(r, "type")
+	if !validDocType(docType) || docType == "lainnya" {
+		page.NotFound(h.render, w, r, auth.Identity{}, msgSchoolMissing)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, MaxDocumentSize+64<<10)
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Pilih file yang akan diunggah (maksimal 2 MB)."})
+		return
+	}
+	defer file.Close()
+	_, err = h.documents.Upload(r.Context(), s.ID, a.ID, docType, file)
+	switch {
+	case err == nil:
+		auth.SetFlash(r.Context(), h.sessions, DocLabel(docType)+" berhasil diunggah.")
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepDocument, http.StatusSeeOther)
+	case errors.Is(err, ErrDocTooLarge):
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "Ukuran file maksimal 2 MB."})
+	case errors.Is(err, ErrDocType), errors.Is(err, ErrDocEmpty):
+		h.renderStep(w, r, s, a, StepDocument, http.StatusBadRequest, nil, map[string]string{docType: "File harus berupa foto (JPG/PNG) atau PDF."})
+	case errors.Is(err, ErrNotEditable):
+		auth.SetFlash(r.Context(), h.sessions, editableMessage)
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar", http.StatusSeeOther)
+	default:
+		h.serverError(w, r, "upload document", err)
+	}
 }
 
 func navFor(step string) ([]stepNav, string) {
@@ -456,6 +539,10 @@ func (h *PublicHandler) saveStep(w http.ResponseWriter, r *http.Request) {
 	}
 	a, ok := h.owned(w, r, s)
 	if !ok {
+		return
+	}
+	if step == StepDocument {
+		http.Redirect(w, r, "/s/"+s.Code+"/daftar/isi/"+StepReview, http.StatusSeeOther)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)

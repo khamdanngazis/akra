@@ -28,6 +28,29 @@
 {{range .Steps}}{{if ne .Key "kirim"}}<a class="btn btn-ghost btn-sm" href="/s/{{$.School.Code}}/daftar/isi/{{.Key}}">Ubah {{.Title}}</a>{{end}}{{end}}
 </div>
 </section>
+{{else if eq .Step "dokumen"}}
+<section class="card">
+<h2>Dokumen</h2>
+<p class="hint">Foto (JPG/PNG) atau PDF, maksimal 2 MB per file. Pastikan tulisan terbaca jelas. Dokumen disimpan terenkripsi dan hanya bisa dibuka petugas sekolah.</p>
+<ul class="guardian-list">
+{{range .Documents}}
+<li>
+<div><strong>{{.Label}}</strong>{{if .Required}} <span class="badge badge-info">Wajib</span>{{end}}
+{{if .Uploaded}} <span class="badge badge-success">Sudah diunggah</span>{{end}}</div>
+<form method="post" action="/s/{{$.School.Code}}/daftar/dokumen/{{.Key}}" enctype="multipart/form-data" class="action-row">
+{{ csrfField }}
+<input type="file" name="file" accept="image/jpeg,image/png,application/pdf" aria-label="File {{.Label}}">
+<button type="submit" class="btn btn-ghost btn-sm">{{if .Uploaded}}Ganti{{else}}Unggah{{end}}</button>
+</form>
+{{with index $.DocErrors .Key}}<p class="field-error">{{.}}</p>{{end}}
+</li>
+{{end}}
+</ul>
+<form method="post" action="/s/{{.School.Code}}/daftar/isi/dokumen">
+{{ csrfField }}
+<button type="submit" class="btn btn-primary">Lanjut ke pemeriksaan</button>
+</form>
+</section>
 {{else}}
 <form method="post" action="/s/{{.School.Code}}/daftar/isi/{{.Step}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}

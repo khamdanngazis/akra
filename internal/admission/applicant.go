@@ -50,6 +50,7 @@ var Steps = []struct{ Key, Title string }{
 	{StepAddress, "Alamat dan keluarga"},
 	{StepParents, "Orang tua/wali"},
 	{StepSchool, "Sekolah asal dan kontak"},
+	{StepDocument, "Dokumen"},
 }
 
 // stepSections memetakan langkah ke bagian students.ProfileFields.
@@ -551,6 +552,16 @@ func (s *ApplicantService) Submit(ctx context.Context, schoolID, id string) (App
 		}
 		if m := Missing(a); len(m) > 0 {
 			return &ValidationError{Fields: map[string]string{"submit": "Masih ada isian wajib yang kosong."}}
+		}
+		var missingDocs int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*) FROM admission_periods p, unnest(p.required_docs) AS req(doc_type)
+			WHERE p.id = $1 AND NOT EXISTS (SELECT 1 FROM applicant_documents d WHERE d.applicant_id = $2 AND d.doc_type = req.doc_type)`,
+			a.PeriodID, a.ID).Scan(&missingDocs); err != nil {
+			return err
+		}
+		if missingDocs > 0 {
+			return &ValidationError{Fields: map[string]string{"submit": "Masih ada dokumen wajib yang belum diunggah."}}
 		}
 		if a.Status == ApplicantFix {
 			// Kiriman ulang setelah perbaikan memakai nomor yang sama.

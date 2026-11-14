@@ -116,6 +116,7 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/s/{code}/daftar/lanjut", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/daftar/isi/{step}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/s/{code}/daftar/dokumen/{type}", Kind: KindPublic},
 	{Method: "POST", Pattern: "/s/{code}/daftar/kirim", Kind: KindPublic},
 	{Method: "GET", Pattern: "/s/{code}/daftar/selesai", Kind: KindPublic},
 	{Method: "HEAD", Pattern: "/static/*", Kind: KindPublic},
