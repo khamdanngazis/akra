@@ -102,7 +102,7 @@
 <input id="website" name="website" tabindex="-1" autocomplete="off">
 </div>
 <div class="field{{if .Errors.consent}} has-error{{end}}">
-<label class="choice"><input type="checkbox" name="consent"{{if .Form.Consent}} checked{{end}}> Saya menyetujui {{.School.Name}} mengolah data pribadi calon siswa dan orang tua/wali untuk keperluan pendaftaran dan pelaporan Dapodik, sesuai UU Pelindungan Data Pribadi.</label>
+<label class="choice"><input type="checkbox" name="consent"{{if .Form.Consent}} checked{{end}}> Saya menyetujui {{.School.Name}} mengolah data pribadi calon siswa dan orang tua/wali untuk keperluan pendaftaran dan pelaporan Dapodik, sesuai UU Pelindungan Data Pribadi.{{if mapsKey}} Jika memilih titik rumah di peta, peta ditampilkan oleh Google.{{end}}</label>
 {{with .Errors.consent}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 <button type="submit" class="btn btn-primary btn-lg btn-block" :disabled="submitting">Mulai pendaftaran {{template "icon" "arrow-right"}}</button>

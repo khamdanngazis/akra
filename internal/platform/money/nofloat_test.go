@@ -38,6 +38,8 @@ var exactDecimalColumns = map[string]map[string]string{
 	// Koordinat tempat tinggal dan jarak ke sekolah (F-PD Dapodik, T86).
 	"000042_student_profiles.up.sql": {"latitude": "numeric(9,6)", "longitude": "numeric(9,6)", "distance_km": "numeric(6,2)"},
 	"000048_admission_tests.up.sql":  {"score": "numeric(6,2)"}, // nilai tes seleksi (T93a)
+	// Titik pusat provinsi dan kabupaten/kota untuk peta lokasi (T112).
+	"000055_wilayah_titik.up.sql": {"lat": "numeric(9,6)", "lng": "numeric(9,6)"},
 }
 
 // floatInSQL menangkap tipe atau cast pecahan di string SQL.
@@ -136,6 +138,10 @@ func TestNoFloatInFinancePaths(t *testing.T) {
 // desimal yang diizinkan dengan tipe yang tepat.
 func allowed(cols map[string]string, code string) bool {
 	fields := strings.Fields(code)
+	// ALTER TABLE ... ADD COLUMN <kolom> <tipe>
+	if len(fields) >= 4 && strings.EqualFold(fields[0], "ADD") && strings.EqualFold(fields[1], "COLUMN") {
+		fields = fields[2:]
+	}
 	if len(fields) < 2 {
 		return false
 	}

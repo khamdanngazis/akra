@@ -1989,6 +1989,47 @@
     @apply mb-1.5 block text-sm font-semibold text-slate-700;
   }
 
+  /* Peta pilih titik rumah (T112): layar penuh, penanda tetap di tengah. */
+  .lokasi-modal {
+    @apply fixed inset-0 z-50 flex flex-col bg-white sm:inset-6 sm:rounded-2xl sm:shadow-2xl;
+  }
+
+  .lokasi-modal-head {
+    @apply flex items-center justify-between border-b border-slate-200 px-4 py-3;
+  }
+
+  .lokasi-modal-hint {
+    @apply m-0 bg-blue-50 px-4 py-2 text-[13px] text-blue-900;
+  }
+
+  .lokasi-map-wrap {
+    @apply relative min-h-0 flex-1 bg-slate-100;
+  }
+
+  .lokasi-map {
+    @apply absolute inset-0;
+  }
+
+  .lokasi-pin {
+    @apply pointer-events-none absolute top-1/2 left-1/2 size-10 -translate-x-1/2 -translate-y-full drop-shadow-md;
+  }
+
+  .lokasi-map-status {
+    @apply absolute inset-x-4 top-4 m-0 rounded-lg bg-white/95 px-3 py-2 text-center text-sm text-slate-700 shadow;
+  }
+
+  .lokasi-map-status.is-error {
+    @apply text-red-700;
+  }
+
+  .lokasi-modal-foot {
+    @apply border-t border-slate-200 px-4 py-3;
+  }
+
+  .lokasi-zoom-note {
+    @apply mt-0 mb-2 text-center text-[13px] font-semibold text-amber-700;
+  }
+
   /* Satu isian desa: ketik untuk mencari, pilih dari daftar di bawahnya. */
   .wilayah-combo {
     @apply relative;

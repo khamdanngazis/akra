@@ -2,14 +2,16 @@
 
 `wilayah.tsv.gz` berisi kode, nama, dan kode pos wilayah administrasi
 Indonesia (38 provinsi, 514 kabupaten/kota, 7.285 kecamatan, 83.762
-desa/kelurahan). Format: `kode<TAB>nama<TAB>kode_pos` (kode pos hanya untuk
-desa/kelurahan).
+desa/kelurahan). Format: `kode<TAB>nama<TAB>kode_pos<TAB>lat<TAB>lng` (kode
+pos hanya untuk desa/kelurahan; lat/lng adalah titik ibu kota, hanya untuk
+provinsi dan kabupaten/kota, dipotong ke 6 angka desimal).
 
 Dibuat dengan `go run ./cmd/import-wilayah -convert` dari:
 
 | Berkas | Sumber | Keterangan |
 |---|---|---|
 | `db/wilayah.sql` | https://github.com/cahyadsn/wilayah (branch master, diambil 2026-11-15) | README repo: sesuai Kepmendagri No 300.2.2-2430 Tahun 2025; header berkas masih menyebut 300.2.2-2138 Tahun 2025, terakhir diubah 2026-02-13 |
+| `db/wilayah_level_1_2.sql` | https://github.com/cahyadsn/wilayah (branch master, diambil 2026-11-15) | hanya kolom `lat`/`lng` (titik ibu kota provinsi dan kabupaten/kota) yang dipakai |
 | `db/wilayah_kodepos.sql` | https://github.com/cahyadsn/wilayah_kodepos (branch main, diambil 2026-11-15) | kode pos per desa/kelurahan, terakhir diubah 2025-06-30 |
 
 Untuk memperbarui: unduh kedua berkas terbaru, jalankan perintah konversi,

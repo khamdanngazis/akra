@@ -319,7 +319,7 @@ func TestAddressWilayah(t *testing.T) {
 	}
 	_, body := c.get(base + "/isi/alamat")
 	// T106: lintang/bujur satu kelompok dengan tombol ambil lokasi.
-	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Titik lokasi rumah") || !strings.Contains(body, "getCurrentPosition") ||
+	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Titik lokasi rumah") || !strings.Contains(body, `x-data="lokasiPicker($el)"`) ||
 		!strings.Contains(body, `<input type="hidden" name="latitude"`) || !strings.Contains(body, `<input type="hidden" name="longitude"`) {
 		t.Error("address step without location button or with visible coordinate inputs")
 	}
@@ -365,5 +365,53 @@ func TestAddressWilayah(t *testing.T) {
 	}
 	if !flagged {
 		t.Error("manual address not flagged for staff")
+	}
+}
+
+func TestMapPicker(t *testing.T) {
+	e := newEnv(t)
+	p, tr := e.openPeriod(t)
+	start := url.Values{"choice": {p.ID + "|" + tr.ID}, "full_name": {"Budi"}, "gender": {"L"}, "birth_date": {"2019-05-17"}, "phone": {"081234567890"}, "consent": {"on"}}
+	base := "/s/test-adm-a/daftar"
+
+	// Tanpa API key: hanya GPS, tanpa tombol peta dan tanpa sebutan Google.
+	c := newPublicServer(t, e)
+	if _, body := c.get(base + "/"); strings.Contains(body, "Google") {
+		t.Error("consent mentions Google without maps key")
+	}
+	if code, _, _ := c.post(base+"/", start); code != http.StatusSeeOther {
+		t.Fatal("create draft")
+	}
+	_, body := c.get(base + "/isi/alamat")
+	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "js/lokasi.js") || strings.Contains(body, "Pilih di peta") || strings.Contains(body, "data-maps-key") {
+		t.Error("map picker shown without key")
+	}
+
+	// Dengan API key: tombol peta ada, tetapi skrip Google tidak dimuat
+	// sebelum tombol ditekan.
+	m := newPublicServerKey(t, e, "test-browser-key")
+	if _, body := m.get(base + "/"); !strings.Contains(body, "peta ditampilkan oleh Google") {
+		t.Error("consent without Google map notice")
+	}
+	start.Set("phone", "081234567891")
+	if code, _, _ := m.post(base+"/", start); code != http.StatusSeeOther {
+		t.Fatal("create draft with key")
+	}
+	_, body = m.get(base + "/isi/alamat")
+	if !strings.Contains(body, "Pilih di peta") || !strings.Contains(body, `data-maps-key="test-browser-key"`) || !strings.Contains(body, "Pakai titik ini") {
+		t.Error("map picker missing with key")
+	}
+	if strings.Contains(body, "maps.googleapis.com") {
+		t.Error("google maps script loaded before the button is pressed")
+	}
+	// Koordinat dari peta tetap divalidasi server.
+	if code, _, _ := m.post(base+"/isi/alamat", url.Values{"street": {"Jl. Melati 5"}, "latitude": {"48.856613"}, "longitude": {"2.352222"}}); code != http.StatusBadRequest {
+		t.Errorf("point outside Indonesia accepted: %d", code)
+	}
+	if code, _, _ := m.post(base+"/isi/alamat", url.Values{"street": {"Jl. Melati 5"}, "latitude": {"-6.914744"}, "longitude": {"107.609811"}}); code != http.StatusSeeOther {
+		t.Errorf("valid map point rejected: %d", code)
+	}
+	if _, body := m.get(base + "/isi/alamat"); !strings.Contains(body, `data-lat="-6.914744"`) {
+		t.Error("saved map point not shown")
 	}
 }
