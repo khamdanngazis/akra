@@ -16,6 +16,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/dapodik"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -101,6 +102,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
 		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		dapodik:         dapodik.NewHandler(d.db, d.pii, d.sessions, d.render, d.logger),
 		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
 		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:             devRoutes(d),

@@ -46,6 +46,7 @@ var Items = []MenuItem{
 	{Label: "Rekap Absensi", Path: "/absensi/rekap", Icon: "chart", Short: "Rekap", Desc: "Rekap kehadiran per kelas", Roles: []string{adminTU, kepala}},
 	{Label: "Siswa", Path: "/siswa", Icon: "users", Desc: "Kelola data siswa dan wali", Also: []string{"/impor/siswa"}, Roles: []string{adminTU, kepala}},
 	{Label: "Pendaftaran", Path: "/pendaftaran", Icon: "user-check", Short: "Daftar", Desc: "Periode, jalur, dan pendaftar siswa baru", Roles: []string{adminTU, kepala}},
+	{Label: "Dapodik", Path: "/dapodik", Icon: "spreadsheet", Desc: "Lembar salin dan status data Dapodik", Roles: []string{adminTU, kepala}},
 	{Label: "Kelas", Path: "/kelas", Icon: "school", Desc: "Kelas dan wali kelas", Roles: []string{adminTU, kepala}},
 	{Label: "Jadwal", Path: "/jadwal", Icon: "schedule", Desc: "Jadwal pelajaran mingguan per kelas", Roles: []string{adminTU, kepala}},
 	{Label: "Jadwal Saya", Path: "/jadwal/saya", Icon: "schedule", Short: "Jadwal", Desc: "Jadwal mengajar minggu ini", Roles: []string{guru}},

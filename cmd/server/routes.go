@@ -15,6 +15,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/billing"
 	"akra/internal/classes"
+	"akra/internal/dapodik"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -51,6 +52,7 @@ type routerDeps struct {
 	reportSaved  *builder.ConfigHandler
 	students     *students.Handler
 	admission    *admission.Handler
+	dapodik      *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
 	activation      *auth.ActivationHandler
@@ -132,6 +134,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.reportSaved.Routes(r)
 			d.students.Routes(r)
 			d.admission.Routes(r)
+			d.dapodik.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)

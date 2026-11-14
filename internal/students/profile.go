@@ -333,3 +333,8 @@ func profileFieldError(err error) error {
 	}
 	return err
 }
+
+// ProfileForTest membuat Profile dari nilai kanonik, untuk uji paket lain.
+func ProfileForTest(values map[string]string) Profile {
+	return Profile{Exists: true, values: values}
+}

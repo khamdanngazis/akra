@@ -471,6 +471,16 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 
+	// Bantu Dapodik (T98).
+	{Method: "GET", Pattern: "/dapodik/", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/", "/dapodik/?kelas=" + o.ClassID + "&status=belum"} })},
+	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
+	{Method: "POST", Pattern: "/dapodik/siswa/{id}/tandai", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/dapodik/siswa/" + o.StudentIDs[0] + "/tandai" }, func(*School) url.Values {
+			return url.Values{"entered": {"1"}}
+		})},
+
 	// Pendaftar (T93).
 	{Method: "GET", Pattern: "/pendaftaran/", Kind: KindPage, Roles: schoolData,
 		Requests: paths(func(o *School) []string {

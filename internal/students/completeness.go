@@ -104,3 +104,8 @@ func GetReadiness(ctx context.Context, q database.DBTX, schoolID, studentID stri
 	r.Percent = n * 100 / len(DapodikRequired)
 	return r, nil
 }
+
+// ReadinessPercentSQL mengembalikan ekspresi SQL persentase kelengkapan
+// Dapodik untuk dipakai paket lain. Alias wajib: s (students) dan p
+// (student_profiles, LEFT JOIN).
+func ReadinessPercentSQL() string { return readinessPercentSQL() }

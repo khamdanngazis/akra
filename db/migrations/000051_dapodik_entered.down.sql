@@ -1,0 +1,1 @@
+ALTER TABLE student_profiles DROP CONSTRAINT student_profiles_dapodik_pair_check, DROP CONSTRAINT student_profiles_dapodik_by_fkey, DROP COLUMN dapodik_entered_by, DROP COLUMN dapodik_entered_at;
