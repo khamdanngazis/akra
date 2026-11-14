@@ -54,7 +54,7 @@ func TestProfileWilayah(t *testing.T) {
 	}
 	// Desa, kecamatan, dan kode pos tidak tampil sebagai isian terpisah.
 	for _, f := range ProfileFieldViews(SectionAddress, map[string]string{}, nil) {
-		if f.Key == "village" || f.Key == "district" || f.Key == "postal_code" {
+		if f.Key == "village" || f.Key == "district" || f.Key == "postal_code" || f.Key == "longitude" {
 			t.Errorf("separate %s field still rendered", f.Key)
 		}
 	}

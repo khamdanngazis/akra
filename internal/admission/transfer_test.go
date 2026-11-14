@@ -318,6 +318,13 @@ func TestAddressWilayah(t *testing.T) {
 		t.Fatal("create draft")
 	}
 	_, body := c.get(base + "/isi/alamat")
+	// T106: lintang/bujur satu kelompok dengan tombol ambil lokasi.
+	if !strings.Contains(body, "Ambil lokasi saya") || !strings.Contains(body, "Titik lokasi rumah") || !strings.Contains(body, "getCurrentPosition") {
+		t.Error("address step without location button")
+	}
+	if code, _, body := c.post(base+"/isi/alamat", url.Values{"street": {"Jl. Melati 5"}, "latitude": {"48.85"}, "longitude": {"2.35"}}); code != http.StatusBadRequest || !strings.Contains(body, "Lintang") {
+		t.Errorf("coordinates outside Indonesia: %d", code)
+	}
 	if !strings.Contains(body, "js/wilayah.js") || !strings.Contains(body, `x-data="wilayahPicker($el)"`) || !strings.Contains(body, "Desa tidak ada di daftar") {
 		t.Error("address step without wilayah picker")
 	}
@@ -327,6 +334,8 @@ func TestAddressWilayah(t *testing.T) {
 	}
 	addr.Set("wilayah_kode", "32.73.04.1001")
 	addr.Set("village", "ketikan bebas")
+	addr.Set("latitude", "-6.9347")
+	addr.Set("longitude", "107.5953")
 	if code, _, body := c.post(base+"/isi/alamat", addr); code != http.StatusSeeOther {
 		t.Fatalf("save address: %d\n%s", code, body)
 	}
@@ -334,7 +343,7 @@ func TestAddressWilayah(t *testing.T) {
 	var id string
 	_ = e.tx.QueryRow(ctx, `SELECT id FROM applicants WHERE school_id = $1 ORDER BY created_at DESC LIMIT 1`, e.schoolA).Scan(&id)
 	a, _ := apps.Load(ctx, e.schoolA, id)
-	if a.Values["village"] != "Kopo" || a.Values["district"] != "Bojongloa Kaler" || a.Values["postal_code"] != "40233" {
+	if a.Values["village"] != "Kopo" || a.Values["district"] != "Bojongloa Kaler" || a.Values["postal_code"] != "40233" || a.Values["latitude"] != "-6.9347" || a.Values["longitude"] != "107.5953" {
 		t.Errorf("applicant address = %v", a.Values)
 	}
 	// Manual (desa tidak ada di daftar): nama disimpan apa adanya, ditandai di detail TU.

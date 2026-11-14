@@ -29,6 +29,10 @@ func TestProfileHandler(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(body, "Kelengkapan data Dapodik") || !strings.Contains(body, "Nama ibu kandung") {
 		t.Fatalf("GET: status = %d", rec.Code)
 	}
+	// Alamat: isian wilayah bertingkat (T110) dan tombol lokasi (T106).
+	if !strings.Contains(body, "js/wilayah.js") || !strings.Contains(body, "wilayahPicker($el)") || !strings.Contains(body, "Ambil lokasi saya") {
+		t.Error("staff address form without region picker or location button")
+	}
 
 	// Simpan bagian identitas.
 	rec = e.do(http.MethodPost, path, admin, url.Values{"section": {"identitas"}, "nik": {nikA}, "religion": {"01"}, "birth_place": {"Bandung"}, "special_needs": {"01"}})

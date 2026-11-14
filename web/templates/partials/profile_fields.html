@@ -3,7 +3,9 @@
 <div class="field-grid">
 {{range .Fields}}
 {{$id := printf "%s-%s" $.Prefix .Key}}
-{{if eq .Input "wilayah"}}
+{{if eq .Input "lokasi"}}
+{{template "lokasi_picker" dict "F" . "Prefix" $.Prefix "Disabled" $.Disabled}}
+{{else if eq .Input "wilayah"}}
 {{template "wilayah_picker" dict "F" . "Prefix" $.Prefix "Disabled" $.Disabled "Optional" $.Optional}}
 {{else if eq .Input "multi"}}
 <fieldset class="field{{if .Error}} has-error{{end}}"{{with .ShowIf}} x-show="{{.}}"{{end}}>
@@ -78,5 +80,46 @@
 {{if not .Disabled}}<label class="choice" x-cloak x-show="!failed"><input type="checkbox" x-model="manual"> Desa tidak ada di daftar, isi manual</label>{{end}}
 {{with $f.Hint}}<p class="hint">{{.}}</p>{{end}}
 {{with $f.Error}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{end}}
+
+{{/* lokasi_picker adalah lintang dan bujur rumah dengan tombol "Ambil lokasi saya" dari GPS perangkat (T106). Koordinat tidak dikirim ke layanan lain; validasi tetap di server. Geolocation hanya jalan di HTTPS/localhost. Argumen: dict F (FieldView Input "lokasi"), Prefix, Disabled. */}}
+{{define "lokasi_picker"}}
+{{$f := .F}}{{$id := printf "%s-lokasi" .Prefix}}
+<fieldset class="field wilayah-field{{if or (index $f.SubErr "latitude") (index $f.SubErr "longitude")}} has-error{{end}}"
+{{if not .Disabled}} x-data="{
+  state: '', msg: '',
+  lat: '{{js (index $f.Sub "latitude")}}', lng: '{{js (index $f.Sub "longitude")}}',
+  can: window.isSecureContext && 'geolocation' in navigator,
+  locate() {
+    this.state = 'busy'; this.msg = 'Mengambil lokasi…';
+    navigator.geolocation.getCurrentPosition((p) => {
+      this.lat = p.coords.latitude.toFixed(6); this.lng = p.coords.longitude.toFixed(6);
+      this.state = 'ok'; this.msg = 'Lokasi terisi (akurasi sekitar ' + Math.round(p.coords.accuracy) + ' meter).';
+    }, (e) => {
+      this.state = 'error';
+      this.msg = e.code === 1 ? 'Izin lokasi ditolak. Izinkan akses lokasi untuk situs ini di pengaturan browser, atau isi manual. Boleh juga dikosongkan.'
+        : e.code === 2 ? 'Lokasi tidak tersedia. Pastikan GPS/lokasi di HP aktif, lalu coba lagi.'
+        : 'Waktu habis saat mengambil lokasi. Coba lagi di dekat jendela atau di luar ruangan.';
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+}"{{end}}>
+<legend>Titik lokasi rumah <span class="muted">(opsional)</span></legend>
+{{if not .Disabled}}
+<p class="hint">Tekan tombol saat berada di rumah. Bisa dikosongkan.</p>
+<div class="flex flex-wrap items-center gap-2" x-cloak>
+<button type="button" class="btn btn-ghost btn-sm" x-show="can" @click="locate()" :disabled="state === 'busy'">Ambil lokasi saya</button>
+<span class="hint" x-show="!can">Ambil lokasi otomatis hanya tersedia di koneksi aman (HTTPS). Isi manual atau kosongkan.</span>
+</div>
+<p class="text-sm" x-cloak x-show="msg" x-text="msg" role="status" :class="state === 'error' ? 'text-red-700' : (state === 'ok' ? 'text-emerald-700' : 'text-slate-600')"></p>
+{{end}}
+<div class="wilayah-grid">
+<div><label for="{{$id}}-lat" class="wilayah-label">Lintang</label>
+<input id="{{$id}}-lat" name="latitude" value="{{index $f.Sub "latitude"}}"{{if not .Disabled}} x-model="lat"{{end}} inputmode="decimal" placeholder="mis. -6.914744" autocomplete="off"{{if .Disabled}} disabled{{end}}>
+{{with index $f.SubErr "latitude"}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div><label for="{{$id}}-lng" class="wilayah-label">Bujur</label>
+<input id="{{$id}}-lng" name="longitude" value="{{index $f.Sub "longitude"}}"{{if not .Disabled}} x-model="lng"{{end}} inputmode="decimal" placeholder="mis. 107.609810" autocomplete="off"{{if .Disabled}} disabled{{end}}>
+{{with index $f.SubErr "longitude"}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
 </fieldset>
 {{end}}

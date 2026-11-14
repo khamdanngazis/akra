@@ -262,10 +262,17 @@ func ProfileFieldViews(section string, values, errs map[string]string) []FieldVi
 		// Desa, kecamatan, dan kode pos digabung dalam satu isian wilayah
 		// bertingkat (T110).
 		switch f.Key {
-		case "village", "district", "postal_code":
+		case "village", "district", "postal_code", "longitude":
 			continue
 		case "wilayah_kode":
 			out = append(out, wilayahFieldView(values, errs))
+			continue
+		case "latitude":
+			// Lintang dan bujur satu kelompok dengan tombol "Ambil lokasi
+			// saya" (T106).
+			out = append(out, FieldView{Key: "latitude", Label: "Titik lokasi rumah", Input: "lokasi",
+				Sub:    map[string]string{"latitude": values["latitude"], "longitude": values["longitude"]},
+				SubErr: map[string]string{"latitude": errs["latitude"], "longitude": errs["longitude"]}})
 			continue
 		}
 		fv := FieldView{Key: f.Key, Label: f.Label, Value: values[f.Key], Error: errs[f.Key], Required: requiredKeys[f.Key], Input: "text"}
