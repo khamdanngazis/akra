@@ -23,7 +23,14 @@ import (
 
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
+	"akra/internal/students"
 )
+
+// piiColumns adalah semua kolom terenkripsi. Paket yang menambah kolom
+// ciphertext wajib menambahkan daftarnya di sini.
+func piiColumns() []pii.Column {
+	return students.PIIColumns()
+}
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -50,8 +57,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	logger.Info("rotating PII columns", "active_key_version", keys.ActiveVersion(), "columns", len(pii.Registered()))
-	for _, c := range pii.Registered() {
+	logger.Info("rotating PII columns", "active_key_version", keys.ActiveVersion(), "columns", len(piiColumns()))
+	for _, c := range piiColumns() {
 		n, err := pii.Rotate(ctx, pool, keys, c, 500)
 		if err != nil {
 			return err
