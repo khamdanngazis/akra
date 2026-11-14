@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -101,6 +102,7 @@ func newTestRouter(t *testing.T) http.Handler {
 			students.NewGuardianAccountService(nil, nil, logger), students.NewProfileService(nil, pii.DevKeyring()),
 			students.NewGuardianDetailService(nil, pii.DevKeyring()), sessions, rd, logger),
 		activation:  auth.NewActivationHandler(auth.NewActivationService(nil, hasher, &mail.LogMailer{Logger: logger}, "http://localhost:8080", logger), sessions, rd, logger),
+		admission:   admission.NewHandler(nil, admission.NewService(nil), sessions, rd, logger),
 		portal:      portal.NewHandler(portal.NewService(nil), sessions, rd, logger),
 		attendance:  attendance.NewHandler(attendance.NewService(nil), nil, sessions, rd, logger),
 		feeTypes:    billing.NewFeeTypeHandler(billing.NewFeeTypeService(nil), sessions, rd, logger),

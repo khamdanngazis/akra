@@ -1,0 +1,42 @@
+{{define "title"}}Periode Pendaftaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Periode Pendaftaran</h1>
+<p class="muted">Gelombang pendaftaran siswa baru beserta jalurnya.</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+{{if .Periods}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Periode</th><th>Tahun ajaran</th><th>Tingkat</th><th>Tanggal</th><th>Biaya</th><th>Jalur</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Periods}}
+<tr>
+<td><a href="/pendaftaran/periode/{{.ID}}"><strong>{{.Name}}</strong></a></td>
+<td>{{.AcademicYearName}}</td>
+<td>{{.TargetGrade}}</td>
+<td class="nowrap">{{.Opens}} – {{.Closes}}</td>
+<td class="nowrap">{{.Fee}}</td>
+<td>{{.TrackCount}}</td>
+<td>{{template "admission_period_status" .}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada periode pendaftaran.</p>
+{{if .CanEdit}}<p><a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode pertama</a></p>{{end}}
+</section>
+{{end}}
+{{end}}
+

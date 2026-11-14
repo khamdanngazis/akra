@@ -70,6 +70,10 @@ type School struct {
 	BulkRunID               string
 	ReportJobID             string
 	ImportBatchID           string
+	// AdmissionPeriodID adalah periode pendaftaran (buka) dengan satu jalur
+	// AdmissionTrackID (T89).
+	AdmissionPeriodID string
+	AdmissionTrackID  string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -166,6 +170,11 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
 	s.SlotID = one(`INSERT INTO schedule_slots (school_id, academic_year_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time)
 		VALUES ($1, $2, $3, $4, $5, 1, '07:00', '07:40') RETURNING id`, s.ID, s.YearID, s.ClassID, s.SubjectID, s.Teacher.ID)
+	// Berstatus buka agar kontrol "hapus periode" tidak menghapusnya.
+	s.AdmissionPeriodID = one(`INSERT INTO admission_periods (school_id, academic_year_id, name, target_grade, opens_on, closes_on, status, created_by)
+		VALUES ($1, $2, $3, 1, '2026-12-01', '2027-02-28', 'buka', $4) RETURNING id`, s.ID, s.YearID, "Gelombang "+marker, s.Admin.ID)
+	s.AdmissionTrackID = one(`INSERT INTO admission_tracks (school_id, period_id, name, quota) VALUES ($1, $2, $3, 30) RETURNING id`,
+		s.ID, s.AdmissionPeriodID, "Reguler "+marker)
 	s.GradeComponentID = one(`INSERT INTO grade_components (school_id, academic_year_id, subject_id, name, weight_percent) VALUES ($1, $2, $3, 'Ujian', 100) RETURNING id`,
 		s.ID, s.YearID, s.SubjectID)
 	exec(`INSERT INTO grades (school_id, academic_year_id, enrollment_id, component_id, score, recorded_by) VALUES ($1, $2, $3, $4, 75, $5)`,

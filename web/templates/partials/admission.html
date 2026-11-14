@@ -1,0 +1,18 @@
+{{/* Partial halaman pendaftaran (T89). */}}
+{{define "admission_period_status"}}{{if .OpenNow}}<span class="badge badge-success">Sedang dibuka</span>{{else if eq .Status "buka"}}<span class="badge badge-info">Dibuka (di luar tanggal)</span>{{else if eq .Status "tutup"}}<span class="badge">Ditutup</span>{{else}}<span class="badge badge-warning">Draf</span>{{end}}{{end}}
+
+{{define "admission_track_fields"}}
+<div class="field-grid">
+<div class="field{{if .Errors.track_name}} has-error{{end}}">
+<label for="track_name-{{.ID}}">Nama jalur</label>
+<input id="track_name-{{.ID}}" name="track_name" value="{{.Form.Name}}" maxlength="60" placeholder="mis. Reguler, Prestasi" autocomplete="off" required>
+{{with .Errors.track_name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.quota}} has-error{{end}}">
+<label for="quota-{{.ID}}">Kuota <span class="muted">(kosong = tanpa batas)</span></label>
+<input id="quota-{{.ID}}" type="number" name="quota" value="{{.Form.Quota}}" min="1">
+{{with .Errors.quota}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<label class="choice"><input type="checkbox" name="uses_test"{{if .Form.UsesTest}} checked{{end}}> Jalur ini memakai tes seleksi</label>
+{{end}}

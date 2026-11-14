@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -49,6 +50,7 @@ type routerDeps struct {
 	reportConfig *grades.ReportConfigHandler
 	reportSaved  *builder.ConfigHandler
 	students     *students.Handler
+	admission    *admission.Handler
 	activation   *auth.ActivationHandler
 	portal       *portal.Handler
 	attendance   *attendance.Handler
@@ -125,6 +127,7 @@ func newRouter(d routerDeps) http.Handler {
 			d.reportConfig.Routes(r)
 			d.reportSaved.Routes(r)
 			d.students.Routes(r)
+			d.admission.Routes(r)
 			d.portal.Routes(r)
 			d.attendance.Routes(r)
 			d.feeTypes.Routes(r)

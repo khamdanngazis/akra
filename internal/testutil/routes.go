@@ -455,6 +455,36 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/portal/pembayaran/{id}/kuitansi", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/pembayaran/" + o.PaymentID + "/kuitansi"} })},
 
+	// Pendaftaran (T89).
+	{Method: "GET", Pattern: "/pendaftaran/periode/", Kind: KindPage, Roles: schoolData},
+	{Method: "GET", Pattern: "/pendaftaran/periode/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/pendaftaran/periode/", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/periode/" }, func(o *School) url.Values {
+			return url.Values{"name": {"Lintas"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}", Kind: KindByID, Roles: schoolData,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID} })},
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/ubah", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/ubah"} })},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID }, func(o *School) url.Values {
+			return url.Values{"name": {"Diubah"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/status", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/status" }, func(*School) url.Values {
+			return url.Values{"status": {"buka"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/hapus" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/jalur" }, func(*School) url.Values {
+			return url.Values{"track_name": {"Lintas"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur/{trackID}", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTrack("")},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/jalur/{trackID}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: admissionTrack("/hapus")},
+
 	// Siswa.
 	{Method: "GET", Pattern: "/siswa/", Kind: KindPage, Roles: schoolData,
 		Requests: paths(func(o *School) []string {
@@ -507,5 +537,18 @@ func guardianAccount(suffix string) func(own, other *School) []Request {
 			{Path: "/siswa/" + own.StudentIDs[0] + "/wali/" + o.GuardianID + suffix, Form: form},
 			{Path: "/siswa/" + o.StudentIDs[0] + "/wali/" + own.GuardianID + suffix, Form: form},
 		}
+	}
+}
+
+// admissionTrack menguji jalur sekolah lain, termasuk jalur sekolah lain di
+// bawah periode sekolah sendiri.
+func admissionTrack(suffix string) func(own, other *School) []Request {
+	return func(own, o *School) []Request {
+		form := url.Values{"track_name": {"Diubah"}}
+		reqs := []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form}}
+		if own.ID != o.ID { // kontrol positif memanggil dengan own == other
+			reqs = append(reqs, Request{Path: "/pendaftaran/periode/" + own.AdmissionPeriodID + "/jalur/" + o.AdmissionTrackID + suffix, Form: form})
+		}
+		return reqs
 	}
 }

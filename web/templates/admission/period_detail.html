@@ -1,0 +1,91 @@
+{{define "title"}}{{.Period.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran/periode">← Periode pendaftaran</a></p>
+<div class="page-header">
+<div>
+<h1>{{.Period.Name}}</h1>
+<p class="muted">Tahun ajaran {{.Period.AcademicYearName}} · Tingkat {{.Period.TargetGrade}} · {{template "admission_period_status" .Period}}</p>
+</div>
+{{if .CanEdit}}<a class="btn btn-ghost" href="/pendaftaran/periode/{{.Period.ID}}/ubah">Ubah periode</a>{{end}}
+</div>
+
+{{template "flash" .}}
+
+<div class="detail-grid">
+<section class="card">
+<h2>Ketentuan</h2>
+<dl class="data-list">
+<dt>Tanggal</dt><dd>{{.Period.Opens}} – {{.Period.Closes}}</dd>
+<dt>Biaya formulir</dt><dd>{{.Period.Fee}}{{if .Period.FeeRequiredBeforeVerify}} <span class="badge">Wajib lunas sebelum verifikasi</span>{{end}}</dd>
+<dt>Dokumen wajib</dt><dd>{{if .Docs}}{{range $i, $d := .Docs}}{{if $i}}, {{end}}{{$d}}{{end}}{{else}}<span class="muted">Tidak ada</span>{{end}}</dd>
+</dl>
+{{if .CanEdit}}
+<div class="action-row">
+{{if ne .Period.Status "buka"}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/status">{{ csrfField }}<input type="hidden" name="status" value="buka"><button type="submit" class="btn btn-primary btn-sm">Buka pendaftaran</button></form>
+{{else}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/status">{{ csrfField }}<input type="hidden" name="status" value="tutup"><button type="submit" class="btn btn-ghost btn-sm">Tutup pendaftaran</button></form>
+{{end}}
+{{if eq .Period.Status "draf"}}
+<div x-data="{ confirming: false }">
+<button type="button" class="btn btn-ghost btn-sm" x-show="!confirming" @click="confirming = true">Hapus periode</button>
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/hapus" class="confirm-box" x-show="confirming" x-cloak>
+{{ csrfField }}
+<p>Hapus periode <strong>{{.Period.Name}}</strong> beserta jalurnya?</p>
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Ya, hapus</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="confirming = false">Batal</button>
+</div>
+</form>
+</div>
+{{end}}
+</div>
+{{end}}
+</section>
+
+<section class="card" id="jalur">
+<h2>Jalur pendaftaran</h2>
+{{if .Tracks}}
+<ul class="guardian-list">
+{{range .Tracks}}
+<li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
+<div x-show="!editing">
+<strong>{{.Name}}</strong>
+<span class="muted">· {{if .Quota}}Kuota {{.Quota}}{{else}}Tanpa batas kuota{{end}}</span>
+{{if .UsesTest}}<span class="badge badge-info">Dengan tes</span>{{end}}
+{{if $.CanEdit}}
+<div class="action-row">
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/jalur/{{.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
+</div>
+{{end}}
+</div>
+{{if $.CanEdit}}
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/jalur/{{.ID}}" class="stack" x-show="editing" x-cloak novalidate>
+{{ csrfField }}
+{{template "admission_track_fields" dict "Form" .Form "Errors" .Errors "ID" .ID}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary btn-sm">Simpan jalur</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button>
+</div>
+</form>
+{{end}}
+</li>
+{{end}}
+</ul>
+{{else}}
+<p class="muted">Belum ada jalur. Pendaftaran baru bisa dibuka setelah minimal satu jalur ditambahkan.</p>
+{{end}}
+{{if .CanEdit}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/jalur" class="stack" novalidate>
+{{ csrfField }}
+<h3>Tambah jalur</h3>
+{{template "admission_track_fields" dict "Form" .NewTrack "Errors" .NewTrackErrors "ID" "baru"}}
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Tambah jalur</button></div>
+</form>
+{{end}}
+</section>
+</div>
+{{end}}
+

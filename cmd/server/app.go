@@ -9,6 +9,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"akra/internal/academic"
+	"akra/internal/admission"
 	"akra/internal/announcements"
 	"akra/internal/attendance"
 	"akra/internal/audit/view"
@@ -96,6 +97,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewProfileService(d.db, d.pii),
 			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
+		admission:   admission.NewHandler(d.db, admission.NewService(d.db), d.sessions, d.render, d.logger),
 		portal:      portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:         devRoutes(d),
 		attendance:  attendance.NewHandler(attendance.NewService(d.db), d.db, d.sessions, d.render, d.logger),
