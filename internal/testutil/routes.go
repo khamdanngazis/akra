@@ -509,6 +509,16 @@ var Routes = []Route{
 			return url.Values{"void_reason": {"Uji lintas"}}
 		})},
 
+	// Rekap pendaftaran (T97).
+	{Method: "GET", Pattern: "/pendaftaran/rekap", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/rekap", "/pendaftaran/rekap?periode=" + o.AdmissionPeriodID}
+		})},
+	{Method: "GET", Pattern: "/pendaftaran/rekap/pendaftar.xlsx", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pendaftaran/rekap/pendaftar.xlsx?periode=" + o.AdmissionPeriodID}
+		})},
+
 	// Penerimaan menjadi siswa (T96).
 	{Method: "GET", Pattern: "/pendaftaran/terima", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pendaftaran/terima", Kind: KindFormRef, Roles: adminTU,

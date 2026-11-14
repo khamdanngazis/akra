@@ -65,6 +65,10 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/", h.listApplicants)
 			// Peran: admin_tu, kepala_sekolah (hanya baca). Penerimaan (T96).
 			r.Get("/terima", h.enrollPage)
+			// Peran: admin_tu, kepala_sekolah. Rekap (T97).
+			r.Get("/rekap", h.summary)
+			// Peran: admin_tu, kepala_sekolah. Memuat NIK; dicatat di audit.
+			r.Get("/rekap/pendaftar.xlsx", h.exportApplicants)
 			// Peran: admin_tu, kepala_sekolah (hanya baca). Memuat NIK utuh.
 			r.Get("/{id}", h.applicantDetail)
 			// Peran: admin_tu, kepala_sekolah. Dokumen didekripsi dan diaudit.
