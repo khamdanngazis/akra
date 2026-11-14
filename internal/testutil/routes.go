@@ -488,6 +488,13 @@ var Routes = []Route{
 		})},
 	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
+	// Isi format import nilai (T102): kelas/mapel sekolah lain ditolak.
+	{Method: "GET", Pattern: "/dapodik/nilai", Kind: KindPage, Roles: []string{Admin, Teacher}},
+	{Method: "POST", Pattern: "/dapodik/nilai", Kind: KindFormRef, Roles: []string{Admin, Teacher},
+		Requests: post(func(*School) string { return "/dapodik/nilai" }, func(o *School) url.Values {
+			return url.Values{"class_id": {o.ClassID}, "subject_id": {o.SubjectID}}
+		})},
+	{Method: "GET", Pattern: "/dapodik/nilai/unduh", Kind: KindPage, Roles: []string{Admin, Teacher}},
 	// Impor ekspor Dapodik (T101): hanya data sekolah sendiri (file + sesi).
 	{Method: "GET", Pattern: "/dapodik/impor", Kind: KindPage, Roles: adminTU},
 	{Method: "POST", Pattern: "/dapodik/impor", Kind: KindOwn, Roles: adminTU,

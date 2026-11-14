@@ -65,6 +65,15 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/ekspor-pd.xlsx", h.exportPD)
 		})
 		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleGuru))
+			// Peran: admin_tu, guru (mapel yang diampu). Isi format import nilai (T102).
+			r.Get("/nilai", h.gradeForm)
+			// Peran: admin_tu, guru.
+			r.Post("/nilai", h.gradeFill)
+			// Peran: admin_tu, guru. File hasil di sesi sendiri.
+			r.Get("/nilai/unduh", h.gradeDownload)
+		})
+		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
 			// Peran: admin_tu. Lembar salin memuat NIK utuh (T98).
 			r.Get("/siswa/{id}", h.copySheet)

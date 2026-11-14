@@ -67,6 +67,7 @@ var Items = []MenuItem{
 	{Label: "Input Nilai", Path: "/nilai/input", Icon: "spreadsheet", Short: "Nilai", Desc: "Isi nilai siswa per komponen", Roles: []string{guru}},
 	{Label: "Rekap Nilai", Path: "/nilai/rekap", Icon: "report", Short: "Rekap", Desc: "Nilai akhir per mapel dan kelas", Roles: []string{adminTU, kepala, guru}},
 	{Label: "Komponen Nilai", Path: "/nilai/komponen", Icon: "percent", Short: "Bobot", Desc: "Komponen dan bobot nilai per mapel", Roles: []string{adminTU, guru}},
+	{Label: "Nilai ke Dapodik", Path: "/dapodik/nilai", Icon: "upload", Short: "Dapodik", Desc: "Isi format import nilai Dapodik", Roles: []string{guru}},
 	{Label: "Pengaturan Rapor", Path: "/pengaturan/rapor", Icon: "settings", Short: "Rapor", Desc: "Skala huruf, KKM, penanda tangan", Roles: []string{adminTU}},
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Short: "Mapel", Desc: "Daftar mata pelajaran sekolah", Roles: []string{adminTU}},
 }

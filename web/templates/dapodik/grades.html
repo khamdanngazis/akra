@@ -1,0 +1,47 @@
+{{define "title"}}Nilai ke Dapodik{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Isi format import nilai Dapodik</h1>
+<p class="muted">Unduh "Format Excel untuk Import" dari menu nilai rapor di Dapodik (per mapel dan rombel), unggah di sini, lalu impor file hasilnya kembali ke Dapodik.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{with .Report}}
+<section class="card">
+<h2>File terisi: {{.Filled}} siswa</h2>
+<p><a class="btn btn-primary" href="/dapodik/nilai/unduh">Unduh file hasil</a></p>
+<ul>
+<li>Diisi: nilai dan predikat pengetahuan{{if .KKMFilled}}, KKM pengetahuan{{end}}.</li>
+<li>Tidak diisi: nilai keterampilan dan sikap (AKRA belum menyimpannya terpisah). Lengkapi di Dapodik atau di file sebelum diimpor.</li>
+{{if .LetterSkip}}<li class="field-error">Predikat AKRA bukan A–D, jadi kolom predikat dikosongkan. Sesuaikan skala huruf di pengaturan rapor atau isi manual.</li>{{end}}
+</ul>
+{{if .NoScore}}<p><strong>Nilai belum lengkap ({{len .NoScore}}):</strong> {{range $i, $n := .NoScore}}{{if $i}}, {{end}}{{$n}}{{end}}</p>{{end}}
+{{if .Unmatched}}<p class="field-error"><strong>Tidak ditemukan di AKRA ({{len .Unmatched}}):</strong> {{range $i, $n := .Unmatched}}{{if $i}}, {{end}}{{$n}}{{end}}</p>{{end}}
+<p class="hint">Token, nama, NIS, kolom tersembunyi, proteksi, dan validasi di file tidak diubah.</p>
+</section>
+{{end}}
+<section class="card form-card">
+<form method="post" action="/dapodik/nilai" enctype="multipart/form-data" class="stack" novalidate>
+{{ csrfField }}
+<div class="field">
+<label for="file">File format import nilai (.xlsx)</label>
+<input id="file" type="file" name="file" accept=".xlsx" required>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.class_id}} has-error{{end}}">
+<label for="class_id">Kelas di AKRA</label>
+<select id="class_id" name="class_id"><option value="">Pilih</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select>
+{{with .Errors.class_id}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.subject_id}} has-error{{end}}">
+<label for="subject_id">Mapel di AKRA</label>
+<select id="subject_id" name="subject_id"><option value="">Pilih</option>{{range .Subjects}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select>
+{{with .Errors.subject_id}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Isi nilai</button></div>
+</form>
+</section>
+{{end}}
