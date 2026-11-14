@@ -91,34 +91,33 @@
 </fieldset>
 {{end}}
 
-{{/* lokasi_picker adalah titik lokasi rumah (T106, T112): tombol "Ambil lokasi saya" (GPS) dan, jika GOOGLE_MAPS_API_KEY diset, "Pilih di peta" (Google Maps, dimuat saat tombol ditekan). Input koordinat disembunyikan; yang tampil ringkasan, tautan "Lihat di peta", dan tombol hapus. Validasi tetap di server. Argumen: dict F (FieldView Input "lokasi"), Prefix, Disabled. */}}
+{{/* lokasi_picker adalah titik lokasi rumah (T106, T112): tombol "Ambil lokasi saya" (GPS) dan "Pilih di peta" (Google Maps jika GOOGLE_MAPS_API_KEY diset, selain itu OpenStreetMap; dimuat saat tombol ditekan). Input koordinat disembunyikan; yang tampil ringkasan, tautan "Lihat di peta", dan tombol hapus. Validasi tetap di server. Argumen: dict F (FieldView Input "lokasi"), Prefix, Disabled. */}}
 {{define "lokasi_picker"}}
 {{$f := .F}}{{$lat := index $f.Sub "latitude"}}{{$lng := index $f.Sub "longitude"}}
 {{if not .Disabled}}<script src="{{ asset "js/lokasi.js" }}"></script>{{end}}
 <fieldset class="field wilayah-field{{if or (index $f.SubErr "latitude") (index $f.SubErr "longitude")}} has-error{{end}}"
-{{if not .Disabled}} x-data="lokasiPicker($el)" data-lat="{{$lat}}" data-lng="{{$lng}}"{{with mapsKey}} data-maps-key="{{.}}"{{end}} @keydown.escape.window="mapOpen && closeMap()"{{end}}>
+{{if not .Disabled}} x-data="lokasiPicker($el)" data-lat="{{$lat}}" data-lng="{{$lng}}" data-map-provider="{{if mapsKey}}google{{else}}osm{{end}}"{{with mapsKey}} data-maps-key="{{.}}"{{else}} data-leaflet-js="{{ asset "vendor/leaflet/leaflet.js" }}" data-leaflet-css="{{ asset "vendor/leaflet/leaflet.css" }}"{{end}} @keydown.escape.window="mapOpen && closeMap()"{{end}}>
 <legend>Titik lokasi rumah <span class="muted">(opsional)</span></legend>
 {{if .Disabled}}
 <p class="mb-0 text-sm">{{if $lat}}{{$lat}}, {{$lng}} · <a href="{{index $f.Sub "view_url"}}" target="_blank" rel="noopener">Lihat di peta</a>{{else}}<span class="muted">Belum diisi</span>{{end}}</p>
 {{else}}
 <input type="hidden" name="latitude" value="{{$lat}}" :value="lat">
 <input type="hidden" name="longitude" value="{{$lng}}" :value="lng">
-<p class="hint">{{if mapsKey}}Ambil lokasi saat berada di rumah, atau pilih titik rumah di peta. Bisa dikosongkan.{{else}}Tekan tombol saat berada di rumah. Bisa dikosongkan.{{end}}</p>
+<p class="hint">Ambil lokasi saat berada di rumah, atau pilih titik rumah di peta. Bisa dikosongkan.</p>
 <p class="mb-0 text-sm text-slate-700" x-show="lat && lng">Lokasi tersimpan: <span x-text="lat + ', ' + lng">{{$lat}}, {{$lng}}</span> · <a :href="viewUrl" target="_blank" rel="noopener">Lihat di peta</a></p>
 <div class="flex flex-wrap items-center gap-2" x-cloak>
 <button type="button" class="btn btn-ghost btn-sm" x-show="can" @click="locate()" :disabled="state === 'busy'" x-text="lat && lng ? 'Ambil ulang lokasi' : 'Ambil lokasi saya'">Ambil lokasi saya</button>
-{{if mapsKey}}<button type="button" class="btn btn-ghost btn-sm" @click="openMap()">{{template "icon" "home"}}Pilih di peta</button>{{end}}
+<button type="button" class="btn btn-ghost btn-sm" @click="openMap()">{{template "icon" "home"}}Pilih di peta</button>
 <button type="button" class="btn btn-ghost btn-sm" x-show="lat && lng" @click="clear()">Hapus lokasi</button>
-<span class="hint" x-show="!can">Ambil lokasi otomatis hanya tersedia di koneksi aman (HTTPS).{{if not mapsKey}} Bagian ini boleh dikosongkan.{{end}}</span>
+<span class="hint" x-show="!can">Ambil lokasi otomatis hanya tersedia di koneksi aman (HTTPS); titik tetap bisa dipilih di peta.</span>
 </div>
 <p class="text-sm" x-cloak x-show="msg" x-text="msg" role="status" :class="state === 'error' ? 'text-red-700' : (state === 'ok' ? 'text-emerald-700' : 'text-slate-600')"></p>
-{{if mapsKey}}
 <div class="lokasi-modal" x-cloak x-show="mapOpen" role="dialog" aria-modal="true" aria-label="Pilih titik rumah di peta">
 <div class="lokasi-modal-head">
 <strong>Pilih titik rumah</strong>
 <button type="button" class="icon-btn" @click="closeMap()" aria-label="Tutup peta">{{template "icon" "close"}}</button>
 </div>
-<p class="lokasi-modal-hint">Geser peta sampai penanda tepat di atap rumah. Ketuk peta untuk memindahkan. Peta disediakan Google.</p>
+<p class="lokasi-modal-hint">Geser peta sampai penanda tepat di atap rumah. Ketuk peta untuk memindahkan. Peta disediakan {{if mapsKey}}Google{{else}}OpenStreetMap{{end}}.</p>
 <div class="lokasi-map-wrap">
 <div class="lokasi-map"></div>
 <svg class="lokasi-pin" x-show="map && !mapError" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" fill="#2563EB" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>
@@ -133,7 +132,6 @@
 </div>
 </div>
 </div>
-{{end}}
 {{end}}
 {{with index $f.SubErr "latitude"}}<p class="field-error">{{.}}</p>{{end}}
 {{with index $f.SubErr "longitude"}}<p class="field-error">{{.}}</p>{{end}}

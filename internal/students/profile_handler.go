@@ -277,7 +277,8 @@ func ProfileFieldViews(section string, values, errs map[string]string) []FieldVi
 			if values["latitude"] != "" && values["longitude"] != "" {
 				// Tautan yang dibuka pengguna sendiri (T112), bukan sumber
 				// yang dimuat halaman.
-				fv.Sub["view_url"] = "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(values["latitude"]+","+values["longitude"])
+				lat, lng := url.QueryEscape(values["latitude"]), url.QueryEscape(values["longitude"])
+				fv.Sub["view_url"] = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng + "#map=18/" + lat + "/" + lng
 			}
 			out = append(out, fv)
 			continue

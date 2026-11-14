@@ -223,16 +223,18 @@ Styling memakai **Tailwind CSS v4 standalone CLI** (binary, tanpa Node), sesuai 
 - **Beranda** ([home.html](web/templates/home.html)): sapaan "Selamat datang kembali", kartu ringkasan per peran (`home.KPI`: siswa aktif, guru, kelas, pengumuman; tunggakan dan pembayaran hari ini; kelas wali dan absensi), kehadiran minggu ini, pembayaran terbaru (bendahara), pengumuman terbaru, dan "Akses cepat" dari `nav.Shortcuts` (maks. 6 item menu yang punya `Desc`). Semua angka dari data sebenarnya; tidak ada grafik atau notifikasi contoh.
 - **Ikon**: sprite SVG lokal dari [Lucide](https://lucide.dev) v1.49.0 (ISC) di [partials/icons.html](web/templates/partials/icons.html); pakai `{{template "icon" "wallet"}}`. Ikon menu diatur di `nav.Items` (`Icon`).
 - **Data wilayah** (provinsi sampai desa/kelurahan, kode pos) untuk isian alamat: dari [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah) dan [cahyadsn/wilayah_kodepos](https://github.com/cahyadsn/wilayah_kodepos) (MIT), disertakan di [internal/wilayah/data](internal/wilayah/data/LICENSE.md) dan diimpor otomatis saat server start; dilayani sendiri di `GET /wilayah?induk=`, tanpa layanan pihak ketiga. Pembaruan: lihat `cmd/import-wilayah`.
-- **Peta titik lokasi rumah** (opsional, T112): set `GOOGLE_MAPS_API_KEY` untuk menampilkan tombol "Pilih di peta" di isian alamat. Skrip Google baru dimuat saat tombol ditekan. Cara menyiapkan kunci:
-  1. Di [Google Cloud Console](https://console.cloud.google.com/), buat project dan hubungkan akun penagihan.
-  2. Aktifkan **Maps JavaScript API**.
-  3. Di *APIs & Services → Credentials*, buat API key, lalu batasi:
-     - *Application restrictions*: **Websites**, isi domain AKRA, mis. `https://akra-staging.up.railway.app/*` dan domain produksi (`http://localhost:*/*` hanya untuk kunci pengembangan);
-     - *API restrictions*: hanya **Maps JavaScript API**.
-  4. Di *Quotas*, batasi pemuatan peta per hari (mis. 300). Di *Billing → Budgets & alerts*, pasang peringatan anggaran (mis. Rp100.000/bulan).
-  5. Simpan kunci di variabel Railway `GOOGLE_MAPS_API_KEY`, lalu deploy ulang.
+- **Peta titik lokasi rumah** (T112): tombol "Pilih di peta" di isian alamat. Peta baru dimuat saat tombol ditekan.
+  - **Bawaan: OpenStreetMap.** Library [Leaflet](https://leafletjs.com) 1.9.4 (BSD-2) disertakan di [web/static/vendor/leaflet](web/static/vendor/leaflet/LICENSE.txt), ubin peta dari `tile.openstreetmap.org` dengan atribusi "© OpenStreetMap". Gratis, tanpa akun dan kunci. Ikuti [kebijakan pemakaian ubin OSM](https://operations.osmfoundation.org/policies/tiles/): wajar untuk pemakaian sekolah, dan bila trafik besar ganti URL ubin di `web/static/js/lokasi.js` ke penyedia berbayar. Tidak ada tampilan satelit.
+  - **Opsional: Google Maps (dengan tampilan satelit).** Isi `GOOGLE_MAPS_API_KEY`. Cara menyiapkan kunci:
+    1. Di [Google Cloud Console](https://console.cloud.google.com/), buat project dan hubungkan akun penagihan yang aktif. Tanpa billing aktif peta tampil gelap (`BillingNotEnabledMapError`).
+    2. Aktifkan **Maps JavaScript API**.
+    3. Di *APIs & Services → Credentials*, buat API key, lalu batasi:
+       - *Application restrictions*: **Websites**, berisi domain AKRA;
+       - *API restrictions*: hanya **Maps JavaScript API** (tanpa ini muncul `ApiTargetBlockedMapError`).
+    4. Pasang batas kuota harian dan peringatan anggaran.
+    5. Simpan di variabel Railway `GOOGLE_MAPS_API_KEY`, lalu deploy ulang. Kosongkan untuk kembali ke OpenStreetMap.
 
-  Kunci ini memang terlihat di browser, karena itu batasan domain dan API wajib dipasang. Biaya: Maps JavaScript API (*Dynamic Maps*) per Maret 2025 punya kuota gratis bulanan per SKU, dengan perkiraan pihak ketiga 10.000 pemuatan/bulan lalu sekitar US$7 per 1.000. Pastikan angkanya di [halaman harga resmi](https://developers.google.com/maps/billing-and-pricing/pricing) sebelum produksi. Satu sekolah dengan ratusan pendaftar yang membuka peta 1–2 kali masih jauh di bawah kuota gratis. Tanpa kunci, hanya tombol "Ambil lokasi saya" (GPS) yang tampil.
+    Biaya Dynamic Maps: ada kuota gratis bulanan, cek [halaman harga resmi](https://developers.google.com/maps/billing-and-pricing/pricing).
 - **Login** dan halaman akun lain: latar terang, logo dengan tagline, satu card form dengan ikon di input dan tombol lihat password (partial `auth_logo` dan `password_field`, dipanggil dengan `dict`).
 
 ## Tahun Ajaran
