@@ -63,7 +63,7 @@
 <td><a href="/siswa/{{.ID}}"><strong>{{.FullName}}</strong></a></td>
 <td>{{if .ClassName}}{{.ClassName}}{{else}}<span class="muted">Belum ada</span>{{end}}</td>
 <td>{{template "student_status" .Status}}</td>
-<td class="nowrap">{{if eq .DapodikPercent 100}}<span class="badge badge-success">Lengkap</span>{{else}}<a href="/siswa/{{.ID}}/data-rinci"><span class="badge badge-warning">{{.DapodikPercent}}%</span></a>{{end}}</td>
+<td>{{if eq .DapodikPercent 100}}<span class="badge badge-success">Lengkap</span>{{else}}<a href="/siswa/{{.ID}}/data-rinci"><span class="badge badge-warning">{{.DapodikPercent}}%</span></a>{{end}}</td>
 </tr>
 {{end}}
 </tbody>
