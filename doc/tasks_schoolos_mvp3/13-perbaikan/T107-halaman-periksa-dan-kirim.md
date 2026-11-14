@@ -1,4 +1,4 @@
-# T107 — Halaman "Periksa dan kirim" yang menunjukkan apa yang harus dilengkapi
+# T107 — Navigasi langkah dan halaman "Periksa dan kirim" yang jelas
 
 **Fase:** 13 Perbaikan
 **Dependensi:** T90, T91, T92
@@ -23,6 +23,10 @@ Masalahnya:
 4. Di halaman "Periksa dan kirim", dokumen wajib yang belum ada bisa langsung diunggah (form unggah yang sama dengan langkah Dokumen), lalu kembali ke halaman ini.
 5. Penanda langkah ("Langkah N dari 6") menampilkan status tiap langkah, agar kekurangan terlihat sebelum langkah terakhir.
 6. Berlaku juga untuk input oleh TU (T92), yang memakai halaman yang sama.
+7. Navigasi bolak-balik antar langkah (saat ini hanya bisa maju lewat "Simpan dan lanjut"):
+   - Tombol **"← Kembali"** di setiap langkah kecuali langkah pertama. Isian di halaman ikut disimpan sebelum kembali; jika ada isian dengan format salah, halaman tetap terbuka dengan tanda di field tersebut dan pilihan "Kembali tanpa menyimpan halaman ini".
+   - Penunjuk langkah diganti daftar langkah yang bisa diklik (1 Data calon siswa · 2 Alamat · 3 Orang tua · 4 Sekolah asal · 5 Dokumen · 6 Kirim), dengan tanda ✓ untuk langkah yang lengkap.
+   - Tombol **"Simpan draf"** di setiap langkah untuk berhenti dan melanjutkan nanti dengan kode lanjut.
 
 ## File yang disentuh
 - `internal/admission/public_handler.go` (`buildStepView`: kekurangan per langkah)
@@ -34,4 +38,6 @@ Masalahnya:
 - [ ] Dokumen disebut "belum diunggah", isian "belum diisi"
 - [ ] Dokumen wajib bisa diunggah langsung dari halaman "Periksa dan kirim"
 - [ ] Field yang kurang tersorot saat langkahnya dibuka dari tombol
+- [ ] Setiap langkah punya tombol Kembali yang menyimpan isian; daftar langkah bisa diklik
+- [ ] Simpan draf tersedia di setiap langkah
 - [ ] Uji handler untuk formulir publik dan input TU
