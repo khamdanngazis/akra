@@ -9,7 +9,7 @@ Orang tua bisa melihat status pendaftaran dan mengunduh bukti pendaftaran tanpa 
 
 ## Langkah
 1. Route publik `GET/POST /s/{kode-sekolah}/status`: masuk dengan nomor pendaftaran + tanggal lahir calon siswa. Rate limit seperti login.
-2. Tampilkan status, catatan perbaikan (jika `perlu_perbaikan`), dokumen yang kurang, dan status bayar. Jangan tampilkan NIK atau data sensitif lain.
+2. Tampilkan status, jalur, jadwal tes (T93a), catatan perbaikan (jika `perlu_perbaikan`), dokumen yang kurang, dan status bayar. Jangan tampilkan NIK atau data sensitif lain.
 3. Bukti pendaftaran PDF (fpdf, seperti kuitansi T41): kop sekolah, nomor, nama, tanggal lahir, periode, tanggal kirim, daftar dokumen terunggah, QR atau kode verifikasi.
 4. TU bisa mencetak bukti yang sama dari halaman detail.
 

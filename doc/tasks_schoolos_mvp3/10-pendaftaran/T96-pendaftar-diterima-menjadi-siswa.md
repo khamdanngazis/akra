@@ -1,4 +1,4 @@
-# T96 — Pendaftar diterima menjadi siswa **[keputusan]**
+# T96 — Pendaftar diterima menjadi siswa
 
 **Fase:** 10 Pendaftaran
 **Dependensi:** T93, T86, T87, T21, T24
@@ -7,8 +7,8 @@
 ## Tujuan
 Pendaftar yang diterima menjadi siswa lengkap dengan profil dan orang tua, tanpa input ulang.
 
-## Syarat mulai
-Keputusan format NIS otomatis.
+## Keputusan
+Format NIS bisa diatur sekolah, bawaan `{tahun}{urut:3}`, tetap bisa diisi manual (2026-11-14).
 
 ## Langkah
 1. Aksi "Jadikan siswa", per pendaftar atau massal untuk yang berstatus `diterima`.

@@ -33,24 +33,26 @@ Task MVP 3 **tidak dimulai** sebelum:
 | Folder | Task | Isi | Estimasi |
 |---|---|---|---|
 | `09-data-induk/` | T85–T88 (+T85b) | Referensi kode Dapodik, enkripsi data pribadi, data rinci siswa dan orang tua, form dan kelengkapan data | 2 minggu |
-| `10-pendaftaran/` | T89–T97 | Periode, formulir publik, dokumen, verifikasi, biaya, status, penerimaan jadi siswa, rekap | 2,5–3 minggu |
+| `10-pendaftaran/` | T89–T97 (+T93a, T93b) | Periode dan jalur, formulir publik, dokumen, verifikasi, tes seleksi, perankingan, biaya, status, penerimaan jadi siswa, rekap | 3,5 minggu |
 | `11-bantu-dapodik/` | T98–T103 | Lembar salin, F-PD PDF, ekspor daftar PD, impor ekspor Dapodik, isi format import nilai, cek kesiapan | 2 minggu |
 | `12-uji/` | T104–T105 | Uji lintas sekolah dan privasi, uji dengan Dapodik asli | 0,5–1 minggu |
 
-Total perkiraan: 7,5–8,5 minggu.
+Total perkiraan: 8,5–9,5 minggu.
 
 ## Urutan Kritis
 1. T85 dan T85b → T86 → T87 → T88 (fondasi, wajib lebih dulu)
-2. T89 → T90 → T91 → T93 → T96 (pendaftaran inti). Didahulukan karena pendaftaran sekolah swasta umumnya dibuka Desember–Februari.
+2. T89 → T90 → T91 → T93 → T93a → T93b → T96 (pendaftaran inti). Didahulukan karena pendaftaran sekolah swasta umumnya dibuka Desember–Februari.
 3. T98, T99, T101 (bantu Dapodik dengan manfaat terbesar)
 4. T92, T94, T95, T97, T100, T102, T103
 5. T104 dan T105 terakhir
 
-## Keputusan yang Harus Diambil
-- Apakah orang tua mengisi **data lengkap F-PD** saat mendaftar, atau hanya data inti lalu dilengkapi TU setelah diterima (T90). Saran: data lengkap, dengan bagian non-wajib boleh dilewati.
-- Apakah ada jalur atau seleksi (reguler, prestasi, tes) (T89, T93). Jika ada, perlu task tambahan.
-- Apakah biaya formulir wajib lunas sebelum verifikasi (T94).
-- Format NIS otomatis, misalnya `{tahun}{urut 3 digit}` (T96).
+## Keputusan (diambil 2026-11-14)
+- Orang tua mengisi **data lengkap F-PD** saat mendaftar; bagian non-wajib boleh dilewati (T90).
+- **Ada jalur dan tes/seleksi** (T89). Ditambah task T93a (tes dan nilai) dan T93b (perankingan dan penetapan hasil).
+- Biaya formulir **diatur per periode**, termasuk apakah wajib lunas sebelum verifikasi (T89, T94).
+- Format NIS **bisa diatur sekolah**, bawaan `{tahun}{urut:3}` (T96).
+
+## Keputusan yang Masih Terbuka
 - Masa simpan data pendaftar yang ditolak atau mundur (T93).
 
 ## Di Luar Cakupan

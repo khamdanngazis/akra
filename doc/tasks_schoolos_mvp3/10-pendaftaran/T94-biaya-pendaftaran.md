@@ -1,4 +1,4 @@
-# T94 — Biaya pendaftaran **[keputusan]**
+# T94 — Biaya pendaftaran
 
 **Fase:** 10 Pendaftaran
 **Dependensi:** T89, T93, T30, T34
@@ -7,14 +7,14 @@
 ## Tujuan
 Jika periode punya biaya formulir, tagihan dibuat otomatis dan status bayarnya terlihat di daftar pendaftar.
 
-## Syarat mulai
-Keputusan apakah biaya harus lunas sebelum verifikasi.
+## Keputusan
+Diatur per periode lewat `fee_required_before_verify` (T89), 2026-11-14.
 
 ## Langkah
 1. Tagihan dibuat saat status menjadi `dikirim` jika `fee_amount > 0`. Satu tagihan per pendaftar (idempoten).
 2. Pendaftar belum menjadi siswa, jadi perlu cara menautkan tagihan ke pendaftar. Pilihan: kolom `applicant_id` pada tagihan dengan `student_id` boleh NULL, atau tabel tagihan pendaftaran terpisah. Pilih yang paling sedikit mengubah aturan billing yang sudah diuji (T60).
 3. Pembayaran dicatat bendahara dengan alur yang sudah ada (bukti, kuitansi, pembatalan).
-4. Jika sekolah memilih "wajib lunas", tombol `diverifikasi` nonaktif sampai lunas.
+4. Jika periode memilih "wajib lunas", tombol `diverifikasi` nonaktif sampai lunas.
 5. Saat pendaftar diterima (T96), tagihan dan pembayaran ikut tertaut ke siswa baru.
 
 ## File yang disentuh
