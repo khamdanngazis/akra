@@ -22,6 +22,10 @@
 <div class="alert alert-info" role="status">Data pribadi pendaftar ini sudah dihapus pada {{.}} ({{if eq $.Applicant.AnonymizedReason "permintaan"}}atas permintaan{{else}}masa simpan berakhir{{end}}). Yang tersisa hanya data untuk rekap: status, jalur, jenis kelamin, dan tahun lahir.</div>
 {{end}}
 
+{{if and .CanEdit .NextStep.Title}}
+{{template "admission_next_step" .}}
+{{end}}
+
 <div class="detail-split">
 <div class="min-w-0">
 {{if .Sections}}
@@ -46,23 +50,6 @@
 </div>
 
 <div class="stack detail-side">
-{{if and .CanEdit .Next}}
-<section class="card">
-<h2>Tindak lanjut</h2>
-<form method="post" action="/pendaftaran/{{.Applicant.ID}}/status" class="stack" novalidate>
-{{ csrfField }}
-<div class="field{{if .Errors.note}} has-error{{end}}">
-<label for="note">Catatan <span class="muted">(wajib untuk perlu perbaikan)</span></label>
-<textarea id="note" name="note" maxlength="1000">{{.Note}}</textarea>
-{{with .Errors.note}}<p class="field-error">{{.}}</p>{{end}}
-<p class="hint">Catatan perbaikan terlihat oleh orang tua di halaman status pendaftaran.</p>
-</div>
-<div class="action-row">
-{{range .Next}}<button type="submit" name="status" value="{{.Value}}" class="btn {{if eq .Value "diverifikasi" "diterima"}}btn-primary{{else}}btn-ghost{{end}} btn-sm">{{.Label}}</button>{{end}}
-</div>
-</form>
-</section>
-{{end}}
 <section class="card">
 <h2>Dokumen</h2>
 {{if .Documents}}

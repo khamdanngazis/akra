@@ -97,3 +97,39 @@
 </div>
 </div>
 {{end}}
+
+{{/* admission_next_step adalah kartu "Langkah berikutnya" di detail pendaftar (T116). Argumen: applicantDetailView. */}}
+{{define "admission_next_step"}}
+{{$n := .NextStep}}
+<section class="card next-step is-{{$n.Tone}}" aria-labelledby="next-step-title" x-data="{ pick: '{{.Pick}}', pickLabel: '{{.PickLabel}}', submitting: false }">
+<ol class="flow" aria-label="Alur pendaftaran">
+{{range $n.Flow}}<li class="is-{{.State}}"{{if eq .State "current" "warn" "stop"}} aria-current="step"{{end}}><span class="flow-dot" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{end}}</span><span class="flow-label">{{.Label}}</span></li>{{end}}
+</ol>
+<p class="next-step-eyebrow">Langkah berikutnya</p>
+<h2 id="next-step-title">{{$n.Title}}</h2>
+<p class="next-step-hint">{{$n.Hint}}</p>
+{{with $n.Blocked}}<p class="alert alert-error" role="alert">{{.}}</p>{{end}}
+{{if or $n.Primary $n.Other $n.Links}}
+<form method="post" action="/pendaftaran/{{.Applicant.ID}}/status" class="stack" novalidate @submit="if (submitting) $event.preventDefault(); submitting = true">
+{{ csrfField }}
+<div class="next-step-actions">
+{{range $n.Links}}{{if .Primary}}<a class="btn btn-primary" href="{{.URL}}">{{.Label}}</a>{{end}}{{end}}
+{{range $n.Primary}}<button type="submit" name="status" value="{{.Value}}" class="btn btn-primary"{{if $n.Blocked}} disabled{{end}}>{{.Label}}</button>{{end}}
+{{range $n.Links}}{{if not .Primary}}<a class="btn btn-ghost" href="{{.URL}}">{{.Label}}</a>{{end}}{{end}}
+{{range $n.Other}}<button type="button" class="btn btn-ghost" data-label="{{.Label}}" @click="pick = '{{.Value}}'; pickLabel = $el.dataset.label; $nextTick(() => $refs.note.focus())" :aria-pressed="(pick === '{{.Value}}').toString()">{{.Label}}</button>{{end}}
+</div>
+<div class="next-step-note stack" x-show="pick" x-cloak>
+<div class="field{{if .Errors.note}} has-error{{end}}">
+<label for="note">Catatan <span class="muted" x-text="pick === '{{$n.NoteFor}}' ? '(wajib, terlihat oleh orang tua)' : '(opsional)'"></span></label>
+<textarea id="note" name="note" maxlength="1000" x-ref="note">{{.Note}}</textarea>
+{{with .Errors.note}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="action-row">
+<button type="submit" name="status" :value="pick" class="btn btn-primary">Simpan: <span x-text="pickLabel"></span></button>
+<button type="button" class="btn btn-ghost" @click="pick = ''">Batal</button>
+</div>
+</div>
+</form>
+{{end}}
+</section>
+{{end}}

@@ -2122,6 +2122,99 @@
     @apply mt-3 flex flex-wrap items-center justify-between gap-2;
   }
 
+  /* Langkah berikutnya di detail pendaftar (T116). */
+  .next-step {
+    @apply mb-4 border-l-4 border-l-blue-600;
+  }
+
+  .next-step.is-warn {
+    @apply border-l-amber-500;
+  }
+
+  .next-step.is-ok {
+    @apply border-l-emerald-600;
+  }
+
+  .next-step.is-muted {
+    @apply border-l-slate-300;
+  }
+
+  .next-step h2 {
+    @apply mt-0 mb-1 text-lg;
+  }
+
+  .next-step-eyebrow {
+    @apply mb-0.5 text-xs font-bold tracking-wide text-slate-500 uppercase;
+  }
+
+  .next-step-hint {
+    @apply mb-3 max-w-3xl text-sm text-slate-700;
+  }
+
+  .next-step-actions {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .next-step-actions [aria-pressed="true"] {
+    @apply border-blue-600 bg-blue-50 text-blue-800;
+  }
+
+  .next-step-note {
+    @apply max-w-xl rounded-xl border border-slate-200 bg-slate-50 p-3;
+  }
+
+  .flow {
+    @apply m-0 mb-4 grid list-none grid-cols-4 gap-1 p-0;
+  }
+
+  .flow li {
+    @apply relative flex flex-col items-center gap-1 text-center text-xs text-slate-500;
+  }
+
+  /* Garis penghubung antar-titik. */
+  .flow li + li::before {
+    @apply absolute top-3 right-1/2 -z-0 h-0.5 w-full bg-slate-200 content-[''];
+  }
+
+  .flow li.is-done + li::before,
+  .flow li.is-done + li.is-current::before {
+    @apply bg-emerald-500;
+  }
+
+  .flow-dot {
+    @apply relative z-10 grid size-6 place-items-center rounded-full border-2 border-slate-300 bg-white;
+  }
+
+  .flow-dot svg {
+    @apply size-3.5;
+  }
+
+  .flow-label {
+    @apply leading-tight [overflow-wrap:anywhere];
+  }
+
+  .flow li.is-done .flow-dot {
+    @apply border-emerald-500 bg-emerald-500 text-white;
+  }
+
+  .flow li.is-current .flow-dot {
+    @apply border-blue-600 ring-4 ring-blue-600/15;
+  }
+
+  .flow li.is-current,
+  .flow li.is-warn,
+  .flow li.is-stop {
+    @apply font-semibold text-slate-900;
+  }
+
+  .flow li.is-warn .flow-dot {
+    @apply border-amber-500 bg-amber-100;
+  }
+
+  .flow li.is-stop .flow-dot {
+    @apply border-slate-500 bg-slate-200;
+  }
+
   /* Cek kesiapan Dapodik (T115): filter jenis masalah dan daftar. */
   .kind-filter {
     @apply mb-4;

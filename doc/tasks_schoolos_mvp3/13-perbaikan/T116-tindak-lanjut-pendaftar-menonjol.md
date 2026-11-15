@@ -3,7 +3,7 @@
 **Fase:** 13 Perbaikan
 **Dependensi:** T93, T114
 **Estimasi:** 0,5–1 hari
-**Status:** catatan dan analisa, belum dikerjakan
+**Status:** selesai (2026-11-15)
 
 ## Masukan pengguna (2026-11-15)
 Bagian tindak lanjut di detail pendaftar kurang menonjol. Pengguna sempat mencari cara menerima siswa di menu lain, terutama di tablet dan HP.
@@ -34,6 +34,21 @@ Bagian tindak lanjut di detail pendaftar kurang menonjol. Pengguna sempat mencar
 - Urutan kerja: T116 → T120 → T121 → T117 → T118 → T119.
 
 ## Kriteria selesai
-- [ ] Di 390 px dan 768 px, tombol tindak lanjut terlihat tanpa menggulir
-- [ ] Setiap status menampilkan langkah berikutnya, atau alasan jika belum bisa
-- [ ] Ada tautan ke peringkat jalur dan ke Jadikan siswa sesuai status
+- [x] Di 390 px dan 768 px, tombol tindak lanjut terlihat tanpa menggulir
+- [x] Setiap status menampilkan langkah berikutnya, atau alasan jika belum bisa
+- [x] Ada tautan ke peringkat jalur dan ke Jadikan siswa sesuai status
+
+## Catatan implementasi
+- `internal/admission/next_step.go`:
+  - `buildFlow` menyusun garis alur, termasuk titik tertahan (perlu perbaikan, cadangan) dan berhenti (ditolak, mundur di titik tempat ia berhenti);
+  - `buildNextStep` menyusun judul, petunjuk, aksi utama/lain, penghalang, dan tautan per status;
+  - `actionLabels` berisi label tombol berupa kata kerja (Verifikasi, Terima, Tolak, …).
+- Template `admission_next_step` (`partials/admission.html`):
+  - kartu di atas data pendaftar untuk Admin/TU; kartu Tindak lanjut lama di kolom kanan dihapus;
+  - aksi lain membuka isian catatan dulu, dengan tanda wajib untuk Perlu perbaikan;
+  - jika catatan ditolak, isian terbuka lagi dengan pilihan yang sama (`Pick`).
+- Jalur dengan tes atau kuota: dari Diverifikasi, tombol utamanya "Buka peringkat jalur …"; tombol Terima/Cadangan/Tolak tetap ada untuk satu pendaftar.
+- Biaya wajib lunas belum dibayar: tombol Verifikasi nonaktif dengan alasan, plus tautan ke Biaya Pendaftaran.
+- "Jadikan siswa" masih menuju halaman massal `/pendaftaran/terima`; versi per pendaftar di T120.
+- **Tidak dibuat:** bar aksi menempel di bawah HP (usulan 4). Kartu sudah di atas halaman dan tombol utamanya terlihat tanpa menggulir (±590 px di layar 844 px), jadi bar menempel hanya akan mengulang tombol.
+- **Perbaikan bug sejenis:** tombol kirim tidak dinonaktifkan lewat `:disabled` saat submit. Alpine menonaktifkannya sebelum browser menyusun data form, sehingga nilai `status` dari tombol yang diklik tidak ikut terkirim. Kirim ganda dicegah di handler `@submit`.

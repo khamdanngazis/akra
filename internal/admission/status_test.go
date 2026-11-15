@@ -240,8 +240,15 @@ func TestApplicantHandler(t *testing.T) {
 		t.Errorf("open document: %d %v", rec.Code, rec.Header())
 	}
 
-	// Status: perlu perbaikan menampilkan kode lanjut sekali.
-	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/status", "admin_tu", url.Values{"status": {"perlu_perbaikan"}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "bagian yang perlu diperbaiki") {
+	// Kartu langkah berikutnya (T116) ada di atas data pendaftar.
+	if i, j := strings.Index(body, `class="card next-step`), strings.Index(body, "Data pendaftar"); i < 0 || j < i {
+		t.Error("next-step card missing or below applicant data")
+	}
+
+	// Status: perlu perbaikan menampilkan kode lanjut sekali. Catatan
+	// kosong ditolak dan isian catatan terbuka lagi.
+	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/status", "admin_tu", url.Values{"status": {"perlu_perbaikan"}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "bagian yang perlu diperbaiki") ||
+		!strings.Contains(rec.Body.String(), `pick: 'perlu_perbaikan'`) {
 		t.Errorf("fix without note: %d", rec.Code)
 	}
 	rec = e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/status", "admin_tu", url.Values{"status": {"perlu_perbaikan"}, "note": {"Akta buram"}})
@@ -253,7 +260,7 @@ func TestApplicantHandler(t *testing.T) {
 	}
 
 	// Kepala sekolah baca saja; guru ditolak.
-	if body := e.do(http.MethodGet, "/pendaftaran/"+a.ID, "kepala_sekolah", nil).Body.String(); strings.Contains(body, "Tindak lanjut") {
+	if body := e.do(http.MethodGet, "/pendaftaran/"+a.ID, "kepala_sekolah", nil).Body.String(); strings.Contains(body, "Langkah berikutnya") || strings.Contains(body, `name="status"`) {
 		t.Error("principal sees actions")
 	}
 	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/status", "kepala_sekolah", url.Values{"status": {"mundur"}}); rec.Code != http.StatusForbidden {
