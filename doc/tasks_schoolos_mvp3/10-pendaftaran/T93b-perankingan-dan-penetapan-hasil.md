@@ -22,6 +22,6 @@ TU bisa melihat peringkat pendaftar per jalur, lalu menetapkan diterima, cadanga
 - `web/templates/admission/results.html`
 
 ## Kriteria selesai
-- [ ] Urutan peringkat diuji unit, termasuk skor sama (waktu kirim menentukan)
-- [ ] Penetapan hasil dua kali tidak membuat event ganda untuk pendaftar yang statusnya tidak berubah
-- [ ] Pendaftar dengan nilai belum lengkap tidak masuk usulan diterima
+- [x] Urutan peringkat diuji unit, termasuk skor sama (waktu kirim menentukan)
+- [x] Penetapan hasil dua kali tidak membuat event ganda untuk pendaftar yang statusnya tidak berubah
+- [x] Pendaftar dengan nilai belum lengkap tidak masuk usulan diterima

@@ -26,7 +26,7 @@ Sekolah bisa membuka pendaftaran untuk tahun ajaran tertentu, dengan satu atau b
 - `web/templates/admission/periods.html`, `period_form.html`
 
 ## Kriteria selesai
-- [ ] Periode di luar rentang tanggal dianggap tutup walau status `buka`
-- [ ] Periode tanpa jalur tidak bisa dibuka
-- [ ] Periode atau jalur dengan pendaftar tidak bisa dihapus
-- [ ] Periode sekolah lain tidak terlihat (T58)
+- [x] Periode di luar rentang tanggal dianggap tutup walau status `buka`
+- [x] Periode tanpa jalur tidak bisa dibuka
+- [x] Periode atau jalur dengan pendaftar tidak bisa dihapus
+- [x] Periode sekolah lain tidak terlihat (T58)

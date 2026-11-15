@@ -27,11 +27,11 @@ Sekolah yang sudah punya data di Dapodik bisa memindahkan data siswa lengkap ke 
 - `internal/demo/mvp2.go`
 
 ## Kriteria selesai
-- [ ] File ekspor Dapodik asli (tanpa diedit) terbaca dengan header baris 5–6
-- [ ] Semua uji impor lama (T53, T82) tetap lulus
-- [ ] Impor ulang file yang sama tidak mengubah apa pun
-- [ ] Field yang sudah diisi TU tidak tertimpa tanpa konfirmasi
-- [ ] File hasil T100 terimpor 100% tanpa error
+- [x] File ekspor Dapodik asli (tanpa diedit) terbaca dengan header baris 5–6
+- [x] Semua uji impor lama (T53, T82) tetap lulus
+- [x] Impor ulang file yang sama tidak mengubah apa pun
+- [x] Field yang sudah diisi TU tidak tertimpa tanpa konfirmasi
+- [x] File hasil T100 terimpor 100% tanpa error
 
 ## Catatan implementasi
 Dua bagian: (1) deteksi header importer umum (`ReadHeader`, `scanSheet`, `ReadTable`) untuk baris judul dan header bergrup, plus perbaikan mapping demo menjadi `Data Ibu / Nama`; (2) impor data rinci khusus di `/dapodik/impor` dengan pratinjau isi/konflik. File disimpan terenkripsi sementara di storage antara pratinjau dan terapkan. Data orang tua yang sudah ada tidak ditimpa. Impor tidak berjalan sebagai job River.

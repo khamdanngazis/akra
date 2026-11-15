@@ -25,9 +25,9 @@ TU tahu lebih awal data mana yang akan ditolak atau menjadi peringatan di valida
 - `web/templates/dapodik/check.html`
 
 ## Kriteria selesai
-- [ ] Setiap aturan punya uji unit dengan contoh lolos dan gagal
-- [ ] Siswa tanpa masalah tidak muncul di daftar
-- [ ] Pesan memakai bahasa operator Dapodik, bukan istilah teknis
+- [x] Setiap aturan punya uji unit dengan contoh lolos dan gagal
+- [x] Siswa tanpa masalah tidak muncul di daftar
+- [x] Pesan memakai bahasa operator Dapodik, bukan istilah teknis
 
 ## Catatan implementasi
 Kartu beranda TU memakai jumlah siswa dengan field wajib Dapodik belum lengkap (SQL kelengkapan T88), bukan menjalankan semua aturan per siswa.

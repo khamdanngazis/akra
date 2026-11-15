@@ -21,10 +21,12 @@ Sekolah bisa mengunduh formulir peserta didik (F-PD) yang sudah terisi dari data
 - `internal/dapodik/handler.go`
 
 ## Kriteria selesai
-- [ ] Siswa dengan data lengkap menghasilkan PDF dengan semua nomor field terisi
-- [ ] Nama panjang dan alamat panjang tidak keluar dari kolom (dipotong rapi atau dibungkus)
-- [ ] PDF massal 40 siswa selesai tanpa membuat halaman macet
+- [x] Siswa dengan data lengkap menghasilkan PDF dengan semua nomor field terisi
+- [x] Nama panjang dan alamat panjang tidak keluar dari kolom (dipotong rapi atau dibungkus)
+- [x] PDF massal 40 siswa selesai tanpa membuat halaman macet
 - [ ] Versi wali kelas tidak memuat NIK utuh
+
+> Belum: versi wali kelas tidak dibuat karena guru belum punya akses ke halaman ini (lihat catatan implementasi).
 
 ## Catatan implementasi
 PDF kelas dibuat langsung untuk maksimal 100 siswa (bukan job River). Versi ter-mask untuk wali kelas tidak dibuat karena guru belum punya akses ke halaman ini.

@@ -26,9 +26,9 @@ Fitur pendaftaran dan Dapodik tidak membocorkan data antarsekolah, antarpendafta
 - `internal/testutil/` dan test lintas sekolah yang sudah ada
 
 ## Kriteria selesai
-- [ ] Semua route MVP 3 ada di daftar T58/T59 dan lulus
-- [ ] Pencarian `nik`/NIK contoh di output log uji tidak menemukan apa pun
-- [ ] Uji beban formulir lulus tanpa duplikasi
+- [x] Semua route MVP 3 ada di daftar T58/T59 dan lulus
+- [x] Pencarian `nik`/NIK contoh di output log uji tidak menemukan apa pun
+- [x] Uji beban formulir lulus tanpa duplikasi
 
 ## Catatan implementasi
 Uji `TestPrivacy_NoPlaintextIdentityNumbers` (cmd/server) menjalankan alur lewat HTTP lalu memindai setiap kolom teks/json/bytea di skema public, log aplikasi, dan file storage. Uji 200 kiriman bersamaan ada di `TestSubmitConcurrentNumbers`.

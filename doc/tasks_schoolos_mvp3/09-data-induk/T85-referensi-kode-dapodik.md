@@ -23,9 +23,9 @@ Semua pilihan yang dipakai Dapodik (agama, pekerjaan, penghasilan, dan lainnya) 
 - `internal/dapodik/ref/ref.go`, `ref_test.go`
 
 ## Kriteria selesai
-- [ ] Setiap daftar cocok dengan F-PD 2027 (uji tabel membandingkan kode dan label)
-- [ ] `Valid` menolak kode di luar daftar
-- [ ] Tidak ada daftar kode Dapodik lain di luar paket ini (`git grep` pada label seperti "Pedagang Kecil")
+- [x] Setiap daftar cocok dengan F-PD 2027 (uji tabel membandingkan kode dan label)
+- [x] `Valid` menolak kode di luar daftar
+- [x] Tidak ada daftar kode Dapodik lain di luar paket ini (`git grep` pada label seperti "Pedagang Kecil")
 
 ## Catatan
 - Label harus persis sama dengan Dapodik, termasuk ejaan, karena dipakai untuk salin-tempel ke combobox Dapodik (T98).

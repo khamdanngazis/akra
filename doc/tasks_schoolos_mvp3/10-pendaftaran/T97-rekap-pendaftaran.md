@@ -17,5 +17,5 @@ Kepala sekolah dan TU bisa melihat perkembangan pendaftaran dan mengekspor datan
 - `web/templates/admission/summary.html`
 
 ## Kriteria selesai
-- [ ] Angka rekap sama dengan jumlah baris di daftar pendaftar untuk filter yang sama
-- [ ] Ekspor oleh peran tanpa hak NIK tidak memuat kolom NIK
+- [x] Angka rekap sama dengan jumlah baris di daftar pendaftar untuk filter yang sama
+- [x] Ekspor oleh peran tanpa hak NIK tidak memuat kolom NIK

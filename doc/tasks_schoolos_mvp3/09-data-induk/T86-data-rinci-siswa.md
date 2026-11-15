@@ -30,12 +30,12 @@ Siswa punya data lengkap sesuai F-PD Dapodik, tanpa membuat tabel `students` men
 - `internal/students/profile.go`, `profile_test.go`
 
 ## Kriteria selesai
-- [ ] NIK sama dengan No KK ditolak
-- [ ] NISN 9 digit atau berisi huruf ditolak dengan pesan per field
-- [ ] NIK ganda di sekolah yang sama ditolak; di sekolah lain boleh
-- [ ] Audit log tidak memuat NIK atau No KK dalam bentuk utuh
-- [ ] Kolom `nik_enc`, `kk_enc`, `birth_cert_enc` di database tidak berisi teks NIK/KK/akta (dicek langsung dengan SQL di test)
-- [ ] Siswa tanpa profil tetap tampil normal di semua halaman lama
+- [x] NIK sama dengan No KK ditolak
+- [x] NISN 9 digit atau berisi huruf ditolak dengan pesan per field
+- [x] NIK ganda di sekolah yang sama ditolak; di sekolah lain boleh
+- [x] Audit log tidak memuat NIK atau No KK dalam bentuk utuh
+- [x] Kolom `nik_enc`, `kk_enc`, `birth_cert_enc` di database tidak berisi teks NIK/KK/akta (dicek langsung dengan SQL di test)
+- [x] Siswa tanpa profil tetap tampil normal di semua halaman lama
 
 ## Catatan implementasi
 Tanpa `db/queries`; SQL inline seperti paket lain. Audit hanya mencatat nama field yang berubah. Audit menolak kunci NIK/KK/akta bertipe teks.

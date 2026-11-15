@@ -29,10 +29,10 @@ Dapodik 2027 tidak punya import Excel untuk siswa. Penambahan siswa lewat form "
 - migrasi kecil untuk `dapodik_entered_at`, `dapodik_entered_by`
 
 ## Kriteria selesai
-- [ ] Urutan field di halaman sama dengan form Dapodik 2027 (diperiksa operator di T105)
-- [ ] Setiap field pilihan memakai label T85, tidak ada label yang ditulis tangan di template
-- [ ] Mode "Salin berikutnya" melewati field kosong dan berhenti di akhir bagian dengan tanda yang jelas
-- [ ] Route masuk daftar uji T58 dan T59
+- [x] Urutan field di halaman sama dengan form Dapodik 2027 (diperiksa operator di T105)
+- [x] Setiap field pilihan memakai label T85, tidak ada label yang ditulis tangan di template
+- [x] Mode "Salin berikutnya" melewati field kosong dan berhenti di akhir bagian dengan tanda yang jelas
+- [x] Route masuk daftar uji T58 dan T59
 
 ## Catatan
 - Pengisian otomatis ke Dapodik (extension atau autofill) di luar cakupan.
