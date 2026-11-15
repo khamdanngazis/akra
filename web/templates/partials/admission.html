@@ -158,3 +158,20 @@
 {{end}}
 </section>
 {{end}}
+
+{{/* admission_period_tabs adalah tab halaman gelombang (T117). Argumen: dict "ID" id gelombang, "Active" ringkasan|tes|hasil. */}}
+{{define "admission_period_tabs"}}
+<nav class="tabs" aria-label="Bagian gelombang">
+<a href="/pendaftaran/periode/{{.ID}}"{{if eq .Active "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
+<a href="/pendaftaran/periode/{{.ID}}/tes"{{if eq .Active "tes"}} aria-current="page"{{end}}>Tes seleksi</a>
+<a href="/pendaftaran?periode={{.ID}}">Pendaftar</a>
+<a href="/pendaftaran/periode/{{.ID}}/hasil"{{if eq .Active "hasil"}} aria-current="page"{{end}}>Peringkat &amp; hasil</a>
+</nav>
+{{end}}
+
+{{/* admission_checklist adalah daftar periksa sebelum gelombang dibuka (T117). Argumen: []checkItem. */}}
+{{define "admission_checklist"}}
+<ul class="checklist">
+{{range .}}<li class="{{if .OK}}is-ok{{else}}is-missing{{end}}"><span class="checklist-mark" aria-hidden="true">{{if .OK}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}</span><span class="min-w-0 flex-1"><strong>{{.Label}}</strong><span class="block text-sm text-slate-600">{{if .OK}}Terpenuhi.{{else}}{{.Hint}}{{end}}</span></span>{{if not .OK}}<a class="btn btn-ghost btn-sm" href="{{.FixURL}}">{{.FixLabel}}</a>{{end}}</li>{{end}}
+</ul>
+{{end}}

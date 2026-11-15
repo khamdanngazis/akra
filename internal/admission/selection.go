@@ -232,7 +232,7 @@ func (s *SelectionService) DeleteTest(ctx context.Context, actor school.Actor, p
 func testFieldError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == "admission_tests_name_key" {
-		return fieldErr("test_name", "Nama tes sudah dipakai di periode ini.")
+		return fieldErr("test_name", "Nama tes sudah dipakai di gelombang ini.")
 	}
 	return err
 }

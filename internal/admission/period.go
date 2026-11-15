@@ -288,9 +288,9 @@ func validatePeriod(f PeriodForm) (periodInput, error) {
 	}
 	switch {
 	case in.Name == "":
-		fields["name"] = "Nama periode wajib diisi."
+		fields["name"] = "Nama gelombang wajib diisi."
 	case utf8.RuneCountInString(in.Name) > 80:
-		fields["name"] = "Nama periode maksimal 80 karakter."
+		fields["name"] = "Nama gelombang maksimal 80 karakter."
 	}
 	if !database.IsUUID(in.AcademicYearID) {
 		fields["academic_year_id"] = "Pilih tahun ajaran."
@@ -612,11 +612,11 @@ func periodFieldError(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.ConstraintName {
 		case "admission_periods_name_key":
-			return fieldErr("name", "Nama periode sudah dipakai di tahun ajaran ini.")
+			return fieldErr("name", "Nama gelombang sudah dipakai di tahun ajaran ini.")
 		case "admission_periods_year_fkey":
 			return fieldErr("academic_year_id", "Pilih tahun ajaran.")
 		case "admission_tracks_name_key":
-			return fieldErr("track_name", "Nama jalur sudah dipakai di periode ini.")
+			return fieldErr("track_name", "Nama jalur sudah dipakai di gelombang ini.")
 		}
 	}
 	return err

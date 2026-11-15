@@ -1,13 +1,13 @@
-{{define "title"}}Periode Pendaftaran{{end}}
+{{define "title"}}Gelombang Pendaftaran{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" ""}}
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Gelombang pendaftaran" ""}}
 <div class="page-header">
 <div>
-<h1>Periode Pendaftaran</h1>
-<p class="muted">Gelombang pendaftaran siswa baru beserta jalurnya.</p>
+<h1>Gelombang pendaftaran</h1>
+<p class="muted">Setiap gelombang punya jadwal, biaya, jalur, dan dokumen wajib sendiri. Buat gelombang baru, atau salin gelombang sebelumnya.</p>
 </div>
-<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/pengaturan">Pengaturan pendaftaran</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode</a>{{end}}</div>
+<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/pengaturan">Pengaturan pendaftaran</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat gelombang</a>{{end}}</div>
 </div>
 
 {{template "flash" .}}
@@ -36,17 +36,18 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>Periode</th><th>Tahun ajaran</th><th>Tingkat</th><th>Tanggal</th><th>Biaya</th><th>Jalur</th><th>Status</th></tr></thead>
+<thead><tr><th>Gelombang</th><th>Tahun ajaran</th><th>Kelas</th><th>Tanggal</th><th>Biaya</th><th>Jalur</th><th>Status</th>{{if $.CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr></thead>
 <tbody>
 {{range .Periods}}
 <tr>
 <td><a href="/pendaftaran/periode/{{.ID}}"><strong>{{.Name}}</strong></a></td>
 <td>{{.AcademicYearName}}</td>
 <td>{{if .TargetGrade}}{{.TargetGrade}}{{else}}<span class="badge badge-info">Pindahan</span>{{end}}</td>
-<td class="nowrap">{{.Opens}} – {{.Closes}}</td>
+<td><span class="nowrap">{{.Opens}} –</span> <span class="nowrap">{{.Closes}}</span></td>
 <td class="nowrap">{{.Fee}}</td>
 <td>{{.TrackCount}}</td>
 <td>{{template "admission_period_status" .}}</td>
+{{if $.CanEdit}}<td><form method="post" action="/pendaftaran/periode/{{.ID}}/salin">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm" title="Buat gelombang baru dengan jalur dan tes yang sama">{{template "icon" "copy"}}<span>Salin</span></button></form></td>{{end}}
 </tr>
 {{end}}
 </tbody>
@@ -55,8 +56,8 @@
 </div>
 {{else}}
 <section class="card empty-state">
-<p>Belum ada periode pendaftaran.</p>
-{{if .CanEdit}}<p><a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode pertama</a></p>{{end}}
+<p>Belum ada gelombang pendaftaran.</p>
+{{if .CanEdit}}<p><a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat gelombang pertama</a></p>{{end}}
 </section>
 {{end}}
 {{end}}

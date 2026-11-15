@@ -6,7 +6,7 @@
 <h1>Pendaftar</h1>
 <p class="muted">Pendaftar siswa baru yang sudah mengirim formulir.</p>
 </div>
-<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/periode">Periode dan jalur</a><a class="btn btn-ghost" href="/pendaftaran/rekap">Rekap</a><a class="btn btn-ghost" href="/pendaftaran/terima">Jadikan siswa</a><a class="btn btn-ghost" href="/pendaftaran/pengaturan">Pengaturan</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/baru">Input pendaftar</a>{{end}}</div>
+<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/periode">Gelombang</a><a class="btn btn-ghost" href="/pendaftaran/rekap">Rekap</a><a class="btn btn-ghost" href="/pendaftaran/terima">Jadikan siswa</a><a class="btn btn-ghost" href="/pendaftaran/pengaturan">Pengaturan</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/baru">Input pendaftar</a>{{end}}</div>
 </div>
 
 {{template "flash" .}}
@@ -17,9 +17,9 @@
 <input id="q" type="search" name="q" value="{{.Query}}" placeholder="mis. Budi atau SPMB-2027" autocomplete="off">
 </div>
 <div class="field">
-<label for="periode">Periode</label>
+<label for="periode">Gelombang</label>
 <select id="periode" name="periode" @change="$el.form.jalur && ($el.form.jalur.value=''); $el.form.submit()">
-<option value="">Semua periode</option>
+<option value="">Semua gelombang</option>
 {{range .Periods}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
 </select>
 </div>
@@ -56,7 +56,7 @@
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>Nomor</th><th>Nama</th><th>Sekolah asal</th><th>Periode · Jalur</th><th>Dokumen</th><th>Dikirim</th><th>Status</th></tr></thead>
+<thead><tr><th>Nomor</th><th>Nama</th><th>Sekolah asal</th><th>Gelombang · Jalur</th><th>Dokumen</th><th>Dikirim</th><th>Status</th></tr></thead>
 <tbody>
 {{range .Rows}}
 <tr>

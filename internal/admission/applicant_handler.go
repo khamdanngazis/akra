@@ -401,7 +401,7 @@ func (h *Handler) setApplicantStatus(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrBadTransition):
 		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, note, nil, "Status tidak bisa diubah ke pilihan itu. Muat ulang halaman; mungkin petugas lain sudah mengubahnya.")
 	case errors.Is(err, ErrFeeUnpaid):
-		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, note, nil, "Biaya formulir belum lunas. Periode ini mewajibkan lunas sebelum verifikasi.")
+		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, note, nil, "Biaya formulir belum lunas. Gelombang ini mewajibkan lunas sebelum verifikasi.")
 	default:
 		h.serverError(w, r, "set applicant status", err)
 	}

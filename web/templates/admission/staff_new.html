@@ -13,13 +13,13 @@
 <form method="post" action="/pendaftaran/baru" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
 <div class="field{{if .Errors.track_id}} has-error{{end}}">
-<label for="choice">Jenis, periode, dan jalur</label>
+<label for="choice">Jenis, gelombang, dan jalur</label>
 <select id="choice" name="choice">
 <optgroup label="Siswa baru">{{range .Tracks}}{{if ne .Kind "pindahan"}}<option value="{{.PeriodID}}|{{.TrackID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}{{end}}</optgroup>
 <optgroup label="Siswa pindahan">{{range .Tracks}}{{if eq .Kind "pindahan"}}<option value="{{.PeriodID}}|{{.TrackID}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}{{end}}</optgroup>
 </select>
 {{with .Errors.track_id}}<p class="field-error">{{.}}</p>{{end}}
-<p class="hint">Periode di luar masa pendaftaran tetap bisa dipilih untuk pendaftar susulan.</p>
+<p class="hint">Gelombang di luar masa pendaftaran tetap bisa dipilih untuk pendaftar susulan.</p>
 </div>
 <div class="field{{if .Errors.full_name}} has-error{{end}}">
 <label for="full_name">Nama lengkap calon siswa (sesuai akta)</label>

@@ -271,12 +271,20 @@ func TestPeriodHandler(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("create: %d\n%s", rec.Code, rec.Body.String())
 	}
-	path := rec.Header().Get("Location")
+	// Wizard (T117): setelah langkah dasar, lanjut ke langkah jadwal.
+	loc := rec.Header().Get("Location")
+	if !strings.HasSuffix(loc, "/atur/jadwal") {
+		t.Fatalf("create redirect = %q", loc)
+	}
+	path := strings.TrimSuffix(loc, "/atur/jadwal")
 
-	for _, p := range []string{"/pendaftaran/periode", path, "/pendaftaran/periode/baru", path + "/ubah"} {
+	for _, p := range []string{"/pendaftaran/periode", path, "/pendaftaran/periode/baru", path + "/atur/dasar", path + "/atur/jadwal", path + "/atur/jalur", path + "/atur/dokumen"} {
 		if rec := e.do(http.MethodGet, p, "admin_tu", nil); rec.Code != http.StatusOK {
 			t.Errorf("GET %s: %d\n%s", p, rec.Code, rec.Body.String())
 		}
+	}
+	if rec := e.do(http.MethodGet, path+"/ubah", "admin_tu", nil); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != path+"/atur/dasar" {
+		t.Errorf("old edit link: %d %s", rec.Code, rec.Header().Get("Location"))
 	}
 	body := e.do(http.MethodGet, "/pendaftaran/periode", "admin_tu", nil).Body.String()
 	if !strings.Contains(body, "Gelombang 1") || !strings.Contains(body, "Rp100.000") || !strings.Contains(body, "Draf") {
@@ -285,7 +293,7 @@ func TestPeriodHandler(t *testing.T) {
 
 	// Membuka tanpa jalur: pesan jelas.
 	rec = e.do(http.MethodPost, path+"/status", "admin_tu", url.Values{"status": {"buka"}})
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "minimal satu jalur") {
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "Minimal satu jalur") || !strings.Contains(rec.Body.String(), "belum bisa dibuka") {
 		t.Errorf("open without track: %d", rec.Code)
 	}
 	if rec := e.do(http.MethodPost, path+"/jalur", "admin_tu", url.Values{"track_name": {""}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Nama jalur wajib") {
@@ -293,6 +301,13 @@ func TestPeriodHandler(t *testing.T) {
 	}
 	if rec := e.do(http.MethodPost, path+"/jalur", "admin_tu", url.Values{"track_name": {"Reguler"}, "quota": {"30"}, "uses_test": {"on"}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("add track: %d\n%s", rec.Code, rec.Body.String())
+	}
+	// Jalur dengan tes: belum bisa dibuka sebelum bobot tes 100% (T117).
+	if rec := e.do(http.MethodPost, path+"/status", "admin_tu", url.Values{"status": {"buka"}}); rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "bobot total 100%") {
+		t.Errorf("open without tests: %d", rec.Code)
+	}
+	if rec := e.do(http.MethodPost, path+"/tes", "admin_tu", url.Values{"test_name": {"Membaca"}, "weight": {"100"}, "max_score": {"100"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("add test: %d\n%s", rec.Code, rec.Body.String())
 	}
 	if rec := e.do(http.MethodPost, path+"/status", "admin_tu", url.Values{"status": {"buka"}}); rec.Code != http.StatusSeeOther {
 		t.Errorf("open: %d", rec.Code)
@@ -317,7 +332,103 @@ func TestPeriodHandler(t *testing.T) {
 	// Form error ditampilkan ulang.
 	bad := url.Values{"name": {""}, "academic_year_id": {e.yearA}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2026-11-01"}}
 	rec = e.do(http.MethodPost, "/pendaftaran/periode", "admin_tu", bad)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Nama periode wajib") || !strings.Contains(rec.Body.String(), "tidak boleh sebelum") {
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Nama gelombang wajib") {
 		t.Errorf("invalid form: %d", rec.Code)
+	}
+}
+
+// TestPeriodWizard menjalankan wizard gelombang dari awal sampai dibuka,
+// lalu menyalinnya (T117).
+func TestPeriodWizard(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	today := e.svc.Today()
+	rec := e.do(http.MethodPost, "/pendaftaran/periode", "admin_tu", url.Values{"kind": {"baru"}, "name": {"Gelombang A"}, "academic_year_id": {e.yearA}, "target_grade": {"7"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("create: %d\n%s", rec.Code, rec.Body.String())
+	}
+	path := strings.TrimSuffix(rec.Header().Get("Location"), "/atur/jadwal")
+	id := strings.TrimPrefix(path, "/pendaftaran/periode/")
+	p, err := e.svc.Get(ctx, e.schoolA, id)
+	if err != nil || p.Status != StatusDraft || len(p.RequiredDocs) != 3 || !p.OpensOn.Equal(today) {
+		t.Fatalf("draft after step 1 = %+v, %v", p, err)
+	}
+
+	// Langkah jadwal: error tanggal tampil di langkah yang sama.
+	if rec := e.do(http.MethodPost, path+"/atur/jadwal", "admin_tu", url.Values{"opens_on": {"2027-02-01"}, "closes_on": {"2027-01-01"}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "tidak boleh sebelum") {
+		t.Errorf("bad schedule: %d", rec.Code)
+	}
+	opens, closes := today.Format(dateLayout), today.AddDate(0, 2, 0).Format(dateLayout)
+	rec = e.do(http.MethodPost, path+"/atur/jadwal", "admin_tu", url.Values{"opens_on": {opens}, "closes_on": {closes}, "fee_amount": {"50.000"}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != path+"/atur/jalur" {
+		t.Fatalf("schedule: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	// Langkah dasar tidak mengubah jadwal yang sudah diisi.
+	if rec := e.do(http.MethodPost, path+"/atur/dasar", "admin_tu", url.Values{"name": {"Gelombang A1"}, "academic_year_id": {e.yearA}, "target_grade": {"7"}, "action": {"keluar"}}); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != path {
+		t.Errorf("basic save and exit: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	if p, _ = e.svc.Get(ctx, e.schoolA, id); p.Name != "Gelombang A1" || p.FeeAmount != 50000 || p.ClosesOn.Format(dateLayout) != closes {
+		t.Errorf("after basic step = %+v", p)
+	}
+
+	// Langkah jalur: tanpa jalur, tombol Lanjut nonaktif; jalur cepat Reguler.
+	if body := e.do(http.MethodGet, path+"/atur/jalur", "admin_tu", nil).Body.String(); !strings.Contains(body, "Buat jalur Reguler tanpa tes") || !strings.Contains(body, "minimal satu jalur dulu") {
+		t.Error("tracks step without tracks")
+	}
+	if rec := e.do(http.MethodPost, path+"/jalur", "admin_tu", url.Values{"kembali": {"atur"}, "track_name": {""}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "3. Jalur pendaftaran") {
+		t.Errorf("track error stays in wizard: %d", rec.Code)
+	}
+	rec = e.do(http.MethodPost, path+"/jalur", "admin_tu", url.Values{"kembali": {"atur"}, "track_name": {"Reguler"}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != path+"/atur/jalur" {
+		t.Fatalf("quick track: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+
+	// Langkah dokumen: daftar periksa terpenuhi, simpan dan buka.
+	body := e.do(http.MethodGet, path+"/atur/dokumen", "admin_tu", nil).Body.String()
+	if !strings.Contains(body, "Simpan dan buka pendaftaran") || strings.Contains(body, "is-missing") || strings.Contains(body, "Surat keterangan pindah") {
+		t.Error("docs step content")
+	}
+	rec = e.do(http.MethodPost, path+"/atur/dokumen", "admin_tu", url.Values{"required_docs": {"kk", "akta"}, "action": {"buka"}})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != path {
+		t.Fatalf("open from wizard: %d\n%s", rec.Code, rec.Body.String())
+	}
+	if p, _ = e.svc.Get(ctx, e.schoolA, id); p.Status != StatusOpen || len(p.RequiredDocs) != 2 {
+		t.Errorf("after open = %s %v", p.Status, p.RequiredDocs)
+	}
+
+	// Salin: draf baru dengan jalur dan tes yang sama, jadwal setelah asal.
+	if _, err := NewSelectionService(e.tx).AddTest(ctx, e.actor, id, TestForm{Name: "Wawancara", Weight: "100", MaxScore: "100"}); err != nil {
+		t.Fatal(err)
+	}
+	rec = e.do(http.MethodPost, path+"/salin", "admin_tu", nil)
+	if rec.Code != http.StatusSeeOther || !strings.HasSuffix(rec.Header().Get("Location"), "/atur/dasar") {
+		t.Fatalf("copy: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	copyID := strings.TrimSuffix(strings.TrimPrefix(rec.Header().Get("Location"), "/pendaftaran/periode/"), "/atur/dasar")
+	c, err := e.svc.Get(ctx, e.schoolA, copyID)
+	if err != nil || c.Name != "Gelombang A1 (salinan)" || c.Status != StatusDraft || len(c.Tracks) != 1 || c.FeeAmount != 50000 ||
+		!c.OpensOn.Equal(p.ClosesOn.AddDate(0, 0, 1)) || c.TargetGrade != 7 {
+		t.Errorf("copy = %+v, %v", c, err)
+	}
+	if tests, _ := NewSelectionService(e.tx).Tests(ctx, e.schoolA, copyID); len(tests) != 1 || tests[0].Name != "Wawancara" {
+		t.Errorf("copied tests = %+v", tests)
+	}
+	// Salin kedua kalinya: nama tidak bentrok.
+	if c2, err := e.svc.Copy(ctx, e.actor, id); err != nil || c2.Name != "Gelombang A1 (salinan 2)" {
+		t.Errorf("second copy = %q, %v", c2.Name, err)
+	}
+
+	// Kepala sekolah tidak bisa membuka wizard atau menyalin.
+	if rec := e.do(http.MethodGet, path+"/atur/dasar", "kepala_sekolah", nil); rec.Code != http.StatusForbidden {
+		t.Errorf("principal wizard: %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, path+"/atur/lain", "admin_tu", nil); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown step: %d", rec.Code)
+	}
+}
+
+func TestCopyName(t *testing.T) {
+	if got := copyName(strings.Repeat("a", 80), 1); len([]rune(got)) != 80 || !strings.HasSuffix(got, " (salinan)") {
+		t.Errorf("long copy name = %q", got)
 	}
 }

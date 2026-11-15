@@ -1,15 +1,16 @@
 {{define "title"}}Tes Seleksi · {{.Period.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Tes seleksi" ""}}
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Gelombang pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Tes seleksi" ""}}
 <div class="page-header">
 <div>
 <h1>Tes seleksi</h1>
 <p class="muted">{{.Period.Name}} · Skor akhir = jumlah (nilai ÷ nilai maksimal × bobot). Jumlah bobot harus 100%.</p>
 </div>
 </div>
+{{template "admission_period_tabs" dict "ID" .Period.ID "Active" "tes"}}
 {{template "flash" .}}
-{{if not .UsesTest}}<div class="alert" role="status">Belum ada jalur yang memakai tes. Centang "memakai tes seleksi" pada jalur di halaman periode.</div>{{end}}
+{{if not .UsesTest}}<div class="alert" role="status">Belum ada jalur yang memakai tes. Centang "memakai tes seleksi" pada jalur di langkah Jalur saat mengatur gelombang.</div>{{end}}
 {{if .Tests}}{{if ne .Total 100}}<div class="alert alert-error" role="alert">Jumlah bobot saat ini {{.Total}}%. Skor akhir baru bisa dihitung jika jumlahnya 100%.</div>{{end}}{{end}}
 
 <section class="card">
