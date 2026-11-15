@@ -40,8 +40,17 @@
 5. **Contoh NIS memakai tahun ajaran gelombang** pendaftar yang akan dijadikan siswa.
 6. **Keadaan kosong yang jelas:** "Belum ada pendaftar diterima. Terima pendaftar di Peringkat dan hasil atau di detail pendaftar", dengan tautan.
 
-## Perlu keputusan
-- Apakah sekolah Anda butuh langkah daftar ulang terpisah? Jika tidak, pilihan "jadikan siswa otomatis saat diterima" bisa ditambahkan per gelombang.
+## Keputusan (2026-11-15)
+- **Dua cara didukung, dipilih sekali di tingkat sekolah,** bukan per gelombang. Pengaturan di form gelombang dinilai menambah bingung.
+  - **Dengan daftar ulang (bawaan):** Diterima → daftar ulang → Jadikan siswa (per pendaftar dari detail, atau massal).
+  - **Tanpa daftar ulang:** saat pendaftar ditetapkan Diterima (dari detail atau Peringkat dan hasil), ia langsung dijadikan siswa dengan NIS otomatis; kelas diatur belakangan.
+- Tempatnya di halaman **Pengaturan pendaftaran** (satu halaman sekolah), bersama pola NIS (usulan 3–4). Halaman massal dan tombol di detail menyebut cara yang sedang dipakai, dengan tautan "Ubah di pengaturan".
+- Mode dengan daftar ulang: tambah tanda **"Sudah daftar ulang"** dan batas waktu opsional, supaya TU tahu siapa yang belum datang. Yang tidak daftar ulang bisa ditandai Mundur, lalu kursinya diberikan ke cadangan.
+- Mode tanpa daftar ulang: jika siswa ternyata tidak masuk, TU memakai alur keluar/mutasi siswa yang sudah ada.
+
+## Kriteria tambahan
+- [ ] Pengaturan sekolah "Pakai daftar ulang" (ya/tidak) bekerja untuk penetapan per pendaftar dan massal
+- [ ] Mode tanpa daftar ulang: Diterima langsung membuat siswa dengan NIS otomatis, dalam satu transaksi
 
 ## Kriteria selesai
 - [ ] Pendaftar diterima bisa dijadikan siswa dari halaman detailnya
