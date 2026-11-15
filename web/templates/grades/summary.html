@@ -1,6 +1,7 @@
 {{define "title"}}Rekap Nilai{{with .Class}} {{.Name}}{{end}}{{with .Subject}} · {{.Subject.Name}}{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+{{with .Subject}}{{if $.CanClass}}{{template "back_nav" crumbs "Rekap Nilai" "/nilai/rekap" (print "Kelas " $.Class.Name) (print "/nilai/rekap?kelas=" $.Class.ID) .Subject.Name ""}}{{else}}{{template "back_nav" crumbs "Rekap saya" "/nilai/rekap" .Subject.Name ""}}{{end}}{{end}}
 <div class="page-header">
 <div>
 <h1>Rekap Nilai{{with .Class}} · Kelas {{.Name}}{{end}}</h1>
@@ -111,7 +112,6 @@
 {{end}}
 
 {{with .Subject}}
-{{if $.CanClass}}<p class="breadcrumb"><a href="/nilai/rekap?kelas={{$.Class.ID}}">← Ringkasan kelas {{$.Class.Name}}</a></p>{{else}}<p class="breadcrumb"><a href="/nilai/rekap">← Rekap saya</a></p>{{end}}
 <h2 class="section-title">{{.Subject.Name}}{{with .TeacherName}} <span class="muted text-base font-normal">· {{.}}</span>{{end}}</h2>
 {{if not .Configured}}
 <section class="card empty-state"><p>Mapel ini belum punya komponen nilai aktif dengan total bobot 100%.</p></section>

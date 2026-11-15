@@ -244,14 +244,6 @@
     @apply m-0 max-w-3xl;
   }
 
-  .breadcrumb {
-    @apply mb-3 text-sm;
-  }
-
-  .breadcrumb a {
-    @apply -mx-2 inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-slate-600 no-underline hover:bg-slate-100 hover:text-blue-700;
-  }
-
   /* Navigasi kembali (T121): tombol di HP/tablet, jejak di desktop. */
   .back-nav {
     @apply mb-3 text-sm;

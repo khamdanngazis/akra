@@ -2,7 +2,7 @@
 {{define "head"}}<script src="{{ asset "js/report-builder.js" }}"></script>{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/laporan/konfigurasi">← Konfigurasi laporan</a></p>
+{{template "back_nav" crumbs "Laporan" "/laporan" "Konfigurasi" "/laporan/konfigurasi" "Pembangun laporan" ""}}
 <div class="page-header">
 <div>
 <h1>Pembangun Laporan</h1>

@@ -1,7 +1,7 @@
 {{define "title"}}{{if .IsNew}}Tambah Tahun Ajaran{{else}}Ubah Tahun Ajaran{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pengaturan/tahun-ajaran">← Tahun Ajaran</a></p>
+{{template "back_nav" crumbs "Tahun Ajaran" "/pengaturan/tahun-ajaran" (or (and .IsNew "Tambah") "Ubah") ""}}
 <section class="card form-card">
 <h1>{{if .IsNew}}Tambah Tahun Ajaran{{else}}Ubah Tahun Ajaran{{end}}</h1>
 {{template "flash" .}}

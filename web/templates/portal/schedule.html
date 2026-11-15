@@ -1,7 +1,7 @@
 {{define "title"}}Jadwal {{.Child.FullName}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/portal/siswa/{{.Child.ID}}">← {{.Child.FullName}}</a></p>
+{{template "back_nav" crumbs "Anak Saya" "/portal" .Child.FullName (print "/portal/siswa/" .Child.ID) "Jadwal" ""}}
 <h1>Jadwal Pelajaran</h1>
 <p class="muted">{{.Child.FullName}} · NIS {{.Child.NIS}}{{if .Has}} · kelas {{.Child.ClassName}}, tahun ajaran {{.Child.YearName}}{{end}}</p>
 {{template "flash" .}}

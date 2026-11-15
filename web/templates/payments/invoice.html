@@ -1,6 +1,7 @@
 {{define "title"}}Tagihan {{.Invoice.StudentName}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+{{template "back_nav" crumbs "Tunggakan" "/keuangan/tunggakan" (print "Tagihan " .Period) ""}}
 <div class="page-header">
 <div>
 <h1>Tagihan {{.Period}}</h1>

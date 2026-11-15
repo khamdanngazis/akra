@@ -1,7 +1,7 @@
 {{define "title"}}{{if .IsNew}}Tambah Kelas{{else}}Ubah Kelas{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="{{.BackURL}}">← Kelas</a></p>
+{{template "back_nav" crumbs "Kelas" .BackURL (or (and .IsNew "Tambah") "Ubah") ""}}
 <section class="card form-card">
 <h1>{{if .IsNew}}Tambah Kelas{{else}}Ubah Kelas{{end}}</h1>
 {{template "flash" .}}

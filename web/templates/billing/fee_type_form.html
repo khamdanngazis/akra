@@ -1,7 +1,7 @@
 {{define "title"}}{{if .IsNew}}Tambah Jenis Tagihan{{else}}Ubah Jenis Tagihan{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/keuangan/jenis-tagihan">← Jenis Tagihan</a></p>
+{{template "back_nav" crumbs "Jenis Tagihan" "/keuangan/jenis-tagihan" (or (and .IsNew "Tambah") "Ubah") ""}}
 <section class="card form-card">
 <h1>{{if .IsNew}}Tambah Jenis Tagihan{{else}}Ubah Jenis Tagihan{{end}}</h1>
 {{template "flash" .}}

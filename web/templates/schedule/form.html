@@ -1,7 +1,7 @@
 {{define "title"}}Ubah Slot Jadwal{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/jadwal?kelas={{.Slot.ClassID}}">← Jadwal kelas {{.Slot.ClassName}}</a></p>
+{{template "back_nav" crumbs "Jadwal" "/jadwal" (print "Kelas " .Slot.ClassName) (print "/jadwal?kelas=" .Slot.ClassID) "Ubah slot" ""}}
 <div class="page-header">
 <div>
 <h1>Ubah slot</h1>

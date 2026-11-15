@@ -2,6 +2,7 @@
 {{define "head"}}{{if .Pending}}<meta http-equiv="refresh" content="3">{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+{{template "back_nav" crumbs "Laporan" "/laporan" .TypeLabel ""}}
 <h1>{{.TypeLabel}}</h1>
 <p class="muted">Laporan besar dibuat di server. Halaman ini diperbarui otomatis sampai selesai.</p>
 {{template "flash" .}}
