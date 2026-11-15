@@ -44,9 +44,9 @@
    Dari detail pendaftar ada tautan ke langkah yang relevan (T116).
 5. **Verifikasi massal** dari daftar pendaftar (centang beberapa → Verifikasi), untuk berkas yang sudah dicek.
 
-## Perlu keputusan
-- Metode mana yang dikerjakan dulu? Saran: Urutan daftar, Tes, dan Nilai rapor/prestasi dulu; Jarak menyusul. Jarak butuh titik lokasi sekolah dan aturan zonasi yang berbeda per daerah.
-- Apakah sekolah perlu **bobot gabungan** (mis. 60% rapor + 40% tes)? Ini menambah kerumitan; saran: belum.
+## Keputusan (2026-11-15)
+- Dikerjakan dulu: **Urutan daftar, Tes seleksi, Nilai rapor/prestasi**, plus Penilaian manual. **Jarak rumah menyusul** (butuh titik lokasi sekolah dan aturan zonasi per daerah).
+- Bobot gabungan (rapor + tes) belum dikerjakan.
 
 ## Kriteria selesai
 - [ ] Setiap jalur menyatakan metode seleksinya, dan halaman peringkat menjelaskan dasar urutan

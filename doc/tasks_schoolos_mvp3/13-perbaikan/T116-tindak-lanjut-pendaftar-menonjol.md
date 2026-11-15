@@ -29,8 +29,9 @@ Bagian tindak lanjut di detail pendaftar kurang menonjol. Pengguna sempat mencar
    - Untuk jalur dengan tes atau kuota: tautan "Lihat peringkat jalur ini".
    - Setelah Diterima: tombol "Jadikan siswa" (T120).
 
-## Perlu keputusan
-- Bolehkah TU langsung **menerima dari status Dikirim** (verifikasi dan terima sekaligus) untuk jalur tanpa tes dan tanpa kuota? Ini memangkas satu langkah untuk sekolah kecil.
+## Keputusan (2026-11-15)
+- **Verifikasi tetap wajib** sebelum diterima, untuk semua jalur. Tidak ada jalan pintas Dikirim → Diterima. Halaman cukup menjelaskan urutannya dengan jelas.
+- Urutan kerja: T116 → T120 → T121 → T117 → T118 → T119.
 
 ## Kriteria selesai
 - [ ] Di 390 px dan 768 px, tombol tindak lanjut terlihat tanpa menggulir

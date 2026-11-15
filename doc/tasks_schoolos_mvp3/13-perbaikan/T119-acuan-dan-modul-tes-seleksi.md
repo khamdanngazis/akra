@@ -41,9 +41,8 @@ Di jalur tes seleksi, TU tidak punya acuan hasil tes. Perlu dipertimbangkan pemb
 
   Untuk SD, tes biasanya berupa observasi atau wawancara, jadi CBT kurang cocok.
 
-## Perlu keputusan
-- Setuju tahap 1 dulu dan tahap 2 ditunda sampai ada permintaan sekolah?
-- Apakah tes untuk sekolah Anda lebih banyak **tertulis** (cocok CBT) atau **wawancara/praktik** (cukup tahap 1)?
+## Keputusan (2026-11-15)
+- **Tahap 1 dikerjakan.** Tahap 2 (CBT) ditunda sampai ada permintaan sekolah.
 
 ## Kriteria selesai (tahap 1)
 - [ ] Setiap tes bisa diberi rubrik dan nilai minimal
