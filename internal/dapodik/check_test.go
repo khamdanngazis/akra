@@ -89,4 +89,44 @@ func TestCheckPage(t *testing.T) {
 	if rec := e.do(http.MethodGet, "/dapodik/cek", "guru", nil); rec.Code != http.StatusForbidden {
 		t.Errorf("teacher: %d", rec.Code)
 	}
+	if strings.Contains(body, "Siswa B") {
+		t.Error("other school's student listed")
+	}
+}
+
+// TestCheckPageFilters memeriksa satu daftar dengan filter jenis masalah,
+// tingkat, dan pencarian (T115).
+func TestCheckPageFilters(t *testing.T) {
+	e := newEnv(t)
+	get := func(path string) string {
+		t.Helper()
+		return e.do(http.MethodGet, path, "admin_tu", nil).Body.String()
+	}
+	body := get("/dapodik/cek")
+	// Budi dan Citra sama-sama tanpa NIK dan nama ibu; hanya Citra tanpa tanggal lahir.
+	for _, want := range []string{"Budi", "Citra", `Pasti ditolak Dapodik</span><strong>2</strong>`, `Tanggal lahir siswa <strong>1</strong>`,
+		`NIK <strong>2</strong>`, `href="/siswa/` + e.budi + `/data-rinci#identitas">Perbaiki</a>`, `href="/siswa/` + e.ani + `/ubah">Perbaiki</a>`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("all: missing %q", want)
+		}
+	}
+	if strings.Count(body, `class="check-who"`) != 2 {
+		t.Errorf("all: want 2 rows")
+	}
+	body = get("/dapodik/cek?masalah=lahir")
+	if strings.Contains(body, ">Budi<") || !strings.Contains(body, ">Citra<") || !strings.Contains(body, `aria-current="true"`) {
+		t.Errorf("kind filter:\n%s", body)
+	}
+	body = get("/dapodik/cek?q=bud")
+	if !strings.Contains(body, ">Budi<") || strings.Contains(body, ">Citra<") || !strings.Contains(body, "1 siswa aktif diperiksa") {
+		t.Errorf("search:\n%s", body)
+	}
+	body = get("/dapodik/cek?tingkat=peringatan")
+	if strings.Contains(body, `class="check-who"`) || !strings.Contains(body, "Tidak ada siswa yang cocok") {
+		t.Errorf("warning filter:\n%s", body)
+	}
+	body = get("/dapodik/cek?kelas=" + e.classA + "&masalah=tidak-ada")
+	if strings.Count(body, `class="check-who"`) != 2 {
+		t.Errorf("unknown kind should be ignored")
+	}
 }

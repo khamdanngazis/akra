@@ -5,26 +5,75 @@
 <div class="page-header">
 <div>
 <h1>Cek kesiapan Dapodik</h1>
-<p class="muted">{{.Checked}} siswa aktif diperiksa · {{.WithError}} siswa punya data yang kemungkinan ditolak Dapodik. Perbaiki sebelum memasukkan ke Dapodik.</p>
+<p class="muted">{{.Counts.Checked}} siswa aktif diperiksa dengan aturan validasi Dapodik. Perbaiki yang <strong>pasti ditolak</strong> dulu sebelum memasukkan data ke Dapodik.</p>
 </div>
 </div>
 {{template "flash" .}}
+
+<nav class="stat-filter" aria-label="Ringkasan dan filter tingkat masalah">
+<a href="{{.AllURL}}" class="{{if eq .Level ""}}is-active{{end}}"><span>Siswa diperiksa</span><strong>{{.Counts.Checked}}</strong></a>
+<a href="{{.ErrorURL}}" class="is-bad{{if eq .Level "error"}} is-active{{end}}"><span>Pasti ditolak Dapodik</span><strong>{{.Counts.WithError}}</strong></a>
+<a href="{{.WarnURL}}" class="is-warn{{if eq .Level "peringatan"}} is-active{{end}}"><span>Hanya perlu diperiksa</span><strong>{{.Counts.WarnOnly}}</strong></a>
+<div class="is-ok"><span>Aman</span><strong>{{.Counts.Clean}}</strong></div>
+</nav>
+
+<form method="get" action="/dapodik/cek" class="filter-bar filter-grid" x-data>
+{{with .Level}}<input type="hidden" name="tingkat" value="{{.}}">{{end}}
+{{with .Kind}}<input type="hidden" name="masalah" value="{{.}}">{{end}}
+<div class="field">
+<label for="q">Cari nama atau NIS</label>
+<input id="q" name="q" type="search" value="{{.Query}}" placeholder="mis. Budi atau 2027" autocomplete="off">
+</div>
 {{if .Classes}}
-{{range .Classes}}
-<section class="card">
-<h2>{{.Name}}</h2>
-<ul class="guardian-list">
-{{range .Students}}
+<div class="field">
+<label for="kelas">Kelas</label>
+<select id="kelas" name="kelas" @change="$el.form.submit()"><option value="">Semua kelas</option>{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{end}}
+<div class="filter-actions"><button type="submit" class="btn btn-ghost">Cari</button>{{if or .Query .Level .Kind .ClassID}}<a class="btn btn-ghost" href="{{.ResetURL}}">Reset</a>{{end}}</div>
+</form>
+
+{{if .Kinds}}
+<section class="kind-filter" aria-label="Filter jenis masalah">
+<p class="kind-filter-title">Jenis masalah <span class="muted">· klik untuk memperbaiki satu jenis sekaligus</span></p>
+<div class="kind-chips">
+{{range .Kinds}}<a href="{{.URL}}" class="{{if .Active}}is-active{{end}}"{{if .Active}} aria-current="true"{{end}}>{{.Label}} <strong>{{.N}}</strong></a>{{end}}
+</div>
+</section>
+{{end}}
+
+{{if .Rows}}
+<div class="card card-flush">
+<ul class="check-list">
+{{range .Rows}}
 <li>
-<div><strong>{{.FullName}}</strong> <span class="muted">· NIS {{.NIS}}</span>{{if $.CanEdit}} · <a href="/siswa/{{.ID}}/data-rinci">Perbaiki</a>{{end}}</div>
-{{range .Errors}}<div class="field-error">{{.Message}}</div>{{end}}
-{{range .Warnings}}<div class="muted small">Peringatan: {{.Message}}</div>{{end}}
+<div class="check-who">
+<strong>{{.FullName}}</strong>
+<span class="muted small">NIS {{.NIS}} · {{if .ClassName}}{{.ClassName}}{{else}}belum punya kelas{{end}}</span>
+</div>
+<ul class="check-issues">
+{{range .Issues}}
+<li>
+{{if .Error}}<span class="check-tag is-error">Ditolak</span>{{else}}<span class="check-tag is-warn">Periksa</span>{{end}}
+<span class="check-msg">{{.Message}}</span>
+{{if and $.CanEdit .FixURL}}<a class="check-fix" href="{{.FixURL}}">Perbaiki</a>{{end}}
 </li>
 {{end}}
 </ul>
-</section>
+</li>
 {{end}}
-{{else}}
+</ul>
+</div>
+<nav class="pager" aria-label="Halaman">
+<span class="muted small">{{.Total}} siswa bermasalah · halaman {{.Page}} dari {{.Pages}}</span>
+<span class="action-row">
+{{if .PrevURL}}<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}">{{template "icon" "arrow-left"}} Sebelumnya</a>{{end}}
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}">Berikutnya {{template "icon" "arrow-right"}}</a>{{end}}
+</span>
+</nav>
+{{else if and (eq .Counts.WithError 0) (eq .Counts.WarnOnly 0)}}
 <section class="card empty-state"><p>Tidak ada masalah yang ditemukan. Data siswa siap dimasukkan ke Dapodik.</p></section>
+{{else}}
+<section class="card empty-state"><p>Tidak ada siswa yang cocok dengan filter ini.</p></section>
 {{end}}
 {{end}}
