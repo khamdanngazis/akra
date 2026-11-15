@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -62,7 +63,10 @@ func (h *Handler) renderTests(w http.ResponseWriter, r *http.Request, id auth.Id
 		view.UsesTest = view.UsesTest || t.UsesTest
 	}
 	for _, t := range tests {
-		row := testRow{SelectionTest: t, Form: TestForm{Name: t.Name, Weight: strconv.Itoa(t.Weight), MaxScore: strconv.Itoa(t.MaxScore), Location: t.Location}}
+		row := testRow{SelectionTest: t, Form: TestForm{Name: t.Name, Weight: strconv.Itoa(t.Weight), MaxScore: strconv.Itoa(t.MaxScore), Location: t.Location, Rubric: t.Rubric}}
+		if t.PassScore > 0 {
+			row.Form.PassScore = strconv.Itoa(t.PassScore)
+		}
 		if t.ScheduledAt != nil {
 			local := t.ScheduledAt.In(clock.Jakarta)
 			row.Schedule = clock.FormatDateID(local) + " " + local.Format("15:04") + " WIB"
@@ -86,7 +90,8 @@ func parseTestForm(w http.ResponseWriter, r *http.Request) (TestForm, bool) {
 		return TestForm{}, false
 	}
 	p := r.PostForm
-	return TestForm{Name: p.Get("test_name"), Weight: p.Get("weight"), MaxScore: p.Get("max_score"), ScheduledAt: p.Get("scheduled_at"), Location: p.Get("location")}, true
+	return TestForm{Name: p.Get("test_name"), Weight: p.Get("weight"), MaxScore: p.Get("max_score"), ScheduledAt: p.Get("scheduled_at"), Location: p.Get("location"),
+		Rubric: p.Get("rubric"), PassScore: p.Get("pass_score")}, true
 }
 
 // saveTest menambah atau mengubah tes. Peran: admin_tu.
@@ -222,5 +227,47 @@ func (h *Handler) saveScores(w http.ResponseWriter, r *http.Request) {
 		h.renderScores(w, r, id, http.StatusBadRequest, scores, ve.Fields)
 	default:
 		h.serverError(w, r, "save scores", err)
+	}
+}
+
+// testSheet mengunduh lembar penilaian satu tes (T119). Peran: admin_tu,
+// kepala_sekolah.
+func (h *Handler) testSheet(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	ctx := r.Context()
+	p, err := h.periods.Get(ctx, id.SchoolID, chi.URLParam(r, "id"))
+	if errors.Is(err, ErrNotFound) {
+		page.NotFound(h.render, w, r, id, msgPeriodGone)
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, "get period", err)
+		return
+	}
+	tests, err := h.selection().Tests(ctx, id.SchoolID, p.ID)
+	if err != nil {
+		h.serverError(w, r, "list tests", err)
+		return
+	}
+	d := TestSheetData{SchoolName: id.SchoolName, PeriodName: p.Name, PrintedAt: time.Now().In(clock.Jakarta)}
+	found := false
+	for _, t := range tests {
+		if t.ID == chi.URLParam(r, "testID") {
+			d.Test, found = t, true
+		}
+	}
+	if !found {
+		page.NotFound(h.render, w, r, id, "Tes tidak ditemukan.")
+		return
+	}
+	if d.Rows, err = testParticipants(ctx, h.db, id.SchoolID, p.ID); err != nil {
+		h.serverError(w, r, "test participants", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="lembar-penilaian.pdf"`)
+	w.Header().Set("Cache-Control", "private, no-store")
+	if err := WriteTestSheetPDF(w, d, true); err != nil {
+		h.logger.Error("write test sheet", "error", err)
 	}
 }

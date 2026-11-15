@@ -33,7 +33,7 @@
 <td>{{if .Rank}}{{.Rank}}{{else}}–{{end}}</td>
 <td class="nowrap"><a href="/pendaftaran/{{.ApplicantID}}">{{.RegistrationNumber}}</a></td>
 <td>{{.FullName}}</td>
-{{if eq $m "tes"}}<td class="nowrap">{{printf "%.2f" .Score}}{{if not .Complete}} <span class="badge badge-warning">Belum lengkap</span>{{end}}</td>
+{{if eq $m "tes"}}<td class="nowrap">{{printf "%.2f" .Score}}{{if not .Complete}} <span class="badge badge-warning">Belum lengkap</span>{{end}}{{with .Failed}} <span class="badge badge-danger" title="{{range $i, $f := .}}{{if $i}}, {{end}}{{$f}}{{end}}">Di bawah nilai minimal</span>{{end}}</td>
 {{else if eq $m "nilai"}}<td class="nowrap">{{if .Complete}}{{.ScoreText}}{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</td>
 {{else if eq $m "manual"}}<td>{{if $.CanEdit}}<input class="rank-input" type="number" name="rank_{{.ApplicantID}}" value="{{if .ManualRank}}{{.ManualRank}}{{end}}" min="1" max="9999" aria-label="Urutan {{.FullName}}">{{else}}{{if .ManualRank}}{{.ManualRank}}{{else}}–{{end}}{{end}}</td>{{end}}
 <td>{{template "applicant_status" .Status}}</td>

@@ -31,9 +31,12 @@ type Ranked struct {
 	// manual (0 = belum diisi) (T118).
 	TrackScore int
 	ManualRank int
-	Complete   bool // data urutan lengkap: tes dinilai, nilai diisi, atau urutan manual diisi
-	Rank       int  // 0 jika belum bisa diperingkat
-	Proposal   string
+	// Failed berisi tes yang nilainya di bawah nilai minimal lulus (T119);
+	// pendaftar ini tidak diperingkat dan diusulkan ditolak.
+	Failed   []string
+	Complete bool // data urutan lengkap: tes dinilai, nilai diisi, atau urutan manual diisi
+	Rank     int  // 0 jika belum bisa diperingkat
+	Proposal string
 }
 
 // TrackRanking adalah peringkat satu jalur.
@@ -51,7 +54,7 @@ type TrackRanking struct {
 func (r TrackRanking) Basis() string {
 	switch r.Track.Method {
 	case MethodTest:
-		return "Diurutkan dari skor tes tertinggi; yang nilainya belum lengkap di bawah tanpa peringkat."
+		return "Diurutkan dari skor tes tertinggi; yang nilainya belum lengkap di bawah tanpa peringkat, dan yang di bawah nilai minimal lulus diusulkan ditolak."
 	case MethodScore:
 		return "Diurutkan dari " + strings.ToLower(r.Track.ScoreLabel) + " tertinggi; yang belum mengisi nilai di bawah tanpa peringkat."
 	case MethodManual:
@@ -95,6 +98,9 @@ func RankTrack(t Track, accepted int, rows []Ranked) TrackRanking {
 		if a.Complete != b.Complete {
 			return a.Complete
 		}
+		if fa, fb := len(a.Failed) > 0, len(b.Failed) > 0; fa != fb {
+			return fb
+		}
 		switch t.Method {
 		case MethodTest:
 			if a.Score != b.Score {
@@ -127,6 +133,10 @@ func RankTrack(t Track, accepted int, rows []Ranked) TrackRanking {
 	for i := range rows {
 		if !rows[i].Complete {
 			rows[i].Proposal = ProposalIncomplete
+			continue
+		}
+		if len(rows[i].Failed) > 0 {
+			rows[i].Proposal = ApplicantRejected
 			continue
 		}
 		rank++
@@ -218,6 +228,7 @@ func (s *ApplicantService) Ranking(ctx context.Context, schoolID, periodID strin
 			case MethodTest:
 				list[i].Score, list[i].Complete = FinalScore(tests, scores[list[i].ApplicantID])
 				list[i].Complete = list[i].Complete && weightsOK
+				list[i].Failed = failedTests(tests, scores[list[i].ApplicantID])
 			case MethodScore:
 				list[i].Complete = scoreSet[list[i].ApplicantID]
 			case MethodManual:
@@ -277,4 +288,16 @@ func (s *ApplicantService) ApplyResults(ctx context.Context, actor school.Actor,
 		return 0, false, err
 	}
 	return changed, overQuota, nil
+}
+
+// failedTests mengembalikan nama tes yang nilainya di bawah nilai minimal
+// lulus (T119). Tes yang belum dinilai tidak dihitung gagal.
+func failedTests(tests []SelectionTest, scores map[string]float64) []string {
+	var out []string
+	for _, t := range tests {
+		if v, ok := scores[t.ID]; ok && t.PassScore > 0 && v < float64(t.PassScore) {
+			out = append(out, t.Name)
+		}
+	}
+	return out
 }

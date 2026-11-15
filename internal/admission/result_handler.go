@@ -161,6 +161,9 @@ func (h *Handler) exportResults(w http.ResponseWriter, r *http.Request) {
 				if !x.Complete {
 					score += " (belum lengkap)"
 				}
+				if len(x.Failed) > 0 {
+					score += " (di bawah minimal: " + strings.Join(x.Failed, ", ") + ")"
+				}
 			case MethodScore:
 				score = x.ScoreText()
 				if !x.Complete {

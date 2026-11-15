@@ -126,6 +126,8 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Get("/{id}/tes", h.listTests)
 		// Peran: admin_tu, kepala_sekolah (hanya baca).
 		r.Get("/{id}/tes/{testID}/nilai", h.scores)
+		// Peran: admin_tu, kepala_sekolah. Lembar penilaian PDF (T119).
+		r.Get("/{id}/tes/{testID}/lembar.pdf", h.testSheet)
 		// Peran: admin_tu, kepala_sekolah (hanya baca). Peringkat (T93b).
 		r.Get("/{id}/hasil", h.results)
 		// Peran: admin_tu, kepala_sekolah.

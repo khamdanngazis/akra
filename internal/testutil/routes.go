@@ -667,6 +667,11 @@ var Routes = []Route{
 		Requests: func(own, o *School) []Request {
 			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/nilai"}}
 		}},
+	// Lembar penilaian PDF (T119).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/lembar.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: func(own, o *School) []Request {
+			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/lembar.pdf"}}
+		}},
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTest("/nilai", url.Values{})},
 	// Peringkat dan hasil (T93b).

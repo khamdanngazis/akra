@@ -2361,6 +2361,23 @@
     @apply border-t border-slate-100 pt-4;
   }
 
+  /* Acuan dan kartu tes (T119). */
+  .rubric {
+    @apply my-2 rounded-lg bg-slate-50 px-3 py-2 text-sm whitespace-pre-line text-slate-700;
+  }
+
+  .test-card-number {
+    @apply my-1 text-3xl font-extrabold tracking-wide text-navy-900 tabular-nums;
+  }
+
+  .score-table {
+    @apply m-0 w-full text-sm;
+  }
+
+  .score-table td {
+    @apply border-t border-slate-100 py-2 align-top;
+  }
+
   /* Metode seleksi per jalur (T118). */
   .method-options {
     @apply grid gap-2 sm:grid-cols-2;

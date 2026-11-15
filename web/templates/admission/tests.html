@@ -20,9 +20,11 @@
 {{range .Tests}}
 <li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
 <div x-show="!editing">
-<strong>{{.Name}}</strong> <span class="muted">· Bobot {{.Weight}}% · Nilai maks {{.MaxScore}}{{with .Schedule}} · {{.}}{{end}}{{with .Location}} · {{.}}{{end}}</span>
+<strong>{{.Name}}</strong> <span class="muted">· Bobot {{.Weight}}% · Nilai maks {{.MaxScore}}{{if .PassScore}} · Minimal lulus {{.PassScore}}{{end}}{{with .Schedule}} · {{.}}{{end}}{{with .Location}} · {{.}}{{end}}</span>
+{{with .Rubric}}<p class="rubric">{{.}}</p>{{else}}{{if $.CanEdit}}<p class="hint mb-0">Belum ada acuan penilaian. Klik Ubah untuk menambahkannya.</p>{{end}}{{end}}
 <div class="action-row">
 <a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if $.CanEdit}}Isi nilai{{else}}Lihat nilai{{end}}</a>
+<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/lembar.pdf">{{template "icon" "download"}}Lembar penilaian (PDF)</a>
 {{if $.CanEdit}}
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>

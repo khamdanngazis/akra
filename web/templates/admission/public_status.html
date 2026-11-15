@@ -21,9 +21,12 @@
 </section>
 {{end}}
 {{if .Tests}}
-<section class="adm-card">
-<h2>Jadwal tes</h2>
+<section class="adm-card test-card">
+<div class="adm-card-head"><h2>Kartu tes</h2><span class="badge">Nomor peserta</span></div>
+<p class="test-card-number">{{.Applicant.RegistrationNumber}}</p>
+<p class="mb-2 text-sm text-slate-700">{{.Applicant.FullName}} · Jalur {{.Track}}</p>
 <ul class="adm-checklist">{{range .Tests}}<li><span class="adm-ico is-navy">{{template "icon" "calendar"}}</span>{{.}}</li>{{end}}</ul>
+<p class="hint mb-0">Tunjukkan halaman ini atau bukti pendaftaran (PDF) kepada panitia saat tes. Datang 15 menit lebih awal.</p>
 </section>
 {{end}}
 {{if .History}}

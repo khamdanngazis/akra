@@ -42,6 +42,10 @@ type SelectionTest struct {
 	ScheduledAt *time.Time
 	Location    string
 	SortOrder   int
+	// Rubric adalah acuan penilaian; PassScore nilai minimal lulus (0 =
+	// tanpa batas) (T119).
+	Rubric    string
+	PassScore int
 }
 
 // TestForm adalah isian form tes apa adanya.
@@ -51,6 +55,8 @@ type TestForm struct {
 	MaxScore    string
 	ScheduledAt string // YYYY-MM-DDTHH:MM (WIB), boleh kosong
 	Location    string
+	Rubric      string
+	PassScore   string // kosong = tanpa nilai minimal
 }
 
 // SelectionService mengelola tes seleksi dan nilainya.
@@ -68,7 +74,8 @@ func (s *SelectionService) Tests(ctx context.Context, schoolID, periodID string)
 	if !database.IsUUID(periodID) {
 		return nil, ErrNotFound
 	}
-	rows, err := s.db.Query(ctx, `SELECT id, period_id, name, weight, max_score, scheduled_at, coalesce(location, ''), sort_order
+	rows, err := s.db.Query(ctx, `SELECT id, period_id, name, weight, max_score, scheduled_at, coalesce(location, ''), sort_order,
+		       coalesce(rubric, ''), coalesce(pass_score, 0)
 		FROM admission_tests WHERE school_id = $1 AND period_id = $2 ORDER BY sort_order, name`, schoolID, periodID)
 	if err != nil {
 		return nil, mapError("list tests", err)
@@ -76,7 +83,7 @@ func (s *SelectionService) Tests(ctx context.Context, schoolID, periodID string)
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (SelectionTest, error) {
 		var t SelectionTest
 		var w, m int16
-		err := r.Scan(&t.ID, &t.PeriodID, &t.Name, &w, &m, &t.ScheduledAt, &t.Location, &t.SortOrder)
+		err := r.Scan(&t.ID, &t.PeriodID, &t.Name, &w, &m, &t.ScheduledAt, &t.Location, &t.SortOrder, &t.Rubric, &t.PassScore)
 		t.Weight, t.MaxScore = int(w), int(m)
 		return t, err
 	})
@@ -101,6 +108,8 @@ type testInput struct {
 	MaxScore    int
 	ScheduledAt *time.Time
 	Location    *string
+	Rubric      *string
+	PassScore   *int
 }
 
 func validateTest(f TestForm) (testInput, error) {
@@ -139,6 +148,19 @@ func validateTest(f TestForm) (testInput, error) {
 		}
 		in.Location = &loc
 	}
+	if rubric := strings.TrimSpace(f.Rubric); rubric != "" {
+		if utf8.RuneCountInString(rubric) > 2000 {
+			fields["rubric"] = "Acuan penilaian maksimal 2.000 karakter."
+		}
+		in.Rubric = &rubric
+	}
+	if v := strings.TrimSpace(f.PassScore); v != "" {
+		if n, err := strconv.Atoi(v); err != nil || n < 0 || (fields["max_score"] == "" && n > in.MaxScore) {
+			fields["pass_score"] = "Nilai minimal harus angka 0 sampai nilai maksimal."
+		} else {
+			in.PassScore = &n
+		}
+	}
 	if len(fields) > 0 {
 		return testInput{}, &ValidationError{Fields: fields}
 	}
@@ -157,9 +179,9 @@ func (s *SelectionService) AddTest(ctx context.Context, actor school.Actor, peri
 			return err
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO admission_tests (school_id, period_id, name, weight, max_score, scheduled_at, location, sort_order)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, (SELECT coalesce(max(sort_order), 0) + 1 FROM admission_tests WHERE period_id = $2))
-			RETURNING id`, actor.SchoolID, periodID, in.Name, in.Weight, in.MaxScore, in.ScheduledAt, in.Location).Scan(&t.ID); err != nil {
+			INSERT INTO admission_tests (school_id, period_id, name, weight, max_score, scheduled_at, location, rubric, pass_score, sort_order)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, (SELECT coalesce(max(sort_order), 0) + 1 FROM admission_tests WHERE period_id = $2))
+			RETURNING id`, actor.SchoolID, periodID, in.Name, in.Weight, in.MaxScore, in.ScheduledAt, in.Location, in.Rubric, in.PassScore).Scan(&t.ID); err != nil {
 			return mapError("add test", err)
 		}
 		t = SelectionTest{ID: t.ID, PeriodID: periodID, Name: in.Name, Weight: in.Weight, MaxScore: in.MaxScore, ScheduledAt: in.ScheduledAt}
@@ -192,8 +214,9 @@ func (s *SelectionService) UpdateTest(ctx context.Context, actor school.Actor, p
 		if top != nil && *top > float64(in.MaxScore) {
 			return fieldErr("max_score", "Sudah ada nilai di atas nilai maksimal baru.")
 		}
-		tag, err := tx.Exec(ctx, `UPDATE admission_tests SET name = $4, weight = $5, max_score = $6, scheduled_at = $7, location = $8
-			WHERE school_id = $1 AND period_id = $2 AND id = $3`, actor.SchoolID, periodID, testID, in.Name, in.Weight, in.MaxScore, in.ScheduledAt, in.Location)
+		tag, err := tx.Exec(ctx, `UPDATE admission_tests SET name = $4, weight = $5, max_score = $6, scheduled_at = $7, location = $8,
+			       rubric = $9, pass_score = $10
+			WHERE school_id = $1 AND period_id = $2 AND id = $3`, actor.SchoolID, periodID, testID, in.Name, in.Weight, in.MaxScore, in.ScheduledAt, in.Location, in.Rubric, in.PassScore)
 		if err != nil {
 			return mapError("update test", err)
 		}

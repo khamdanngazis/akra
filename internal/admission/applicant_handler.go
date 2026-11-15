@@ -126,6 +126,10 @@ type applicantDetailView struct {
 	Next        []option
 	// NextStep adalah kartu langkah berikutnya (T116); Pick adalah aksi
 	// yang dipilih saat isian catatan ditolak, agar isiannya terbuka lagi.
+	// TestResults adalah nilai tes pendaftar jalur metode tes (T119).
+	TestResults []testResult
+	FinalScore  string
+	TestsDone   bool
 	// ScoreEditable: nilai jalur metode nilai masih bisa dikoreksi TU (T118).
 	ScoreEditable bool
 	NextStep      nextStepView
@@ -200,6 +204,12 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		view.Next = append(view.Next, option{Value: s, Label: StatusLabels[s]})
 	}
 	view.Sections = displayApplicant(a)
+	if a.Track.Method == MethodTest && a.AnonymizedAt == nil {
+		if err := h.fillTestResults(ctx, id.SchoolID, a, &view); err != nil {
+			h.serverError(w, r, "test results", err)
+			return
+		}
+	}
 	view.ScoreEditable = a.Track.Method == MethodScore && a.StudentID == "" && a.AnonymizedAt == nil &&
 		(a.Status == ApplicantSubmitted || a.Status == ApplicantFix || a.Status == ApplicantVerified || a.Status == ApplicantReserve)
 	view.Erasable = a.Erasable()
@@ -573,4 +583,39 @@ func uniqueStrings(in []string) []string {
 		}
 	}
 	return out
+}
+
+// testResult adalah nilai satu tes di detail pendaftar.
+type testResult struct {
+	Name, Score string // Score "" = belum dinilai
+	MaxScore    int
+	PassScore   int
+	Failed      bool
+}
+
+// fillTestResults mengisi nilai tes, skor akhir, dan status lulus (T119).
+func (h *Handler) fillTestResults(ctx context.Context, schoolID string, a Applicant, view *applicantDetailView) error {
+	sel := h.selection()
+	tests, err := sel.Tests(ctx, schoolID, a.PeriodID)
+	if err != nil {
+		return err
+	}
+	all, err := sel.Scores(ctx, schoolID, a.PeriodID)
+	if err != nil {
+		return err
+	}
+	mine := all[a.ID]
+	for _, t := range tests {
+		r := testResult{Name: t.Name, MaxScore: t.MaxScore, PassScore: t.PassScore}
+		if v, ok := mine[t.ID]; ok {
+			r.Score = trimScore(strconv.FormatFloat(v, 'f', 2, 64))
+			r.Failed = t.PassScore > 0 && v < float64(t.PassScore)
+		}
+		view.TestResults = append(view.TestResults, r)
+	}
+	if len(tests) > 0 && WeightsTotal(tests) == 100 {
+		score, complete := FinalScore(tests, mine)
+		view.FinalScore, view.TestsDone = trimScore(strconv.FormatFloat(score, 'f', 2, 64)), complete
+	}
+	return nil
 }

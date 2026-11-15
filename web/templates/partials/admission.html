@@ -117,6 +117,18 @@
 {{with .Errors.location}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 </div>
+<div class="field{{if .Errors.rubric}} has-error{{end}}">
+<label for="rubric-{{.ID}}">Acuan penilaian <span class="muted">(opsional)</span></label>
+<textarea id="rubric-{{.ID}}" name="rubric" maxlength="2000" rows="4" placeholder="mis.&#10;Lancar membaca kalimat sederhana: 80–100&#10;Membaca terbata-bata: 60–79&#10;Mengenal huruf: 40–59">{{.Form.Rubric}}</textarea>
+{{with .Errors.rubric}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dicetak di lembar penilaian agar semua penguji menilai dengan ukuran yang sama.</p>{{end}}
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.pass_score}} has-error{{end}}">
+<label for="pass_score-{{.ID}}">Nilai minimal lulus <span class="muted">(opsional)</span></label>
+<input id="pass_score-{{.ID}}" type="number" name="pass_score" value="{{.Form.PassScore}}" min="0" max="1000">
+{{with .Errors.pass_score}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Pendaftar di bawah nilai ini tidak diusulkan diterima.</p>{{end}}
+</div>
+</div>
 {{end}}
 
 {{/* admission_next_step adalah kartu "Langkah berikutnya" di detail pendaftar (T116). Argumen: applicantDetailView. */}}
