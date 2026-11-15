@@ -103,8 +103,8 @@ func (s *ApplicantService) Transition(ctx context.Context, actor school.Actor, i
 		if err != nil {
 			return err
 		}
-		if !CanTransition(a.Status, to) {
-			return ErrBadTransition
+		if a.AnonymizedAt != nil || !CanTransition(a.Status, to) {
+			return ErrBadTransition // data pribadi sudah dihapus (T113)
 		}
 		var studentID *string
 		if err := tx.QueryRow(ctx, `SELECT student_id::text FROM applicants WHERE id = $1`, id).Scan(&studentID); err != nil {

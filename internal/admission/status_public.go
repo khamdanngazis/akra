@@ -39,7 +39,8 @@ func (s *ApplicantService) FindForStatus(ctx context.Context, schoolID, number, 
 		return Applicant{}, ErrNotFound
 	}
 	var id string
-	err = s.db.QueryRow(ctx, `SELECT id FROM applicants WHERE school_id = $1 AND registration_number = $2 AND birth_date = $3 AND status <> 'draf'`,
+	err = s.db.QueryRow(ctx, `SELECT id FROM applicants WHERE school_id = $1 AND registration_number = $2 AND birth_date = $3 AND status <> 'draf'
+		  AND anonymized_at IS NULL`,
 		schoolID, number, birth).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Applicant{}, ErrNotFound

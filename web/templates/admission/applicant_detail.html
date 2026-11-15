@@ -18,6 +18,10 @@
 <div class="alert" role="status">Kode lanjut baru untuk orang tua: <strong>{{.}}</strong>. Berikan kode ini bersama nomor HP pendaftar agar mereka bisa memperbaiki formulir. Kode hanya ditampilkan sekali.</div>
 {{end}}
 
+{{with .Anonymized}}
+<div class="alert alert-info" role="status">Data pribadi pendaftar ini sudah dihapus pada {{.}} ({{if eq $.Applicant.AnonymizedReason "permintaan"}}atas permintaan{{else}}masa simpan berakhir{{end}}). Yang tersisa hanya data untuk rekap: status, jalur, jenis kelamin, dan tahun lahir.</div>
+{{end}}
+
 <div class="detail-grid">
 <div class="stack">
 {{range .Sections}}
@@ -31,6 +35,19 @@
 </div>
 
 <div class="stack">
+{{if or .RetentionDue .Erasable}}
+<section class="card">
+<h2>Data pribadi</h2>
+{{with .RetentionDue}}<p class="mb-3 text-sm">Data pribadi pendaftar ini (identitas, alamat, orang tua, dokumen) akan <strong>dihapus otomatis pada {{.}}</strong>, sesuai masa simpan data pendaftar yang tidak diterima.</p>{{end}}
+{{if and $.CanEdit .Erasable}}
+<form method="post" action="/pendaftaran/{{.Applicant.ID}}/hapus-data" class="stack" novalidate>
+{{ csrfField }}
+<label class="choice"><input type="checkbox" name="confirm"> Orang tua meminta datanya dihapus sekarang. Penghapusan tidak bisa dibatalkan.</label>
+<button type="submit" class="btn btn-danger btn-sm">Hapus data pribadi sekarang</button>
+</form>
+{{end}}
+</section>
+{{end}}
 {{if and .CanEdit .Next}}
 <section class="card">
 <h2>Tindak lanjut</h2>

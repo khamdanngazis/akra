@@ -117,10 +117,15 @@ type applicantDetailView struct {
 	FeePayments []FeePayment
 	FeePaid     bool
 	Note        string
-	Errors      map[string]string
-	ResumeCode  string
-	Flash       string
-	Error       string
+	// RetentionDue adalah tanggal data pribadi dihapus otomatis (T113),
+	// kosong jika tidak dihapus otomatis.
+	RetentionDue string
+	Erasable     bool
+	Anonymized   string // tanggal data dihapus, kosong jika belum
+	Errors       map[string]string
+	ResumeCode   string
+	Flash        string
+	Error        string
 }
 
 type eventRow struct {
@@ -177,6 +182,16 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		view.Next = append(view.Next, option{Value: s, Label: StatusLabels[s]})
 	}
 	view.Sections = displayApplicant(a)
+	view.Erasable = a.Erasable()
+	if a.AnonymizedAt != nil {
+		view.Anonymized = clock.FormatDateID(a.AnonymizedAt.In(clock.Jakarta))
+		view.Next, view.Sections = nil, nil
+	} else if due, ok, err := h.applicants.retentionDue(ctx, h.db, a); err != nil {
+		h.serverError(w, r, "retention due", err)
+		return
+	} else if ok {
+		view.RetentionDue = clock.FormatDateID(due)
+	}
 	var feeAmount int64
 	if err := h.db.QueryRow(ctx, `SELECT fee_amount FROM applicants WHERE id = $1`, a.ID).Scan(&feeAmount); err != nil {
 		h.serverError(w, r, "fee amount", err)
@@ -351,4 +366,32 @@ func (h *Handler) openDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(body)
+}
+
+// eraseApplicant menghapus data pribadi pendaftar atas permintaan orang tua
+// (hak penghapusan, UU PDP). Peran: admin_tu.
+func (h *Handler) eraseApplicant(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	applicantID := chi.URLParam(r, "id")
+	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	if r.PostForm.Get("confirm") != "on" {
+		h.renderApplicant(w, r, id, applicantID, http.StatusBadRequest, "", nil, "Centang konfirmasi untuk menghapus data pribadi pendaftar.")
+		return
+	}
+	err := h.applicants.AnonymizeBy(r.Context(), actorFrom(r, id), h.documents.store, applicantID)
+	switch {
+	case err == nil:
+		auth.SetFlash(r.Context(), h.sessions, "Data pribadi pendaftar sudah dihapus.")
+		http.Redirect(w, r, applicantsPath+"/"+applicantID, http.StatusSeeOther)
+	case errors.Is(err, ErrNotFound):
+		page.NotFound(h.render, w, r, id, msgApplicantGone)
+	case errors.Is(err, ErrNotErasable):
+		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, "", nil, "Data pribadi hanya bisa dihapus untuk pendaftar berstatus draf, ditolak, mundur, atau cadangan.")
+	default:
+		h.serverError(w, r, "erase applicant", err)
+	}
 }

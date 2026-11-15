@@ -6,8 +6,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"akra/internal/admission"
 	"akra/internal/billing"
 	"akra/internal/importer"
+	"akra/internal/platform/clock"
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/storage"
 	"akra/internal/reports"
@@ -20,9 +22,10 @@ func registerWorkers(workers *jobs.Workers, pool *pgxpool.Pool, store storage.St
 	river.AddWorker(workers, reports.NewExportWorker(pool, store, logger))
 	river.AddWorker(workers, reports.NewCleanupWorker(pool, store, logger))
 	river.AddWorker(workers, importer.NewImportStudentsWorker(pool, logger))
+	river.AddWorker(workers, admission.NewRetentionWorker(pool, store, clock.Today, logger))
 }
 
 // periodicJobs adalah job terjadwal.
 func periodicJobs() []*river.PeriodicJob {
-	return []*river.PeriodicJob{reports.CleanupPeriodicJob()}
+	return []*river.PeriodicJob{reports.CleanupPeriodicJob(), admission.RetentionPeriodicJob()}
 }
