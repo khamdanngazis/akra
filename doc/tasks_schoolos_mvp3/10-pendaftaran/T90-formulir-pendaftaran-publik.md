@@ -30,12 +30,12 @@ Orang tua mengisi data lengkap F-PD; bagian non-wajib boleh dilewati (2026-11-14
 - `web/templates/admission/public_form*.html`
 
 ## Kriteria selesai
-- [ ] Pendaftaran di periode tutup ditolak di server, bukan hanya disembunyikan di UI
-- [ ] Nomor pendaftaran tidak ganda saat 50 kiriman bersamaan
-- [ ] Draf bisa dilanjutkan dengan HP + kode; kode salah 5 kali mengunci sementara
-- [ ] Kode sekolah salah menampilkan 404 tanpa membocorkan sekolah lain
-- [ ] Tanpa persetujuan data pribadi, form tidak bisa dikirim
-- [ ] Kolom `profile` dan `guardians` (jsonb) tidak memuat NIK, No KK, atau no akta
+- [x] Pendaftaran di periode tutup ditolak di server, bukan hanya disembunyikan di UI
+- [x] Nomor pendaftaran tidak ganda saat 50 kiriman bersamaan
+- [x] Draf bisa dilanjutkan dengan HP + kode; kode salah 5 kali mengunci sementara
+- [x] Kode sekolah salah menampilkan 404 tanpa membocorkan sekolah lain
+- [x] Tanpa persetujuan data pribadi, form tidak bisa dikirim
+- [x] Kolom `profile` dan `guardians` (jsonb) tidak memuat NIK, No KK, atau no akta
 
 ## Catatan implementasi
 Nomor pendaftaran `SPMB-{tahun mulai TA}-{urut 4 digit}` per sekolah per tahun ajaran (tabel `admission_counters`). Rate limit disimpan di tabel `admission_attempts`.

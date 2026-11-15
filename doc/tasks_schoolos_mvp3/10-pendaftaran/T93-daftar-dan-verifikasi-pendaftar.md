@@ -27,10 +27,10 @@ TU bisa memeriksa pendaftar, meminta perbaikan, dan menetapkan hasilnya dengan j
 - `web/templates/admission/list.html`, `detail.html`
 
 ## Kriteria selesai
-- [ ] Perpindahan status yang tidak diizinkan ditolak di service
-- [ ] Setiap perubahan status tercatat di `applicant_events` dan audit
-- [ ] Dua petugas yang mengubah status bersamaan tidak menghasilkan status ganda (cek versi atau `SELECT ... FOR UPDATE`)
-- [ ] Route baru masuk daftar uji T58 dan T59
+- [x] Perpindahan status yang tidak diizinkan ditolak di service
+- [x] Setiap perubahan status tercatat di `applicant_events` dan audit
+- [x] Dua petugas yang mengubah status bersamaan tidak menghasilkan status ganda (cek versi atau `SELECT ... FOR UPDATE`)
+- [x] Route baru masuk daftar uji T58 dan T59
 
 ## Catatan implementasi
 Status perlu perbaikan membuat kode lanjut baru (ditampilkan sekali ke TU) agar orang tua bisa memperbaiki dan mengirim ulang dengan nomor yang sama. Job pembersihan data pendaftar ditolak/mundur belum dibuat (keputusan masa simpan masih terbuka).

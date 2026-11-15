@@ -17,5 +17,5 @@ TU bisa memasukkan pendaftar yang datang langsung ke sekolah dengan form yang sa
 - `web/templates/admission/admin_form.html`
 
 ## Kriteria selesai
-- [ ] Pendaftar dari TU mendapat nomor pendaftaran dari sequence yang sama dengan pendaftar online
-- [ ] Audit mencatat petugas yang menginput
+- [x] Pendaftar dari TU mendapat nomor pendaftaran dari sequence yang sama dengan pendaftar online
+- [x] Audit mencatat petugas yang menginput

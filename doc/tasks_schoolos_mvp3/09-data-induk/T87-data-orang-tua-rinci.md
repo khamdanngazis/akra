@@ -21,8 +21,8 @@ Data ayah kandung, ibu kandung, dan wali tersedia sesuai F-PD, termasuk orang tu
 - `internal/students/guardian_service.go`, `guardian_repo.go`, test
 
 ## Kriteria selesai
-- [ ] Siswa tidak bisa punya dua ibu kandung
-- [ ] Wali tanpa akun portal bisa disimpan dengan data rinci
-- [ ] Akun portal orang tua (T24) tetap berjalan tanpa perubahan
-- [ ] NIK orang tua tidak tampil utuh untuk peran `guru` dan `orang_tua`
-- [ ] Kolom `guardians.nik_enc` tidak berisi NIK dalam bentuk teks
+- [x] Siswa tidak bisa punya dua ibu kandung
+- [x] Wali tanpa akun portal bisa disimpan dengan data rinci
+- [x] Akun portal orang tua (T24) tetap berjalan tanpa perubahan
+- [x] NIK orang tua tidak tampil utuh untuk peran `guru` dan `orang_tua`
+- [x] Kolom `guardians.nik_enc` tidak berisi NIK dalam bentuk teks

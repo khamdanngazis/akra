@@ -49,13 +49,13 @@ NISN **tidak** dienkripsi. NISN adalah nomor pendidikan yang bisa dicek publik d
 - `doc/restore.md`
 
 ## Kriteria selesai
-- [ ] Enkripsi nilai yang sama dua kali menghasilkan ciphertext berbeda; blind index-nya sama
-- [ ] Ciphertext yang diubah satu byte gagal didekripsi (bukan menghasilkan nilai salah)
-- [ ] Ciphertext yang dipindah ke kolom lain gagal didekripsi
-- [ ] Data terenkripsi dengan kunci versi 1 tetap terbaca setelah kunci versi 2 aktif; rotasi mengubah semuanya ke versi 2
-- [ ] Aplikasi gagal start tanpa `PII_ENC_KEYS` atau `PII_INDEX_KEY`
-- [ ] `fmt.Sprint(nilaiPII)` dan `slog` hanya menampilkan versi ter-mask
-- [ ] Dump database (`pg_dump`) dari data uji tidak memuat satu pun NIK contoh dalam bentuk teks
+- [x] Enkripsi nilai yang sama dua kali menghasilkan ciphertext berbeda; blind index-nya sama
+- [x] Ciphertext yang diubah satu byte gagal didekripsi (bukan menghasilkan nilai salah)
+- [x] Ciphertext yang dipindah ke kolom lain gagal didekripsi
+- [x] Data terenkripsi dengan kunci versi 1 tetap terbaca setelah kunci versi 2 aktif; rotasi mengubah semuanya ke versi 2
+- [x] Aplikasi gagal start tanpa `PII_ENC_KEYS` atau `PII_INDEX_KEY`
+- [x] `fmt.Sprint(nilaiPII)` dan `slog` hanya menampilkan versi ter-mask
+- [x] Dump database (`pg_dump`) dari data uji tidak memuat satu pun NIK contoh dalam bentuk teks
 
 ## Catatan
 - Enkripsi ini melindungi dari kebocoran database dan backup. Tidak melindungi dari pengguna yang sah tapi menyalahgunakan aksesnya; itu tetap diatur lewat peran, mask, dan audit (T86).

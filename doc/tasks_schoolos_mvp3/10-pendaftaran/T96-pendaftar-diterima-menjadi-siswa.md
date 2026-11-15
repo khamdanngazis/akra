@@ -28,10 +28,10 @@ Format NIS bisa diatur sekolah, bawaan `{tahun}{urut:3}`, tetap bisa diisi manua
 - `internal/students/service.go` (jika perlu fungsi pembuatan dengan profil)
 
 ## Kriteria selesai
-- [ ] Menjalankan konversi dua kali tidak membuat siswa ganda
-- [ ] Dua pendaftar bersaudara dengan ibu ber-NIK sama berbagi satu data wali
-- [ ] Data profil siswa hasil konversi identik dengan isian pendaftaran
-- [ ] Kegagalan satu pendaftar di job massal tidak menggagalkan yang lain
+- [x] Menjalankan konversi dua kali tidak membuat siswa ganda
+- [x] Dua pendaftar bersaudara dengan ibu ber-NIK sama berbagi satu data wali
+- [x] Data profil siswa hasil konversi identik dengan isian pendaftaran
+- [x] Kegagalan satu pendaftar di job massal tidak menggagalkan yang lain
 
 ## Catatan implementasi
 Konversi massal berjalan langsung (bukan job River) dengan savepoint per pendaftar; jumlah pendaftar per proses biasanya ratusan. Akun portal orang tua tidak dibuat otomatis; TU memakai alur yang sudah ada di halaman siswa. Penghitung NIS per awalan di tabel `nis_counters`.

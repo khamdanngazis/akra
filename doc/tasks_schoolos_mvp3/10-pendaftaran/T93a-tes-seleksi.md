@@ -23,11 +23,11 @@ Sekolah bisa mengatur tes seleksi (mis. tes tertulis, wawancara, baca Al-Qur'an)
 - `web/templates/admission/tests.html`, `scores.html`
 
 ## Kriteria selesai
-- [ ] Bobot yang jumlahnya bukan 100 ditolak saat menghitung skor
-- [ ] Nilai di luar 0–max ditolak per baris
-- [ ] Skor akhir dihitung dengan uji unit (termasuk nilai kosong)
-- [ ] Pendaftar yang belum diverifikasi tidak muncul di grid nilai
-- [ ] Route baru masuk daftar uji T58 dan T59
+- [x] Bobot yang jumlahnya bukan 100 ditolak saat menghitung skor
+- [x] Nilai di luar 0–max ditolak per baris
+- [x] Skor akhir dihitung dengan uji unit (termasuk nilai kosong)
+- [x] Pendaftar yang belum diverifikasi tidak muncul di grid nilai
+- [x] Route baru masuk daftar uji T58 dan T59
 
 ## Catatan implementasi
 Nilai `numeric(6,2)`; skor akhir dihitung di aplikasi. Baris nilai kosong tidak menghalangi hapus tes.

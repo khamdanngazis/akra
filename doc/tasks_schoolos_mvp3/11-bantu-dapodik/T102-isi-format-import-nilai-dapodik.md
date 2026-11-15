@@ -33,11 +33,13 @@ Format import nilai Dapodik 2027 (`template-format-import-nilai.xlsx`, sheet "Fo
 - `web/templates/dapodik/grade_fill.html`
 
 ## Kriteria selesai
-- [ ] Token di kolom B dan C tidak berubah satu karakter pun (uji membandingkan sebelum dan sesudah)
-- [ ] Proteksi sheet dan validasi data tetap ada setelah file diisi
-- [ ] Sikap tidak terisi untuk mapel selain Bahasa Indonesia
-- [ ] Guru tidak bisa mengisi file untuk mapel yang tidak diampunya
+- [x] Token di kolom B dan C tidak berubah satu karakter pun (uji membandingkan sebelum dan sesudah)
+- [x] Proteksi sheet dan validasi data tetap ada setelah file diisi
+- [x] Sikap tidak terisi untuk mapel selain Bahasa Indonesia
+- [x] Guru tidak bisa mengisi file untuk mapel yang tidak diampunya
 - [ ] File hasil berhasil diimpor ke Dapodik asli tanpa error (diuji di T105)
+
+> Belum: impor ke Dapodik asli menunggu uji manual T105.
 
 ## Catatan
 - Kolom Pengetahuan/Keterampilan mengikuti format Dapodik 2027. Untuk sekolah Kurikulum Merdeka, pastikan di T105 bagaimana Dapodik memetakan nilai dan deskripsi capaian (T74b) ke kolom ini.

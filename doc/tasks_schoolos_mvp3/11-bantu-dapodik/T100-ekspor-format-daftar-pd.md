@@ -20,9 +20,9 @@ SchoolOS bisa menghasilkan Excel daftar siswa dengan kolom yang sama persis deng
 - `internal/dapodik/export_pd.go`, `export_pd_test.go`
 
 ## Kriteria selesai
-- [ ] Header hasil ekspor identik dengan template Dapodik 2027 (uji membandingkan sel baris 5–6)
-- [ ] NIK `0012…` tetap diawali nol saat dibuka di Excel
-- [ ] File hasil ekspor bisa diimpor kembali lewat T101 tanpa perubahan
+- [x] Header hasil ekspor identik dengan template Dapodik 2027 (uji membandingkan sel baris 5–6)
+- [x] NIK `0012…` tetap diawali nol saat dibuka di Excel
+- [x] File hasil ekspor bisa diimpor kembali lewat T101 tanpa perubahan
 
 ## Catatan implementasi
 Ekspor dibuat langsung untuk maksimal 3.000 siswa. File langsung dikirim ke browser (tidak disimpan di storage), jadi tidak perlu penghapusan 24 jam.

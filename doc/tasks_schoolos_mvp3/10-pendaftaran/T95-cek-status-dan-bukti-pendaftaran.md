@@ -18,6 +18,6 @@ Orang tua bisa melihat status pendaftaran dan mengunduh bukti pendaftaran tanpa 
 - `internal/admission/proof_pdf.go`, test
 
 ## Kriteria selesai
-- [ ] Nomor benar dengan tanggal lahir salah menampilkan pesan umum yang sama dengan nomor salah
-- [ ] PDF tidak memuat NIK atau No KK
-- [ ] 10 percobaan gagal dari IP yang sama dibatasi sementara
+- [x] Nomor benar dengan tanggal lahir salah menampilkan pesan umum yang sama dengan nomor salah
+- [x] PDF tidak memuat NIK atau No KK
+- [x] 10 percobaan gagal dari IP yang sama dibatasi sementara
