@@ -142,7 +142,7 @@ func buildNextStep(in nextStepInput) nextStepView {
 		}
 	}
 	ranking := linkView{Label: "Buka peringkat jalur " + in.Track.Name, URL: "/pendaftaran/periode/" + in.Period.ID + "/hasil"}
-	selective := in.Track.UsesTest || in.Track.Quota > 0
+	selective := (in.Track.Method != "" && in.Track.Method != MethodOrder) || in.Track.UsesTest || in.Track.Quota > 0
 
 	switch {
 	case in.StudentID != "":
@@ -212,11 +212,15 @@ func buildNextStep(in nextStepInput) nextStepView {
 
 // selectiveReason menjelaskan kenapa jalur perlu halaman peringkat.
 func selectiveReason(t Track) string {
+	method := map[string]string{MethodTest: "tes seleksi", MethodScore: "urutan " + strings.ToLower(t.ScoreLabel), MethodManual: "penilaian manual"}[t.Method]
+	if method == "" && t.UsesTest {
+		method = "tes seleksi"
+	}
 	switch {
-	case t.UsesTest && t.Quota > 0:
-		return "tes seleksi dan kuota"
-	case t.UsesTest:
-		return "tes seleksi"
+	case method != "" && t.Quota > 0:
+		return method + " dan kuota"
+	case method != "":
+		return method
 	}
 	return "kuota"
 }

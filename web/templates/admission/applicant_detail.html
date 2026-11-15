@@ -50,6 +50,37 @@
 </div>
 
 <div class="stack detail-side">
+{{if eq .Applicant.Track.Method "tes"}}
+<section class="card">
+<h2>Nilai tes</h2>
+{{if .TestResults}}
+<table class="score-table">
+<tbody>
+{{range .TestResults}}<tr><td>{{.Name}}{{if .PassScore}}<span class="block text-xs text-slate-500">minimal {{.PassScore}}</span>{{end}}</td><td class="text-right nowrap">{{if .Score}}<strong>{{.Score}}</strong> <span class="muted">/ {{.MaxScore}}</span>{{if .Failed}}<span class="mt-1 block"><span class="badge badge-danger">Di bawah minimal</span></span>{{end}}{{else}}<span class="badge badge-warning">Belum dinilai</span>{{end}}</td></tr>{{end}}
+{{with .FinalScore}}<tr><td><strong>Skor akhir</strong> <span class="block text-xs text-slate-500">dari 100{{if not $.TestsDone}}, belum semua tes dinilai{{end}}</span></td><td class="text-right"><strong>{{.}}</strong></td></tr>{{end}}
+</tbody>
+</table>
+{{else}}<p class="muted mb-0">Gelombang ini belum punya tes.</p>{{end}}
+<p class="hint mb-0"><a href="/pendaftaran/periode/{{.Applicant.PeriodID}}/tes">Tes seleksi dan isi nilai</a></p>
+</section>
+{{end}}
+{{if eq .Applicant.Track.Method "nilai"}}
+<section class="card">
+<h2>Nilai jalur</h2>
+<p class="mb-0"><span class="muted">{{.Applicant.Track.ScoreLabel}}:</span> {{with .Applicant.ScoreText}}<strong>{{.}}</strong>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}} <span class="muted small">(maks {{.Applicant.Track.ScoreMax}})</span></p>
+{{if and .CanEdit .ScoreEditable}}
+<form method="post" action="/pendaftaran/{{.Applicant.ID}}/nilai-jalur" class="score-row" novalidate>
+{{ csrfField }}
+<div class="field m-0{{if .Errors.track_score}} has-error{{end}}">
+<label for="track_score">Koreksi setelah dicocokkan dengan bukti</label>
+<input id="track_score" name="track_score" value="{{.Applicant.ScoreText}}" inputmode="decimal" maxlength="8" class="w-32">
+{{with .Errors.track_score}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<button type="submit" class="btn btn-ghost btn-sm">Simpan nilai</button>
+</form>
+{{end}}
+</section>
+{{end}}
 <section class="card">
 <h2>Dokumen</h2>
 {{if .Documents}}

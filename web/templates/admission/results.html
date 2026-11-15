@@ -11,28 +11,31 @@
 </div>
 {{template "admission_period_tabs" dict "ID" .Period.ID "Active" "hasil"}}
 {{template "flash" .}}
-{{if and .HasTestTrack (not .TestsOK)}}<div class="alert alert-error" role="alert">Jumlah bobot tes belum 100%. Pendaftar di jalur dengan tes belum bisa diperingkat. <a href="/pendaftaran/periode/{{.Period.ID}}/tes">Atur tes</a>.</div>{{end}}
+{{if and .HasTestTrack (not .TestsOK)}}<div class="alert alert-error" role="alert">Jumlah bobot tes belum 100%. Pendaftar di jalur metode tes belum bisa diperingkat. <a href="/pendaftaran/periode/{{.Period.ID}}/tes">Atur tes</a>.</div>{{end}}
 
-<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/hasil" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/hasil" class="stack" x-data="{ submitting: false }" @submit="if (submitting) $event.preventDefault(); submitting = true">
 {{ csrfField }}
 {{range .Tracks}}
+{{$m := .Track.Method}}
 <section class="card card-flush">
 <div class="card-head"><div>
-<h2>Jalur {{.Track.Name}}</h2>
-<p class="muted">{{if .Track.Quota}}Kuota {{.Track.Quota}} · sudah diterima {{.Accepted}} · sisa {{.Remaining}}{{else}}Tanpa batas kuota · sudah diterima {{.Accepted}}{{end}}{{if .Track.UsesTest}} · urut skor tes{{else}} · urut waktu kirim{{end}}</p>
+<h2>Jalur {{.Track.Name}} <span class="badge">{{.Track.MethodLabel}}</span></h2>
+<p class="muted">{{if .Track.Quota}}Kuota {{.Track.Quota}} · sudah diterima {{.Accepted}} · sisa {{.Remaining}}{{else}}Tanpa batas kuota · sudah diterima {{.Accepted}}{{end}}</p>
+<p class="muted small mb-0">{{.Basis}}{{if .Pending}} <a href="/pendaftaran?periode={{$.Period.ID}}&amp;jalur={{.Track.ID}}&amp;status=dikirim">{{.Pending}} pendaftar belum diverifikasi</a> belum ikut.{{end}}</p>
 </div></div>
 {{if .Rows}}
 <div class="table-wrap">
 <table>
-<thead><tr><th>#</th><th>Nomor</th><th>Nama</th>{{if .Track.UsesTest}}<th>Skor</th>{{end}}<th>Status</th><th>Hasil</th></tr></thead>
+<thead><tr><th>#</th><th>Nomor</th><th>Nama</th>{{if eq $m "tes"}}<th>Skor</th>{{else if eq $m "nilai"}}<th>{{.Track.ScoreLabel}}</th>{{else if eq $m "manual"}}<th>Urutan</th>{{end}}<th>Status</th><th>Hasil</th></tr></thead>
 <tbody>
-{{$test := .Track.UsesTest}}
 {{range .Rows}}
 <tr>
 <td>{{if .Rank}}{{.Rank}}{{else}}–{{end}}</td>
 <td class="nowrap"><a href="/pendaftaran/{{.ApplicantID}}">{{.RegistrationNumber}}</a></td>
 <td>{{.FullName}}</td>
-{{if $test}}<td class="nowrap">{{printf "%.2f" .Score}}{{if not .Complete}} <span class="badge badge-warning">Belum lengkap</span>{{end}}</td>{{end}}
+{{if eq $m "tes"}}<td class="nowrap">{{printf "%.2f" .Score}}{{if not .Complete}} <span class="badge badge-warning">Belum lengkap</span>{{end}}{{with .Failed}} <span class="badge badge-danger" title="{{range $i, $f := .}}{{if $i}}, {{end}}{{$f}}{{end}}">Di bawah nilai minimal</span>{{end}}</td>
+{{else if eq $m "nilai"}}<td class="nowrap">{{if .Complete}}{{.ScoreText}}{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}}</td>
+{{else if eq $m "manual"}}<td>{{if $.CanEdit}}<input class="rank-input" type="number" name="rank_{{.ApplicantID}}" value="{{if .ManualRank}}{{.ManualRank}}{{end}}" min="1" max="9999" aria-label="Urutan {{.FullName}}">{{else}}{{if .ManualRank}}{{.ManualRank}}{{else}}–{{end}}{{end}}</td>{{end}}
 <td>{{template "applicant_status" .Status}}</td>
 <td>
 {{if $.CanEdit}}
@@ -49,9 +52,10 @@
 </tbody>
 </table>
 </div>
-{{else}}<div class="empty-state"><p class="muted">Belum ada pendaftar diverifikasi di jalur ini.</p></div>{{end}}
+{{if and $.CanEdit (eq $m "manual")}}<div class="card-foot"><button type="submit" name="action" value="urutan" class="btn btn-ghost btn-sm">Simpan urutan dan hitung ulang usulan</button></div>{{end}}
+{{else}}<div class="empty-state"><p class="muted">Belum ada pendaftar diverifikasi di jalur ini.{{if .Pending}} <a href="/pendaftaran?periode={{$.Period.ID}}&amp;jalur={{.Track.ID}}&amp;status=dikirim">Verifikasi {{.Pending}} pendaftar</a> dulu.{{end}}</p></div>{{end}}
 </section>
 {{end}}
-{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Tetapkan hasil</button></div>{{end}}
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary">Tetapkan hasil</button></div>{{end}}
 </form>
 {{end}}

@@ -94,6 +94,10 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Post("/{id}/jadikan-siswa", h.enrollOne)
 			// Peran: admin_tu.
 			r.Post("/{id}/daftar-ulang", h.markReRegistered)
+			// Peran: admin_tu. Koreksi nilai jalur metode nilai (T118).
+			r.Post("/{id}/nilai-jalur", h.saveTrackScore)
+			// Peran: admin_tu. Verifikasi beberapa pendaftar sekaligus (T118).
+			r.Post("/verifikasi", h.verifyMany)
 			// Peran: admin_tu. Input pendaftar oleh TU (T92).
 			r.Get("/baru", h.staffNew)
 			// Peran: admin_tu.
@@ -122,6 +126,8 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Get("/{id}/tes", h.listTests)
 		// Peran: admin_tu, kepala_sekolah (hanya baca).
 		r.Get("/{id}/tes/{testID}/nilai", h.scores)
+		// Peran: admin_tu, kepala_sekolah. Lembar penilaian PDF (T119).
+		r.Get("/{id}/tes/{testID}/lembar.pdf", h.testSheet)
 		// Peran: admin_tu, kepala_sekolah (hanya baca). Peringkat (T93b).
 		r.Get("/{id}/hasil", h.results)
 		// Peran: admin_tu, kepala_sekolah.
@@ -222,6 +228,8 @@ type periodDetailView struct {
 	// Checklist dan Ready: daftar periksa sebelum dibuka (T117).
 	Checklist []checkItem
 	Ready     bool
+	// Flow adalah ringkasan alur seleksi (T118).
+	Flow      selectionFlow
 	TestCount int
 	Flash     string
 	Error     string
@@ -301,10 +309,7 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 		}
 	}
 	for _, t := range p.Tracks {
-		tr := trackRow{Track: t, Form: TrackForm{Name: t.Name, UsesTest: t.UsesTest}}
-		if t.Quota > 0 {
-			tr.Form.Quota = strconv.Itoa(t.Quota)
-		}
+		tr := trackRow{Track: t, Form: trackFormOf(t)}
 		if editTrack == t.ID {
 			tr.Form, tr.Errors = tf, errs
 		}
@@ -324,6 +329,21 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 	}
 	view.TestCount = len(tests)
 	view.Checklist, view.Ready = periodChecklist(p, tests, h.periods.Today())
+	f := &view.Flow
+	if err := h.db.QueryRow(r.Context(), `SELECT count(*) FILTER (WHERE status = 'dikirim'), count(*) FILTER (WHERE status = 'perlu_perbaikan'),
+		count(*) FILTER (WHERE status IN ('diverifikasi', 'cadangan')), count(*) FILTER (WHERE status = 'diterima'),
+		count(*) FILTER (WHERE status <> 'draf')
+		FROM applicants WHERE school_id = $1 AND period_id = $2`, id.SchoolID, p.ID).Scan(&f.Submitted, &f.Fix, &f.Ranked, &f.Accepted, &f.Total); err != nil {
+		h.serverError(w, r, "selection flow", err)
+		return
+	}
+	for _, t := range p.Tracks {
+		if t.Quota == 0 {
+			f.Quota = -1
+			break
+		}
+		f.Quota += t.Quota
+	}
 	h.render.Render(w, r, status, "admission/period_detail", view)
 }
 
@@ -386,7 +406,9 @@ func parseTrack(w http.ResponseWriter, r *http.Request) (TrackForm, bool) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return TrackForm{}, false
 	}
-	return TrackForm{Name: r.PostForm.Get("track_name"), Quota: r.PostForm.Get("quota"), UsesTest: r.PostForm.Has("uses_test")}, true
+	f := r.PostForm
+	return TrackForm{Name: f.Get("track_name"), Quota: f.Get("quota"), UsesTest: f.Has("uses_test"),
+		Method: f.Get("method"), ScoreLabel: f.Get("score_label"), ScoreMax: f.Get("score_max")}, true
 }
 
 func (h *Handler) addTrack(w http.ResponseWriter, r *http.Request) {
@@ -476,4 +498,23 @@ func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, op string,
 
 func actorFrom(r *http.Request, id auth.Identity) school.Actor {
 	return school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}
+}
+
+// trackFormOf mengubah jalur tersimpan menjadi isian form.
+func trackFormOf(t Track) TrackForm {
+	f := TrackForm{Name: t.Name, Method: t.Method, ScoreLabel: t.ScoreLabel}
+	if t.Quota > 0 {
+		f.Quota = strconv.Itoa(t.Quota)
+	}
+	if t.ScoreMax > 0 {
+		f.ScoreMax = strconv.Itoa(t.ScoreMax)
+	}
+	return f
+}
+
+// selectionFlow adalah jumlah pendaftar di setiap langkah seleksi: verifikasi
+// berkas, peringkat, dan hasil (T118).
+type selectionFlow struct {
+	Submitted, Fix, Ranked, Accepted, Total int
+	Quota                                   int // -1 = ada jalur tanpa batas
 }

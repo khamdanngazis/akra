@@ -53,13 +53,17 @@
 </form>
 
 {{if .Rows}}
+<form method="post" action="/pendaftaran/verifikasi" x-data="{ picked: 0, count() { this.picked = this.$root.querySelectorAll('input[name=pick]:checked').length } }" @change="count()">
+{{ csrfField }}
+<input type="hidden" name="kembali" value="{{.ReturnQuery}}">
 <div class="card card-flush">
 <div class="table-wrap">
 <table>
-<thead><tr><th>Nomor</th><th>Nama</th><th>Sekolah asal</th><th>Gelombang · Jalur</th><th>Dokumen</th><th>Dikirim</th><th>Status</th></tr></thead>
+<thead><tr>{{if .CanVerify}}<th><span class="visually-hidden">Pilih untuk verifikasi</span></th>{{end}}<th>Nomor</th><th>Nama</th><th>Sekolah asal</th><th>Gelombang · Jalur</th><th>Dokumen</th><th>Dikirim</th><th>Status</th></tr></thead>
 <tbody>
 {{range .Rows}}
 <tr>
+{{if $.CanVerify}}<td>{{if eq .Status "dikirim"}}<input type="checkbox" name="pick" value="{{.ID}}" aria-label="Pilih {{.FullName}} untuk verifikasi">{{end}}</td>{{end}}
 <td class="nowrap">{{if .RegistrationNumber}}{{.RegistrationNumber}}{{else}}<span class="muted">Draf</span>{{end}}</td>
 <td><a href="/pendaftaran/{{.ID}}"><strong>{{.FullName}}</strong></a>{{if eq .Kind "pindahan"}} <span class="badge badge-info">Pindahan{{with .TargetGrade}} · kelas {{.}}{{end}}</span>{{end}}</td>
 <td>{{if .PreviousSchool}}{{.PreviousSchool}}{{else}}<span class="muted">–</span>{{end}}</td>
@@ -73,6 +77,13 @@
 </table>
 </div>
 </div>
+{{if .CanVerify}}
+<div class="bulk-bar" x-show="picked > 0" x-cloak>
+<span class="text-sm"><strong x-text="picked"></strong> pendaftar dipilih. Pastikan data dan dokumennya sudah diperiksa.</span>
+<button type="submit" class="btn btn-primary btn-sm">Verifikasi yang dipilih</button>
+</div>
+{{end}}
+</form>
 {{else}}
 <section class="card empty-state">
 {{if .Filtered}}<p>Tidak ada pendaftar yang cocok.</p>{{else}}<p>Belum ada pendaftar yang mengirim formulir.</p>

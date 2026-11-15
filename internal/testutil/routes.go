@@ -574,6 +574,15 @@ var Routes = []Route{
 		})},
 	{Method: "POST", Pattern: "/pendaftaran/{id}/jadikan-siswa", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/jadikan-siswa" }, nil)},
+	// Metode seleksi (T118): koreksi nilai jalur dan verifikasi massal.
+	{Method: "POST", Pattern: "/pendaftaran/{id}/nilai-jalur", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/nilai-jalur" }, func(*School) url.Values {
+			return url.Values{"track_score": {"80"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/verifikasi", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/verifikasi" }, func(o *School) url.Values {
+			return url.Values{"pick": {o.ApplicantID}}
+		})},
 	{Method: "POST", Pattern: "/pendaftaran/{id}/daftar-ulang", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/daftar-ulang" }, func(*School) url.Values {
 			return url.Values{"done": {"1"}}
@@ -657,6 +666,11 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: schoolData,
 		Requests: func(own, o *School) []Request {
 			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/nilai"}}
+		}},
+	// Lembar penilaian PDF (T119).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/lembar.pdf", Kind: KindByID, Roles: schoolData,
+		Requests: func(own, o *School) []Request {
+			return []Request{{Path: "/pendaftaran/periode/" + o.AdmissionPeriodID + "/tes/" + o.AdmissionTestID + "/lembar.pdf"}}
 		}},
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTest("/nilai", url.Values{})},

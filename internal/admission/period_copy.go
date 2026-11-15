@@ -57,14 +57,14 @@ func (s *Service) Copy(ctx context.Context, actor school.Actor, id string) (Peri
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO admission_tracks (school_id, period_id, name, quota, uses_test, sort_order)
-			SELECT school_id, $3, name, quota, uses_test, sort_order FROM admission_tracks WHERE school_id = $1 AND period_id = $2`,
+			INSERT INTO admission_tracks (school_id, period_id, name, quota, uses_test, method, score_label, score_max, sort_order)
+			SELECT school_id, $3, name, quota, uses_test, method, score_label, score_max, sort_order FROM admission_tracks WHERE school_id = $1 AND period_id = $2`,
 			actor.SchoolID, src.ID, newID); err != nil {
 			return mapError("copy tracks", err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO admission_tests (school_id, period_id, name, weight, max_score, location, sort_order)
-			SELECT school_id, $3, name, weight, max_score, location, sort_order FROM admission_tests WHERE school_id = $1 AND period_id = $2`,
+			INSERT INTO admission_tests (school_id, period_id, name, weight, max_score, location, rubric, pass_score, sort_order)
+			SELECT school_id, $3, name, weight, max_score, location, rubric, pass_score, sort_order FROM admission_tests WHERE school_id = $1 AND period_id = $2`,
 			actor.SchoolID, src.ID, newID); err != nil {
 			return mapError("copy tests", err)
 		}

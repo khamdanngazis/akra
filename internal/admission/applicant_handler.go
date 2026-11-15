@@ -3,6 +3,7 @@ package admission
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -35,8 +36,13 @@ type applicantListView struct {
 	Kinds    []option
 	Query    string
 	Filtered bool
-	Flash    string
-	Error    string
+	// CanVerify: Admin/TU dan ada pendaftar berstatus dikirim di daftar,
+	// untuk verifikasi beberapa sekaligus (T118). ReturnQuery adalah query
+	// daftar ini untuk kembali setelah verifikasi.
+	CanVerify   bool
+	ReturnQuery string
+	Flash       string
+	Error       string
 }
 
 type applicantRow struct {
@@ -91,7 +97,9 @@ func (h *Handler) listApplicants(w http.ResponseWriter, r *http.Request) {
 			row.Submitted = clock.FormatDateID(*x.SubmittedAt)
 		}
 		view.Rows = append(view.Rows, row)
+		view.CanVerify = view.CanVerify || (view.CanEdit && x.Status == ApplicantSubmitted)
 	}
+	view.ReturnQuery = r.URL.RawQuery
 	h.render.Render(w, r, http.StatusOK, "admission/applicants", view)
 }
 
@@ -118,13 +126,19 @@ type applicantDetailView struct {
 	Next        []option
 	// NextStep adalah kartu langkah berikutnya (T116); Pick adalah aksi
 	// yang dipilih saat isian catatan ditolak, agar isiannya terbuka lagi.
-	NextStep    nextStepView
-	Pick        string
-	PickLabel   string
-	FeeAmount   string
-	FeePayments []FeePayment
-	FeePaid     bool
-	Note        string
+	// TestResults adalah nilai tes pendaftar jalur metode tes (T119).
+	TestResults []testResult
+	FinalScore  string
+	TestsDone   bool
+	// ScoreEditable: nilai jalur metode nilai masih bisa dikoreksi TU (T118).
+	ScoreEditable bool
+	NextStep      nextStepView
+	Pick          string
+	PickLabel     string
+	FeeAmount     string
+	FeePayments   []FeePayment
+	FeePaid       bool
+	Note          string
 	// RetentionDue adalah tanggal data pribadi dihapus otomatis (T113),
 	// kosong jika tidak dihapus otomatis.
 	RetentionDue string
@@ -190,6 +204,14 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		view.Next = append(view.Next, option{Value: s, Label: StatusLabels[s]})
 	}
 	view.Sections = displayApplicant(a)
+	if a.Track.Method == MethodTest && a.AnonymizedAt == nil {
+		if err := h.fillTestResults(ctx, id.SchoolID, a, &view); err != nil {
+			h.serverError(w, r, "test results", err)
+			return
+		}
+	}
+	view.ScoreEditable = a.Track.Method == MethodScore && a.StudentID == "" && a.AnonymizedAt == nil &&
+		(a.Status == ApplicantSubmitted || a.Status == ApplicantFix || a.Status == ApplicantVerified || a.Status == ApplicantReserve)
 	view.Erasable = a.Erasable()
 	if a.AnonymizedAt != nil {
 		view.Anonymized = clock.FormatDateID(a.AnonymizedAt.In(clock.Jakarta))
@@ -459,4 +481,141 @@ func (h *Handler) eraseApplicant(w http.ResponseWriter, r *http.Request) {
 	default:
 		h.serverError(w, r, "erase applicant", err)
 	}
+}
+
+// saveTrackScore menyimpan koreksi nilai jalur oleh TU (T118). Peran: admin_tu.
+func (h *Handler) saveTrackScore(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	applicantID := chi.URLParam(r, "id")
+	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	a, err := h.applicants.SetTrackScore(r.Context(), actorFrom(r, id), applicantID, r.PostForm.Get(TrackScoreKey))
+	var ve *ValidationError
+	switch {
+	case err == nil:
+		auth.SetFlash(r.Context(), h.sessions, "Nilai "+a.FullName+" disimpan: "+a.ScoreText()+".")
+		http.Redirect(w, r, applicantsPath+"/"+applicantID, http.StatusSeeOther)
+	case errors.Is(err, ErrNotFound):
+		page.NotFound(h.render, w, r, id, msgApplicantGone)
+	case errors.As(err, &ve):
+		h.renderApplicant(w, r, id, applicantID, http.StatusBadRequest, "", ve.Fields, "")
+	case errors.Is(err, ErrBadTransition):
+		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, "", nil, "Nilai hanya bisa dikoreksi untuk jalur metode nilai sebelum pendaftar diterima.")
+	default:
+		h.serverError(w, r, "save track score", err)
+	}
+}
+
+// verifyMany memverifikasi beberapa pendaftar berstatus dikirim sekaligus
+// (T118). Kegagalan satu pendaftar (mis. biaya belum lunas) tidak
+// membatalkan yang lain. Peran: admin_tu.
+func (h *Handler) verifyMany(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	back := applicantsPath
+	if q := r.PostForm.Get("kembali"); q != "" {
+		if v, err := url.ParseQuery(q); err == nil {
+			back += "?" + v.Encode()
+		}
+	}
+	picks := r.PostForm["pick"]
+	if len(picks) == 0 || len(picks) > 200 {
+		auth.SetFlash(r.Context(), h.sessions, "Pilih 1–200 pendaftar berstatus dikirim untuk diverifikasi.")
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
+	// Semua pilihan harus pendaftar sekolah ini; ID lain membuat seluruh
+	// permintaan ditolak.
+	var own int
+	if err := h.db.QueryRow(r.Context(), `SELECT count(DISTINCT id) FROM applicants WHERE school_id = $1 AND id::text = ANY ($2)`,
+		id.SchoolID, picks).Scan(&own); err != nil {
+		h.serverError(w, r, "check picks", err)
+		return
+	}
+	if own != len(uniqueStrings(picks)) {
+		http.Error(w, "Sebagian pilihan tidak valid. Muat ulang halaman lalu coba lagi.", http.StatusBadRequest)
+		return
+	}
+	actor := actorFrom(r, id)
+	var done int
+	var feeUnpaid, skipped []string
+	for _, aid := range picks {
+		_, err := h.applicants.Transition(r.Context(), actor, aid, ApplicantVerified, "")
+		switch {
+		case err == nil:
+			done++
+		case errors.Is(err, ErrFeeUnpaid):
+			if a, lerr := h.applicants.Load(r.Context(), id.SchoolID, aid); lerr == nil {
+				feeUnpaid = append(feeUnpaid, a.FullName)
+			}
+		case errors.Is(err, ErrNotFound), errors.Is(err, ErrBadTransition):
+			skipped = append(skipped, aid)
+		default:
+			h.serverError(w, r, "verify applicant", err)
+			return
+		}
+	}
+	msg := fmt.Sprintf("%d pendaftar diverifikasi.", done)
+	if len(feeUnpaid) > 0 {
+		msg += " Belum bisa diverifikasi karena biaya formulir belum lunas: " + strings.Join(feeUnpaid, ", ") + "."
+	}
+	if len(skipped) > 0 {
+		msg += fmt.Sprintf(" %d dilewati karena statusnya sudah berubah.", len(skipped))
+	}
+	auth.SetFlash(r.Context(), h.sessions, msg)
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+func uniqueStrings(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, v := range in {
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// testResult adalah nilai satu tes di detail pendaftar.
+type testResult struct {
+	Name, Score string // Score "" = belum dinilai
+	MaxScore    int
+	PassScore   int
+	Failed      bool
+}
+
+// fillTestResults mengisi nilai tes, skor akhir, dan status lulus (T119).
+func (h *Handler) fillTestResults(ctx context.Context, schoolID string, a Applicant, view *applicantDetailView) error {
+	sel := h.selection()
+	tests, err := sel.Tests(ctx, schoolID, a.PeriodID)
+	if err != nil {
+		return err
+	}
+	all, err := sel.Scores(ctx, schoolID, a.PeriodID)
+	if err != nil {
+		return err
+	}
+	mine := all[a.ID]
+	for _, t := range tests {
+		r := testResult{Name: t.Name, MaxScore: t.MaxScore, PassScore: t.PassScore}
+		if v, ok := mine[t.ID]; ok {
+			r.Score = trimScore(strconv.FormatFloat(v, 'f', 2, 64))
+			r.Failed = t.PassScore > 0 && v < float64(t.PassScore)
+		}
+		view.TestResults = append(view.TestResults, r)
+	}
+	if len(tests) > 0 && WeightsTotal(tests) == 100 {
+		score, complete := FinalScore(tests, mine)
+		view.FinalScore, view.TestsDone = trimScore(strconv.FormatFloat(score, 'f', 2, 64)), complete
+	}
+	return nil
 }

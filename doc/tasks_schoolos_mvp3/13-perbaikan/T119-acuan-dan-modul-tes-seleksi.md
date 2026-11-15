@@ -3,7 +3,7 @@
 **Fase:** 13 Perbaikan
 **Dependensi:** T93a, T118
 **Estimasi:** tahap 1: 1 hari; tahap 2 (tes online): 5–8 hari, belum diputuskan
-**Status:** catatan dan analisa, belum dikerjakan
+**Status:** tahap 1 selesai (2026-11-15); tahap 2 (CBT) ditunda
 
 ## Masukan pengguna (2026-11-15)
 Di jalur tes seleksi, TU tidak punya acuan hasil tes. Perlu dipertimbangkan pembuatan modul tes.
@@ -45,6 +45,16 @@ Di jalur tes seleksi, TU tidak punya acuan hasil tes. Perlu dipertimbangkan pemb
 - **Tahap 1 dikerjakan.** Tahap 2 (CBT) ditunda sampai ada permintaan sekolah.
 
 ## Kriteria selesai (tahap 1)
-- [ ] Setiap tes bisa diberi rubrik dan nilai minimal
-- [ ] Lembar penilaian dan kartu tes bisa dicetak
-- [ ] Nilai dan status lulus terlihat di detail pendaftar dan di peringkat
+- [x] Setiap tes bisa diberi rubrik dan nilai minimal
+- [x] Lembar penilaian dan kartu tes bisa dicetak
+- [x] Nilai dan status lulus terlihat di detail pendaftar dan di peringkat
+
+## Catatan implementasi (tahap 1)
+- **Migrasi 000059:** `admission_tests.rubric` (≤ 2.000 karakter) dan `pass_score` (integer, ≤ nilai maksimal; kosong = tanpa nilai minimal). Ikut tersalin saat gelombang disalin (T117).
+- **Form tes:** isian "Acuan penilaian" (contoh rentang nilai di placeholder) dan "Nilai minimal lulus". Daftar tes menampilkan rubrik dan nilai minimal.
+- **Lembar penilaian PDF** (`GET /pendaftaran/periode/{id}/tes/{testID}/lembar.pdf`, Admin/TU dan Kepala Sekolah, `test_sheet_pdf.go`):
+  - A4, berisi keterangan tes (nilai, minimal lulus, jadwal, lokasi, garis nama penguji), kotak acuan penilaian, dan tabel peserta dengan kolom Nilai dan Catatan kosong, serta tanda tangan penguji.
+  - Peserta: pendaftar berstatus dikirim atau diverifikasi di jalur metode tes. Hanya nomor, nama, dan jalur.
+- **Kartu tes:** bagian "Jadwal tes" di halaman status orang tua menjadi "Kartu tes", berisi nomor peserta (nomor pendaftaran) yang besar, nama, jalur, jadwal/lokasi setiap tes, dan petunjuk membawanya. Bukti pendaftaran PDF sudah memuat jadwal tes.
+- **Detail pendaftar** (jalur metode tes): kartu "Nilai tes" berisi nilai per tes per nilai maksimal, tanda "Di bawah minimal", dan skor akhir.
+- **Peringkat:** pendaftar yang nilai salah satu tesnya di bawah minimal tidak diberi peringkat (tidak memakan kuota), ditandai "Di bawah nilai minimal", dan diusulkan ditolak. TU tetap bisa mengubah usulan sebelum menetapkan. Juga ditulis di Excel peringkat.

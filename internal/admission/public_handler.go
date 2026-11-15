@@ -526,7 +526,10 @@ func buildStepView(ctx context.Context, periods *Service, documents *DocumentSer
 		view.Sections = parentSections(values, errs)
 		view.FormData = "showWali: " + jsBool(showGuardian(a, values, errs))
 	case StepSchool:
-		view.Sections = schoolSections(a.Kind, p.TargetGrade, values, errs)
+		if _, posted := values[TrackScoreKey]; !posted && a.TrackScore != nil {
+			values[TrackScoreKey] = a.ScoreText()
+		}
+		view.Sections = schoolSections(a.Kind, p.TargetGrade, a.Track, values, errs)
 	case StepDocument, StepReview:
 		view.Documents, view.DocErrors = docRows(p, docs), errs
 		if step == StepReview {
@@ -597,6 +600,9 @@ func stepValues(r *http.Request, step string) map[string]string {
 		if step == StepSchool {
 			for _, k := range transferKeys {
 				values[k] = r.PostForm.Get(k)
+			}
+			if r.PostForm.Has(TrackScoreKey) {
+				values[TrackScoreKey] = r.PostForm.Get(TrackScoreKey)
 			}
 		}
 	}

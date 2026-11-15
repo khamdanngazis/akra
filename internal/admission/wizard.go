@@ -187,10 +187,7 @@ func (h *Handler) renderWizard(w http.ResponseWriter, r *http.Request, status in
 		view.Grades = gradeOptionsFor(view.Form.TargetGrade)
 	case stepTracks:
 		for _, t := range view.Period.Tracks {
-			tr := trackRow{Track: t, Form: TrackForm{Name: t.Name, UsesTest: t.UsesTest}}
-			if t.Quota > 0 {
-				tr.Form.Quota = strconv.Itoa(t.Quota)
-			}
+			tr := trackRow{Track: t, Form: trackFormOf(t)}
 			if t.ID == view.EditTrack {
 				tr.Form, tr.Errors = view.EditForm, view.EditErrors
 			}

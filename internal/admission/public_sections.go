@@ -3,6 +3,7 @@ package admission
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"akra/internal/dapodik/ref"
 	"akra/internal/students"
@@ -127,7 +128,7 @@ func jsString(s string) string {
 // schoolSections menyusun langkah sekolah asal dan kontak sesuai jenis
 // pendaftar. Data kelulusan jenjang sebelumnya (no ujian, ijazah, SKHUN)
 // tidak ditanyakan; sekolah melengkapinya di data rinci bila perlu.
-func schoolSections(kind string, grade int, values, errs map[string]string) []publicSection {
+func schoolSections(kind string, grade int, track Track, values, errs map[string]string) []publicSection {
 	var reg []students.FieldView
 	for _, f := range students.ProfileFieldViews(students.SectionRegistration, values, errs) {
 		if f.Key != "previous_school" {
@@ -156,6 +157,14 @@ func schoolSections(kind string, grade int, values, errs map[string]string) []pu
 	} else {
 		sec.Hint = "Kosongkan jika calon siswa belum pernah bersekolah."
 	}
-	return []publicSection{sec,
-		{Key: students.SectionContact, Title: "Kontak calon siswa (opsional)", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)}}
+	out := []publicSection{sec}
+	if track.Method == MethodScore {
+		// Nilai jalur metode nilai (T118); dokumen bukti diunggah di langkah dokumen.
+		out = append(out, publicSection{Key: "nilai_jalur", Title: "Nilai untuk jalur " + track.Name,
+			Hint: "Jalur ini diurutkan berdasarkan nilai berikut. Isi sesuai rapor atau sertifikat; sekolah memeriksanya saat verifikasi.",
+			Fields: []students.FieldView{{Key: TrackScoreKey, Label: track.ScoreLabel, Input: "text", InputMode: "decimal", Max: 8, Required: true,
+				Value: values[TrackScoreKey], Error: errs[TrackScoreKey], Hint: "Angka 0–" + strconv.Itoa(track.ScoreMax) + ", mis. 85,5."}}})
+	}
+	return append(out,
+		publicSection{Key: students.SectionContact, Title: "Kontak calon siswa (opsional)", Fields: students.ProfileFieldViews(students.SectionContact, values, errs)})
 }
