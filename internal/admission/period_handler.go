@@ -82,6 +82,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU))
 			// Peran: admin_tu.
 			r.Post("/{id}/status", h.setApplicantStatus)
+			// Peran: admin_tu. Hapus data pribadi atas permintaan (T113).
+			r.Post("/{id}/hapus-data", h.eraseApplicant)
 			// Peran: admin_tu.
 			r.Post("/terima", h.enroll)
 			// Peran: admin_tu.

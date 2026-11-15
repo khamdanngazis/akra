@@ -110,18 +110,21 @@ type Applicant struct {
 	Guardians          map[string]map[string]string
 	// Kind adalah jenis pendaftar (KindNew/KindTransfer), sama dengan jenis
 	// periodenya; Transfer berisi isian khusus pindahan (T109).
-	Kind         string
-	Transfer     map[string]string
-	ContactPhone string
-	EnteredBy    string
-	ConsentAt    time.Time
-	SubmittedAt  *time.Time
-	CreatedAt    time.Time
+	Kind     string
+	Transfer map[string]string
+	// AnonymizedAt diisi jika data pribadi sudah dihapus (T113).
+	AnonymizedAt     *time.Time
+	AnonymizedReason string
+	ContactPhone     string
+	EnteredBy        string
+	ConsentAt        time.Time
+	SubmittedAt      *time.Time
+	CreatedAt        time.Time
 }
 
 // Editable melaporkan apakah pendaftar masih bisa mengubah isian.
 func (a Applicant) Editable() bool {
-	return a.Status == ApplicantDraft || a.Status == ApplicantFix
+	return a.AnonymizedAt == nil && (a.Status == ApplicantDraft || a.Status == ApplicantFix)
 }
 
 // DraftForm adalah isian langkah awal formulir.
@@ -258,7 +261,7 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	sql := `SELECT id, school_id, period_id, track_id, coalesce(registration_number, ''), status, full_name,
 		       coalesce(gender, ''), birth_date, profile, guardians, nik_enc, kk_enc, birth_cert_enc, kip_enc, kks_enc,
 		       guardian_niks_enc, contact_phone, coalesce(entered_by::text, ''), consent_at, submitted_at, created_at,
-		       kind, transfer
+		       kind, transfer, anonymized_at, coalesce(anonymized_reason, '')
 		FROM applicants WHERE school_id = $1 AND id = $2`
 	if forUpdate {
 		sql += ` FOR UPDATE`
@@ -269,7 +272,7 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	var gNIKs []byte
 	err := q.QueryRow(ctx, sql, schoolID, id).Scan(&a.ID, &a.SchoolID, &a.PeriodID, &a.TrackID, &a.RegistrationNumber,
 		&a.Status, &a.FullName, &a.Gender, &a.BirthDate, &profile, &guardians, &enc[0], &enc[1], &enc[2], &enc[3], &enc[4],
-		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer)
+		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer, &a.AnonymizedAt, &a.AnonymizedReason)
 	if err != nil {
 		return Applicant{}, mapApplicantError(err)
 	}

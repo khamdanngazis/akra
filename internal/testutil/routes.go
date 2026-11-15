@@ -591,6 +591,10 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/status" }, func(*School) url.Values {
 			return url.Values{"status": {"diverifikasi"}}
 		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/hapus-data", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/hapus-data" }, func(*School) url.Values {
+			return url.Values{"confirm": {"on"}}
+		})},
 
 	// Pendaftaran (T89).
 	{Method: "GET", Pattern: "/pendaftaran/periode/", Kind: KindPage, Roles: schoolData},
