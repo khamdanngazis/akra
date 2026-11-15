@@ -4,9 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"akra/internal/auth"
 	"akra/internal/classes"
+	"akra/internal/platform/clock"
 )
 
 type enrollRow struct {
@@ -21,6 +23,8 @@ type enrollRow struct {
 	// periode siswa baru, untuk membantu memilih kelas.
 	Grade   string
 	Classes []option
+	// ReRegistered adalah tanggal daftar ulang ("" jika belum).
+	ReRegistered string
 }
 
 type enrollResultRow struct {
@@ -29,16 +33,36 @@ type enrollResultRow struct {
 }
 
 type enrollView struct {
-	User      auth.Identity
-	CanEdit   bool
-	Format    string
-	Preview   string
-	Rows      []enrollRow
-	Results   []enrollResultRow
-	Succeeded int
-	Errors    map[string]string
-	Flash     string
-	Error     string
+	User    auth.Identity
+	CanEdit bool
+	// ReRegistration: sekolah memakai daftar ulang (T120). NextNIS adalah
+	// perkiraan NIS otomatis berikutnya; FormatLabel menjelaskan polanya.
+	ReRegistration bool
+	NextNIS        string
+	FormatLabel    string
+	Rows           []enrollRow
+	Results        []enrollResultRow
+	Succeeded      int
+	Flash          string
+	Error          string
+}
+
+// nisFormatLabel menjelaskan pola NIS dalam kalimat untuk TU.
+func nisFormatLabel(format string) string {
+	if format == NISContinue {
+		return "melanjutkan NIS angka terakhir"
+	}
+	if m := simpleYearRe.FindStringSubmatch(format); m != nil {
+		y := "4 digit"
+		if m[1] == "yy" {
+			y = "2 digit"
+		}
+		return "tahun mulai tahun ajaran (" + y + ") + nomor urut " + m[2] + " digit"
+	}
+	if m := simplePrefixRe.FindStringSubmatch(format); m != nil && m[1] != "" {
+		return "awalan " + m[1] + " + nomor urut " + m[2] + " digit"
+	}
+	return "pola " + format
 }
 
 func (h *Handler) enroller() *Enroller { return NewEnroller(h.db, h.applicants.keys, h.applicants) }
@@ -56,20 +80,25 @@ func (h *Handler) renderEnroll(w http.ResponseWriter, r *http.Request, id auth.I
 	if view.Flash == "" {
 		view.Flash = auth.PopFlash(ctx, h.sessions)
 	}
-	if view.Format == "" {
-		f, err := NISFormat(ctx, h.db, id.SchoolID)
-		if err != nil {
-			h.serverError(w, r, "nis format", err)
-			return
-		}
-		view.Format = f
+	uses, err := UsesReRegistration(ctx, h.db, id.SchoolID)
+	if err != nil {
+		h.serverError(w, r, "reregistration setting", err)
+		return
 	}
-	if ValidateNISFormat(view.Format) == nil {
-		view.Preview = RenderNIS(view.Format, h.periods.Today().Year()+1, 1)
+	view.ReRegistration = uses
+	format, err := NISFormat(ctx, h.db, id.SchoolID)
+	if err != nil {
+		h.serverError(w, r, "nis format", err)
+		return
+	}
+	view.FormatLabel = nisFormatLabel(format)
+	if view.NextNIS, err = PeekNIS(ctx, h.db, id.SchoolID, format, h.sampleYear(ctx, id.SchoolID)); err != nil {
+		h.serverError(w, r, "peek nis", err)
+		return
 	}
 	rows, err := h.db.Query(ctx, `
 		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, p.name, t.name, p.academic_year_id,
-		       a.kind, coalesce(a.transfer->>'target_grade', p.target_grade::text, '')
+		       a.kind, coalesce(a.transfer->>'target_grade', p.target_grade::text, ''), a.reregistered_at
 		FROM applicants a JOIN admission_periods p ON p.id = a.period_id JOIN admission_tracks t ON t.id = a.track_id
 		WHERE a.school_id = $1 AND a.status = 'diterima' AND a.student_id IS NULL
 		ORDER BY p.opens_on, a.registration_number LIMIT 500`, id.SchoolID)
@@ -79,10 +108,14 @@ func (h *Handler) renderEnroll(w http.ResponseWriter, r *http.Request, id auth.I
 	}
 	for rows.Next() {
 		var x enrollRow
-		if err := rows.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.PeriodName, &x.TrackName, &x.YearID, &x.Kind, &x.Grade); err != nil {
+		var rereg *time.Time
+		if err := rows.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.PeriodName, &x.TrackName, &x.YearID, &x.Kind, &x.Grade, &rereg); err != nil {
 			rows.Close()
 			h.serverError(w, r, "scan accepted", err)
 			return
+		}
+		if rereg != nil {
+			x.ReRegistered = clock.FormatDateID(rereg.In(clock.Jakarta))
 		}
 		view.Rows = append(view.Rows, x)
 	}
@@ -104,28 +137,6 @@ func (h *Handler) renderEnroll(w http.ResponseWriter, r *http.Request, id auth.I
 		view.Rows[i].Classes = byYear[x.YearID]
 	}
 	h.render.Render(w, r, status, "admission/enroll", view)
-}
-
-// saveNISFormat menyimpan format NIS otomatis. Peran: admin_tu.
-func (h *Handler) saveNISFormat(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-	format := r.PostForm.Get("nis_format")
-	err := SetNISFormat(r.Context(), h.db, actorFrom(r, id), format)
-	var ve *ValidationError
-	switch {
-	case err == nil:
-		auth.SetFlash(r.Context(), h.sessions, "Format NIS disimpan.")
-		http.Redirect(w, r, applicantsPath+"/terima", http.StatusSeeOther)
-	case errors.As(err, &ve):
-		h.renderEnroll(w, r, id, http.StatusBadRequest, enrollView{Format: format, Errors: ve.Fields})
-	default:
-		h.serverError(w, r, "save nis format", err)
-	}
 }
 
 // enroll menjadikan pendaftar terpilih sebagai siswa. Peran: admin_tu.

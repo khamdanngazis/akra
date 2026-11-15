@@ -109,6 +109,31 @@
 <h2 id="next-step-title">{{$n.Title}}</h2>
 <p class="next-step-hint">{{$n.Hint}}</p>
 {{with $n.Blocked}}<p class="alert alert-error" role="alert">{{.}}</p>{{end}}
+{{with $n.Enroll}}
+<form method="post" action="/pendaftaran/{{$.Applicant.ID}}/jadikan-siswa" class="enroll-inline" novalidate x-data="{ sending: false }" @submit="if (sending) $event.preventDefault(); sending = true">
+{{ csrfField }}
+<div class="field{{if $.Errors.nis}} has-error{{end}}">
+<label for="enroll-nis">NIS</label>
+<input id="enroll-nis" name="nis" maxlength="30" autocomplete="off" inputmode="numeric" placeholder="{{if .NextNIS}}Otomatis: {{.NextNIS}}{{else}}Isi NIS{{end}}">
+{{with $.Errors.nis}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">{{if .NextNIS}}Kosongkan untuk NIS otomatis.{{else}}Pola NIS otomatis belum bisa dipakai; isi manual.{{end}} <a href="/pendaftaran/pengaturan">Pola NIS</a></p>{{end}}
+</div>
+<div class="field{{if $.Errors.class_id}} has-error{{end}}">
+<label for="enroll-class">Kelas <span class="muted">(opsional)</span></label>
+<select id="enroll-class" name="class_id"><option value="">Atur nanti</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select>
+{{with $.Errors.class_id}}<p class="field-error">{{.}}</p>{{else}}{{with .Grade}}<p class="hint">Tingkat tujuan: kelas {{.}}.</p>{{end}}{{end}}
+</div>
+<div class="enroll-inline-actions">
+<button type="submit" class="btn btn-primary">Jadikan siswa</button>
+</div>
+</form>
+{{if .ReRegistration}}
+<form method="post" action="/pendaftaran/{{$.Applicant.ID}}/daftar-ulang" class="rereg-row">
+{{ csrfField }}
+{{if .ReRegistered}}<span class="badge badge-success">Sudah daftar ulang · {{.ReRegistered}}</span><input type="hidden" name="done" value="0"><button type="submit" class="btn btn-ghost btn-sm">Batalkan tanda</button>
+{{else}}<span class="badge badge-warning">Belum daftar ulang</span><input type="hidden" name="done" value="1"><button type="submit" class="btn btn-ghost btn-sm">Tandai sudah daftar ulang</button>{{end}}
+</form>
+{{end}}
+{{end}}
 {{if or $n.Primary $n.Other $n.Links}}
 <form method="post" action="/pendaftaran/{{.Applicant.ID}}/status" class="stack" novalidate @submit="if (submitting) $event.preventDefault(); submitting = true">
 {{ csrfField }}

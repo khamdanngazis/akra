@@ -1,15 +1,18 @@
 package admission
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/classes"
 	"akra/internal/dapodik/ref"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/money"
@@ -213,18 +216,16 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		}
 	}
 	if view.CanEdit && view.Anonymized == "" {
-		var studentID *string
-		if err := h.db.QueryRow(ctx, `SELECT student_id::text FROM applicants WHERE id = $1`, a.ID).Scan(&studentID); err != nil {
-			h.serverError(w, r, "applicant student", err)
-			return
-		}
-		in := nextStepInput{Applicant: a, Period: p, Track: view.Track, MissingDocs: view.MissingDocs,
+		in := nextStepInput{Applicant: a, Period: p, Track: view.Track, MissingDocs: view.MissingDocs, StudentID: a.StudentID,
 			FeeUnpaid: p.FeeRequiredBeforeVerify && feeAmount > 0 && !view.FeePaid}
-		if studentID != nil {
-			in.StudentID = *studentID
-		}
 		if n := len(events); n > 0 {
 			in.PrevStatus = events[n-1].From
+		}
+		if a.Status == ApplicantAccepted && a.StudentID == "" {
+			if in.Enroll, err = h.enrollFormFor(ctx, id.SchoolID, a, p); err != nil {
+				h.serverError(w, r, "enroll form", err)
+				return
+			}
 		}
 		view.NextStep = buildNextStep(in)
 		if r.Method == http.MethodPost {
@@ -233,6 +234,37 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		}
 	}
 	h.render.Render(w, r, status, "admission/applicant_detail", view)
+}
+
+// enrollFormFor menyiapkan isian Jadikan siswa untuk pendaftar diterima.
+func (h *Handler) enrollFormFor(ctx context.Context, schoolID string, a Applicant, p Period) (enrollForm, error) {
+	f := enrollForm{ReRegistered: reRegisteredLabel(a), Grade: a.Transfer["target_grade"]}
+	if f.Grade == "" && p.TargetGrade > 0 {
+		f.Grade = strconv.Itoa(p.TargetGrade)
+	}
+	var err error
+	if f.ReRegistration, err = UsesReRegistration(ctx, h.db, schoolID); err != nil {
+		return f, err
+	}
+	var yearStart time.Time
+	if err := h.db.QueryRow(ctx, `SELECT start_date FROM academic_years WHERE id = $1`, p.AcademicYearID).Scan(&yearStart); err != nil {
+		return f, err
+	}
+	format, err := NISFormat(ctx, h.db, schoolID)
+	if err != nil {
+		return f, err
+	}
+	if f.NextNIS, err = PeekNIS(ctx, h.db, schoolID, format, yearStart.Year()); err != nil {
+		return f, err
+	}
+	list, err := classes.ListByYear(ctx, h.db, schoolID, p.AcademicYearID)
+	if err != nil {
+		return f, err
+	}
+	for _, c := range list {
+		f.Classes = append(f.Classes, option{Value: c.ID, Label: c.Name})
+	}
+	return f, nil
 }
 
 // displayApplicant menyusun data pendaftar untuk ditampilkan, dengan kode
@@ -346,6 +378,9 @@ func (h *Handler) setApplicantStatus(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		msg := "Status " + res.Applicant.FullName + " menjadi " + strings.ToLower(StatusLabels[to]) + "."
+		if res.EnrolledNIS != "" {
+			msg = res.Applicant.FullName + " diterima dan langsung menjadi siswa dengan NIS " + res.EnrolledNIS + "."
+		}
 		if res.OverQuota {
 			msg += " Perhatian: jumlah diterima di jalur ini sudah melebihi kuota."
 		}
@@ -357,7 +392,12 @@ func (h *Handler) setApplicantStatus(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgApplicantGone)
 	case errors.As(err, &ve):
-		h.renderApplicant(w, r, id, applicantID, http.StatusBadRequest, note, ve.Fields, "")
+		msg := ""
+		if m, ok := ve.Fields["nis"]; ok {
+			// Gagal menjadikan siswa otomatis (sekolah tanpa daftar ulang).
+			msg = "Pendaftar belum diterima karena gagal dijadikan siswa otomatis: " + m
+		}
+		h.renderApplicant(w, r, id, applicantID, http.StatusBadRequest, note, ve.Fields, msg)
 	case errors.Is(err, ErrBadTransition):
 		h.renderApplicant(w, r, id, applicantID, http.StatusConflict, note, nil, "Status tidak bisa diubah ke pilihan itu. Muat ulang halaman; mungkin petugas lain sudah mengubahnya.")
 	case errors.Is(err, ErrFeeUnpaid):

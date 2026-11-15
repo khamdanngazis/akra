@@ -42,6 +42,10 @@ const (
 	// AdmissionNISFormat: pola NIS otomatis untuk pendaftar yang diterima
 	// (T96), mis. "{yyyy}{seq:3}". Belum diatur berarti pola bawaan itu.
 	AdmissionNISFormat = "admission.nis_format"
+	// AdmissionReRegistration: "false" jika pendaftar yang diterima langsung
+	// dijadikan siswa tanpa daftar ulang (T120). Belum diatur berarti
+	// memakai daftar ulang.
+	AdmissionReRegistration = "admission.reregistration"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.

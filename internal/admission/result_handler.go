@@ -78,6 +78,7 @@ func (h *Handler) applyResults(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	changed, over, err := h.applicants.ApplyResults(r.Context(), actorFrom(r, id), periodID, results)
+	var ve *ValidationError
 	switch {
 	case err == nil:
 		msg := fmt.Sprintf("Hasil ditetapkan untuk %d pendaftar.", changed)
@@ -91,6 +92,8 @@ func (h *Handler) applyResults(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, periodsPath+"/"+periodID+"/hasil", http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgPeriodGone)
+	case errors.As(err, &ve):
+		h.renderResults(w, r, id, http.StatusBadRequest, "Tidak ada yang disimpan: sebagian pendaftar gagal dijadikan siswa otomatis. "+ve.Fields["nis"])
 	case errors.Is(err, ErrBadTransition):
 		h.renderResults(w, r, id, http.StatusConflict, "Sebagian status tidak bisa diubah ke pilihan itu (mungkin sudah diubah petugas lain). Tidak ada yang disimpan; periksa lalu coba lagi.")
 	default:

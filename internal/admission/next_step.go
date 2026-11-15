@@ -36,6 +36,20 @@ type nextStepView struct {
 	Links   []linkView
 	// NoteFor adalah status yang wajib disertai catatan.
 	NoteFor string
+	// Enroll diisi untuk pendaftar diterima yang belum menjadi siswa:
+	// form Jadikan siswa langsung di kartu (T120).
+	Enroll *enrollForm
+}
+
+// enrollForm adalah isian Jadikan siswa per pendaftar.
+type enrollForm struct {
+	NextNIS string   // perkiraan NIS otomatis ("" jika tidak bisa ditentukan)
+	Classes []option // kelas tahun ajaran pendaftar
+	Grade   string   // tingkat tujuan, untuk membantu memilih kelas
+	// ReRegistration: sekolah memakai daftar ulang; ReRegistered adalah
+	// tanggal tanda daftar ulang ("" jika belum).
+	ReRegistration bool
+	ReRegistered   string
 }
 
 // flowLabels adalah titik alur pendaftar dari kirim sampai jadi siswa.
@@ -105,6 +119,8 @@ type nextStepInput struct {
 	StudentID   string // kosong jika belum menjadi siswa
 	MissingDocs []string
 	FeeUnpaid   bool // biaya wajib lunas sebelum verifikasi dan belum lunas
+	// Enroll adalah isian Jadikan siswa untuk pendaftar diterima.
+	Enroll enrollForm
 }
 
 // buildNextStep menyusun kartu langkah berikutnya untuk staf.
@@ -168,9 +184,21 @@ func buildNextStep(in nextStepInput) nextStepView {
 		v.Links = append(v.Links, ranking)
 		others(ApplicantAccepted)
 	case a.Status == ApplicantAccepted:
-		v.Tone, v.Title = "ok", "Diterima, tinggal dijadikan siswa"
-		v.Hint = "Setelah orang tua daftar ulang, jadikan siswa agar mendapat NIS dan kelas. Data pendaftar ikut dipindahkan, tidak perlu diinput ulang."
-		v.Links = append(v.Links, linkView{Label: "Jadikan siswa", URL: "/pendaftaran/terima", Primary: true})
+		form := in.Enroll
+		v.Enroll = &form
+		v.Tone = "ok"
+		switch {
+		case !form.ReRegistration:
+			v.Title = "Diterima, tinggal dijadikan siswa"
+			v.Hint = "Sekolah tidak memakai daftar ulang, tetapi pendaftar ini diterima sebelum pengaturan itu aktif. Jadikan siswa sekarang; data pendaftar ikut dipindahkan."
+		case form.ReRegistered != "":
+			v.Title = "Sudah daftar ulang, tinggal dijadikan siswa"
+			v.Hint = "Daftar ulang " + form.ReRegistered + ". Jadikan siswa agar mendapat NIS dan kelas; data pendaftar ikut dipindahkan, tidak perlu diinput ulang."
+		default:
+			v.Title = "Diterima, menunggu daftar ulang"
+			v.Hint = "Setelah orang tua daftar ulang, tandai di sini, lalu jadikan siswa agar mendapat NIS dan kelas. Bisa juga langsung dijadikan siswa, atau sekaligus banyak di halaman Jadikan siswa."
+		}
+		v.Links = append(v.Links, linkView{Label: "Jadikan siswa sekaligus banyak", URL: "/pendaftaran/terima"})
 		others()
 	case a.Status == ApplicantRejected:
 		v.Tone, v.Title = "muted", "Ditolak"

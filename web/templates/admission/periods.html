@@ -6,7 +6,7 @@
 <h1>Periode Pendaftaran</h1>
 <p class="muted">Gelombang pendaftaran siswa baru beserta jalurnya.</p>
 </div>
-{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode</a>{{end}}
+<div class="action-row"><a class="btn btn-ghost" href="/pendaftaran/pengaturan">Pengaturan pendaftaran</a>{{if .CanEdit}}<a class="btn btn-primary" href="/pendaftaran/periode/baru">Buat periode</a>{{end}}</div>
 </div>
 
 {{template "flash" .}}

@@ -3,7 +3,7 @@
 **Fase:** 13 Perbaikan
 **Dependensi:** T96, T116
 **Estimasi:** 1 hari
-**Status:** catatan dan analisa, belum dikerjakan
+**Status:** selesai (2026-11-15)
 
 ## Masukan pengguna (2026-11-15)
 - Kenapa "Jadikan siswa" harus menu terpisah?
@@ -49,10 +49,32 @@
 - Mode tanpa daftar ulang: jika siswa ternyata tidak masuk, TU memakai alur keluar/mutasi siswa yang sudah ada.
 
 ## Kriteria tambahan
-- [ ] Pengaturan sekolah "Pakai daftar ulang" (ya/tidak) bekerja untuk penetapan per pendaftar dan massal
-- [ ] Mode tanpa daftar ulang: Diterima langsung membuat siswa dengan NIS otomatis, dalam satu transaksi
+- [x] Pengaturan sekolah "Pakai daftar ulang" (ya/tidak) bekerja untuk penetapan per pendaftar dan massal
+- [x] Mode tanpa daftar ulang: Diterima langsung membuat siswa dengan NIS otomatis, dalam satu transaksi
 
 ## Kriteria selesai
-- [ ] Pendaftar diterima bisa dijadikan siswa dari halaman detailnya
-- [ ] Format NIS tidak perlu disentuh untuk memakai bawaan, dan bisa diatur tanpa mengetik token
-- [ ] Halaman kosong menjelaskan langkah berikutnya
+- [x] Pendaftar diterima bisa dijadikan siswa dari halaman detailnya
+- [x] Format NIS tidak perlu disentuh untuk memakai bawaan, dan bisa diatur tanpa mengetik token
+- [x] Halaman kosong menjelaskan langkah berikutnya
+
+## Catatan implementasi
+- **Pengaturan pendaftaran** (`GET/POST /pendaftaran/pengaturan`; Admin/TU mengubah, Kepala Sekolah membaca):
+  - Kunci `admission.reregistration` (`"false"` = tanpa daftar ulang; belum diatur = pakai daftar ulang) dan `admission.nis_format`.
+  - Pembuat pola NIS dengan empat pilihan dan contoh langsung di layar: tahun + nomor urut, awalan + nomor urut, lanjutkan dari NIS terakhir, dan pola sendiri (token).
+  - Form "Format NIS" lama di halaman Jadikan siswa beserta route `POST /pendaftaran/format-nis` dihapus.
+- **Lanjutkan dari NIS terakhir** (`NISContinue = "{lanjut}"`):
+  - NIS berikutnya = NIS angka terbesar + 1, panjangnya dipertahankan (0099 → 0100). Urutan memakai panjang lalu teks, tanpa cast numerik.
+  - Dikunci per sekolah dengan `pg_advisory_xact_lock`.
+  - Jika belum ada NIS angka, muncul error di field NIS.
+- **Tanpa daftar ulang:** `ApplicantService.onAccepted` dijalankan di dalam transaksi `Transition`, sehingga berlaku dari detail maupun dari Peringkat dan hasil.
+  - Jika gagal menjadikan siswa, penerimaan ikut dibatalkan, dengan pesan.
+  - Flash menyebut NIS yang dibuat.
+- **Detail pendaftar diterima:**
+  - Kartu Langkah berikutnya berisi form Jadikan siswa (NIS dengan perkiraan otomatis lewat `PeekNIS` tanpa memakai nomor urut, dan kelas tahun ajaran pendaftar), plus tanda daftar ulang.
+  - Route: `POST /pendaftaran/{id}/jadikan-siswa` dan `POST /pendaftaran/{id}/daftar-ulang`.
+- **Migrasi 000057:** `applicants.reregistered_at`.
+- **Halaman massal Jadikan siswa:**
+  - Kolom "Daftar ulang"; yang sudah daftar ulang tercentang otomatis (mode daftar ulang).
+  - Ringkasan cara dan NIS berikutnya, plus keadaan kosong yang menjelaskan langkahnya.
+- **Tautan ke Pengaturan** dari daftar pendaftar, daftar gelombang, dan halaman Jadikan siswa.
+- **Tidak dibuat:** batas waktu daftar ulang. Tanda sudah/belum dinilai cukup untuk sekarang.

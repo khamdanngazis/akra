@@ -565,9 +565,18 @@ var Routes = []Route{
 		Requests: post(func(*School) string { return "/pendaftaran/terima" }, func(o *School) url.Values {
 			return url.Values{"pick": {o.ApplicantID}}
 		})},
-	{Method: "POST", Pattern: "/pendaftaran/format-nis", Kind: KindOwn, Roles: adminTU,
-		Requests: post(func(*School) string { return "/pendaftaran/format-nis" }, func(*School) url.Values {
-			return url.Values{"nis_format": {"{yyyy}{seq:4}"}}
+	// Pengaturan pendaftaran dan Jadikan siswa per pendaftar (T120). Pendaftar
+	// fixture berstatus dikirim, jadi kontrol positif mendapat 409.
+	{Method: "GET", Pattern: "/pendaftaran/pengaturan", Kind: KindPage, Roles: schoolData},
+	{Method: "POST", Pattern: "/pendaftaran/pengaturan", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pendaftaran/pengaturan" }, func(*School) url.Values {
+			return url.Values{"reregistration": {"true"}, "mode": {"tahun"}, "year_digits": {"4"}, "seq_digits": {"4"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/jadikan-siswa", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/jadikan-siswa" }, nil)},
+	{Method: "POST", Pattern: "/pendaftaran/{id}/daftar-ulang", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/" + o.ApplicantID + "/daftar-ulang" }, func(*School) url.Values {
+			return url.Values{"done": {"1"}}
 		})},
 
 	// Input pendaftar oleh TU (T92). Pendaftar fixture berstatus dikirim,
