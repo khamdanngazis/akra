@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -127,15 +129,32 @@ type indexRow struct {
 	EnteredAt                    string
 }
 
+// indexPageSize adalah jumlah siswa per halaman daftar Dapodik (T114).
+const indexPageSize = 50
+
+// indexCounts adalah ringkasan daftar Dapodik untuk kelas terpilih.
+type indexCounts struct {
+	All, Incomplete, Ready, Entered int
+}
+
 type indexView struct {
 	User    auth.Identity
 	CanEdit bool
 	Classes []option
 	ClassID string
 	Status  string
+	Query   string
+	Counts  indexCounts
 	Rows    []indexRow
-	Flash   string
-	Error   string
+	// Page, Pages, dan Total untuk halaman daftar; PrevURL/NextURL kosong
+	// jika tidak ada.
+	Page, Pages, Total int
+	PrevURL, NextURL   string
+	// ContinueID adalah siswa siap (data lengkap) pertama yang belum masuk
+	// Dapodik, untuk tombol "Lanjutkan input".
+	ContinueID, ContinueName string
+	Flash                    string
+	Error                    string
 }
 
 type option struct {
@@ -143,13 +162,26 @@ type option struct {
 	Selected     bool
 }
 
+// indexStatuses adalah filter status daftar Dapodik.
+var indexStatuses = map[string]string{
+	"kurang": "pct < 100",
+	"siap":   "pct = 100 AND entered IS NULL",
+	"sudah":  "entered IS NOT NULL",
+	"belum":  "entered IS NULL",
+}
+
 // index menampilkan siswa aktif beserta kelengkapan dan tanda sudah masuk
-// Dapodik. Peran: admin_tu, kepala_sekolah.
+// Dapodik, dengan ringkasan, pencarian, dan halaman. Peran: admin_tu,
+// kepala_sekolah.
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	ctx := r.Context()
 	q := r.URL.Query()
-	view := indexView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Status: q.Get("status"), Flash: auth.PopFlash(ctx, h.sessions)}
+	view := indexView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Status: q.Get("status"), Query: strings.TrimSpace(q.Get("q")),
+		Flash: auth.PopFlash(ctx, h.sessions)}
+	if _, ok := indexStatuses[view.Status]; !ok {
+		view.Status = ""
+	}
 	year, err := school.GetActiveAcademicYear(ctx, h.db, id.SchoolID)
 	yearID := ""
 	if err == nil {
@@ -169,17 +201,51 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "active year", err)
 		return
 	}
-	rows, err := h.db.Query(ctx, `
-		SELECT s.id, s.nis, s.full_name, coalesce(c.name, ''), `+students.ReadinessPercentSQL()+`, p.dapodik_entered_at
+	// base: siswa aktif sekolah (dan kelas terpilih) dengan persentase
+	// kelengkapan dan tanda masuk Dapodik.
+	base := `WITH base AS (
+		SELECT s.id, s.nis, s.full_name, coalesce(c.name, '') AS class_name, ` + students.ReadinessPercentSQL() + ` AS pct,
+		       p.dapodik_entered_at AS entered
 		FROM students s
 		LEFT JOIN student_profiles p ON p.school_id = s.school_id AND p.student_id = s.id
 		LEFT JOIN enrollments e ON e.school_id = s.school_id AND e.student_id = s.id AND e.academic_year_id = $2::uuid AND e.end_date IS NULL
 		LEFT JOIN classes c ON c.id = e.class_id
-		WHERE s.school_id = $1 AND s.status = 'aktif'
-		  AND ($3::uuid IS NULL OR e.class_id = $3::uuid)
-		  AND (CASE $4 WHEN 'belum' THEN p.dapodik_entered_at IS NULL WHEN 'sudah' THEN p.dapodik_entered_at IS NOT NULL ELSE true END)
-		ORDER BY c.name NULLS LAST, lower(s.full_name) LIMIT 1000`,
-		id.SchoolID, nilIfEmpty(yearID), nilIfEmpty(view.ClassID), view.Status)
+		WHERE s.school_id = $1 AND s.status = 'aktif' AND ($3::uuid IS NULL OR e.class_id = $3::uuid))`
+	args := []any{id.SchoolID, nilIfEmpty(yearID), nilIfEmpty(view.ClassID)}
+	c := &view.Counts
+	if err := h.db.QueryRow(ctx, base+`
+		SELECT count(*), count(*) FILTER (WHERE pct < 100), count(*) FILTER (WHERE pct = 100 AND entered IS NULL),
+		       count(*) FILTER (WHERE entered IS NOT NULL) FROM base`, args...).Scan(&c.All, &c.Incomplete, &c.Ready, &c.Entered); err != nil {
+		h.serverError(w, r, "count students", err)
+		return
+	}
+	if err := h.db.QueryRow(ctx, base+` SELECT id, full_name FROM base WHERE pct = 100 AND entered IS NULL
+		ORDER BY class_name = '', class_name, lower(full_name) LIMIT 1`, args...).Scan(&view.ContinueID, &view.ContinueName); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		h.serverError(w, r, "next ready student", err)
+		return
+	}
+
+	where := "true"
+	if cond, ok := indexStatuses[view.Status]; ok {
+		where = cond
+	}
+	filterArgs := append(args, view.Query, escapeLike(strings.ToLower(view.Query)))
+	filter := ` FROM base WHERE ` + where + ` AND ($4 = '' OR lower(full_name) LIKE '%' || $5 || '%' OR nis LIKE $5 || '%')`
+	if err := h.db.QueryRow(ctx, base+` SELECT count(*)`+filter, filterArgs...).Scan(&view.Total); err != nil {
+		h.serverError(w, r, "count filtered students", err)
+		return
+	}
+	view.Pages = (view.Total + indexPageSize - 1) / indexPageSize
+	view.Page, _ = strconv.Atoi(q.Get("hal"))
+	if view.Page < 1 {
+		view.Page = 1
+	}
+	if view.Pages > 0 && view.Page > view.Pages {
+		view.Page = view.Pages
+	}
+	rows, err := h.db.Query(ctx, base+` SELECT id, nis, full_name, class_name, pct, entered`+filter+`
+		ORDER BY class_name = '', class_name, lower(full_name), id LIMIT `+strconv.Itoa(indexPageSize)+` OFFSET $6`,
+		append(filterArgs, (view.Page-1)*indexPageSize)...)
 	if err != nil {
 		h.serverError(w, r, "list students", err)
 		return
@@ -201,7 +267,37 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "list students", err)
 		return
 	}
+	pageURL := func(n int) string {
+		v := url.Values{}
+		if view.ClassID != "" {
+			v.Set("kelas", view.ClassID)
+		}
+		if view.Status != "" {
+			v.Set("status", view.Status)
+		}
+		if view.Query != "" {
+			v.Set("q", view.Query)
+		}
+		if n > 1 {
+			v.Set("hal", strconv.Itoa(n))
+		}
+		if len(v) == 0 {
+			return "/dapodik"
+		}
+		return "/dapodik?" + v.Encode()
+	}
+	if view.Page > 1 {
+		view.PrevURL = pageURL(view.Page - 1)
+	}
+	if view.Page < view.Pages {
+		view.NextURL = pageURL(view.Page + 1)
+	}
 	h.render.Render(w, r, http.StatusOK, "dapodik/index", view)
+}
+
+// escapeLike meloloskan karakter khusus LIKE.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(s)
 }
 
 type sheetView struct {

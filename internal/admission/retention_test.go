@@ -197,7 +197,8 @@ func TestEraseOnRequest(t *testing.T) {
 	}
 
 	body := e.do(http.MethodGet, "/pendaftaran/"+withdrawn.ID, "admin_tu", nil).Body.String()
-	if !strings.Contains(body, "dihapus otomatis pada") || !strings.Contains(body, "Hapus data pribadi sekarang") {
+	if !strings.Contains(body, "dihapus otomatis pada") || !strings.Contains(body, "Hapus data pribadi sekarang") ||
+		!strings.Contains(body, `class="accordion-item"`) || !strings.Contains(body, "detail-side") {
 		t.Error("detail without retention date or erase button")
 	}
 	if body := e.do(http.MethodGet, "/pendaftaran/"+submitted.ID, "admin_tu", nil).Body.String(); strings.Contains(body, "Hapus data pribadi sekarang") {

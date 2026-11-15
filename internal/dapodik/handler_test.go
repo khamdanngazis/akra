@@ -2,6 +2,7 @@ package dapodik
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -152,11 +153,17 @@ func TestCopySheetHandler(t *testing.T) {
 		}
 	}
 	// Urutan: Nama sebelum NIK sebelum Data Ayah sebelum Data Ibu.
-	iName, iNIK, iAyah, iIbu := strings.Index(body, "<dt>Nama</dt>"), strings.Index(body, "<dt>NIK</dt>"), strings.Index(body, "Data Ayah Kandung"), strings.Index(body, "Data Ibu Kandung")
+	iName, iNIK, iAyah, iIbu := strings.Index(body, `<span class="sheet-label">Nama</span>`), strings.Index(body, `<span class="sheet-label">NIK</span>`), strings.Index(body, "Data Ayah Kandung"), strings.Index(body, "Data Ibu Kandung")
 	if !(iName < iNIK && iNIK < iAyah && iAyah < iIbu) {
 		t.Errorf("section order wrong: %d %d %d %d", iName, iNIK, iAyah, iIbu)
 	}
 
+	// T114: accordion per bagian, sembunyikan kosong, bar tanda di bawah.
+	for _, want := range []string{`class="sheet-accordion"`, "Sembunyikan yang kosong", `class="sheet-bar"`, `data-sec="0"`, "disalin"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("sheet missing %q", want)
+		}
+	}
 	// Tandai lalu ke siswa berikutnya; filter "sudah".
 	rec = e.do(http.MethodPost, "/dapodik/siswa/"+e.budi+"/tandai", "admin_tu", url.Values{"entered": {"1"}, "next": {e.ani}})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/dapodik/siswa/"+e.ani {
@@ -195,5 +202,63 @@ func TestCopySheetHandler(t *testing.T) {
 	}
 	if rec := e.do(http.MethodPost, "/dapodik/siswa/"+e.otherB+"/tandai", "admin_tu", url.Values{}); rec.Code != http.StatusNotFound {
 		t.Errorf("other school mark: %d", rec.Code)
+	}
+}
+
+func TestDapodikIndexPages(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	// 55 siswa tambahan di kelas 1A (total 57 di sekolah A).
+	for i := 0; i < 55; i++ {
+		var id string
+		if err := e.tx.QueryRow(ctx, `INSERT INTO students (school_id, nis, full_name) VALUES ($1, $2, $3) RETURNING id`,
+			e.schoolA, fmt.Sprintf("1%03d", i), fmt.Sprintf("Siswa %02d", i)).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.tx.Exec(ctx, `INSERT INTO enrollments (school_id, student_id, class_id, academic_year_id, start_date)
+			SELECT $1, $2, c.id, c.academic_year_id, y.start_date FROM classes c JOIN academic_years y ON y.id = c.academic_year_id WHERE c.id = $3`,
+			e.schoolA, id, e.classA); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := e.tx.Exec(ctx, `INSERT INTO student_profiles (student_id, school_id, dapodik_entered_at, dapodik_entered_by) VALUES ($1, $2, now(), $3)`,
+		e.budi, e.schoolA, testUser); err != nil {
+		t.Fatal(err)
+	}
+
+	body := e.do(http.MethodGet, "/dapodik", "admin_tu", nil).Body.String()
+	if !strings.Contains(body, "<strong>57</strong>") || !strings.Contains(body, "57 siswa · halaman 1 dari 2") || strings.Contains(body, "Siswa B") {
+		t.Errorf("index summary or pages wrong")
+	}
+	if n := strings.Count(body, `>F-PD</a>`); n != indexPageSize {
+		t.Errorf("rows on page 1 = %d", n)
+	}
+	page2 := e.do(http.MethodGet, "/dapodik?hal=2", "admin_tu", nil).Body.String()
+	if n := strings.Count(page2, `>F-PD</a>`); n != 7 || !strings.Contains(page2, "halaman 2 dari 2") {
+		t.Errorf("rows on page 2 = %d", n)
+	}
+	// Halaman di luar jangkauan jatuh ke halaman terakhir.
+	if body := e.do(http.MethodGet, "/dapodik?hal=99", "admin_tu", nil).Body.String(); !strings.Contains(body, "halaman 2 dari 2") {
+		t.Error("out-of-range page")
+	}
+	// Filter dan pencarian.
+	if body := e.do(http.MethodGet, "/dapodik?status=sudah", "admin_tu", nil).Body.String(); strings.Count(body, `>F-PD</a>`) != 1 || !strings.Contains(body, "Budi") {
+		t.Error("entered filter")
+	}
+	if body := e.do(http.MethodGet, "/dapodik?status=kurang", "admin_tu", nil).Body.String(); !strings.Contains(body, "57 siswa") {
+		t.Error("incomplete filter")
+	}
+	if body := e.do(http.MethodGet, "/dapodik?q=siswa+0", "admin_tu", nil).Body.String(); !strings.Contains(body, "10 siswa") {
+		t.Error("name search")
+	}
+	if body := e.do(http.MethodGet, "/dapodik?q=1054", "admin_tu", nil).Body.String(); !strings.Contains(body, "1 siswa") || !strings.Contains(body, "Siswa 54") {
+		t.Error("NIS search")
+	}
+	if body := e.do(http.MethodGet, "/dapodik?q=%25", "admin_tu", nil).Body.String(); !strings.Contains(body, "Tidak ada siswa") {
+		t.Error("LIKE wildcard not escaped")
+	}
+	// Status tidak dikenal diabaikan; tautan halaman membawa filter.
+	if body := e.do(http.MethodGet, "/dapodik?status=x&kelas="+e.classA, "admin_tu", nil).Body.String(); !strings.Contains(body, "hal=2&amp;kelas="+e.classA) {
+		t.Error("pager link without class filter")
 	}
 }

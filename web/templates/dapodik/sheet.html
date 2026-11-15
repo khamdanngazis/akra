@@ -3,85 +3,105 @@
 {{define "content"}}
 <p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
 <div class="page-header">
-<div>
+<div class="min-w-0">
 <h1>{{.Student.FullName}}</h1>
-<p class="muted">NIS {{.Student.NIS}}{{with .ClassName}} · {{.}}{{end}} · urutan field mengikuti form Peserta Didik Dapodik {{.Version}}</p>
+<p class="muted">NIS {{.Student.NIS}}{{with .ClassName}} · {{.}}{{end}} · urutan field mengikuti form Peserta Didik Dapodik {{.Version}}{{with .EnteredAt}} · <span class="badge badge-success">Sudah masuk Dapodik · {{.}}</span>{{end}}</p>
 </div>
 <div class="action-row">
-<a class="btn btn-ghost" href="/siswa/{{.Student.ID}}/data-rinci">Lengkapi data</a>
-<a class="btn btn-ghost" href="/dapodik/siswa/{{.Student.ID}}/fpd.pdf">F-PD (PDF)</a>
-{{if .NextID}}<a class="btn btn-ghost" href="/dapodik/siswa/{{.NextID}}">Berikutnya: {{.NextName}} →</a>{{end}}
+<a class="btn btn-ghost btn-sm" href="/siswa/{{.Student.ID}}/data-rinci">Lengkapi data</a>
+<a class="btn btn-ghost btn-sm" href="/dapodik/siswa/{{.Student.ID}}/fpd.pdf">F-PD (PDF)</a>
+{{if .NextID}}<a class="btn btn-ghost btn-sm" href="/dapodik/siswa/{{.NextID}}">Berikutnya: {{.NextName}} →</a>{{end}}
 </div>
 </div>
 {{template "flash" .}}
-{{if not .Readiness.Complete}}<div class="alert" role="status">Data belum lengkap ({{.Readiness.Percent}}%): {{range $i, $f := .Readiness.Missing}}{{if $i}}, {{end}}{{$f.Label}}{{end}}.</div>{{end}}
+{{if not .Readiness.Complete}}<details class="alert"><summary>Data belum lengkap ({{.Readiness.Percent}}%), {{len .Readiness.Missing}} field wajib kosong</summary><p class="mt-2 mb-0">{{range $i, $f := .Readiness.Missing}}{{if $i}}, {{end}}{{$f.Label}}{{end}}.</p></details>{{end}}
 
-<div x-data="copySheet()" @keydown.window="key($event)">
-<section class="card">
-<p>Klik <strong>Salin</strong> pada field, lalu tempel di form Dapodik. Atau pakai <strong>Salin berikutnya</strong> (tombol pintas <kbd>n</kbd>) untuk menyalin field satu per satu sesuai urutan; field kosong dilewati.</p>
-<div class="action-row">
+<div x-data="copySheet()" x-init="init()" @keydown.window="key($event)">
+<div class="sheet-tools">
+<p class="m-0 text-sm text-slate-600">Tekan <strong>Salin berikutnya</strong> (tombol <kbd>n</kbd>) lalu tempel di form Dapodik; bagian berikutnya terbuka sendiri. Atau buka bagian dan klik <strong>Salin</strong> per field.</p>
+<label class="choice text-sm" x-cloak><input type="checkbox" x-model="hideEmpty" @change="saveHide()"> Sembunyikan yang kosong</label>
+</div>
+
+<div class="sheet-accordion">
+{{range $i, $s := .Sections}}
+<section class="sheet-sec" :class="{ 'is-open': open === {{$i}} }">
+<h2 class="m-0">
+<button type="button" class="sheet-sec-head" @click="toggle({{$i}})" :aria-expanded="(open === {{$i}}).toString()" aria-controls="sheet-sec-{{$i}}">
+<span class="sheet-sec-title">{{$s.Title}}</span>
+<span class="sheet-sec-meta">{{if $s.Filled}}<span x-text="copiedIn({{$i}}) + '/{{$s.Filled}} disalin'">{{$s.Filled}} terisi</span>{{else}}kosong{{end}}</span>
+<span class="sheet-sec-chev" aria-hidden="true">{{template "icon" "chevron-down"}}</span>
+</button>
+</h2>
+<div class="sheet-sec-body" id="sheet-sec-{{$i}}" x-show="open === {{$i}}">
+{{range $s.Fields}}
+<div class="sheet-row{{if or (not .Value) .Unsupported}} is-empty{{end}}"{{if or (not .Value) .Unsupported}} x-show="!hideEmpty"{{end}}>
+<span class="sheet-label">{{.Label}}</span>
+{{if .Unsupported}}<span class="sheet-value muted">{{.Note}}</span><span></span>
+{{else if .Value}}<span class="sheet-value" data-copy="{{.Value}}" data-label="{{.Label}}" data-sec="{{$i}}">{{.Value}}</span><button type="button" class="btn btn-ghost btn-sm" @click="copy($el.previousElementSibling)">Salin</button>
+{{else}}<span class="sheet-value muted">Kosong</span><span></span>{{end}}
+</div>
+{{end}}
+</div>
+</section>
+{{end}}
+</div>
+
+<div class="sheet-bar">
+<div class="sheet-bar-copy">
 <button type="button" class="btn btn-primary" @click="next()">Salin berikutnya</button>
-<button type="button" class="btn btn-ghost btn-sm" @click="reset()">Mulai dari awal</button>
-<span class="muted" x-text="status" aria-live="polite"></span>
+<button type="button" class="btn btn-ghost btn-sm" @click="reset()">Ulang</button>
+<span class="sheet-status" x-text="status" aria-live="polite"></span>
 </div>
-</section>
-
-{{range .Sections}}
-<section class="card">
-<h2>{{.Title}}</h2>
-<dl class="data-list">
-{{range .Fields}}
-<dt>{{.Label}}</dt>
-<dd>
-{{if .Unsupported}}<span class="muted">{{.Note}}</span>
-{{else if .Value}}<span data-copy="{{.Value}}" data-label="{{.Label}}">{{.Value}}</span> <button type="button" class="btn btn-ghost btn-sm" @click="copy($el.previousElementSibling)">Salin</button>
-{{else}}<span class="muted">Kosong</span>{{end}}
-</dd>
-{{end}}
-</dl>
-</section>
-{{end}}
-</div>
-
-<section class="card">
-<h2>Status Dapodik</h2>
-{{if .EnteredAt}}<p><span class="badge badge-success">Sudah dimasukkan · {{.EnteredAt}}</span></p>{{end}}
-<form method="post" action="/dapodik/siswa/{{.Student.ID}}/tandai" class="action-row">
+<form method="post" action="/dapodik/siswa/{{.Student.ID}}/tandai" class="sheet-bar-mark">
 {{ csrfField }}
 {{if .EnteredAt}}
 <input type="hidden" name="entered" value="0">
-<button type="submit" class="btn btn-ghost btn-sm">Batalkan tanda</button>
+<button type="submit" class="btn btn-ghost btn-sm">Batalkan tanda sudah masuk</button>
 {{else}}
 <input type="hidden" name="entered" value="1">
-<button type="submit" class="btn btn-primary btn-sm">Tandai sudah masuk Dapodik</button>
-{{if .NextID}}<button type="submit" name="next" value="{{.NextID}}" class="btn btn-ghost btn-sm">Tandai lalu ke siswa berikutnya</button>{{end}}
+<button type="submit" class="btn btn-success btn-sm"><span class="sm:hidden">Sudah masuk</span><span class="hidden sm:inline">Tandai sudah masuk Dapodik</span></button>
+{{if .NextID}}<button type="submit" name="next" value="{{.NextID}}" class="btn btn-ghost btn-sm">Tandai &amp; berikutnya</button>{{end}}
 {{end}}
 </form>
-</section>
+</div>
+</div>
 
 <script>
 function copySheet() {
   return {
-    idx: -1, status: "",
+    idx: -1, status: "", open: 0, copied: [], hideEmpty: false,
+    init() {
+      try { this.hideEmpty = localStorage.getItem("akra.sheet.hideEmpty") === "1"; } catch (e) {}
+    },
+    saveHide() { try { localStorage.setItem("akra.sheet.hideEmpty", this.hideEmpty ? "1" : "0"); } catch (e) {} },
     items() { return Array.from(document.querySelectorAll("[data-copy]")); },
+    toggle(i) { this.open = this.open === i ? -1 : i; },
+    copiedIn(sec) { return this.copied.filter(i => this.items()[i] && this.items()[i].dataset.sec === String(sec)).length; },
     mark(el) {
-      this.items().forEach(x => x.classList.remove("badge", "badge-info"));
-      el.classList.add("badge", "badge-info");
+      this.items().forEach(x => x.classList.remove("is-current"));
+      el.classList.add("is-current", "is-copied");
     },
     async copy(el) {
-      this.idx = this.items().indexOf(el);
+      const list = this.items();
+      this.idx = list.indexOf(el);
+      if (!this.copied.includes(this.idx)) this.copied.push(this.idx);
       this.mark(el);
       try { await navigator.clipboard.writeText(el.dataset.copy); this.status = "Tersalin: " + el.dataset.label; }
       catch (e) { this.status = "Gagal menyalin. Salin manual dari teks di halaman."; }
     },
-    next() {
+    async next() {
       const list = this.items();
       const i = this.idx + 1;
-      if (i >= list.length) { this.status = "Semua field sudah disalin."; return; }
+      if (i >= list.length) { this.status = "Semua field sudah disalin. Tandai sudah masuk Dapodik."; return; }
+      const sec = +list[i].dataset.sec;
+      if (this.open !== sec) { this.open = sec; await this.$nextTick(); }
       this.copy(list[i]);
-      list[i].scrollIntoView({ block: "center" });
+      list[i].scrollIntoView({ block: "center", behavior: "smooth" });
     },
-    reset() { this.idx = -1; this.status = ""; this.items().forEach(x => x.classList.remove("badge", "badge-info")); },
+    reset() {
+      this.idx = -1; this.status = ""; this.copied = []; this.open = 0;
+      this.items().forEach(x => x.classList.remove("is-current", "is-copied"));
+    },
     key(e) { if (e.key === "n" && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); this.next(); } }
   };
 }
