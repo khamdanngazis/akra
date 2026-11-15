@@ -113,6 +113,11 @@ type applicantDetailView struct {
 	MissingDocs []string
 	Events      []eventRow
 	Next        []option
+	// NextStep adalah kartu langkah berikutnya (T116); Pick adalah aksi
+	// yang dipilih saat isian catatan ditolak, agar isiannya terbuka lagi.
+	NextStep    nextStepView
+	Pick        string
+	PickLabel   string
 	FeeAmount   string
 	FeePayments []FeePayment
 	FeePaid     bool
@@ -205,6 +210,26 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		}
 		for _, p := range view.FeePayments {
 			view.FeePaid = view.FeePaid || (p.VoidedAt == nil && p.Amount == feeAmount)
+		}
+	}
+	if view.CanEdit && view.Anonymized == "" {
+		var studentID *string
+		if err := h.db.QueryRow(ctx, `SELECT student_id::text FROM applicants WHERE id = $1`, a.ID).Scan(&studentID); err != nil {
+			h.serverError(w, r, "applicant student", err)
+			return
+		}
+		in := nextStepInput{Applicant: a, Period: p, Track: view.Track, MissingDocs: view.MissingDocs,
+			FeeUnpaid: p.FeeRequiredBeforeVerify && feeAmount > 0 && !view.FeePaid}
+		if studentID != nil {
+			in.StudentID = *studentID
+		}
+		if n := len(events); n > 0 {
+			in.PrevStatus = events[n-1].From
+		}
+		view.NextStep = buildNextStep(in)
+		if r.Method == http.MethodPost {
+			view.Pick = r.PostForm.Get("status")
+			view.PickLabel = actionLabels[view.Pick]
 		}
 	}
 	h.render.Render(w, r, status, "admission/applicant_detail", view)
