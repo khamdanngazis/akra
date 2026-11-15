@@ -131,9 +131,39 @@ type Track struct {
 	ID        string
 	PeriodID  string
 	Name      string
-	Quota     int // 0 = tanpa batas
-	UsesTest  bool
+	Quota     int  // 0 = tanpa batas
+	UsesTest  bool // sama dengan Method == MethodTest
 	SortOrder int
+	// Method adalah cara seleksi jalur (T118). ScoreLabel dan ScoreMax
+	// untuk metode nilai: nama nilai yang diisi calon siswa dan batasnya.
+	Method     string
+	ScoreLabel string
+	ScoreMax   int
+}
+
+// Metode seleksi jalur (T118).
+const (
+	MethodOrder  = "urutan" // waktu kirim paling awal
+	MethodTest   = "tes"    // skor akhir tes seleksi
+	MethodScore  = "nilai"  // nilai rapor/prestasi yang diisi calon siswa
+	MethodManual = "manual" // urutan ditentukan TU
+)
+
+// MethodLabels adalah nama metode seleksi untuk ditampilkan.
+var MethodLabels = map[string]string{
+	MethodOrder: "Urutan daftar", MethodTest: "Tes seleksi", MethodScore: "Nilai rapor/prestasi", MethodManual: "Penilaian manual",
+}
+
+// MethodLabel mengembalikan nama metode jalur.
+func (t Track) MethodLabel() string { return MethodLabels[t.Method] }
+
+// trackColumns adalah kolom jalur untuk scanTrack.
+const trackColumns = `id, period_id, name, coalesce(quota, 0), uses_test, sort_order, method, coalesce(score_label, ''), coalesce(score_max, 0)`
+
+func scanTrack(row pgx.Row) (Track, error) {
+	var t Track
+	err := row.Scan(&t.ID, &t.PeriodID, &t.Name, &t.Quota, &t.UsesTest, &t.SortOrder, &t.Method, &t.ScoreLabel, &t.ScoreMax)
+	return t, err
 }
 
 // PeriodForm adalah isian form periode apa adanya.
@@ -153,7 +183,11 @@ type PeriodForm struct {
 type TrackForm struct {
 	Name     string
 	Quota    string
-	UsesTest bool
+	UsesTest bool // bentuk lama: sama dengan Method = MethodTest
+	// Method, ScoreLabel, dan ScoreMax (T118).
+	Method     string
+	ScoreLabel string
+	ScoreMax   string
 }
 
 // Service menjalankan aturan bisnis periode dan jalur.
@@ -226,15 +260,12 @@ func getPeriod(ctx context.Context, q database.DBTX, schoolID, id string, forUpd
 }
 
 func listTracks(ctx context.Context, q database.DBTX, schoolID, periodID string) ([]Track, error) {
-	rows, err := q.Query(ctx, `SELECT id, period_id, name, coalesce(quota, 0), uses_test, sort_order
+	rows, err := q.Query(ctx, `SELECT `+trackColumns+`
 		FROM admission_tracks WHERE school_id = $1 AND period_id = $2 ORDER BY sort_order, name`, schoolID, periodID)
 	if err != nil {
 		return nil, mapError("list tracks", err)
 	}
-	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Track, error) {
-		var t Track
-		return t, row.Scan(&t.ID, &t.PeriodID, &t.Name, &t.Quota, &t.UsesTest, &t.SortOrder)
-	})
+	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Track, error) { return scanTrack(row) })
 	if err != nil {
 		return nil, mapError("list tracks", err)
 	}
@@ -459,14 +490,41 @@ func (s *Service) Delete(ctx context.Context, actor school.Actor, id string) err
 }
 
 type trackInput struct {
-	Name     string
-	Quota    *int
-	UsesTest bool
+	Name       string
+	Quota      *int
+	Method     string
+	ScoreLabel *string
+	ScoreMax   *int
 }
 
 func validateTrack(f TrackForm) (trackInput, error) {
 	fields := map[string]string{}
-	in := trackInput{Name: strings.Join(strings.Fields(f.Name), " "), UsesTest: f.UsesTest}
+	in := trackInput{Name: strings.Join(strings.Fields(f.Name), " "), Method: f.Method}
+	if in.Method == "" {
+		in.Method = MethodOrder
+		if f.UsesTest {
+			in.Method = MethodTest
+		}
+	}
+	if MethodLabels[in.Method] == "" {
+		fields["method"] = "Pilih cara seleksi."
+	}
+	if in.Method == MethodScore {
+		label := strings.Join(strings.Fields(f.ScoreLabel), " ")
+		switch {
+		case label == "":
+			fields["score_label"] = "Tulis nilai apa yang diisi calon siswa, mis. Rata-rata rapor kelas 4–5."
+		case utf8.RuneCountInString(label) > 60:
+			fields["score_label"] = "Nama nilai maksimal 60 karakter."
+		default:
+			in.ScoreLabel = &label
+		}
+		if n, err := strconv.Atoi(strings.TrimSpace(f.ScoreMax)); err != nil || n < 1 || n > 10000 {
+			fields["score_max"] = "Nilai tertinggi harus angka 1–10.000, mis. 100."
+		} else {
+			in.ScoreMax = &n
+		}
+	}
 	switch {
 	case in.Name == "":
 		fields["track_name"] = "Nama jalur wajib diisi."
@@ -498,12 +556,13 @@ func (s *Service) AddTrack(ctx context.Context, actor school.Actor, periodID str
 		if _, err := getPeriod(ctx, tx, actor.SchoolID, periodID, true); err != nil {
 			return err
 		}
-		err := tx.QueryRow(ctx, `
-			INSERT INTO admission_tracks (school_id, period_id, name, quota, uses_test, sort_order)
-			VALUES ($1, $2, $3, $4, $5, (SELECT coalesce(max(sort_order), 0) + 1 FROM admission_tracks WHERE period_id = $2))
-			RETURNING id, period_id, name, coalesce(quota, 0), uses_test, sort_order`,
-			actor.SchoolID, periodID, in.Name, in.Quota, in.UsesTest).
-			Scan(&t.ID, &t.PeriodID, &t.Name, &t.Quota, &t.UsesTest, &t.SortOrder)
+		row := tx.QueryRow(ctx, `
+			INSERT INTO admission_tracks (school_id, period_id, name, quota, uses_test, method, score_label, score_max, sort_order)
+			VALUES ($1, $2, $3, $4, $5 = 'tes', $5, $6, $7, (SELECT coalesce(max(sort_order), 0) + 1 FROM admission_tracks WHERE period_id = $2))
+			RETURNING `+trackColumns,
+			actor.SchoolID, periodID, in.Name, in.Quota, in.Method, in.ScoreLabel, in.ScoreMax)
+		var err error
+		t, err = scanTrack(row)
 		if err != nil {
 			return mapError("add track", err)
 		}
@@ -539,12 +598,12 @@ func (s *Service) UpdateTrack(ctx context.Context, actor school.Actor, periodID,
 		if before == nil {
 			return ErrNotFound
 		}
-		err = tx.QueryRow(ctx, `
-			UPDATE admission_tracks SET name = $4, quota = $5, uses_test = $6
+		row := tx.QueryRow(ctx, `
+			UPDATE admission_tracks SET name = $4, quota = $5, uses_test = $6 = 'tes', method = $6, score_label = $7, score_max = $8
 			WHERE school_id = $1 AND period_id = $2 AND id = $3
-			RETURNING id, period_id, name, coalesce(quota, 0), uses_test, sort_order`,
-			actor.SchoolID, periodID, trackID, in.Name, in.Quota, in.UsesTest).
-			Scan(&t.ID, &t.PeriodID, &t.Name, &t.Quota, &t.UsesTest, &t.SortOrder)
+			RETURNING `+trackColumns,
+			actor.SchoolID, periodID, trackID, in.Name, in.Quota, in.Method, in.ScoreLabel, in.ScoreMax)
+		t, err = scanTrack(row)
 		if err != nil {
 			return mapError("update track", err)
 		}
@@ -596,7 +655,7 @@ func periodSnapshot(p Period) map[string]any {
 }
 
 func trackSnapshot(t Track) map[string]any {
-	return map[string]any{"track_id": t.ID, "name": t.Name, "quota": t.Quota, "uses_test": t.UsesTest}
+	return map[string]any{"track_id": t.ID, "name": t.Name, "quota": t.Quota, "method": t.Method, "score_label": t.ScoreLabel, "score_max": t.ScoreMax}
 }
 
 func periodAudit(actor school.Actor, action, id string, before, after any) audit.Entry {

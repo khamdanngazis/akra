@@ -120,11 +120,16 @@ type Applicant struct {
 	// ReRegisteredAt jika sudah ditandai daftar ulang (T120).
 	StudentID      string
 	ReRegisteredAt *time.Time
-	ContactPhone   string
-	EnteredBy      string
-	ConsentAt      time.Time
-	SubmittedAt    *time.Time
-	CreatedAt      time.Time
+	// TrackScore adalah nilai jalur metode nilai dalam perseratus (T118);
+	// Track adalah jalur pendaftar (metode dan nama nilainya).
+	TrackScore   *int
+	ManualRank   *int
+	Track        Track
+	ContactPhone string
+	EnteredBy    string
+	ConsentAt    time.Time
+	SubmittedAt  *time.Time
+	CreatedAt    time.Time
 }
 
 // Editable melaporkan apakah pendaftar masih bisa mengubah isian.
@@ -271,7 +276,8 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	sql := `SELECT id, school_id, period_id, track_id, coalesce(registration_number, ''), status, full_name,
 		       coalesce(gender, ''), birth_date, profile, guardians, nik_enc, kk_enc, birth_cert_enc, kip_enc, kks_enc,
 		       guardian_niks_enc, contact_phone, coalesce(entered_by::text, ''), consent_at, submitted_at, created_at,
-		       kind, transfer, anonymized_at, coalesce(anonymized_reason, ''), coalesce(student_id::text, ''), reregistered_at
+		       kind, transfer, anonymized_at, coalesce(anonymized_reason, ''), coalesce(student_id::text, ''), reregistered_at,
+		       track_score, manual_rank
 		FROM applicants WHERE school_id = $1 AND id = $2`
 	if forUpdate {
 		sql += ` FOR UPDATE`
@@ -282,7 +288,7 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	var gNIKs []byte
 	err := q.QueryRow(ctx, sql, schoolID, id).Scan(&a.ID, &a.SchoolID, &a.PeriodID, &a.TrackID, &a.RegistrationNumber,
 		&a.Status, &a.FullName, &a.Gender, &a.BirthDate, &profile, &guardians, &enc[0], &enc[1], &enc[2], &enc[3], &enc[4],
-		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer, &a.AnonymizedAt, &a.AnonymizedReason, &a.StudentID, &a.ReRegisteredAt)
+		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer, &a.AnonymizedAt, &a.AnonymizedReason, &a.StudentID, &a.ReRegisteredAt, &a.TrackScore, &a.ManualRank)
 	if err != nil {
 		return Applicant{}, mapApplicantError(err)
 	}
@@ -297,6 +303,9 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	a.Transfer = map[string]string{}
 	if err := json.Unmarshal(transfer, &a.Transfer); err != nil {
 		return Applicant{}, fmt.Errorf("admission: decode transfer: %w", err)
+	}
+	if a.Track, err = scanTrack(q.QueryRow(ctx, `SELECT `+trackColumns+` FROM admission_tracks WHERE id = $1`, a.TrackID)); err != nil {
+		return Applicant{}, mapApplicantError(err)
 	}
 	for i, f := range sensitive {
 		if enc[i] == nil {
@@ -365,6 +374,12 @@ func (s *ApplicantService) SaveStep(ctx context.Context, schoolID, id, step stri
 				transfer, terr = validateTransfer(values, merged["previous_school"], clock.Today())
 				err = joinValidation(onlyStepErrors(err, step), terr)
 			}
+			if step == StepSchool && a.Track.Method == MethodScore {
+				// Nilai jalur metode nilai (T118).
+				score, serr := validateTrackScore(a.Track, values[TrackScoreKey])
+				err = joinValidation(onlyStepErrors(err, step), serr)
+				a.TrackScore = score
+			}
 			if err != nil {
 				return onlyStepErrors(err, step)
 			}
@@ -391,6 +406,11 @@ func (s *ApplicantService) SaveStep(ctx context.Context, schoolID, id, step stri
 		}
 		if err := s.write(ctx, tx, a); err != nil {
 			return err
+		}
+		if step == StepSchool && a.Track.Method == MethodScore {
+			if _, err := tx.Exec(ctx, `UPDATE applicants SET track_score = $2 WHERE id = $1`, a.ID, a.TrackScore); err != nil {
+				return err
+			}
 		}
 		saved, err = s.load(ctx, tx, schoolID, id, false)
 		return err
@@ -590,6 +610,9 @@ func Missing(a Applicant) []students.RequiredField {
 	out := missingProfile(a)
 	if a.Kind == KindTransfer {
 		out = append(out, missingTransfer(a)...)
+	}
+	if a.Track.Method == MethodScore && a.TrackScore == nil {
+		out = append(out, students.RequiredField{Key: TrackScoreKey, Label: a.Track.ScoreLabel})
 	}
 	return out
 }

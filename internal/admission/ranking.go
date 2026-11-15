@@ -3,6 +3,7 @@ package admission
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -26,9 +27,13 @@ type Ranked struct {
 	Status             string
 	SubmittedAt        time.Time
 	Score              float64
-	Complete           bool // semua tes sudah dinilai (atau jalur tanpa tes)
-	Rank               int  // 0 jika belum bisa diperingkat
-	Proposal           string
+	// TrackScore (perseratus) untuk metode nilai, ManualRank untuk metode
+	// manual (0 = belum diisi) (T118).
+	TrackScore int
+	ManualRank int
+	Complete   bool // data urutan lengkap: tes dinilai, nilai diisi, atau urutan manual diisi
+	Rank       int  // 0 jika belum bisa diperingkat
+	Proposal   string
 }
 
 // TrackRanking adalah peringkat satu jalur.
@@ -37,24 +42,71 @@ type TrackRanking struct {
 	Accepted  int // sudah diterima sebelumnya
 	Remaining int // sisa kuota (0 jika kuota tanpa batas)
 	Rows      []Ranked
+	// Pending adalah pendaftar jalur ini yang belum diverifikasi (dikirim
+	// atau perlu perbaikan), sehingga belum ikut peringkat.
+	Pending int
 }
 
-// RankTrack mengurutkan pendaftar satu jalur dan membuat usulan:
-//   - jalur dengan tes: skor akhir menurun, lalu waktu kirim paling awal;
-//     pendaftar dengan nilai belum lengkap di bawah tanpa peringkat;
-//   - jalur tanpa tes: waktu kirim paling awal.
+// Basis menjelaskan dasar urutan jalur untuk ditampilkan.
+func (r TrackRanking) Basis() string {
+	switch r.Track.Method {
+	case MethodTest:
+		return "Diurutkan dari skor tes tertinggi; yang nilainya belum lengkap di bawah tanpa peringkat."
+	case MethodScore:
+		return "Diurutkan dari " + strings.ToLower(r.Track.ScoreLabel) + " tertinggi; yang belum mengisi nilai di bawah tanpa peringkat."
+	case MethodManual:
+		return "Diurutkan dari urutan yang diisi TU di kolom Urutan; yang belum diberi urutan di bawah tanpa peringkat."
+	}
+	return "Diurutkan dari waktu kirim formulir paling awal (siapa cepat dia dapat)."
+}
+
+// ScoreText menampilkan nilai jalur metode nilai.
+func (r Ranked) ScoreText() string {
+	if !r.Complete {
+		return ""
+	}
+	return formatScore(r.TrackScore)
+}
+
+// RankTrack mengurutkan pendaftar satu jalur sesuai metodenya (T118) dan
+// membuat usulan:
+//   - tes: skor akhir tes menurun;
+//   - nilai: nilai jalur menurun;
+//   - manual: urutan dari TU menaik;
+//   - urutan daftar: waktu kirim paling awal.
 //
-// Peringkat 1 sampai sisa kuota diusulkan diterima, sisanya cadangan.
-// Kuota 0 berarti tanpa batas: semua yang bisa diperingkat diusulkan diterima.
+// Pendaftar yang data urutannya belum lengkap ada di bawah tanpa peringkat.
+// Seri diurutkan dari waktu kirim paling awal. Peringkat 1 sampai sisa kuota
+// diusulkan diterima, sisanya cadangan; kuota 0 berarti tanpa batas.
 func RankTrack(t Track, accepted int, rows []Ranked) TrackRanking {
+	if t.Method == "" { // jalur dari data lama tanpa metode
+		t.Method = MethodOrder
+		if t.UsesTest {
+			t.Method = MethodTest
+		}
+	}
+	if t.Method == MethodOrder {
+		for i := range rows {
+			rows[i].Complete = true
+		}
+	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
-		if t.UsesTest {
-			if a.Complete != b.Complete {
-				return a.Complete
-			}
+		if a.Complete != b.Complete {
+			return a.Complete
+		}
+		switch t.Method {
+		case MethodTest:
 			if a.Score != b.Score {
 				return a.Score > b.Score
+			}
+		case MethodScore:
+			if a.TrackScore != b.TrackScore {
+				return a.TrackScore > b.TrackScore
+			}
+		case MethodManual:
+			if a.ManualRank != b.ManualRank {
+				return a.ManualRank < b.ManualRank
 			}
 		}
 		if !a.SubmittedAt.Equal(b.SubmittedAt) {
@@ -73,7 +125,7 @@ func RankTrack(t Track, accepted int, rows []Ranked) TrackRanking {
 	}
 	rank := 0
 	for i := range rows {
-		if t.UsesTest && !rows[i].Complete {
+		if !rows[i].Complete {
 			rows[i].Proposal = ProposalIncomplete
 			continue
 		}
@@ -108,22 +160,31 @@ func (s *ApplicantService) Ranking(ctx context.Context, schoolID, periodID strin
 	weightsOK := WeightsTotal(tests) == 100
 
 	rows, err := s.db.Query(ctx, `
-		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, a.status, a.track_id, a.submitted_at
+		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, a.status, a.track_id, a.submitted_at, a.track_score, a.manual_rank
 		FROM applicants a WHERE a.school_id = $1 AND a.period_id = $2 AND a.status IN ('diverifikasi', 'cadangan')`, schoolID, periodID)
 	if err != nil {
 		return nil, mapApplicantError(err)
 	}
 	byTrack := map[string][]Ranked{}
+	scoreSet := map[string]bool{}
 	for rows.Next() {
 		var r Ranked
 		var trackID string
 		var submitted *time.Time
-		if err := rows.Scan(&r.ApplicantID, &r.RegistrationNumber, &r.FullName, &r.Status, &trackID, &submitted); err != nil {
+		var score, rank *int
+		if err := rows.Scan(&r.ApplicantID, &r.RegistrationNumber, &r.FullName, &r.Status, &trackID, &submitted, &score, &rank); err != nil {
 			rows.Close()
 			return nil, mapApplicantError(err)
 		}
 		if submitted != nil {
 			r.SubmittedAt = *submitted
+		}
+		if score != nil {
+			r.TrackScore = *score
+			scoreSet[r.ApplicantID] = true
+		}
+		if rank != nil {
+			r.ManualRank = *rank
 		}
 		byTrack[trackID] = append(byTrack[trackID], r)
 	}
@@ -132,19 +193,20 @@ func (s *ApplicantService) Ranking(ctx context.Context, schoolID, periodID strin
 		return nil, mapApplicantError(err)
 	}
 
-	accepted := map[string]int{}
-	arows, err := s.db.Query(ctx, `SELECT track_id, count(*) FROM applicants WHERE school_id = $1 AND period_id = $2 AND status = 'diterima' GROUP BY track_id`, schoolID, periodID)
+	accepted, pending := map[string]int{}, map[string]int{}
+	arows, err := s.db.Query(ctx, `SELECT track_id, count(*) FILTER (WHERE status = 'diterima'), count(*) FILTER (WHERE status IN ('dikirim', 'perlu_perbaikan'))
+		FROM applicants WHERE school_id = $1 AND period_id = $2 GROUP BY track_id`, schoolID, periodID)
 	if err != nil {
 		return nil, mapApplicantError(err)
 	}
 	for arows.Next() {
 		var t string
-		var n int
-		if err := arows.Scan(&t, &n); err != nil {
+		var n, p int
+		if err := arows.Scan(&t, &n, &p); err != nil {
 			arows.Close()
 			return nil, mapApplicantError(err)
 		}
-		accepted[t] = n
+		accepted[t], pending[t] = n, p
 	}
 	arows.Close()
 
@@ -152,14 +214,21 @@ func (s *ApplicantService) Ranking(ctx context.Context, schoolID, periodID strin
 	for _, t := range p.Tracks {
 		list := byTrack[t.ID]
 		for i := range list {
-			if t.UsesTest {
+			switch t.Method {
+			case MethodTest:
 				list[i].Score, list[i].Complete = FinalScore(tests, scores[list[i].ApplicantID])
 				list[i].Complete = list[i].Complete && weightsOK
-			} else {
+			case MethodScore:
+				list[i].Complete = scoreSet[list[i].ApplicantID]
+			case MethodManual:
+				list[i].Complete = list[i].ManualRank > 0
+			default:
 				list[i].Complete = true
 			}
 		}
-		out = append(out, RankTrack(t, accepted[t.ID], list))
+		tr := RankTrack(t, accepted[t.ID], list)
+		tr.Pending = pending[t.ID]
+		out = append(out, tr)
 	}
 	return out, nil
 }

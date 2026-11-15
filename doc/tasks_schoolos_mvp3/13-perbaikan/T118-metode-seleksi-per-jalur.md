@@ -3,7 +3,7 @@
 **Fase:** 13 Perbaikan
 **Dependensi:** T93a, T93b, T117
 **Estimasi:** 2–3 hari (tergantung metode yang dipilih)
-**Status:** catatan dan analisa, belum dikerjakan
+**Status:** selesai (2026-11-15)
 
 ## Masukan pengguna (2026-11-15)
 - Jalur peringkat membingungkan: tidak jelas peringkat berdasarkan apa, dan di mana calon siswa memasukkan nilai peringkatnya.
@@ -49,6 +49,26 @@
 - Bobot gabungan (rapor + tes) belum dikerjakan.
 
 ## Kriteria selesai
-- [ ] Setiap jalur menyatakan metode seleksinya, dan halaman peringkat menjelaskan dasar urutan
-- [ ] Jalur nilai rapor/prestasi bisa diisi calon siswa dan diverifikasi TU
-- [ ] TU bisa melihat alur verifikasi → peringkat → hasil dan jumlah di tiap langkah
+- [x] Setiap jalur menyatakan metode seleksinya, dan halaman peringkat menjelaskan dasar urutan
+- [x] Jalur nilai rapor/prestasi bisa diisi calon siswa dan diverifikasi TU
+- [x] TU bisa melihat alur verifikasi → peringkat → hasil dan jumlah di tiap langkah
+
+## Catatan implementasi
+- **Migrasi 000058:**
+  - `admission_tracks.method` (urutan/tes/nilai/manual), `score_label`, `score_max`. Data lama: `uses_test` menjadi `tes`. `uses_test` tetap diisi selaras (`method = 'tes'`).
+  - `applicants.track_score` disimpan dalam perseratus sebagai integer (85,5 → 8550), bukan numeric, agar tanpa float atau cast. `applicants.manual_rank`.
+- **Form jalur** (wizard langkah jalur): empat kartu "Cara seleksi" dengan penjelasan satu kalimat. Metode nilai meminta nama nilai (mis. "Rata-rata rapor kelas 4–5") dan nilai tertinggi.
+- **Formulir publik:** langkah Sekolah asal menampilkan isian nilai untuk jalur metode nilai. Wajib saat dikirim (masuk daftar "belum lengkap" dan ditautkan ke langkahnya). Kartu jalur di halaman awal menyebut cara seleksinya.
+- **Detail pendaftar:** kartu "Nilai jalur" dengan koreksi oleh TU (`POST /pendaftaran/{id}/nilai-jalur`, diaudit), selama belum diterima.
+- **Peringkat** (`RankTrack`):
+  - tes = skor akhir; nilai = nilai jalur; manual = urutan TU; urutan daftar = waktu kirim. Seri diurutkan dari waktu kirim.
+  - Data urutan yang belum lengkap: di bawah tanpa peringkat dan tanpa usulan.
+  - Halaman Peringkat menampilkan metode dan dasar urutan, serta jumlah pendaftar yang belum diverifikasi (dengan tautan).
+  - Jalur manual punya kolom Urutan dan tombol "Simpan urutan dan hitung ulang usulan" (`action=urutan`).
+- **Detail gelombang:** kartu "Alur seleksi" berisi jumlah di tiap langkah (menunggu verifikasi, menunggu perbaikan, menunggu hasil, diterima/kuota) dengan tautan ke langkahnya.
+- **Verifikasi massal:**
+  - Kotak centang untuk pendaftar berstatus dikirim di daftar pendaftar, dengan bar "Verifikasi yang dipilih" (`POST /pendaftaran/verifikasi`).
+  - Yang biaya formulirnya wajib lunas tapi belum dibayar disebutkan dan dilewati. ID sekolah lain menolak seluruh permintaan.
+  - Kembali ke daftar dengan filter yang sama.
+- **Kartu flush:** `.card-head` di dalam `.card-flush` kini punya jarak tepi; sebelumnya judul jalur di halaman Peringkat menempel ke tepi.
+- **Belum dikerjakan (sesuai keputusan):** metode jarak rumah dan bobot gabungan.

@@ -57,7 +57,7 @@ func (h *Handler) renderResults(w http.ResponseWriter, r *http.Request, id auth.
 	view := resultsView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Period: p, Tracks: ranking, TestsOK: WeightsTotal(tests) == 100,
 		Error: msg, Flash: auth.PopFlash(r.Context(), h.sessions)}
 	for _, t := range p.Tracks {
-		view.HasTestTrack = view.HasTestTrack || t.UsesTest
+		view.HasTestTrack = view.HasTestTrack || t.Method == MethodTest
 	}
 	h.render.Render(w, r, status, "admission/results", view)
 }
@@ -69,6 +69,30 @@ func (h *Handler) applyResults(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxPublicForm)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// Simpan urutan manual (T118), lalu kembali ke peringkat dengan usulan
+	// yang dihitung ulang.
+	if r.PostForm.Get("action") == "urutan" {
+		ranks := map[string]string{}
+		for k, v := range r.PostForm {
+			if aid, ok := strings.CutPrefix(k, "rank_"); ok && len(v) > 0 {
+				ranks[aid] = v[0]
+			}
+		}
+		n, err := h.applicants.SetManualRanks(r.Context(), actorFrom(r, id), periodID, ranks)
+		var ve *ValidationError
+		switch {
+		case err == nil:
+			auth.SetFlash(r.Context(), h.sessions, fmt.Sprintf("Urutan disimpan untuk %d pendaftar. Periksa usulan lalu tetapkan hasil.", n))
+			http.Redirect(w, r, periodsPath+"/"+periodID+"/hasil", http.StatusSeeOther)
+		case errors.Is(err, ErrNotFound):
+			page.NotFound(h.render, w, r, id, msgPeriodGone)
+		case errors.As(err, &ve):
+			h.renderResults(w, r, id, http.StatusBadRequest, "Urutan harus angka 1–9999. Tidak ada yang disimpan.")
+		default:
+			h.serverError(w, r, "save manual ranks", err)
+		}
 		return
 	}
 	results := map[string]string{}
@@ -131,10 +155,20 @@ func (h *Handler) exportResults(w http.ResponseWriter, r *http.Request) {
 			if x.Rank > 0 {
 				rank = strconv.Itoa(x.Rank)
 			}
-			if tr.Track.UsesTest {
+			switch tr.Track.Method {
+			case MethodTest:
 				score = strconv.FormatFloat(x.Score, 'f', 2, 64)
 				if !x.Complete {
 					score += " (belum lengkap)"
+				}
+			case MethodScore:
+				score = x.ScoreText()
+				if !x.Complete {
+					score = "(belum diisi)"
+				}
+			case MethodManual:
+				if x.ManualRank > 0 {
+					score = "Urutan " + strconv.Itoa(x.ManualRank)
 				}
 			}
 			t.Rows = append(t.Rows, []any{tr.Track.Name, rank, x.RegistrationNumber, x.FullName, score, StatusLabels[x.Status], StatusLabels[x.Proposal]})

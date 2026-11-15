@@ -108,7 +108,7 @@
 {{range .Tracks}}
 <li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
 <div x-show="!editing" class="flex flex-wrap items-center gap-2">
-<span class="min-w-0 flex-1"><strong>{{.Name}}</strong> <span class="muted">· {{if .Quota}}Kuota {{.Quota}}{{else}}Tanpa batas kuota{{end}}</span>{{if .UsesTest}} <span class="badge badge-info">Dengan tes</span>{{end}}</span>
+<span class="min-w-0 flex-1"><strong>{{.Name}}</strong> <span class="muted">· {{if .Quota}}Kuota {{.Quota}}{{else}}Tanpa batas kuota{{end}}</span> <span class="badge badge-info">{{.MethodLabel}}</span>{{if eq .Method "nilai"}} <span class="muted small">({{.ScoreLabel}}, maks {{.ScoreMax}})</span>{{end}}</span>
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/jalur/{{.ID}}/hapus">{{ csrfField }}<input type="hidden" name="kembali" value="atur"><button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
 </div>

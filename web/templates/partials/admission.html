@@ -14,7 +14,28 @@
 {{with .Errors.quota}}<p class="field-error">{{.}}</p>{{end}}
 </div>
 </div>
-<label class="choice"><input type="checkbox" name="uses_test"{{if .Form.UsesTest}} checked{{end}}> Jalur ini memakai tes seleksi</label>
+<fieldset class="field{{if .Errors.method}} has-error{{end}}" x-data="{ method: '{{if .Form.Method}}{{.Form.Method}}{{else}}urutan{{end}}' }">
+<legend>Cara seleksi</legend>
+<div class="method-options">
+<label class="option-card"><input type="radio" name="method" value="urutan" x-model="method"><span><strong>Urutan daftar</strong><span class="block text-sm text-slate-600">Siapa cepat dia dapat: diurutkan dari waktu kirim formulir paling awal.</span></span></label>
+<label class="option-card"><input type="radio" name="method" value="tes" x-model="method"><span><strong>Tes seleksi</strong><span class="block text-sm text-slate-600">Diurutkan dari skor tes yang diisi TU. Atur tes di tab Tes seleksi.</span></span></label>
+<label class="option-card"><input type="radio" name="method" value="nilai" x-model="method"><span><strong>Nilai rapor/prestasi</strong><span class="block text-sm text-slate-600">Calon siswa mengisi nilai di formulir; TU memeriksa saat verifikasi. Nilai tertinggi lebih dulu.</span></span></label>
+<label class="option-card"><input type="radio" name="method" value="manual" x-model="method"><span><strong>Penilaian manual</strong><span class="block text-sm text-slate-600">TU menentukan urutan sendiri di halaman Peringkat, mis. hasil rapat atau wawancara.</span></span></label>
+</div>
+{{with .Errors.method}}<p class="field-error">{{.}}</p>{{end}}
+<div class="field-grid mt-3" x-show="method === 'nilai'" x-cloak>
+<div class="field{{if .Errors.score_label}} has-error{{end}}">
+<label for="score_label-{{.ID}}">Nilai yang diisi calon siswa</label>
+<input id="score_label-{{.ID}}" name="score_label" value="{{.Form.ScoreLabel}}" maxlength="60" placeholder="mis. Rata-rata rapor kelas 4–5" autocomplete="off">
+{{with .Errors.score_label}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.score_max}} has-error{{end}}">
+<label for="score_max-{{.ID}}">Nilai tertinggi</label>
+<input id="score_max-{{.ID}}" type="number" name="score_max" value="{{if .Form.ScoreMax}}{{.Form.ScoreMax}}{{else}}100{{end}}" min="1" max="10000">
+{{with .Errors.score_max}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+</fieldset>
 {{end}}
 
 {{/* admission_logo menampilkan logo sekolah, atau inisial jika belum ada logo. Argumen: schoolInfo. */}}

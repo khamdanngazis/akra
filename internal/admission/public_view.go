@@ -29,6 +29,8 @@ type trackCard struct {
 	Name     string
 	Quota    int
 	UsesTest bool
+	// Basis menjelaskan cara seleksi untuk orang tua (T118).
+	Basis string
 }
 
 type docCard struct {
@@ -45,7 +47,7 @@ func startInfo(open []Period) (cards []periodCard, docs []docCard, year string) 
 			c.Fee = money.FormatRupiah(p.FeeAmount)
 		}
 		for _, t := range p.Tracks {
-			c.Tracks = append(c.Tracks, trackCard{Name: t.Name, Quota: t.Quota, UsesTest: t.UsesTest})
+			c.Tracks = append(c.Tracks, trackCard{Name: t.Name, Quota: t.Quota, UsesTest: t.UsesTest, Basis: publicBasis(t)})
 		}
 		cards = append(cards, c)
 		for _, d := range p.RequiredDocs {
@@ -72,7 +74,7 @@ func stepOfField(key string) string {
 	if strings.HasPrefix(key, "doc_") {
 		return StepDocument
 	}
-	if isTransferKey(key) {
+	if isTransferKey(key) || key == TrackScoreKey {
 		return StepSchool
 	}
 	for _, f := range students.ProfileFields {
@@ -428,4 +430,17 @@ func uploadReturn(r *http.Request) string {
 		return StepReview
 	}
 	return StepDocument
+}
+
+// publicBasis menjelaskan cara seleksi jalur dengan singkat untuk orang tua.
+func publicBasis(t Track) string {
+	switch t.Method {
+	case MethodTest:
+		return "dengan tes"
+	case MethodScore:
+		return "berdasarkan " + strings.ToLower(t.ScoreLabel)
+	case MethodManual:
+		return "dinilai sekolah"
+	}
+	return "urutan daftar"
 }

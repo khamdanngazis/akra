@@ -313,7 +313,7 @@ func TestPeriodHandler(t *testing.T) {
 		t.Errorf("open: %d", rec.Code)
 	}
 	body = e.do(http.MethodGet, path, "admin_tu", nil).Body.String()
-	if !strings.Contains(body, "Sedang dibuka") || !strings.Contains(body, "Kuota 30") || !strings.Contains(body, "Dengan tes") || !strings.Contains(body, "Kartu Keluarga") {
+	if !strings.Contains(body, "Sedang dibuka") || !strings.Contains(body, "Kuota 30") || !strings.Contains(body, "Tes seleksi</span>") || !strings.Contains(body, "Kartu Keluarga") {
 		t.Error("detail content after opening")
 	}
 

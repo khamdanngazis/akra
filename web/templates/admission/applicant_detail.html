@@ -50,6 +50,23 @@
 </div>
 
 <div class="stack detail-side">
+{{if eq .Applicant.Track.Method "nilai"}}
+<section class="card">
+<h2>Nilai jalur</h2>
+<p class="mb-0"><span class="muted">{{.Applicant.Track.ScoreLabel}}:</span> {{with .Applicant.ScoreText}}<strong>{{.}}</strong>{{else}}<span class="badge badge-warning">Belum diisi</span>{{end}} <span class="muted small">(maks {{.Applicant.Track.ScoreMax}})</span></p>
+{{if and .CanEdit .ScoreEditable}}
+<form method="post" action="/pendaftaran/{{.Applicant.ID}}/nilai-jalur" class="score-row" novalidate>
+{{ csrfField }}
+<div class="field m-0{{if .Errors.track_score}} has-error{{end}}">
+<label for="track_score">Koreksi setelah dicocokkan dengan bukti</label>
+<input id="track_score" name="track_score" value="{{.Applicant.ScoreText}}" inputmode="decimal" maxlength="8" class="w-32">
+{{with .Errors.track_score}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<button type="submit" class="btn btn-ghost btn-sm">Simpan nilai</button>
+</form>
+{{end}}
+</section>
+{{end}}
 <section class="card">
 <h2>Dokumen</h2>
 {{if .Documents}}
