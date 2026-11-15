@@ -170,10 +170,10 @@ func gradeOptions(selected string) []students.Option {
 }
 
 // numberPrefix adalah awalan nomor pendaftaran: SPMB untuk siswa baru,
-// PINDAH untuk pindahan (urutan nomornya terpisah).
+// MUTASI untuk pindahan (urutan nomornya terpisah).
 func numberPrefix(kind string) string {
 	if kind == KindTransfer {
-		return "PINDAH"
+		return "MUTASI"
 	}
 	return "SPMB"
 }

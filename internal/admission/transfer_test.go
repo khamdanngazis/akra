@@ -205,8 +205,8 @@ func TestTransferPublicFlow(t *testing.T) {
 		t.Fatalf("submit: %d %s", code, loc)
 	}
 	_, body = c.get(base + "/selesai")
-	number := regexp.MustCompile(`PINDAH-2027-\d{4}`).FindString(body)
-	if number != "PINDAH-2027-0001" {
+	number := regexp.MustCompile(`MUTASI-2027-\d{4}`).FindString(body)
+	if number != "MUTASI-2027-0001" {
 		t.Errorf("transfer number = %q", number)
 	}
 
