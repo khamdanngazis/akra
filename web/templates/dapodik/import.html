@@ -1,7 +1,7 @@
 {{define "title"}}Impor dari Dapodik{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
+{{template "back_nav" crumbs "Dapodik" "/dapodik" "Impor" ""}}
 <div class="page-header">
 <div>
 <h1>Impor dari ekspor Dapodik</h1>

@@ -101,6 +101,16 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 	return rd, nil
 }
 
+// Crumb adalah satu tingkat jejak navigasi; URL kosong = halaman sekarang.
+type Crumb struct{ Label, URL string }
+
+// Trail adalah jejak navigasi beserta tingkat induk terdekat (tujuan
+// tombol kembali).
+type Trail struct {
+	Items  []Crumb
+	Parent Crumb
+}
+
 // funcs berisi fungsi template yang tersedia di semua halaman. Fungsi CSRF
 // diganti per request di Render.
 func funcs(versions map[string]string) template.FuncMap {
@@ -120,6 +130,23 @@ func funcs(versions map[string]string) template.FuncMap {
 				m[k] = kv[i+1]
 			}
 			return m, nil
+		},
+		// crumbs membuat jejak navigasi dari pasangan label dan URL, mis.
+		// {{template "back_nav" crumbs "Pendaftar" "/pendaftaran" .Name ""}}.
+		// URL kosong menandai halaman sekarang (T121).
+		"crumbs": func(kv ...string) (Trail, error) {
+			if len(kv)%2 != 0 {
+				return Trail{}, fmt.Errorf("render: crumbs needs label/URL pairs")
+			}
+			var t Trail
+			for i := 0; i < len(kv); i += 2 {
+				c := Crumb{Label: kv[i], URL: kv[i+1]}
+				t.Items = append(t.Items, c)
+				if c.URL != "" {
+					t.Parent = c
+				}
+			}
+			return t, nil
 		},
 		// inc menambah satu; mis. nomor urut {{inc $i}} dari indeks range.
 		"inc": func(i int) int { return i + 1 },

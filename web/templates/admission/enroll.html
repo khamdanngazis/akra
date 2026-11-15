@@ -1,7 +1,7 @@
 {{define "title"}}Jadikan Siswa{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Jadikan siswa" ""}}
 <div class="page-header">
 <div>
 <h1>Jadikan siswa</h1>

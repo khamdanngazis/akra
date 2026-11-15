@@ -1,7 +1,7 @@
 {{define "title"}}Input Pendaftar{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Input pendaftar" ""}}
 <section class="card form-card">
 <h1>Input Pendaftar</h1>
 <p class="muted">Untuk orang tua yang mendaftar langsung di sekolah. Setelah data awal, lengkapi isian per langkah seperti formulir online.</p>

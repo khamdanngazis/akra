@@ -249,7 +249,44 @@
   }
 
   .breadcrumb a {
-    @apply font-semibold text-slate-500 no-underline hover:text-blue-600;
+    @apply -mx-2 inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-slate-600 no-underline hover:bg-slate-100 hover:text-blue-700;
+  }
+
+  /* Navigasi kembali (T121): tombol di HP/tablet, jejak di desktop. */
+  .back-nav {
+    @apply mb-3 text-sm;
+  }
+
+  .back-btn {
+    @apply inline-flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-slate-200 bg-white py-2 pr-4 pl-3 font-semibold text-slate-800 no-underline shadow-xs hover:border-slate-300 hover:text-blue-700 lg:hidden;
+  }
+
+  .back-btn span {
+    @apply truncate;
+  }
+
+  .back-btn svg {
+    @apply size-4 shrink-0;
+  }
+
+  .crumbs {
+    @apply m-0 hidden list-none flex-wrap items-center p-0 lg:flex;
+  }
+
+  .crumbs li {
+    @apply flex items-center;
+  }
+
+  .crumbs a {
+    @apply -mx-1 inline-flex min-h-9 items-center rounded-md px-1.5 font-semibold text-blue-700 no-underline hover:bg-blue-50 hover:underline;
+  }
+
+  .crumbs [aria-current] {
+    @apply px-1.5 font-semibold text-slate-900;
+  }
+
+  .crumb-sep {
+    @apply px-1 text-slate-300;
   }
 
   .section-title {

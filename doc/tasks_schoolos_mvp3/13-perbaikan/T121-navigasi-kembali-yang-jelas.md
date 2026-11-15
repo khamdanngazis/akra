@@ -3,7 +3,7 @@
 **Fase:** 13 Perbaikan
 **Dependensi:** —
 **Estimasi:** 1 hari
-**Status:** catatan dan analisa, belum dikerjakan
+**Status:** selesai (2026-11-15)
 
 ## Masukan pengguna (2026-11-15)
 Desain navigasi kembali kurang bagus dan tidak jelas.
@@ -28,6 +28,23 @@ Desain navigasi kembali kurang bagus dan tidak jelas.
 - Diterapkan ke semua modul sekaligus, atau mulai dari Pendaftaran dan Dapodik dulu? Saran: Pendaftaran dan Dapodik dulu, modul lain menyusul dengan partial yang sama.
 
 ## Kriteria selesai
-- [ ] Semua halaman Pendaftaran dan Dapodik memakai partial yang sama
-- [ ] Di HP tombol kembali terlihat jelas dengan area sentuh ≥ 44 px
-- [ ] Kembali dari detail pendaftar mempertahankan filter daftar asal
+- [x] Semua halaman Pendaftaran dan Dapodik memakai partial yang sama
+- [x] Di HP tombol kembali terlihat jelas dengan area sentuh ≥ 44 px
+- [x] Kembali dari detail pendaftar mempertahankan filter daftar asal
+
+## Keputusan (2026-11-15)
+Mulai dari Pendaftaran dan Dapodik; modul lain menyusul dengan partial yang sama.
+
+## Catatan implementasi
+- **Fungsi template `crumbs`** (`internal/platform/render`): `crumbs "Label" "/url" … "Halaman ini" ""` menghasilkan `Trail{Items, Parent}`. URL kosong = halaman sekarang. Jejak ditulis di template (bukan handler), karena labelnya hanya memakai data yang sudah ada di view.
+- **Partial `back_nav`:**
+  - Di bawah `lg` (HP dan tablet): tombol kembali ke induk terdekat, tinggi 44 px, bergaris tepi.
+  - Di desktop: jejak lengkap, tingkat terakhir tidak bisa diklik (`aria-current="page"`).
+- **`web/static/js/nav.js`** (dimuat di layout) mencatat query terakhir per path di `sessionStorage`. Tautan bertanda `data-restore` tanpa query diarahkan ke daftar dengan filter dan halaman terakhir di tab yang sama. Tanpa JavaScript, tautan tetap ke daftar tanpa filter.
+- **Dipakai di:**
+  - Pendaftaran: detail pendaftar, ubah isian staf, input pendaftar, rekap, jadikan siswa, pengaturan, daftar/detail/form periode, tes, nilai, peringkat.
+  - Dapodik: cek kesiapan, lembar salin, impor.
+- **Modul lain** masih memakai `.breadcrumb` lama, tetapi area sentuhnya kini 44 px.
+- **Tidak dibuat:**
+  - kembali ke Peringkat jika detail dibuka dari sana (tombol kembali selalu ke induk di jejak);
+  - judul menempel saat menggulir (usulan 4).

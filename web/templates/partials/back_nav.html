@@ -1,0 +1,9 @@
+{{/* back_nav adalah navigasi kembali (T121): tombol kembali ke induk di HP/tablet, jejak lengkap di desktop. Argumen: crumbs. Tautan bertanda data-restore kembali ke daftar dengan filter terakhir (js/nav.js). */}}
+{{define "back_nav"}}
+<nav class="back-nav" aria-label="Navigasi halaman">
+{{with .Parent.URL}}<a class="back-btn" href="{{.}}" data-restore>{{template "icon" "arrow-left"}}<span>{{$.Parent.Label}}</span></a>{{end}}
+<ol class="crumbs">
+{{range $i, $c := .Items}}<li>{{if $i}}<span class="crumb-sep" aria-hidden="true">/</span>{{end}}{{if $c.URL}}<a href="{{$c.URL}}" data-restore>{{$c.Label}}</a>{{else}}<span aria-current="page">{{$c.Label}}</span>{{end}}</li>{{end}}
+</ol>
+</nav>
+{{end}}
