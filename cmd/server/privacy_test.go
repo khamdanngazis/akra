@@ -107,7 +107,8 @@ func TestPrivacy_NoPlaintextIdentityNumbers(t *testing.T) {
 	rec := admin.do(http.MethodPost, "/pendaftaran/periode", url.Values{"name": {"Privasi"}, "academic_year_id": {a.YearID}, "target_grade": {"1"},
 		"opens_on": {today.AddDate(0, 0, -1).Format("2006-01-02")}, "closes_on": {today.AddDate(0, 1, 0).Format("2006-01-02")}, "required_docs": {"kk"}})
 	expect(rec, http.StatusSeeOther, "create period")
-	periodPath := rec.Header().Get("Location")
+	// Wizard (T117) mengarahkan ke langkah jadwal; ambil path gelombangnya.
+	periodPath := strings.TrimSuffix(rec.Header().Get("Location"), "/atur/jadwal")
 	admin.get(periodPath)
 	expect(admin.do(http.MethodPost, periodPath+"/jalur", url.Values{"track_name": {"Reguler"}}), http.StatusSeeOther, "add track")
 	expect(admin.do(http.MethodPost, periodPath+"/status", url.Values{"status": {"buka"}}), http.StatusSeeOther, "open period")

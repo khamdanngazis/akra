@@ -618,10 +618,18 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID} })},
 	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/ubah"} })},
-	{Method: "POST", Pattern: "/pendaftaran/periode/{id}", Kind: KindByID, Roles: adminTU,
-		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID }, func(o *School) url.Values {
-			return url.Values{"name": {"Diubah"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}, "opens_on": {"2026-12-01"}, "closes_on": {"2027-01-31"}}
+	// Wizard gelombang dan salin gelombang (T117).
+	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/atur/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string {
+			base := "/pendaftaran/periode/" + o.AdmissionPeriodID + "/atur/"
+			return []string{base + "dasar", base + "jadwal", base + "jalur", base + "dokumen"}
 		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/atur/{step}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/atur/dasar" }, func(o *School) url.Values {
+			return url.Values{"name": {"Diubah"}, "academic_year_id": {o.YearID}, "target_grade": {"1"}}
+		})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/salin", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/salin" }, nil)},
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/status", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/status" }, func(*School) url.Values {
 			return url.Values{"status": {"buka"}}

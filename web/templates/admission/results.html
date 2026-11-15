@@ -1,7 +1,7 @@
 {{define "title"}}Hasil Seleksi · {{.Period.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Peringkat dan hasil" ""}}
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Gelombang pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Peringkat dan hasil" ""}}
 <div class="page-header">
 <div>
 <h1>Peringkat dan hasil</h1>
@@ -9,6 +9,7 @@
 </div>
 <a class="btn btn-ghost" href="/pendaftaran/periode/{{.Period.ID}}/hasil.xlsx">Unduh Excel</a>
 </div>
+{{template "admission_period_tabs" dict "ID" .Period.ID "Active" "hasil"}}
 {{template "flash" .}}
 {{if and .HasTestTrack (not .TestsOK)}}<div class="alert alert-error" role="alert">Jumlah bobot tes belum 100%. Pendaftar di jalur dengan tes belum bisa diperingkat. <a href="/pendaftaran/periode/{{.Period.ID}}/tes">Atur tes</a>.</div>{{end}}
 

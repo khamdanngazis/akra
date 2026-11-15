@@ -84,7 +84,7 @@ func (h *Handler) exportApplicants(w http.ResponseWriter, r *http.Request) {
 	t := export.Table{
 		Title: "Daftar Pendaftar", SchoolName: id.SchoolName, PrintedAt: time.Now().In(clock.Jakarta),
 		Columns: []export.Column{{Header: "Nomor"}, {Header: "Nama"}, {Header: "JK"}, {Header: "Tanggal lahir"}, {Header: "NIK"}, {Header: "NISN"},
-			{Header: "Agama"}, {Header: "Sekolah asal"}, {Header: "Nama ibu kandung"}, {Header: "HP orang tua"}, {Header: "Periode"}, {Header: "Jalur"}, {Header: "Status"}},
+			{Header: "Agama"}, {Header: "Sekolah asal"}, {Header: "Nama ibu kandung"}, {Header: "HP orang tua"}, {Header: "Gelombang"}, {Header: "Jalur"}, {Header: "Status"}},
 	}
 	periodNames, trackNames := map[string]string{}, map[string]string{}
 	for _, aid := range list {

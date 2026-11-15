@@ -2252,6 +2252,107 @@
     @apply border-slate-500 bg-slate-200;
   }
 
+  /* Gelombang pendaftaran (T117): wizard, tab, daftar periksa. */
+  .wizard-steps {
+    @apply m-0 mb-4 grid list-none grid-cols-4 gap-2 p-0;
+  }
+
+  .wizard-box {
+    @apply flex h-full flex-col items-start gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 no-underline sm:flex-row sm:items-center;
+  }
+
+  a.wizard-box:hover {
+    @apply border-slate-300 text-slate-800;
+  }
+
+  .wizard-steps li.is-current .wizard-box {
+    @apply border-blue-600 text-slate-900 ring-2 ring-blue-600/15;
+  }
+
+  .wizard-steps li.is-done .wizard-box {
+    @apply text-slate-700;
+  }
+
+  .wizard-num {
+    @apply grid size-6 shrink-0 place-items-center rounded-full border-2 border-slate-300 bg-white text-xs font-bold;
+  }
+
+  .wizard-num svg {
+    @apply size-3.5;
+  }
+
+  .wizard-steps li.is-current .wizard-num {
+    @apply border-blue-600 bg-blue-600 text-white;
+  }
+
+  .wizard-steps li.is-done .wizard-num {
+    @apply border-emerald-500 bg-emerald-500 text-white;
+  }
+
+  .wizard-title {
+    @apply text-xs leading-tight font-semibold sm:text-sm;
+  }
+
+  .tabs {
+    @apply -mx-4 mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 px-4 sm:mx-0 sm:px-0;
+  }
+
+  .tabs a {
+    @apply -mb-px inline-flex min-h-11 shrink-0 items-center border-b-2 border-transparent px-3 text-sm font-semibold whitespace-nowrap text-slate-600 no-underline hover:text-slate-900;
+  }
+
+  .tabs a[aria-current="page"] {
+    @apply border-blue-600 text-blue-700;
+  }
+
+  .checklist {
+    @apply m-0 flex list-none flex-col gap-2 p-0;
+  }
+
+  .checklist li {
+    @apply flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3;
+  }
+
+  .checklist li.is-missing {
+    @apply border-amber-300 bg-amber-50/60;
+  }
+
+  .checklist-mark {
+    @apply grid size-7 shrink-0 place-items-center rounded-full;
+  }
+
+  .checklist-mark svg {
+    @apply size-4;
+  }
+
+  .checklist li.is-ok .checklist-mark {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .checklist li.is-missing .checklist-mark {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .card-head-row {
+    @apply mb-3 flex flex-wrap items-center justify-between gap-2;
+  }
+
+  .open-card {
+    @apply border-l-4 border-l-amber-500;
+  }
+
+  .open-card.is-ready {
+    @apply border-l-emerald-600;
+  }
+
+  .quick-start {
+    @apply rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4;
+  }
+
+  .add-track {
+    @apply border-t border-slate-100 pt-4;
+  }
+
   /* Pengaturan pendaftaran dan Jadikan siswa (T120). */
   .option-cards {
     @apply grid gap-2.5 md:grid-cols-2;

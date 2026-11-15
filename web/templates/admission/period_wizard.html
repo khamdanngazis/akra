@@ -1,0 +1,170 @@
+{{define "title"}}{{if .IsNew}}Buat Gelombang{{else}}{{.StepTitle}} · {{.Period.Name}}{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .IsNew}}{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Gelombang pendaftaran" "/pendaftaran/periode" "Buat gelombang" ""}}
+{{else}}{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Gelombang pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Atur" ""}}{{end}}
+<div class="page-header">
+<div>
+<h1>{{if .IsNew}}Buat gelombang pendaftaran{{else}}Atur {{.Period.Name}}{{end}}</h1>
+<p class="muted">{{if .IsNew}}Empat langkah singkat. Gelombang disimpan sebagai draf sejak langkah pertama, jadi bisa dilanjutkan kapan saja.{{else}}{{.Period.KindLabel}} · {{template "admission_period_status" .Period}}{{end}}</p>
+</div>
+</div>
+
+<ol class="wizard-steps" aria-label="Langkah">
+{{range .Steps}}<li class="is-{{.State}}">{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
+</ol>
+
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+{{if eq .Step "dasar"}}
+{{if not .Years}}
+<section class="card"><p class="mb-0">Belum ada tahun ajaran. <a href="/pengaturan/tahun-ajaran/baru">Buat tahun ajaran</a> untuk siswa baru dulu.</p></section>
+{{else}}
+<form method="post" action="{{if .IsNew}}/pendaftaran/periode{{else}}/pendaftaran/periode/{{.Period.ID}}/atur/dasar{{end}}" class="card stack" novalidate x-data="{ kind: '{{if eq .Form.Kind "pindahan"}}pindahan{{else}}baru{{end}}' }">
+{{ csrfField }}
+<h2>1. Dasar</h2>
+{{if .IsNew}}
+<fieldset class="field{{if .Errors.kind}} has-error{{end}}">
+<legend>Untuk siapa gelombang ini?</legend>
+<div class="option-cards">
+<label class="option-card"><input type="radio" name="kind" value="baru" x-model="kind"{{if ne .Form.Kind "pindahan"}} checked{{end}}><span><strong>Siswa baru</strong><span class="block text-sm text-slate-600">Calon siswa masuk di tingkat awal, mis. kelas 1 atau 7.</span></span></label>
+<label class="option-card"><input type="radio" name="kind" value="pindahan" x-model="kind"{{if eq .Form.Kind "pindahan"}} checked{{end}}><span><strong>Siswa pindahan</strong><span class="block text-sm text-slate-600">Pindah dari sekolah lain. Formulirnya memuat sekolah asal, kelas terakhir, dan alasan pindah.</span></span></label>
+</div>
+<p class="hint">Jenis tidak bisa diubah setelah gelombang dibuat.</p>
+{{with .Errors.kind}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{else}}
+<p class="mb-0"><span class="muted">Jenis:</span> <strong>{{.Period.KindLabel}}</strong></p>
+{{end}}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama gelombang</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="80" placeholder="mis. Gelombang 1" autocomplete="off" required>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Tampil di formulir dan bukti pendaftaran.</p>{{end}}
+</div>
+<div class="field{{if .Errors.academic_year_id}} has-error{{end}}">
+<label for="academic_year_id">Tahun ajaran mulai sekolah</label>
+<select id="academic_year_id" name="academic_year_id">{{range .Years}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+{{with .Errors.academic_year_id}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Tahun ajaran saat siswa yang diterima mulai belajar, biasanya tahun ajaran depan.</p>{{end}}
+</div>
+</div>
+<div class="field-grid" x-show="kind !== 'pindahan'">
+<div class="field{{if .Errors.target_grade}} has-error{{end}}">
+<label for="target_grade">Masuk ke kelas</label>
+<select id="target_grade" name="target_grade">{{range .Grades}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+{{with .Errors.target_grade}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary">{{if .IsNew}}Buat dan lanjut{{else}}Simpan dan lanjut{{end}}</button>
+{{if not .IsNew}}<button type="submit" name="action" value="keluar" class="btn btn-ghost">Simpan dan keluar</button>{{end}}
+<a class="btn btn-ghost" href="{{if .IsNew}}/pendaftaran/periode{{else}}/pendaftaran/periode/{{.Period.ID}}{{end}}">Batal</a>
+</div>
+</form>
+{{end}}
+
+{{else if eq .Step "jadwal"}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/atur/jadwal" class="card stack" novalidate>
+{{ csrfField }}
+<h2>2. Jadwal &amp; biaya</h2>
+<div class="field-grid">
+<div class="field{{if .Errors.opens_on}} has-error{{end}}">
+<label for="opens_on">Formulir dibuka</label>
+<input id="opens_on" type="date" name="opens_on" value="{{.Form.OpensOn}}" required>
+{{with .Errors.opens_on}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.closes_on}} has-error{{end}}">
+<label for="closes_on">Formulir ditutup</label>
+<input id="closes_on" type="date" name="closes_on" value="{{.Form.ClosesOn}}" required>
+{{with .Errors.closes_on}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Orang tua bisa mengisi sampai akhir hari ini.</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.fee_amount}} has-error{{end}}">
+<label for="fee_amount">Biaya formulir <span class="muted">(kosong = gratis)</span></label>
+<input id="fee_amount" name="fee_amount" value="{{.Form.FeeAmount}}" inputmode="numeric" placeholder="mis. 150.000" autocomplete="off">
+{{with .Errors.fee_amount}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dicatat bendahara di menu Biaya Pendaftaran.</p>{{end}}
+</div>
+<div class="field">
+<p class="mb-1 text-sm font-semibold text-slate-700">Aturan biaya</p>
+<label class="choice"><input type="checkbox" name="fee_required"{{if .Form.FeeRequired}} checked{{end}}> Wajib lunas sebelum pendaftar diverifikasi</label>
+<p class="hint">Jika dicentang, TU tidak bisa memverifikasi pendaftar yang belum membayar.</p>
+</div>
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary">Simpan dan lanjut</button>
+<button type="submit" name="action" value="keluar" class="btn btn-ghost">Simpan dan keluar</button>
+</div>
+</form>
+
+{{else if eq .Step "jalur"}}
+<section class="card stack">
+<h2>3. Jalur pendaftaran</h2>
+<p class="hint">Calon siswa memilih satu jalur saat mendaftar, mis. Reguler, Prestasi, atau Afirmasi. Kuota dipakai saat menetapkan hasil di halaman Peringkat.</p>
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+{{if .Tracks}}
+<ul class="guardian-list">
+{{range .Tracks}}
+<li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
+<div x-show="!editing" class="flex flex-wrap items-center gap-2">
+<span class="min-w-0 flex-1"><strong>{{.Name}}</strong> <span class="muted">· {{if .Quota}}Kuota {{.Quota}}{{else}}Tanpa batas kuota{{end}}</span>{{if .UsesTest}} <span class="badge badge-info">Dengan tes</span>{{end}}</span>
+<button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/jalur/{{.ID}}/hapus">{{ csrfField }}<input type="hidden" name="kembali" value="atur"><button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
+</div>
+<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/jalur/{{.ID}}" class="stack" x-show="editing" x-cloak novalidate>
+{{ csrfField }}<input type="hidden" name="kembali" value="atur">
+{{template "admission_track_fields" dict "Form" .Form "Errors" .Errors "ID" .ID}}
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan jalur</button><button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button></div>
+</form>
+</li>
+{{end}}
+</ul>
+{{else}}
+<div class="quick-start">
+<p class="mb-2"><strong>Belum ada jalur.</strong> Kebanyakan sekolah cukup satu jalur tanpa tes.</p>
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/jalur">{{ csrfField }}<input type="hidden" name="kembali" value="atur"><input type="hidden" name="track_name" value="Reguler"><button type="submit" class="btn btn-primary btn-sm">Buat jalur Reguler tanpa tes</button></form>
+</div>
+{{end}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/jalur" class="stack add-track" novalidate>
+{{ csrfField }}<input type="hidden" name="kembali" value="atur">
+<h3>Tambah jalur{{if not .Tracks}} lain{{end}}</h3>
+{{template "admission_track_fields" dict "Form" .NewTrack "Errors" .NewTrackErrors "ID" "baru"}}
+<div class="action-row"><button type="submit" class="btn btn-ghost btn-sm">Tambah jalur</button></div>
+</form>
+<div class="action-row">
+{{if .Tracks}}<a class="btn btn-primary" href="/pendaftaran/periode/{{.Period.ID}}/atur/dokumen">Lanjut</a>{{else}}<button type="button" class="btn btn-primary" disabled>Lanjut</button><span class="muted small">Tambahkan minimal satu jalur dulu.</span>{{end}}
+<a class="btn btn-ghost" href="/pendaftaran/periode/{{.Period.ID}}">Keluar</a>
+</div>
+</section>
+
+{{else if eq .Step "dokumen"}}
+<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/atur/dokumen" class="stack" novalidate>
+{{ csrfField }}
+<section class="card stack">
+<h2>4. Dokumen &amp; buka</h2>
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+<fieldset class="field{{if .Errors.required_docs}} has-error{{end}}">
+<legend>Dokumen yang wajib diunggah orang tua</legend>
+<div class="check-grid">
+{{range .Docs}}<label class="choice"><input type="checkbox" name="required_docs" value="{{.Key}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>{{end}}
+</div>
+{{with .Errors.required_docs}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Foto dari HP cukup; dokumen yang belum ada bisa diunggah belakangan.</p>{{end}}
+</fieldset>
+</section>
+<section class="card">
+<h2>Sebelum dibuka</h2>
+{{template "admission_checklist" .Checklist}}
+<p class="hint mt-3">Formulir orang tua: <a href="/s/{{.SchoolCode}}{{.Period.FormPath}}" target="_blank" rel="noopener">/s/{{.SchoolCode}}{{.Period.FormPath}}</a> (buka di tab baru untuk melihat tampilannya).</p>
+</section>
+<div class="action-row">
+{{if eq .Period.Status "buka"}}
+<button type="submit" class="btn btn-primary">Simpan</button>
+{{else}}
+<button type="submit" name="action" value="buka" class="btn btn-primary"{{if not .Ready}} disabled{{end}}>Simpan dan buka pendaftaran</button>
+<button type="submit" class="btn btn-ghost">Simpan sebagai draf</button>
+{{end}}
+</div>
+</form>
+{{end}}
+{{end}}

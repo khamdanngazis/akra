@@ -12,9 +12,9 @@
 {{template "flash" .}}
 <form method="get" action="/pendaftaran/rekap" class="filter-bar filter-grid" x-data>
 <div class="field">
-<label for="periode">Periode</label>
+<label for="periode">Gelombang</label>
 <select id="periode" name="periode" @change="$el.form.submit()">
-<option value="">Semua periode</option>
+<option value="">Semua gelombang</option>
 {{range .Periods}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
 </select>
 </div>
@@ -33,7 +33,7 @@
 <h2>Per jalur</h2>
 {{if .Summary.ByTrack}}
 <div class="table-wrap"><table>
-<thead><tr><th>Periode · Jalur</th><th>Pendaftar</th><th>Diterima</th><th>Sisa kuota</th></tr></thead>
+<thead><tr><th>Gelombang · Jalur</th><th>Pendaftar</th><th>Diterima</th><th>Sisa kuota</th></tr></thead>
 <tbody>{{range .Summary.ByTrack}}<tr><td>{{.Period}} · {{.Track}}</td><td>{{.Submitted}}</td><td>{{.Accepted}}</td><td>{{if lt .Remaining 0}}Tanpa batas{{else}}{{.Remaining}} dari {{.Quota}}{{end}}</td></tr>{{end}}</tbody>
 </table></div>
 {{else}}<p class="muted">Belum ada jalur.</p>{{end}}

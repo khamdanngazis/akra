@@ -20,7 +20,7 @@ import (
 const (
 	periodsPath   = "/pendaftaran/periode"
 	maxPeriodForm = 16 << 10
-	msgPeriodGone = "Periode pendaftaran yang Anda cari tidak ada atau bukan milik sekolah Anda."
+	msgPeriodGone = "Gelombang pendaftaran yang Anda cari tidak ada atau bukan milik sekolah Anda."
 )
 
 // Handler melayani halaman pendaftaran untuk staf sekolah.
@@ -137,10 +137,14 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Post("/logo", h.uploadLogo)
 		// Peran: admin_tu.
 		r.Post("/logo/hapus", h.removeLogo)
-		// Peran: admin_tu.
+		// Peran: admin_tu. Tautan lama ke form ubah diarahkan ke wizard.
 		r.Get("/{id}/ubah", h.editPeriod)
+		// Peran: admin_tu. Wizard gelombang bertahap (T117).
+		r.Get("/{id}/atur/{step}", h.wizardStep)
 		// Peran: admin_tu.
-		r.Post("/{id}", h.updatePeriod)
+		r.Post("/{id}/atur/{step}", h.saveWizardStep)
+		// Peran: admin_tu. Salin gelombang (T117).
+		r.Post("/{id}/salin", h.copyPeriod)
 		// Peran: admin_tu.
 		r.Post("/{id}/status", h.setStatus)
 		// Peran: admin_tu.
@@ -190,16 +194,6 @@ type periodListView struct {
 	Error      string
 }
 
-type periodFormView struct {
-	User   auth.Identity
-	IsNew  bool
-	ID     string
-	Form   PeriodForm
-	Years  []option
-	Docs   []docOption
-	Errors map[string]string
-}
-
 type docOption struct {
 	Key, Label string
 	Checked    bool
@@ -225,8 +219,12 @@ type periodDetailView struct {
 	EditTrack   string
 	// NewTrackErrors adalah error form tambah jalur.
 	NewTrackErrors map[string]string
-	Flash          string
-	Error          string
+	// Checklist dan Ready: daftar periksa sebelum dibuka (T117).
+	Checklist []checkItem
+	Ready     bool
+	TestCount int
+	Flash     string
+	Error     string
 }
 
 // publicFormPath mengembalikan alamat formulir publik untuk jenis periode.
@@ -319,118 +317,14 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 		h.serverError(w, r, "school code", err)
 		return
 	}
+	tests, err := h.selection().Tests(r.Context(), id.SchoolID, p.ID)
+	if err != nil {
+		h.serverError(w, r, "list tests", err)
+		return
+	}
+	view.TestCount = len(tests)
+	view.Checklist, view.Ready = periodChecklist(p, tests, h.periods.Today())
 	h.render.Render(w, r, status, "admission/period_detail", view)
-}
-
-func (h *Handler) newPeriod(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	h.renderForm(w, r, periodFormView{User: id, IsNew: true, Form: PeriodForm{TargetGrade: "1", Kind: KindNew}}, http.StatusOK)
-}
-
-func (h *Handler) editPeriod(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	p, err := h.periods.Get(r.Context(), id.SchoolID, chi.URLParam(r, "id"))
-	if errors.Is(err, ErrNotFound) {
-		page.NotFound(h.render, w, r, id, msgPeriodGone)
-		return
-	}
-	if err != nil {
-		h.serverError(w, r, "get period", err)
-		return
-	}
-	f := PeriodForm{
-		AcademicYearID: p.AcademicYearID, Name: p.Name, Kind: p.Kind, TargetGrade: strconv.Itoa(p.TargetGrade),
-		OpensOn: p.OpensOn.Format(dateLayout), ClosesOn: p.ClosesOn.Format(dateLayout),
-		FeeRequired: p.FeeRequiredBeforeVerify, RequiredDocs: p.RequiredDocs,
-	}
-	if p.FeeAmount > 0 {
-		f.FeeAmount = money.Group(p.FeeAmount)
-	}
-	h.renderForm(w, r, periodFormView{User: id, ID: p.ID, Form: f}, http.StatusOK)
-}
-
-func (h *Handler) renderForm(w http.ResponseWriter, r *http.Request, view periodFormView, status int) {
-	years, err := school.ListAcademicYears(r.Context(), h.db, view.User.SchoolID)
-	if err != nil {
-		h.serverError(w, r, "list academic years", err)
-		return
-	}
-	for _, y := range years {
-		label := y.Name
-		if y.IsActive {
-			label += " (aktif)"
-		}
-		sel := y.ID == view.Form.AcademicYearID || (view.Form.AcademicYearID == "" && y.IsActive)
-		view.Years = append(view.Years, option{Value: y.ID, Label: label, Selected: sel})
-	}
-	for _, d := range Docs {
-		checked := false
-		for _, k := range view.Form.RequiredDocs {
-			checked = checked || k == d.Key
-		}
-		view.Docs = append(view.Docs, docOption{Key: d.Key, Label: d.Label, Checked: checked})
-	}
-	h.render.Render(w, r, status, "admission/period_form", view)
-}
-
-func (h *Handler) parsePeriod(w http.ResponseWriter, r *http.Request) (PeriodForm, bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return PeriodForm{}, false
-	}
-	p := r.PostForm
-	return PeriodForm{
-		AcademicYearID: p.Get("academic_year_id"), Name: p.Get("name"), Kind: p.Get("kind"), TargetGrade: p.Get("target_grade"),
-		OpensOn: p.Get("opens_on"), ClosesOn: p.Get("closes_on"), FeeAmount: p.Get("fee_amount"),
-		FeeRequired: p.Has("fee_required"), RequiredDocs: p["required_docs"],
-	}, true
-}
-
-func (h *Handler) createPeriod(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	f, ok := h.parsePeriod(w, r)
-	if !ok {
-		return
-	}
-	p, err := h.periods.Create(r.Context(), actorFrom(r, id), f)
-	if h.periodFormError(w, r, err, periodFormView{User: id, IsNew: true, Form: f}) {
-		return
-	}
-	auth.SetFlash(r.Context(), h.sessions, "Periode "+p.Name+" dibuat. Tambahkan jalur pendaftaran sebelum membukanya.")
-	http.Redirect(w, r, periodsPath+"/"+p.ID, http.StatusSeeOther)
-}
-
-func (h *Handler) updatePeriod(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
-	periodID := chi.URLParam(r, "id")
-	f, ok := h.parsePeriod(w, r)
-	if !ok {
-		return
-	}
-	p, err := h.periods.Update(r.Context(), actorFrom(r, id), periodID, f)
-	if h.periodFormError(w, r, err, periodFormView{User: id, ID: periodID, Form: f}) {
-		return
-	}
-	auth.SetFlash(r.Context(), h.sessions, "Periode "+p.Name+" diubah.")
-	http.Redirect(w, r, periodsPath+"/"+p.ID, http.StatusSeeOther)
-}
-
-func (h *Handler) periodFormError(w http.ResponseWriter, r *http.Request, err error, view periodFormView) bool {
-	if err == nil {
-		return false
-	}
-	var ve *ValidationError
-	switch {
-	case errors.As(err, &ve):
-		view.Errors = ve.Fields
-		h.renderForm(w, r, view, http.StatusBadRequest)
-	case errors.Is(err, ErrNotFound):
-		page.NotFound(h.render, w, r, view.User, msgPeriodGone)
-	default:
-		h.serverError(w, r, "save period", err)
-	}
-	return true
 }
 
 func (h *Handler) setStatus(w http.ResponseWriter, r *http.Request) {
@@ -441,11 +335,21 @@ func (h *Handler) setStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
+	if r.PostForm.Get("status") == StatusOpen {
+		cur, ok := h.loadPeriod(w, r, id, periodID)
+		if !ok {
+			return
+		}
+		if cur.Status != StatusOpen {
+			h.openPeriod(w, r, id, cur, false)
+			return
+		}
+	}
 	p, err := h.periods.SetStatus(r.Context(), actorFrom(r, id), periodID, r.PostForm.Get("status"))
 	var ve *ValidationError
 	switch {
 	case err == nil:
-		msg := map[string]string{StatusOpen: "Pendaftaran " + p.Name + " dibuka.", StatusClosed: "Pendaftaran " + p.Name + " ditutup.", StatusDraft: "Periode " + p.Name + " dikembalikan ke draf."}[p.Status]
+		msg := map[string]string{StatusOpen: "Pendaftaran " + p.Name + " dibuka.", StatusClosed: "Pendaftaran " + p.Name + " ditutup.", StatusDraft: p.Name + " dikembalikan ke draf."}[p.Status]
 		auth.SetFlash(r.Context(), h.sessions, msg)
 		http.Redirect(w, r, periodsPath+"/"+periodID, http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
@@ -465,12 +369,12 @@ func (h *Handler) deletePeriod(w http.ResponseWriter, r *http.Request) {
 	err := h.periods.Delete(r.Context(), actorFrom(r, id), periodID)
 	switch {
 	case err == nil:
-		auth.SetFlash(r.Context(), h.sessions, "Periode dihapus.")
+		auth.SetFlash(r.Context(), h.sessions, "Gelombang dihapus.")
 		http.Redirect(w, r, periodsPath, http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgPeriodGone)
 	case errors.Is(err, ErrInUse):
-		h.renderDetail(w, r, id, periodID, http.StatusConflict, "", TrackForm{}, nil, "Hanya periode berstatus draf dan belum punya pendaftar yang bisa dihapus. Tutup periode ini jika tidak dipakai lagi.")
+		h.renderDetail(w, r, id, periodID, http.StatusConflict, "", TrackForm{}, nil, "Hanya gelombang berstatus draf dan belum punya pendaftar yang bisa dihapus. Tutup gelombang ini jika tidak dipakai lagi.")
 	default:
 		h.serverError(w, r, "delete period", err)
 	}
@@ -515,11 +419,16 @@ func (h *Handler) saveTrack(w http.ResponseWriter, r *http.Request, trackID stri
 			verb = "diubah"
 		}
 		auth.SetFlash(r.Context(), h.sessions, "Jalur "+t.Name+" "+verb+".")
-		http.Redirect(w, r, periodsPath+"/"+periodID+"#jalur", http.StatusSeeOther)
+		http.Redirect(w, r, h.trackReturn(r, periodID), http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgPeriodGone)
 	case errors.As(err, &ve):
-		h.renderDetail(w, r, id, periodID, http.StatusBadRequest, trackID, f, ve.Fields, "")
+		// Form jalur hanya ada di langkah jalur wizard.
+		view := wizardView{NewTrack: f, NewTrackErrors: ve.Fields}
+		if trackID != "" {
+			view = wizardView{EditTrack: trackID, EditForm: f, EditErrors: ve.Fields}
+		}
+		h.renderWizardTracks(w, r, id, periodID, http.StatusBadRequest, view)
 	default:
 		h.serverError(w, r, "save track", err)
 	}
@@ -528,20 +437,36 @@ func (h *Handler) saveTrack(w http.ResponseWriter, r *http.Request, trackID stri
 func (h *Handler) deleteTrack(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	periodID := chi.URLParam(r, "id")
+	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
+	_ = r.ParseForm()
 	err := h.periods.DeleteTrack(r.Context(), actorFrom(r, id), periodID, chi.URLParam(r, "trackID"))
+	msg := ""
 	switch {
 	case err == nil:
 		auth.SetFlash(r.Context(), h.sessions, "Jalur dihapus.")
-		http.Redirect(w, r, periodsPath+"/"+periodID+"#jalur", http.StatusSeeOther)
+		http.Redirect(w, r, h.trackReturn(r, periodID), http.StatusSeeOther)
+		return
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgPeriodGone)
+		return
 	case errors.Is(err, ErrNoTracks):
-		h.renderDetail(w, r, id, periodID, http.StatusConflict, "", TrackForm{}, nil, "Periode yang sedang dibuka harus punya minimal satu jalur.")
+		msg = "Gelombang yang sedang dibuka harus punya minimal satu jalur."
 	case errors.Is(err, ErrInUse):
-		h.renderDetail(w, r, id, periodID, http.StatusConflict, "", TrackForm{}, nil, "Jalur yang sudah punya pendaftar tidak bisa dihapus.")
+		msg = "Jalur yang sudah punya pendaftar tidak bisa dihapus."
 	default:
 		h.serverError(w, r, "delete track", err)
+		return
 	}
+	h.renderWizardTracks(w, r, id, periodID, http.StatusConflict, wizardView{Error: msg})
+}
+
+// trackReturn adalah tujuan setelah aksi jalur: langkah jalur wizard atau
+// detail gelombang.
+func (h *Handler) trackReturn(r *http.Request, periodID string) string {
+	if fromWizard(r) {
+		return periodsPath + "/" + periodID + "/atur/" + stepTracks
+	}
+	return periodsPath + "/" + periodID + "#jalur"
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, op string, err error) {
