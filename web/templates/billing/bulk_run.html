@@ -2,7 +2,7 @@
 {{define "head"}}{{if not .Run.Finished}}<meta http-equiv="refresh" content="2">{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/keuangan/tagihan-massal">← Tagihan Massal</a></p>
+{{template "back_nav" crumbs "Tagihan Massal" "/keuangan/tagihan-massal" "Hasil" ""}}
 <div class="page-header">
 <div>
 <h1>Tagihan {{.Run.FeeTypeName}} · {{.Period}}</h1>

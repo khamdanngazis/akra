@@ -2,7 +2,7 @@
 {{define "head"}}{{if .Batch.Running}}<meta http-equiv="refresh" content="3">{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb">{{if .Batch.Grades}}<a href="/impor/nilai">← Impor nilai</a>{{else}}<a href="/impor/siswa">← Impor siswa</a>{{end}}</p>
+{{if .Batch.Grades}}{{template "back_nav" crumbs "Impor siswa" "/impor/siswa" "Impor nilai" "/impor/nilai" "Hasil unggahan" ""}}{{else}}{{template "back_nav" crumbs "Siswa" "/siswa" "Impor siswa" "/impor/siswa" "Hasil unggahan" ""}}{{end}}
 <div class="page-header">
 <div class="min-w-0">
 <div class="flex flex-wrap items-center gap-3"><h1 class="m-0">Hasil unggahan</h1><span class="badge {{if eq .Batch.Status "selesai"}}badge-success{{else if eq .Batch.Status "gagal"}}badge-danger{{else if eq .Batch.Status "berjalan"}}badge-warning{{else}}badge-info{{end}}">{{.StatusLabel}}</span></div>

@@ -1,7 +1,7 @@
 {{define "title"}}Pratinjau Tagihan Massal{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/keuangan/tagihan-massal">← Tagihan Massal</a></p>
+{{template "back_nav" crumbs "Tagihan Massal" "/keuangan/tagihan-massal" "Pratinjau" ""}}
 <h1>Pratinjau</h1>
 <p class="muted">Belum ada yang disimpan. Periksa ringkasan di bawah, lalu tekan <strong>Buat tagihan</strong>.</p>
 

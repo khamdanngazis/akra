@@ -2,7 +2,7 @@
 {{define "head"}}{{if .CanEdit}}<script src="{{ asset "js/wilayah.js" }}"></script>{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/siswa/{{.Student.ID}}">← {{.Student.FullName}}</a></p>
+{{template "back_nav" crumbs "Siswa" "/siswa" .Student.FullName (print "/siswa/" .Student.ID) "Data rinci" ""}}
 <div class="page-header">
 <div>
 <h1>Data rinci (Dapodik)</h1>

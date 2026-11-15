@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{$g := .Grades}}
-<p class="breadcrumb"><a href="/portal/siswa/{{$g.Child.ID}}">← {{$g.Child.FullName}}</a></p>
+{{template "back_nav" crumbs "Anak Saya" "/portal" $g.Child.FullName (print "/portal/siswa/" $g.Child.ID) "Nilai dan rapor" ""}}
 <h1>Nilai dan Rapor</h1>
 <p class="muted">{{$g.Child.FullName}} · NIS {{$g.Child.NIS}}{{if $g.HasClass}} · kelas {{$g.Child.ClassName}}{{end}}</p>
 {{template "flash" .}}

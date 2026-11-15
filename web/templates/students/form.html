@@ -1,7 +1,7 @@
 {{define "title"}}{{if .IsNew}}Tambah Siswa{{else}}Ubah Data Siswa{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="{{if .IsNew}}/siswa{{else}}/siswa/{{.ID}}{{end}}">← {{if .IsNew}}Siswa{{else}}Detail siswa{{end}}</a></p>
+{{if .IsNew}}{{template "back_nav" crumbs "Siswa" "/siswa" "Tambah" ""}}{{else}}{{template "back_nav" crumbs "Siswa" "/siswa" (or .Form.FullName "Detail siswa") (print "/siswa/" .ID) "Ubah" ""}}{{end}}
 <section class="card form-card">
 <h1>{{if .IsNew}}Tambah Siswa{{else}}Ubah Data Siswa{{end}}</h1>
 {{template "flash" .}}

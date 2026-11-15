@@ -1,7 +1,7 @@
 {{define "title"}}Rapor belum bisa dicetak{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/nilai/rekap?kelas={{.Class.ID}}">← Rekap kelas {{.Class.Name}}</a></p>
+{{template "back_nav" crumbs "Rekap Nilai" "/nilai/rekap" (print "Kelas " .Class.Name) (print "/nilai/rekap?kelas=" .Class.ID) "Rapor" ""}}
 <div class="page-header">
 <div>
 <h1>Rapor belum bisa dicetak</h1>

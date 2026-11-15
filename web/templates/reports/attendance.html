@@ -1,6 +1,7 @@
 {{define "title"}}Rekap Kehadiran{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
+{{template "back_nav" crumbs "Laporan" "/laporan" "Rekap kehadiran" ""}}
 <h1>Rekap Kehadiran</h1>
 <p class="muted">Rekap per siswa, sama dengan rekap kelas. Rentang maksimal satu tahun ajaran. Persentase kehadiran = hadir dibagi semua catatan (hadir, sakit, izin, alpa).</p>
 {{template "flash" .}}

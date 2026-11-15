@@ -1,7 +1,7 @@
 {{define "title"}}Impor Siswa{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/siswa">← Siswa</a></p>
+{{template "back_nav" crumbs "Siswa" "/siswa" "Impor siswa" ""}}
 <div class="page-header">
 <div>
 <h1>Impor siswa</h1>

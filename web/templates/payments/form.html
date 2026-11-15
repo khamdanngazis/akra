@@ -21,7 +21,7 @@
 <div x-ref="results" aria-live="polite">{{template "payment_student_results" .Search}}</div>
 </section>
 {{else}}
-<p class="breadcrumb"><a href="/keuangan/pembayaran/baru">← Cari siswa lain</a></p>
+{{template "back_nav" crumbs "Cari siswa" "/keuangan/pembayaran/baru" .Student.Name ""}}
 <h1>Catat Pembayaran</h1>
 <p class="muted"><strong>{{.Student.Name}}</strong> · NIS {{.Student.NIS}} {{template "student_status" .Student.Status}}</p>
 {{template "flash" .}}

@@ -1,7 +1,7 @@
 {{define "title"}}Pengumuman{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/portal">← Portal</a></p>
+{{template "back_nav" crumbs "Anak Saya" "/portal" "Pengumuman" ""}}
 <h1>Pengumuman</h1>
 {{template "flash" .}}
 {{if .Items}}

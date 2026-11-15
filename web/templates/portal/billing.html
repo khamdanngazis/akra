@@ -1,7 +1,7 @@
 {{define "title"}}Tagihan {{.Child.FullName}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/portal/siswa/{{.Child.ID}}">← {{.Child.FullName}}</a></p>
+{{template "back_nav" crumbs "Anak Saya" "/portal" .Child.FullName (print "/portal/siswa/" .Child.ID) "Tagihan" ""}}
 <h1>Tagihan dan Pembayaran</h1>
 <p class="muted">{{.Child.FullName}} · NIS {{.Child.NIS}}</p>
 {{template "flash" .}}

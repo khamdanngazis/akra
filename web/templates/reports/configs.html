@@ -1,7 +1,7 @@
 {{define "title"}}Konfigurasi Laporan{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/laporan">← Laporan</a></p>
+{{template "back_nav" crumbs "Laporan" "/laporan" "Konfigurasi" ""}}
 <div class="page-header">
 <div>
 <h1>Konfigurasi Laporan</h1>

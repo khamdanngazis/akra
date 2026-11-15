@@ -26,7 +26,7 @@
 {{end}}
 
 {{else}}
-<p class="breadcrumb"><a href="/nilai/input">← Kelas dan mapel saya</a></p>
+{{template "back_nav" crumbs "Input Nilai" "/nilai/input" (print .Page.Subject.Name " · " .Page.Class.Name) ""}}
 <div class="page-header">
 <div>
 <h1>Nilai {{.Page.Subject.Name}} · {{.Page.Class.Name}}</h1>
