@@ -175,11 +175,12 @@ func TestEnrollHandler(t *testing.T) {
 	apps := NewApplicantService(e.tx, pii.DevKeyring(), e.svc)
 	a := e.accepted(t, apps, p, tr, nil)
 	body := e.do(http.MethodGet, "/pendaftaran/terima", "admin_tu", nil).Body.String()
-	if !strings.Contains(body, a.FullName) || !strings.Contains(body, "2027001") {
+	if !strings.Contains(body, a.FullName) || !strings.Contains(body, "2027001") || !strings.Contains(body, "Belum") {
 		t.Errorf("enroll page content")
 	}
-	if rec := e.do(http.MethodPost, "/pendaftaran/format-nis", "admin_tu", url.Values{"nis_format": {"{yyyy}"}}); rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid format: %d", rec.Code)
+	// Mode daftar ulang: yang belum daftar ulang tidak tercentang otomatis.
+	if strings.Contains(body, `value="`+a.ID+`" checked`) {
+		t.Error("not re-registered applicant pre-checked")
 	}
 	if rec := e.do(http.MethodPost, "/pendaftaran/terima", "admin_tu", url.Values{}); rec.Code != http.StatusBadRequest {
 		t.Errorf("no picks: %d", rec.Code)
@@ -193,5 +194,139 @@ func TestEnrollHandler(t *testing.T) {
 	}
 	if rec := e.do(http.MethodPost, "/pendaftaran/terima", "kepala_sekolah", url.Values{"pick": {a.ID}}); rec.Code != http.StatusForbidden {
 		t.Errorf("principal enroll: %d", rec.Code)
+	}
+}
+
+func TestIncrDigitsAndContinueNIS(t *testing.T) {
+	for in, want := range map[string]string{"2526118": "2526119", "0099": "0100", "999": "1000", "0": "1"} {
+		if got := incrDigits(in); got != want {
+			t.Errorf("incrDigits(%q) = %q, want %q", in, got, want)
+		}
+	}
+	e := newEnv(t)
+	ctx := context.Background()
+	p, tr := e.openPeriod(t)
+	keys := pii.DevKeyring()
+	apps := NewApplicantService(e.tx, keys, e.svc)
+	a := e.accepted(t, apps, p, tr, nil)
+	if err := SaveAdmissionSettings(ctx, e.tx, e.actor, AdmissionSettings{ReRegistration: true, NISFormat: NISContinue}); err != nil {
+		t.Fatal(err)
+	}
+	// Belum ada NIS angka: gagal dengan pesan di field nis.
+	var ve *ValidationError
+	if _, _, _, err := NewEnroller(e.tx, keys, apps).Enroll(ctx, e.actor, a.ID, EnrollOptions{}); !errors.As(err, &ve) || ve.Fields["nis"] == "" {
+		t.Errorf("continue without numeric NIS: %v", err)
+	}
+	for _, nis := range []string{"999", "2526118", "S-01"} {
+		if _, err := e.tx.Exec(ctx, `INSERT INTO students (school_id, nis, full_name) VALUES ($1, $2, 'Lama')`, e.schoolA, nis); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, _ := PeekNIS(ctx, e.tx, e.schoolA, NISContinue, 2027); got != "2526119" {
+		t.Errorf("peek continue = %q", got)
+	}
+	if _, nis, _, err := NewEnroller(e.tx, keys, apps).Enroll(ctx, e.actor, a.ID, EnrollOptions{}); err != nil || nis != "2526119" {
+		t.Errorf("continue NIS = %q, %v", nis, err)
+	}
+}
+
+// TestAcceptWithoutReRegistration: sekolah tanpa daftar ulang, pendaftar
+// langsung menjadi siswa saat diterima, dari detail maupun penetapan hasil.
+func TestAcceptWithoutReRegistration(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	p, tr := e.openPeriod(t)
+	apps := NewApplicantService(e.tx, pii.DevKeyring(), e.svc)
+	if err := SaveAdmissionSettings(ctx, e.tx, e.actor, AdmissionSettings{ReRegistration: false, NISFormat: DefaultNISFormat}); err != nil {
+		t.Fatal(err)
+	}
+	a := e.accepted(t, apps, p, tr, nil)
+	if a.StudentID == "" {
+		t.Fatal("accepted applicant was not enrolled")
+	}
+	b := e.submitted(t, apps, p, tr)
+	if _, err := apps.Transition(ctx, e.actor, b.ID, ApplicantVerified, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := apps.ApplyResults(ctx, e.actor, p.ID, map[string]string{b.ID: ApplicantAccepted}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := apps.Load(ctx, e.schoolA, b.ID); got.StudentID == "" {
+		t.Error("ApplyResults did not enroll")
+	}
+	// Gagal menjadikan siswa membatalkan penerimaan juga.
+	if err := SaveAdmissionSettings(ctx, e.tx, e.actor, AdmissionSettings{ReRegistration: false, NISFormat: NISContinue}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.tx.Exec(ctx, `UPDATE students SET nis = 'X' || nis WHERE school_id = $1`, e.schoolA); err != nil {
+		t.Fatal(err)
+	}
+	c := e.submitted(t, apps, p, tr)
+	if _, err := apps.Transition(ctx, e.actor, c.ID, ApplicantVerified, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := apps.Transition(ctx, e.actor, c.ID, ApplicantAccepted, ""); err == nil {
+		t.Error("accept succeeded although enrollment failed")
+	}
+	if got, _ := apps.Load(ctx, e.schoolA, c.ID); got.Status != ApplicantVerified {
+		t.Errorf("status after failed auto-enroll = %s", got.Status)
+	}
+}
+
+func TestSettingsAndEnrollOneHandler(t *testing.T) {
+	e := newEnv(t)
+	p, tr := e.openPeriod(t)
+	apps := NewApplicantService(e.tx, pii.DevKeyring(), e.svc)
+	a := e.accepted(t, apps, p, tr, nil)
+
+	body := e.do(http.MethodGet, "/pendaftaran/pengaturan", "kepala_sekolah", nil).Body.String()
+	if !strings.Contains(body, "Dengan daftar ulang") || !strings.Contains(body, `data-mode="tahun"`) || strings.Contains(body, "Simpan pengaturan") {
+		t.Errorf("settings page (principal):\n%s", body)
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/pengaturan", "admin_tu", url.Values{"mode": {"awalan"}, "seq_digits": {"4"}, "prefix": {""}}); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Awalan wajib") {
+		t.Errorf("empty prefix: %d", rec.Code)
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/pengaturan", "admin_tu", url.Values{"reregistration": {"true"}, "mode": {"awalan"}, "seq_digits": {"4"}, "prefix": {"S-"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("save settings: %d", rec.Code)
+	}
+	if f, _ := NISFormat(context.Background(), e.tx, e.schoolA); f != "S-{seq:4}" {
+		t.Errorf("format = %q", f)
+	}
+
+	// Detail: form Jadikan siswa dengan perkiraan NIS, dan tanda daftar ulang.
+	body = e.do(http.MethodGet, "/pendaftaran/"+a.ID, "admin_tu", nil).Body.String()
+	if !strings.Contains(body, "Otomatis: S-0001") || !strings.Contains(body, "Belum daftar ulang") || !strings.Contains(body, "menunggu daftar ulang") {
+		t.Errorf("detail enroll form missing")
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/daftar-ulang", "admin_tu", url.Values{"done": {"1"}}); rec.Code != http.StatusSeeOther {
+		t.Errorf("mark reregistered: %d", rec.Code)
+	}
+	body = e.do(http.MethodGet, "/pendaftaran/"+a.ID, "admin_tu", nil).Body.String()
+	if !strings.Contains(body, "Sudah daftar ulang") {
+		t.Error("reregistered badge missing")
+	}
+	if body := e.do(http.MethodGet, "/pendaftaran/terima", "admin_tu", nil).Body.String(); !strings.Contains(body, `value="`+a.ID+`" checked`) {
+		t.Error("re-registered applicant not pre-checked")
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/jadikan-siswa", "admin_tu", url.Values{"nis": {""}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("enroll one: %d", rec.Code)
+	}
+	body = e.do(http.MethodGet, "/pendaftaran/"+a.ID, "admin_tu", nil).Body.String()
+	var nis string
+	if err := e.tx.QueryRow(context.Background(), `SELECT s.nis FROM applicants a JOIN students s ON s.id = a.student_id WHERE a.id = $1`, a.ID).Scan(&nis); err != nil || nis != "S-0001" {
+		t.Errorf("enrolled NIS = %q, %v", nis, err)
+	}
+	if !strings.Contains(body, "Buka data siswa") {
+		t.Error("student link missing after enroll one")
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/jadikan-siswa", "admin_tu", nil); rec.Code != http.StatusConflict {
+		t.Errorf("enroll one twice: %d", rec.Code)
+	}
+	if rec := e.do(http.MethodPost, "/pendaftaran/"+a.ID+"/daftar-ulang", "admin_tu", url.Values{"done": {"1"}}); rec.Code != http.StatusConflict {
+		t.Errorf("mark enrolled applicant: %d", rec.Code)
+	}
+	// Halaman massal kosong menjelaskan langkah berikutnya.
+	if body := e.do(http.MethodGet, "/pendaftaran/terima", "admin_tu", nil).Body.String(); !strings.Contains(body, "Terima pendaftar dulu") {
+		t.Error("empty enroll page guidance missing")
 	}
 }

@@ -67,6 +67,8 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/", h.listApplicants)
 			// Peran: admin_tu, kepala_sekolah (hanya baca). Penerimaan (T96).
 			r.Get("/terima", h.enrollPage)
+			// Peran: admin_tu, kepala_sekolah (hanya baca). Pengaturan pendaftaran (T120).
+			r.Get("/pengaturan", h.settingsPage)
 			// Peran: admin_tu, kepala_sekolah. Rekap (T97).
 			r.Get("/rekap", h.summary)
 			// Peran: admin_tu, kepala_sekolah. Memuat NIK; dicatat di audit.
@@ -86,8 +88,12 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Post("/{id}/hapus-data", h.eraseApplicant)
 			// Peran: admin_tu.
 			r.Post("/terima", h.enroll)
+			// Peran: admin_tu. Pengaturan pendaftaran (T120).
+			r.Post("/pengaturan", h.saveSettings)
 			// Peran: admin_tu.
-			r.Post("/format-nis", h.saveNISFormat)
+			r.Post("/{id}/jadikan-siswa", h.enrollOne)
+			// Peran: admin_tu.
+			r.Post("/{id}/daftar-ulang", h.markReRegistered)
 			// Peran: admin_tu. Input pendaftar oleh TU (T92).
 			r.Get("/baru", h.staffNew)
 			// Peran: admin_tu.

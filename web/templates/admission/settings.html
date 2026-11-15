@@ -1,0 +1,114 @@
+{{define "title"}}Pengaturan Pendaftaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+<div class="page-header">
+<div>
+<h1>Pengaturan pendaftaran</h1>
+<p class="muted">Berlaku untuk semua gelombang pendaftaran sekolah ini.</p>
+</div>
+</div>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+
+<form method="post" action="/pendaftaran/pengaturan" class="stack" novalidate
+  x-data="nisBuilder({{.Year}}, '{{.ContinueNext}}')" data-mode="{{.Mode}}" data-year-digits="{{.YearDigits}}" data-seq="{{.SeqDigits}}" data-prefix="{{.Prefix}}" data-custom="{{.Custom}}">
+{{ csrfField }}
+<section class="card">
+<h2>Cara menjadikan siswa</h2>
+<p class="hint">Menentukan apa yang terjadi setelah pendaftar ditetapkan <strong>Diterima</strong>.</p>
+<div class="option-cards">
+<label class="option-card">
+<input type="radio" name="reregistration" value="true"{{if .ReRegistration}} checked{{end}}{{if not .CanEdit}} disabled{{end}}>
+<span><strong>Dengan daftar ulang</strong> <span class="badge">Bawaan</span>
+<span class="block text-sm text-slate-600">Pendaftar diterima menunggu orang tua daftar ulang (dokumen asli, pembayaran, dsb.). TU menandai yang sudah daftar ulang, lalu menjadikannya siswa. Yang tidak datang bisa ditandai mundur dan kursinya diberikan ke cadangan.</span></span>
+</label>
+<label class="option-card">
+<input type="radio" name="reregistration" value="false"{{if not .ReRegistration}} checked{{end}}{{if not .CanEdit}} disabled{{end}}>
+<span><strong>Langsung saat diterima</strong>
+<span class="block text-sm text-slate-600">Begitu diterima, pendaftar otomatis menjadi siswa dengan NIS otomatis. Kelas diatur belakangan. Jika ternyata tidak masuk, keluarkan lewat data siswa.</span></span>
+</label>
+</div>
+</section>
+
+<section class="card">
+<h2>Pola NIS otomatis</h2>
+<p class="hint">Dipakai saat NIS tidak diisi manual ketika menjadikan siswa. NIS yang sudah dipakai otomatis dilewati.</p>
+<div class="option-cards">
+<label class="option-card"><input type="radio" name="mode" value="tahun" x-model="mode"{{if not $.CanEdit}} disabled{{end}}>
+<span><strong>Tahun + nomor urut</strong><span class="block text-sm text-slate-600">Tahun mulai tahun ajaran diikuti nomor urut, mis. 2027001.</span></span></label>
+<label class="option-card"><input type="radio" name="mode" value="awalan" x-model="mode"{{if not $.CanEdit}} disabled{{end}}>
+<span><strong>Awalan tetap + nomor urut</strong><span class="block text-sm text-slate-600">Mis. S-0001, S-0002.</span></span></label>
+<label class="option-card"><input type="radio" name="mode" value="lanjut" x-model="mode"{{if not $.CanEdit}} disabled{{end}}>
+<span><strong>Lanjutkan dari NIS terakhir</strong><span class="block text-sm text-slate-600">{{if .LastNIS}}NIS angka terbesar sekarang {{.LastNIS}}, jadi berikutnya {{.ContinueNext}}.{{else}}Belum ada siswa dengan NIS angka; pilihan ini baru bisa dipakai setelah ada.{{end}}</span></span></label>
+<label class="option-card"><input type="radio" name="mode" value="lanjutan" x-model="mode"{{if not $.CanEdit}} disabled{{end}}>
+<span><strong>Pola sendiri (lanjutan)</strong><span class="block text-sm text-slate-600">Untuk pola khusus, mis. {yy}.{seq:4}.</span></span></label>
+</div>
+{{with .Errors.mode}}<p class="field-error">{{.}}</p>{{end}}
+
+<div class="field-grid" x-show="mode === 'tahun'" x-cloak>
+<div class="field">
+<label for="year_digits">Tahun</label>
+<select id="year_digits" name="year_digits" x-model="yearDigits"{{if not .CanEdit}} disabled{{end}}><option value="4">4 digit ({{.Year}})</option><option value="2">2 digit</option></select>
+</div>
+</div>
+<div class="field-grid" x-show="mode === 'awalan'" x-cloak>
+<div class="field{{if .Errors.prefix}} has-error{{end}}">
+<label for="prefix">Awalan</label>
+<input id="prefix" name="prefix" x-model="prefix" maxlength="20" autocomplete="off" placeholder="mis. S-"{{if not .CanEdit}} disabled{{end}}>
+{{with .Errors.prefix}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field-grid" x-show="mode === 'tahun' || mode === 'awalan'" x-cloak>
+<div class="field{{if .Errors.seq_digits}} has-error{{end}}">
+<label for="seq_digits">Jumlah digit nomor urut</label>
+<select id="seq_digits" name="seq_digits" x-model="seq"{{if not .CanEdit}} disabled{{end}}><option value="2">2 digit</option><option value="3">3 digit</option><option value="4">4 digit</option><option value="5">5 digit</option><option value="6">6 digit</option></select>
+{{with .Errors.seq_digits}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field{{if .Errors.custom}} has-error{{end}}" x-show="mode === 'lanjutan'" x-cloak>
+<label for="custom">Pola</label>
+<input id="custom" name="custom" x-model="custom" maxlength="40" autocomplete="off"{{if not .CanEdit}} disabled{{end}}>
+{{with .Errors.custom}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint"><code>{yyyy}</code> = tahun 4 digit, <code>{yy}</code> = tahun 2 digit, <code>{seq:3}</code> = nomor urut 3 digit (wajib satu). Selain itu boleh huruf, angka, titik, garis miring, dan tanda hubung.</p>
+</div>
+
+<p class="nis-preview" aria-live="polite">Contoh NIS: <strong x-text="preview()">–</strong></p>
+</section>
+
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary">Simpan pengaturan</button></div>{{end}}
+</form>
+
+<script>
+function nisBuilder(year, continueNext) {
+  return {
+    mode: "", yearDigits: "4", seq: "3", prefix: "", custom: "",
+    init() {
+      const d = this.$el.dataset;
+      this.mode = d.mode; this.yearDigits = d.yearDigits || "4"; this.seq = d.seq || "3";
+      this.prefix = d.prefix || ""; this.custom = d.custom || "";
+    },
+    pad(n, w) { return String(n).padStart(w, "0"); },
+    render(format, n) {
+      const m = format.match(/\{seq:([1-6])\}/g);
+      if (!m || m.length !== 1) return "";
+      return format.replace("{yyyy}", String(year)).replace("{yy}", this.pad(year % 100, 2))
+        .replace(/\{seq:([1-6])\}/, (_, w) => this.pad(n, +w));
+    },
+    format() {
+      const tail = "{seq:" + this.seq + "}";
+      if (this.mode === "tahun") return (this.yearDigits === "2" ? "{yy}" : "{yyyy}") + tail;
+      if (this.mode === "awalan") return this.prefix.trim() + tail;
+      if (this.mode === "lanjutan") return this.custom.trim();
+      return "";
+    },
+    preview() {
+      if (this.mode === "lanjut") return continueNext || "belum bisa (belum ada NIS angka)";
+      const f = this.format();
+      const a = this.render(f, 1), b = this.render(f, 2);
+      return a ? a + ", " + b + ", …" : "pola belum lengkap";
+    }
+  };
+}
+</script>
+{{end}}

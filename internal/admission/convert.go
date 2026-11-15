@@ -23,6 +23,10 @@ import (
 // urut tiga digit, mis. 2027001.
 const DefaultNISFormat = "{yyyy}{seq:3}"
 
+// NISContinue adalah pola khusus: lanjutkan dari NIS angka terbesar yang
+// sudah dipakai siswa sekolah (T120), mis. 2526118 → 2526119.
+const NISContinue = "{lanjut}"
+
 // Aksi audit penerimaan (T96).
 const (
 	ActionApplicantEnroll = "admission.applicant_enroll"
@@ -42,6 +46,9 @@ var (
 // atau tanda hubung.
 func ValidateNISFormat(format string) error {
 	format = strings.TrimSpace(format)
+	if format == NISContinue {
+		return nil
+	}
 	if len(seqToken.FindAllString(format, -1)) != 1 {
 		return fieldErr("nis_format", "Format harus berisi tepat satu {seq:N}, mis. {yyyy}{seq:3}.")
 	}
@@ -98,6 +105,14 @@ func SetNISFormat(ctx context.Context, db database.DB, actor school.Actor, forma
 // nextNIS mengambil NIS berikutnya untuk format dan tahun, melewati NIS
 // yang sudah dipakai siswa (mis. diisi manual sebelumnya).
 func nextNIS(ctx context.Context, tx pgx.Tx, schoolID, format string, year int) (string, error) {
+	if format == NISContinue {
+		// Kunci per sekolah agar dua penerimaan bersamaan tidak mendapat
+		// NIS yang sama.
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('nis-lanjut:' || $1))`, schoolID); err != nil {
+			return "", fmt.Errorf("admission: lock nis: %w", err)
+		}
+		return continueNIS(ctx, tx, schoolID)
+	}
 	before, after, _ := nisParts(format, year)
 	// "|" tidak diizinkan di format NIS, jadi aman sebagai pemisah.
 	prefix := before + "|" + after
@@ -119,6 +134,78 @@ func nextNIS(ctx context.Context, tx pgx.Tx, schoolID, format string, year int) 
 		}
 	}
 	return "", errors.New("admission: no free NIS after 1000 attempts")
+}
+
+// lastNumericNIS mengembalikan NIS angka terbesar di sekolah ("" jika
+// belum ada). Panjang dibandingkan dulu agar 1000 > 999 tanpa konversi.
+func lastNumericNIS(ctx context.Context, q database.DBTX, schoolID string) (string, error) {
+	var nis string
+	err := q.QueryRow(ctx, `SELECT nis FROM students WHERE school_id = $1 AND nis ~ '^[0-9]{1,29}$'
+		ORDER BY length(nis) DESC, nis DESC LIMIT 1`, schoolID).Scan(&nis)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return nis, err
+}
+
+// errNoNumericNIS dikembalikan pola "lanjutkan" jika belum ada NIS angka.
+var errNoNumericNIS = fieldErr("nis", "Belum ada NIS berupa angka untuk dilanjutkan. Isi NIS manual atau ubah pola di Pengaturan pendaftaran.")
+
+func continueNIS(ctx context.Context, q database.DBTX, schoolID string) (string, error) {
+	last, err := lastNumericNIS(ctx, q, schoolID)
+	if err != nil {
+		return "", err
+	}
+	if last == "" {
+		return "", errNoNumericNIS
+	}
+	return incrDigits(last), nil
+}
+
+// incrDigits menambah satu pada string angka dengan panjang tetap
+// (999 → 1000, 0099 → 0100).
+func incrDigits(s string) string {
+	b := []byte(s)
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < '9' {
+			b[i]++
+			return string(b)
+		}
+		b[i] = '0'
+	}
+	return "1" + string(b)
+}
+
+// PeekNIS mengembalikan perkiraan NIS otomatis berikutnya tanpa memakai
+// nomor urut, untuk ditampilkan di layar. "" jika belum bisa ditentukan.
+func PeekNIS(ctx context.Context, q database.DBTX, schoolID, format string, year int) (string, error) {
+	if format == NISContinue {
+		nis, err := continueNIS(ctx, q, schoolID)
+		if errors.Is(err, errNoNumericNIS) {
+			return "", nil
+		}
+		return nis, err
+	}
+	if ValidateNISFormat(format) != nil {
+		return "", nil
+	}
+	before, after, _ := nisParts(format, year)
+	var last int
+	err := q.QueryRow(ctx, `SELECT last_seq FROM nis_counters WHERE school_id = $1 AND prefix = $2`, schoolID, before+"|"+after).Scan(&last)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	for seq := last + 1; seq < last+1000; seq++ {
+		nis := RenderNIS(format, year, seq)
+		var used bool
+		if err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM students WHERE school_id = $1 AND nis = $2)`, schoolID, nis).Scan(&used); err != nil {
+			return "", err
+		}
+		if !used {
+			return nis, nil
+		}
+	}
+	return "", nil
 }
 
 // EnrollOptions adalah pilihan saat menjadikan pendaftar siswa.

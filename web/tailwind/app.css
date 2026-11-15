@@ -2215,6 +2215,43 @@
     @apply border-slate-500 bg-slate-200;
   }
 
+  /* Pengaturan pendaftaran dan Jadikan siswa (T120). */
+  .option-cards {
+    @apply grid gap-2.5 md:grid-cols-2;
+  }
+
+  .option-card {
+    @apply flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300;
+  }
+
+  .option-card:has(input:checked) {
+    @apply border-blue-600 bg-blue-50/50 ring-2 ring-blue-600/15;
+  }
+
+  .option-card input {
+    @apply mt-1 shrink-0;
+  }
+
+  .nis-preview {
+    @apply mt-3 mb-0 rounded-lg bg-slate-50 px-3 py-2 text-sm;
+  }
+
+  .enroll-inline {
+    @apply mt-1 mb-3 grid max-w-3xl items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto];
+  }
+
+  .enroll-inline .field {
+    @apply m-0;
+  }
+
+  .enroll-inline-actions {
+    @apply sm:pt-6;
+  }
+
+  .rereg-row {
+    @apply mb-3 flex flex-wrap items-center gap-2;
+  }
+
   /* Cek kesiapan Dapodik (T115): filter jenis masalah dan daftar. */
   .kind-filter {
     @apply mb-4;

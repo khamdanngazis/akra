@@ -20,6 +20,7 @@ import (
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/pii"
+	"akra/internal/school"
 	"akra/internal/students"
 	"akra/internal/wilayah"
 )
@@ -115,11 +116,15 @@ type Applicant struct {
 	// AnonymizedAt diisi jika data pribadi sudah dihapus (T113).
 	AnonymizedAt     *time.Time
 	AnonymizedReason string
-	ContactPhone     string
-	EnteredBy        string
-	ConsentAt        time.Time
-	SubmittedAt      *time.Time
-	CreatedAt        time.Time
+	// StudentID diisi jika pendaftar sudah dijadikan siswa (T96);
+	// ReRegisteredAt jika sudah ditandai daftar ulang (T120).
+	StudentID      string
+	ReRegisteredAt *time.Time
+	ContactPhone   string
+	EnteredBy      string
+	ConsentAt      time.Time
+	SubmittedAt    *time.Time
+	CreatedAt      time.Time
 }
 
 // Editable melaporkan apakah pendaftar masih bisa mengubah isian.
@@ -151,11 +156,16 @@ type ApplicantService struct {
 	// feePaid melaporkan apakah biaya formulir pendaftar sudah lunas (T94).
 	// nil berarti belum ada tagihan pendaftaran, jadi tidak memblokir.
 	feePaid func(ctx context.Context, tx pgx.Tx, a Applicant) (bool, error)
+	// onAccepted dijalankan di dalam transaksi saat pendaftar diterima;
+	// mengembalikan NIS jika pendaftar langsung dijadikan siswa (T120).
+	onAccepted func(ctx context.Context, tx pgx.Tx, actor school.Actor, id string) (string, error)
 }
 
 // NewApplicantService mengembalikan ApplicantService.
 func NewApplicantService(db database.DB, keys *pii.Keyring, periods *Service) *ApplicantService {
-	return &ApplicantService{db: db, keys: keys, periods: periods, now: time.Now, feePaid: feePaidTx}
+	s := &ApplicantService{db: db, keys: keys, periods: periods, now: time.Now, feePaid: feePaidTx}
+	s.onAccepted = s.enrollWithoutReRegistration
+	return s
 }
 
 // sensitive adalah field data rinci yang disimpan terenkripsi, dengan kolom
@@ -261,7 +271,7 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	sql := `SELECT id, school_id, period_id, track_id, coalesce(registration_number, ''), status, full_name,
 		       coalesce(gender, ''), birth_date, profile, guardians, nik_enc, kk_enc, birth_cert_enc, kip_enc, kks_enc,
 		       guardian_niks_enc, contact_phone, coalesce(entered_by::text, ''), consent_at, submitted_at, created_at,
-		       kind, transfer, anonymized_at, coalesce(anonymized_reason, '')
+		       kind, transfer, anonymized_at, coalesce(anonymized_reason, ''), coalesce(student_id::text, ''), reregistered_at
 		FROM applicants WHERE school_id = $1 AND id = $2`
 	if forUpdate {
 		sql += ` FOR UPDATE`
@@ -272,7 +282,7 @@ func (s *ApplicantService) load(ctx context.Context, q database.DBTX, schoolID, 
 	var gNIKs []byte
 	err := q.QueryRow(ctx, sql, schoolID, id).Scan(&a.ID, &a.SchoolID, &a.PeriodID, &a.TrackID, &a.RegistrationNumber,
 		&a.Status, &a.FullName, &a.Gender, &a.BirthDate, &profile, &guardians, &enc[0], &enc[1], &enc[2], &enc[3], &enc[4],
-		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer, &a.AnonymizedAt, &a.AnonymizedReason)
+		&gNIKs, &a.ContactPhone, &a.EnteredBy, &a.ConsentAt, &a.SubmittedAt, &a.CreatedAt, &a.Kind, &transfer, &a.AnonymizedAt, &a.AnonymizedReason, &a.StudentID, &a.ReRegisteredAt)
 	if err != nil {
 		return Applicant{}, mapApplicantError(err)
 	}

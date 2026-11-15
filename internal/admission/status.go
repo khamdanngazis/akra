@@ -71,6 +71,9 @@ var (
 // TransitionResult adalah hasil perubahan status.
 type TransitionResult struct {
 	Applicant Applicant
+	// EnrolledNIS diisi jika pendaftar langsung dijadikan siswa saat
+	// diterima (sekolah tanpa daftar ulang, T120).
+	EnrolledNIS string
 	// ResumeCode diisi saat status menjadi perlu_perbaikan: kode lanjut baru
 	// untuk diberikan ke orang tua (ditampilkan sekali).
 	ResumeCode string
@@ -151,6 +154,13 @@ func (s *ApplicantService) Transition(ctx context.Context, actor school.Actor, i
 				return err
 			}
 			res.OverQuota = quota > 0 && accepted > quota
+			// Sekolah tanpa daftar ulang (T120): langsung jadi siswa dalam
+			// transaksi yang sama.
+			if s.onAccepted != nil {
+				if res.EnrolledNIS, err = s.onAccepted(ctx, tx, actor, id); err != nil {
+					return err
+				}
+			}
 		}
 		res.Applicant, err = s.load(ctx, tx, actor.SchoolID, id, false)
 		return err
