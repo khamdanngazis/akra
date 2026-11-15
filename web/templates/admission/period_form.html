@@ -1,7 +1,7 @@
 {{define "title"}}{{if .IsNew}}Buat Periode{{else}}Ubah Periode{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="{{if .IsNew}}/pendaftaran/periode{{else}}/pendaftaran/periode/{{.ID}}{{end}}">← {{if .IsNew}}Periode pendaftaran{{else}}Detail periode{{end}}</a></p>
+{{if .IsNew}}{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" "Buat periode" ""}}{{else}}{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" "Detail periode" (printf "/pendaftaran/periode/%s" .ID) "Ubah" ""}}{{end}}
 <section class="card form-card">
 <h1>{{if .IsNew}}Buat Periode Pendaftaran{{else}}Ubah Periode Pendaftaran{{end}}</h1>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}

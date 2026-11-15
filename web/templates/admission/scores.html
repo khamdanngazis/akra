@@ -1,7 +1,7 @@
 {{define "title"}}Nilai {{.Test.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pendaftaran/periode/{{.Period.ID}}/tes">← Tes seleksi</a></p>
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Tes seleksi" (printf "/pendaftaran/periode/%s/tes" .Period.ID) (printf "Nilai %s" .Test.Name) ""}}
 <div class="page-header">
 <div>
 <h1>Nilai {{.Test.Name}}</h1>

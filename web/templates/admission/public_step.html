@@ -3,7 +3,7 @@
 {{define "header"}}{{if .Staff}}{{template "app_header" .User}}{{else}}{{template "admission_public_bar" .}}{{end}}{{end}}
 {{define "content"}}
 <div class="adm-shell">
-{{if .Staff}}<p class="breadcrumb"><a href="/pendaftaran/{{.Applicant.ID}}">← Kembali ke detail pendaftar</a></p>{{end}}
+{{if .Staff}}{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" .Applicant.FullName (printf "/pendaftaran/%s" .Applicant.ID) "Ubah isian" ""}}{{end}}
 {{template "admission_stepper" .}}
 {{template "flash" .}}
 {{with .Discard}}<div class="alert mb-0" role="status">Isian di halaman ini belum disimpan karena ada yang perlu diperbaiki. <a href="{{$.Base}}/isi/{{.}}">Kembali tanpa menyimpan halaman ini</a></div>{{end}}

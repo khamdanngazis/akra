@@ -1,7 +1,7 @@
 {{define "title"}}Hasil Seleksi · {{.Period.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pendaftaran/periode/{{.Period.ID}}">← {{.Period.Name}}</a></p>
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" "Periode pendaftaran" "/pendaftaran/periode" .Period.Name (printf "/pendaftaran/periode/%s" .Period.ID) "Peringkat dan hasil" ""}}
 <div class="page-header">
 <div>
 <h1>Peringkat dan hasil</h1>

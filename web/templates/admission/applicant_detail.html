@@ -1,7 +1,7 @@
 {{define "title"}}{{.Applicant.FullName}} · Pendaftar{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/pendaftaran">← Pendaftar</a></p>
+{{template "back_nav" crumbs "Pendaftar" "/pendaftaran" .Applicant.FullName ""}}
 <div class="page-header">
 <div>
 <h1>{{.Applicant.FullName}}</h1>

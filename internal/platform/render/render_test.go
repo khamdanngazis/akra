@@ -149,3 +149,14 @@ func TestAsset(t *testing.T) {
 		t.Errorf("unknown asset: status = %d, want 500", rec.Code)
 	}
 }
+
+func TestCrumbs(t *testing.T) {
+	f := funcs(nil)["crumbs"].(func(...string) (Trail, error))
+	tr, err := f("Pendaftar", "/pendaftaran", "Gelombang 1", "/pendaftaran/periode/1", "Tes", "")
+	if err != nil || len(tr.Items) != 3 || tr.Parent.URL != "/pendaftaran/periode/1" || tr.Parent.Label != "Gelombang 1" {
+		t.Errorf("crumbs = %+v, %v", tr, err)
+	}
+	if _, err := f("odd"); err == nil {
+		t.Error("odd crumbs accepted")
+	}
+}

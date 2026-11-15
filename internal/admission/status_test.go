@@ -240,6 +240,11 @@ func TestApplicantHandler(t *testing.T) {
 		t.Errorf("open document: %d %v", rec.Code, rec.Header())
 	}
 
+	// Navigasi kembali (T121): tombol ke daftar (dipulihkan filternya oleh
+	// nav.js) dan jejak dengan nama pendaftar sebagai halaman sekarang.
+	if !strings.Contains(body, `class="back-btn" href="/pendaftaran" data-restore`) || !strings.Contains(body, `<span aria-current="page">`+a.FullName+`</span>`) {
+		t.Error("back navigation missing")
+	}
 	// Kartu langkah berikutnya (T116) ada di atas data pendaftar.
 	if i, j := strings.Index(body, `class="card next-step`), strings.Index(body, "Data pendaftar"); i < 0 || j < i {
 		t.Error("next-step card missing or below applicant data")

@@ -1,7 +1,7 @@
 {{define "title"}}Lembar Salin · {{.Student.FullName}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<p class="breadcrumb"><a href="/dapodik">← Dapodik</a></p>
+{{template "back_nav" crumbs "Dapodik" "/dapodik" .Student.FullName ""}}
 <div class="page-header">
 <div class="min-w-0">
 <h1>{{.Student.FullName}}</h1>
