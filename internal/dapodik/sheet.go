@@ -39,6 +39,17 @@ type SheetSection struct {
 	Fields []SheetField
 }
 
+// Filled mengembalikan jumlah field yang terisi (bisa disalin) di bagian ini.
+func (s SheetSection) Filled() int {
+	n := 0
+	for _, f := range s.Fields {
+		if f.Value != "" && !f.Unsupported {
+			n++
+		}
+	}
+	return n
+}
+
 // Values mengubah data siswa menjadi nilai tampilan per key Layout: pilihan
 // menjadi label Dapodik, tanggal dd/mm/yyyy, ya/tidak menjadi "Ya"/"Tidak".
 // Nomor identitas dalam bentuk utuh; pemanggil wajib memastikan pengguna

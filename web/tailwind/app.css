@@ -464,16 +464,20 @@
   }
 
   /* Detail */
+  /* grid-cols-1 (minmax(0,1fr)): tabel lebar di dalam kartu digulir di
+     table-wrap, tidak melebarkan halaman di HP (T114). */
   .detail-grid {
-    @apply grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3;
+    @apply grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3;
   }
 
   .detail-grid h2 {
     @apply text-lg;
   }
 
+  /* Kolom label paling lebar 45% agar nilai panjang (NIK, alamat) tetap
+     muat dan dibungkus, tidak keluar kartu (T114). */
   .data-list {
-    @apply m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2;
+    @apply m-0 grid grid-cols-[fit-content(45%)_minmax(0,1fr)] gap-x-4 gap-y-2;
   }
 
   .data-list dt {
@@ -481,7 +485,7 @@
   }
 
   .data-list dd {
-    @apply m-0;
+    @apply m-0 min-w-0 [overflow-wrap:anywhere];
   }
 
   .data-list.compact {
@@ -2058,6 +2062,186 @@
 
   .wilayah-options li.wilayah-empty {
     @apply cursor-default text-sm text-slate-500;
+  }
+}
+
+/* ---------- Halaman staf yang dirapikan (T114) ---------- */
+@layer components {
+  /* Kartu ringkasan yang sekaligus menjadi filter. */
+  .stat-filter {
+    @apply mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4;
+  }
+
+  .stat-filter a {
+    @apply flex flex-col gap-0.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-600 no-underline shadow-xs hover:border-slate-300 hover:text-slate-900;
+  }
+
+  .stat-filter a span {
+    @apply text-[13px];
+  }
+
+  .stat-filter a strong {
+    @apply text-2xl font-extrabold text-slate-900 tabular-nums;
+  }
+
+  .stat-filter a.is-warn strong {
+    @apply text-amber-600;
+  }
+
+  .stat-filter a.is-info strong {
+    @apply text-blue-700;
+  }
+
+  .stat-filter a.is-ok strong {
+    @apply text-emerald-600;
+  }
+
+  .stat-filter a.is-active {
+    @apply border-blue-600 ring-2 ring-blue-600/20;
+  }
+
+  /* Menu alat tambahan. */
+  .tool-menu {
+    @apply absolute right-0 z-30 mt-1 flex w-72 flex-col rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg;
+  }
+
+  .tool-menu a {
+    @apply rounded-lg px-3 py-2.5 text-sm text-slate-700 no-underline hover:bg-slate-50 hover:text-slate-900;
+  }
+
+  .pager {
+    @apply mt-3 flex flex-wrap items-center justify-between gap-2;
+  }
+
+  /* Detail pendaftar: kolom utama lebar + kolom samping. */
+  .detail-split {
+    @apply grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem];
+  }
+
+  .accordion-head {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3.5;
+  }
+
+  .accordion-item + .accordion-item {
+    @apply border-t border-slate-100;
+  }
+
+  .accordion-item > summary {
+    @apply flex cursor-pointer list-none items-center gap-3 px-5 py-3.5 font-bold text-slate-900 hover:bg-slate-50;
+  }
+
+  .accordion-item > summary > span:first-child {
+    @apply min-w-0 flex-1;
+  }
+
+  .accordion-item > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .accordion-item > summary::after {
+    @apply ml-2 text-slate-400 content-['▾'] transition-transform;
+  }
+
+  .accordion-item[open] > summary::after {
+    @apply rotate-180;
+  }
+
+  .accordion-item[open] > summary {
+    @apply bg-navy-50;
+  }
+
+  .accordion-item > .data-list {
+    @apply px-5 pt-1 pb-4;
+  }
+
+  /* Lembar salin: accordion per bagian + bar bawah yang menempel. */
+  .sheet-tools {
+    @apply mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2;
+  }
+
+  .sheet-accordion {
+    @apply overflow-hidden rounded-2xl border border-slate-200 bg-white;
+  }
+
+  .sheet-sec + .sheet-sec {
+    @apply border-t border-slate-200;
+  }
+
+  .sheet-sec-head {
+    @apply flex w-full cursor-pointer items-center gap-3 border-0 bg-white px-4 py-3.5 text-left font-sans hover:bg-slate-50 sm:px-5;
+  }
+
+  .sheet-sec.is-open .sheet-sec-head {
+    @apply bg-navy-50;
+  }
+
+  .sheet-sec-title {
+    @apply min-w-0 flex-1 text-[15px] font-bold text-slate-900;
+  }
+
+  .sheet-sec-meta {
+    @apply flex-none text-[13px] text-slate-500 tabular-nums;
+  }
+
+  .sheet-sec-chev {
+    @apply flex-none text-slate-400 transition-transform;
+  }
+
+  .sheet-sec.is-open .sheet-sec-chev {
+    @apply rotate-180;
+  }
+
+  .sheet-sec-body {
+    @apply divide-y divide-slate-100 px-4 pb-2 sm:px-5;
+  }
+
+  .sheet-row {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 py-2 sm:grid-cols-[minmax(10rem,16rem)_minmax(0,1fr)_auto];
+  }
+
+  .sheet-label {
+    @apply col-span-2 text-[13px] text-slate-500 sm:col-span-1 sm:text-sm;
+  }
+
+  .sheet-value {
+    @apply min-w-0 rounded-md px-1.5 py-0.5 font-medium [overflow-wrap:anywhere];
+  }
+
+  .sheet-value.is-copied {
+    @apply bg-emerald-50 text-emerald-800;
+  }
+
+  .sheet-value.is-current {
+    @apply bg-blue-100 text-blue-900 ring-2 ring-blue-600/30;
+  }
+
+  .sheet-row.is-empty .sheet-value {
+    @apply font-normal;
+  }
+
+  /* Di HP bar berada tepat di atas menu navigasi bawah (min-h-15). */
+  .sheet-bar {
+    @apply sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-10 mt-4 md:bottom-0 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgb(15_23_42/0.08)] backdrop-blur;
+  }
+
+  .sheet-bar-copy,
+  .sheet-bar-mark {
+    @apply m-0 flex flex-wrap items-center gap-2;
+  }
+
+  .sheet-status {
+    @apply text-[13px] text-slate-600 empty:hidden;
+  }
+
+  @media (width < 40rem) {
+    .sheet-bar .btn {
+      @apply min-h-10 px-3 text-[13px];
+    }
+
+    .sheet-bar-copy,
+    .sheet-bar-mark {
+      @apply w-full;
+    }
   }
 }
 

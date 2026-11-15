@@ -4,33 +4,47 @@
 <div class="page-header">
 <div>
 <h1>Dapodik</h1>
-<p class="muted">Bantu memasukkan data siswa ke aplikasi Dapodik: lembar salin dengan urutan field seperti form Dapodik, dan tanda siswa yang sudah dimasukkan.</p>
+<p class="muted">Salin data siswa ke aplikasi Dapodik dan tandai yang sudah dimasukkan.</p>
+</div>
+<div class="action-row">
+{{if and .CanEdit .ContinueID}}<a class="btn btn-primary" href="/dapodik/siswa/{{.ContinueID}}">Lanjutkan input: {{.ContinueName}} {{template "icon" "arrow-right"}}</a>{{end}}
+<div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+<button type="button" class="btn btn-ghost" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="true">Alat lain {{template "icon" "chevron-down"}}</button>
+<div class="tool-menu" x-show="open" x-cloak>
+<a href="/dapodik/cek">Cek kesiapan data</a>
+{{if .CanEdit}}<a href="/dapodik/impor">Impor dari ekspor Dapodik</a>
+<a href="/dapodik/nilai">Nilai ke Dapodik</a>{{end}}
+<a href="/dapodik/ekspor-pd.xlsx{{with .ClassID}}?kelas={{.}}{{end}}">Ekspor format Daftar PD (Excel)</a>
+{{with .ClassID}}<a href="/dapodik/kelas/{{.}}/fpd.pdf">F-PD terisi kelas ini (PDF)</a>{{end}}
+<a href="/dapodik/fpd-kosong.pdf">F-PD kosong (PDF)</a>
+</div>
+</div>
 </div>
 </div>
 {{template "flash" .}}
-<div class="action-row">
-{{if .CanEdit}}<a class="btn btn-ghost btn-sm" href="/dapodik/impor">Impor dari ekspor Dapodik</a><a class="btn btn-ghost btn-sm" href="/dapodik/nilai">Nilai ke Dapodik</a>{{end}}
-<a class="btn btn-ghost btn-sm" href="/dapodik/cek">Cek kesiapan</a>
-<a class="btn btn-ghost btn-sm" href="/dapodik/fpd-kosong.pdf">Unduh F-PD kosong</a>
-<a class="btn btn-ghost btn-sm" href="/dapodik/ekspor-pd.xlsx{{with .ClassID}}?kelas={{.}}{{end}}">Ekspor format Daftar PD (Excel)</a>
-{{with .ClassID}}<a class="btn btn-ghost btn-sm" href="/dapodik/kelas/{{.}}/fpd.pdf">Unduh F-PD terisi kelas ini</a>{{end}}
-</div>
+
+<nav class="stat-filter" aria-label="Ringkasan dan filter status">
+<a href="/dapodik{{with .ClassID}}?kelas={{.}}{{end}}" class="{{if eq .Status ""}}is-active{{end}}"><span>Semua siswa</span><strong>{{.Counts.All}}</strong></a>
+<a href="/dapodik?status=kurang{{with .ClassID}}&amp;kelas={{.}}{{end}}" class="is-warn{{if eq .Status "kurang"}} is-active{{end}}"><span>Data belum lengkap</span><strong>{{.Counts.Incomplete}}</strong></a>
+<a href="/dapodik?status=siap{{with .ClassID}}&amp;kelas={{.}}{{end}}" class="is-info{{if eq .Status "siap"}} is-active{{end}}"><span>Siap dimasukkan</span><strong>{{.Counts.Ready}}</strong></a>
+<a href="/dapodik?status=sudah{{with .ClassID}}&amp;kelas={{.}}{{end}}" class="is-ok{{if eq .Status "sudah"}} is-active{{end}}"><span>Sudah masuk Dapodik</span><strong>{{.Counts.Entered}}</strong></a>
+</nav>
+
 <form method="get" action="/dapodik" class="filter-bar filter-grid" x-data>
+{{with .Status}}<input type="hidden" name="status" value="{{.}}">{{end}}
+<div class="field">
+<label for="q">Cari nama atau NIS</label>
+<input id="q" name="q" type="search" value="{{.Query}}" placeholder="mis. Budi atau 2027" autocomplete="off">
+</div>
 {{if .Classes}}
 <div class="field">
 <label for="kelas">Kelas</label>
 <select id="kelas" name="kelas" @change="$el.form.submit()"><option value="">Semua kelas</option>{{range .Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
 </div>
 {{end}}
-<div class="field">
-<label for="status">Status</label>
-<select id="status" name="status" @change="$el.form.submit()">
-<option value="">Semua</option>
-<option value="belum"{{if eq .Status "belum"}} selected{{end}}>Belum masuk Dapodik</option>
-<option value="sudah"{{if eq .Status "sudah"}} selected{{end}}>Sudah masuk Dapodik</option>
-</select>
-</div>
+<div class="filter-actions"><button type="submit" class="btn btn-ghost">Cari</button>{{if or .Query .Status .ClassID}}<a class="btn btn-ghost" href="/dapodik">Reset</a>{{end}}</div>
 </form>
+
 {{if .Rows}}
 <div class="card card-flush">
 <div class="table-wrap">
@@ -43,7 +57,7 @@
 <td>{{if $.CanEdit}}<a href="/dapodik/siswa/{{.ID}}"><strong>{{.FullName}}</strong></a>{{else}}<strong>{{.FullName}}</strong>{{end}}</td>
 <td>{{if .ClassName}}{{.ClassName}}{{else}}<span class="muted">–</span>{{end}}</td>
 <td>{{if eq .Percent 100}}<span class="badge badge-success">Lengkap</span>{{else}}<a href="/siswa/{{.ID}}/data-rinci"><span class="badge badge-warning">{{.Percent}}%</span></a>{{end}}</td>
-<td>{{if .EnteredAt}}<span class="badge badge-success">Sudah · {{.EnteredAt}}</span>{{else}}<span class="badge">Belum</span>{{end}}</td>
+<td class="nowrap">{{if .EnteredAt}}<span class="badge badge-success">Sudah · {{.EnteredAt}}</span>{{else}}<span class="badge">Belum</span>{{end}}</td>
 <td><a class="btn btn-ghost btn-sm" href="/dapodik/siswa/{{.ID}}/fpd.pdf">F-PD</a></td>
 </tr>
 {{end}}
@@ -51,6 +65,13 @@
 </table>
 </div>
 </div>
+<nav class="pager" aria-label="Halaman">
+<span class="muted small">{{.Total}} siswa · halaman {{.Page}} dari {{.Pages}}</span>
+<span class="action-row">
+{{if .PrevURL}}<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}">{{template "icon" "arrow-left"}} Sebelumnya</a>{{end}}
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}">Berikutnya {{template "icon" "arrow-right"}}</a>{{end}}
+</span>
+</nav>
 {{else}}
 <section class="card empty-state"><p>Tidak ada siswa yang cocok.</p></section>
 {{end}}
