@@ -16,7 +16,11 @@ Soal yang disusun bersama di spreadsheet (mis. oleh MGMP) bisa masuk sekaligus, 
 3. Pratinjau dan perbaikan memakai komponen T129, dengan laporan nomor baris.
 4. Ekspor bank ke Excel dengan format yang sama, termasuk kunci jawaban. Hanya untuk pengelola bank; tercatat di audit.
 
+## Stimulus
+- Lembar kedua `stimulus` (kolom `kode`, `judul`, `teks`) dan kolom `stimulus` di lembar soal yang merujuk `kode`. Soal dengan kode stimulus sama dikelompokkan sesuai urutan baris.
+
 ## Kriteria selesai
 - [ ] Round-trip ekspor lalu impor menghasilkan soal identik
 - [ ] Baris salah dilaporkan dengan nomor baris dan alasan
 - [ ] Ekspor tercatat di audit log
+- [ ] Stimulus dari lembar `stimulus` terhubung ke soal yang merujuk kodenya, termasuk saat ekspor/impor ulang

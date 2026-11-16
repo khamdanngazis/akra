@@ -44,6 +44,12 @@ Guru membuat ulangan untuk kelasnya, dan TU membuat tes seleksi, lewat satu alur
 - `exams`: dasar dan aturan; `status` (`draf`, `terjadwal`, `berlangsung`, `selesai`, `arsip`); `locked_at`.
 - `exam_sections`, `exam_items` (soal tetap / aturan acak), `exam_variants`, `exam_item_snapshots`.
 
+## Stimulus bersama
+1. Di langkah Soal, memilih stimulus menambahkan **seluruh kelompoknya**. Guru bisa melepas soal tertentu dari kelompok untuk ujian ini.
+2. **Acak soal** memperlakukan kelompok stimulus sebagai satu blok: blok diacak di antara soal lain, dan soal di dalam blok tetap berurutan (bawaan) atau diacak di dalam blok (pilihan).
+3. Aturan acak dari bank bisa menyebut stimulus, mis. "2 teks bacaan sedang beserta soalnya".
+4. Panel ringkas menghitung soal di dalam stimulus. Varian A/B bisa memakai stimulus berbeda dengan komposisi sama.
+
 ## File yang disentuh
 - `db/migrations/0000XX_exams.up.sql` dan `.down.sql`
 - `internal/exam/exam.go`, `assemble.go` (acak dan varian), `wizard.go`, tes, `exam_handler.go`
@@ -55,3 +61,4 @@ Guru membuat ulangan untuk kelasnya, dan TU membuat tes seleksi, lewat satu alur
 - [ ] Varian A/B punya komposisi TP/level/kesulitan sama (uji unit dengan seed)
 - [ ] Setelah terkunci, menyunting soal di bank tidak mengubah snapshot
 - [ ] Guru tidak bisa memilih kelas yang tidak ia ampu
+- [ ] Acak soal tidak pernah memisahkan soal dari stimulusnya atau mengacak urutan di dalam blok bila tidak diizinkan

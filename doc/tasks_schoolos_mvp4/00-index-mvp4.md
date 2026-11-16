@@ -104,20 +104,25 @@ Berlaku untuk **semua** task MVP 4. Task belum selesai bila standar ini tidak te
    - di MVP 4, login dengan **NIS + kode kartu ujian**;
    - tabel kredensial sudah mendukung password permanen untuk portal siswa di MVP berikutnya.
 9. **Jadwal rilis tidak dipaksa.** Target bulan di bagian 7 adalah arah, bukan tenggat. Kualitas dan standar siap produksi (bagian 4) didahulukan; rilis bergeser bila kriteria pilot (T155) belum terpenuhi.
+10. **Stimulus bersama dan tulisan Arab didukung sejak awal:**
+    - **stimulus bersama:** teks bacaan, tabel, atau gambar untuk beberapa soal; tetap berkelompok saat diacak; tampil dua kolom di desktop;
+    - **tulisan Arab:** teks Arab berharakat untuk PAI/Bahasa Arab di editor, impor, halaman ujian, dan cetak.
+
+    Dicakup di T123, T127–T131, T133, T135, T138, T142.
 
 ## 6. Daftar Fase
 
 | Folder | Task | Isi | Estimasi |
 |---|---|---|---|
 | `14-fondasi/` | T123–T126 | Spike teknis dan ADR, identitas siswa, peran koordinator dan pengawas serta aktivasi modul, zona waktu sekolah | 2 minggu |
-| `15-bank-soal/` | T127–T132 | Bank soal, editor soal dengan rumus, impor Word, impor Moodle, Excel, kisi-kisi dan kartu soal | 4 minggu |
+| `15-bank-soal/` | T127–T132 | Bank soal dan stimulus, editor soal dengan rumus dan tulisan Arab, impor Word, impor Moodle, Excel, kisi-kisi dan kartu soal | 4,5 minggu |
 | `16-persiapan-ujian/` | T133–T137 | Wizard buat ujian, agenda PTS/PAS, dokumen ujian, cek kesiapan dan ujian latihan, susulan dan remedial | 3,5 minggu |
-| `17-pelaksanaan/` | T138–T142 | Halaman ujian, simpan otomatis dan offline, timer, integritas dan bunyi tanda, kompatibilitas perangkat | 3,5 minggu |
+| `17-pelaksanaan/` | T138–T142 | Halaman ujian (termasuk stimulus dan tulisan Arab), simpan otomatis dan offline, timer, integritas dan bunyi tanda, kompatibilitas perangkat | 3,5 minggu |
 | `18-hari-h/` | T143–T145 | Layar pengawas, pusat kendali koordinator, keandalan dan observabilitas | 2 minggu |
 | `19-penilaian/` | T146–T151 | Penilaian otomatis, koreksi esai, analisis butir dan TP, integrasi seleksi, integrasi rapor, hasil untuk siswa dan orang tua | 3 minggu |
 | `20-siap-produksi/` | T152–T155 | Uji beban, uji keamanan dan privasi, panduan dan onboarding, pilot dan rollout | 2 minggu + pilot |
 
-Total perkiraan: **± 19 minggu pengembangan** (95 hari kerja, satu pengembang penuh waktu dibantu Claude), ditambah pilot. Pekerjaan dibagi ke tiga rilis agar sekolah bisa memakai lebih awal.
+Total perkiraan: **± 20 minggu pengembangan** (± 100 hari kerja, satu pengembang penuh waktu dibantu Claude), ditambah pilot. Pekerjaan dibagi ke tiga rilis agar sekolah bisa memakai lebih awal.
 
 ## 7. Rilis Bertahap
 

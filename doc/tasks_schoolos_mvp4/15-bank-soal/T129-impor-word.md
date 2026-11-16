@@ -2,7 +2,7 @@
 
 **Fase:** 15 Bank Soal
 **Dependensi:** T123, T128
-**Estimasi:** 5 hari
+**Estimasi:** 5,5 hari
 
 ## Tujuan
 Guru yang sudah punya soal di Word (cara paling umum di sekolah) memindahkannya ke AKRA dalam hitungan menit.
@@ -41,6 +41,15 @@ Guru yang sudah punya soal di Word (cara paling umum di sekolah) memindahkannya 
 6. Disimpan dalam satu transaksi. Laporan akhir: "38 soal masuk (siap 35, draf 3), 2 dilewati", dengan tautan ke soal draf.
 7. Batasan: file ≤ 20 MB, ≤ 500 soal per file. Dokumen diproses di job River dengan indikator kemajuan bila lebih dari 50 soal.
 
+## Stimulus bersama dan tulisan Arab
+1. Pembaca mengenali pola stimulus yang umum:
+   - "Bacalah teks berikut untuk menjawab soal nomor 1–5", "Perhatikan tabel/gambar berikut untuk soal 6–8", "Teks untuk soal nomor ..." dan variasinya;
+   - di template resmi ditandai `Stimulus:` … `Akhir stimulus`.
+
+   Teks atau gambar sampai soal pertama dijadikan stimulus, dan soal dalam rentang nomor diikat padanya.
+2. Di layar pratinjau, stimulus tampil sebagai kotak di atas kelompok soalnya. Guru bisa memperbaiki batas stimulus (soal mana yang termasuk) sebelum impor.
+3. Teks Arab dari Word (`w:bidi`/`w:rtl` dan font Arab) diimpor dengan arah tulisan per paragraf. Harakat dipertahankan.
+
 ## File yang disentuh
 - `internal/exam/import_docx.go`, `omml.go` (konversi rumus), `import_preview.go`, tes, `testdata/*.docx`
 - `web/templates/exam/import_word.html`
@@ -52,3 +61,5 @@ Guru yang sudah punya soal di Word (cara paling umum di sekolah) memindahkannya 
 - [ ] Rumus OMML pada subset ADR terkonversi benar (uji dengan pasangan input/output)
 - [ ] Kunci di tabel akhir dokumen dikenali
 - [ ] Dokumen berisi makro atau objek berbahaya ditolak atau diabaikan dengan aman
+- [ ] Dokumen dengan dua teks bacaan (masing-masing 5 soal) terimpor sebagai dua stimulus dengan soal yang benar
+- [ ] Soal PAI dari Word dengan teks Arab berharakat terimpor tanpa huruf terbalik atau harakat hilang

@@ -27,6 +27,10 @@ Semua dokumen yang biasa dibuat panitia keluar dari AKRA dengan sekali klik, dal
 3. Cetak per sesi, per ruang, per kelas, atau semua; nama file yang jelas.
 4. Kartu tersedia **paling cepat H-3** sebelum sesi, agar kode tidak beredar terlalu lama.
 
+## Stimulus dan tulisan Arab di cetak
+- Naskah cadangan dan kartu soal mencetak stimulus satu kali di atas kelompok soalnya; kelompok diusahakan tidak terpotong halaman (CSS `break-inside`).
+- Teks Arab dicetak dengan font dan arah tulisan yang benar.
+
 ## File yang disentuh
 - `internal/exam/docs_pdf.go`, `card_pdf.go`, `seating.go`, tes
 - `web/templates/exam/paper_print.html`, `key_print.html`
@@ -36,3 +40,4 @@ Semua dokumen yang biasa dibuat panitia keluar dari AKRA dengan sekali klik, dal
 - [ ] Cetak ulang kartu membatalkan kode lama
 - [ ] Naskah cadangan tidak memuat kunci; rumus tampil benar saat dicetak dari Chrome
 - [ ] Mencetak kunci tercatat di audit
+- [ ] Naskah cetak berisi stimulus dan teks Arab tampil benar dari Chrome desktop

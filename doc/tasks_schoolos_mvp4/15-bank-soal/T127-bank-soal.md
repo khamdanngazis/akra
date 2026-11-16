@@ -2,7 +2,7 @@
 
 **Fase:** 15 Bank Soal
 **Dependensi:** T125
-**Estimasi:** 3 hari
+**Estimasi:** 4 hari
 
 ## Tujuan
 Soal sekolah terkumpul rapi per mapel, bisa dicari, dipakai ulang bertahun-tahun, dan bisa dianalisis per tujuan pembelajaran.
@@ -38,6 +38,18 @@ Soal sekolah terkumpul rapi per mapel, bisa dicari, dipakai ulang bertahun-tahun
 3. Soal milik guru lain hanya bisa dipakai dan diduplikat. Tombol ubah tidak tampil (keputusan bank bersama).
 4. Kosong: panduan tiga langkah (buat bank, tambah atau impor soal, buat ujian) dan tombol **Pakai bank contoh** (T154).
 
+## Stimulus bersama
+1. **Stimulus** (`exam_stimuli`): teks bacaan, tabel, gambar, atau grafik yang dipakai beberapa soal ("Bacalah teks berikut untuk soal nomor 1–5"). Lazim di Bahasa Indonesia/Inggris/Arab dan soal model AKM.
+   - Kolom: `id`, `school_id`, `bank_id`, `title`, `body_src`, `body_html`, `version`, `created_by`, `archived_at`.
+   - `exam_questions.stimulus_id NULL` dan `stimulus_order`: soal terikat ke satu stimulus dengan urutan di dalam kelompok.
+2. Di daftar soal, soal berstimulus tampil **berkelompok** di bawah judul stimulus. Kelompok bisa dilipat, dan ada tombol "Tambah soal ke stimulus ini".
+3. Stimulus dipakai bersama seperti soal (keputusan bank bersama). Yang bisa mengubah hanya pembuatnya dan admin_tu. Versi dan snapshot sama dengan soal.
+4. Statistik stimulus: jumlah soal, dipakai di N ujian.
+
+## Tulisan Arab
+- `body_src` mendukung teks Arab dan harakat. Arah tulisan disimpan per paragraf, tidak per soal, karena soal PAI sering mencampur Latin dan Arab.
+- Pencarian di bank mendukung teks Arab, dengan normalisasi harakat agar "الصلاة" cocok dengan versi berharakat.
+
 ## File yang disentuh
 - `db/migrations/0000XX_exam_banks.up.sql` dan `.down.sql`
 - `internal/exam/bank.go`, `question_store.go`, `objective.go`, tes, `bank_handler.go`
@@ -49,3 +61,5 @@ Soal sekolah terkumpul rapi per mapel, bisa dicari, dipakai ulang bertahun-tahun
 - [ ] Menyunting soal yang dipakai ujian terkunci membuat versi baru, dan snapshot ujian tidak berubah
 - [ ] Pencarian dan filter di bank 5.000 soal < 300 ms
 - [ ] Route baru masuk registry uji T58/T59
+- [ ] Soal berstimulus tampil berkelompok, dan stimulus ikut versi/snapshot
+- [ ] Pencarian teks Arab menemukan soal dengan atau tanpa harakat

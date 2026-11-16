@@ -2,7 +2,7 @@
 
 **Fase:** 14 Fondasi
 **Dependensi:** —
-**Estimasi:** 4 hari
+**Estimasi:** 4,5 hari
 
 ## Tujuan
 Membuktikan bagian paling berisiko **sebelum** membangun fitur, lalu mencatat keputusannya. Hasilnya menentukan desain T128, T129, dan T139.
@@ -27,6 +27,13 @@ Membuktikan bagian paling berisiko **sebelum** membangun fitur, lalu mencatat ke
 5. **Mode offline.** Prototipe service worker yang menyimpan cangkang halaman ujian, payload soal, dan gambar, sehingga muat ulang saat offline tetap jalan. Uji di Chrome Android dan Safari iOS.
 6. **Editor rumus untuk guru.** Bandingkan MathLive (editor visual) dengan toolbar sederhana ditambah pratinjau langsung: ukuran bundle, kemudahan di tablet, dan dukungan bahasa Indonesia. Editor hanya dimuat di halaman guru, tidak di halaman ujian.
 
+## Spike tambahan: tulisan Arab
+7. **Teks Arab (kanan-ke-kiri) bercampur teks Latin dan rumus:**
+   - uji di editor, render server, halaman ujian (Chrome Android, Safari iOS), dan cetak HTML;
+   - pilih font Arab dengan harakat jelas di layar kecil (mis. Noto Naskh Arabic, Amiri, atau Scheherazade New; dibandingkan ukuran subset dan keterbacaan);
+   - pastikan arah tulisan per paragraf (`dir="auto"`/`dir="rtl"`) tidak merusak nomor soal, opsi A–E, dan tanda baca;
+   - cek pembacaan teks Arab dari `.docx` (`w:bidi`, `w:rtl`).
+
 ## Hasil
 - `doc/adr/0001-modul-ujian.md`: keputusan untuk keenam spike, beserta angka ukurnya.
 - Prototipe dibuang setelah ADR disetujui. Kode final dibuat di task masing-masing.
@@ -36,3 +43,4 @@ Membuktikan bagian paling berisiko **sebelum** membangun fitur, lalu mencatat ke
 - [ ] ADR berisi keputusan dan angka ukur untuk keenam spike
 - [ ] Dokumen Word contoh dari guru sungguhan dipakai (data pribadi dihapus)
 - [ ] Rekomendasi diterima pemilik produk sebelum T128/T129/T139 dimulai
+- [ ] ADR memuat pilihan font Arab dan aturan arah tulisan, diuji di HP dan cetak

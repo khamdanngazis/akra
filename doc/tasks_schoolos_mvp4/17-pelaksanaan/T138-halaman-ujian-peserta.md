@@ -2,7 +2,7 @@
 
 **Fase:** 17 Pelaksanaan
 **Dependensi:** T124, T133
-**Estimasi:** 5 hari
+**Estimasi:** 6 hari
 
 ## Tujuan
 Siswa SD kelas atas sampai SMA, serta calon siswa, bisa mengerjakan ujian di HP maupun komputer tanpa bingung. Tampilannya mengikuti pola ANBK yang sudah dikenal.
@@ -46,6 +46,16 @@ Siswa SD kelas atas sampai SMA, serta calon siswa, bisa mengerjakan ujian di HP 
 - Gambar memakai URL presign yang berlaku sampai `deadline_at`.
 - Setelah kumpul, halaman soal tidak bisa dibuka lagi. Payload yang tersimpan di cache service worker dihapus.
 
+## Stimulus bersama
+1. **Desktop/tablet lanskap:** tampilan dua kolom. Stimulus di kiri dan bisa di-scroll sendiri; soal di kanan. Pindah antar-soal dalam kelompok yang sama tidak mengubah posisi scroll stimulus. Pembatas kolom bisa digeser.
+2. **HP:** stimulus tampil di atas soal sebagai kartu yang bisa dilipat ("Teks bacaan · ketuk untuk membaca"). Tombol mengambang **📄 Teks** membuka stimulus di lembar penuh tanpa kehilangan jawaban.
+3. Grid nomor soal menandai soal-soal yang berbagi stimulus (garis atau warna kelompok).
+4. Stimulus panjang dengan nomor baris tetap bisa dibaca di 360 px, dan ukuran huruf mengikuti pengaturan A−/A/A+.
+
+## Tulisan Arab
+- Arah tulisan per paragraf dari soal; font Arab dari ADR T123, dimuat hanya bila ujian memuat teks Arab.
+- Opsi Arab tersusun kanan-ke-kiri. Kontrol navigasi dan grid nomor tetap kiri-ke-kanan.
+
 ## File yang disentuh
 - `db/migrations/0000XX_exam_attempts.up.sql` dan `.down.sql`
 - `internal/exam/attempt.go`, `delivery.go` (payload peserta), tes, `take_handler.go`
@@ -58,3 +68,5 @@ Siswa SD kelas atas sampai SMA, serta calon siswa, bisa mengerjakan ujian di HP 
 - [ ] Uji pengguna dengan 5 siswa SD kelas 5–6 dan 5 siswa SMP: semua bisa memulai, menandai ragu, dan mengumpulkan tanpa bantuan
 - [ ] Lighthouse aksesibilitas ≥ 95; navigasi keyboard penuh di desktop
 - [ ] Mulus di HP Android 2 GB RAM (scroll dan pindah soal < 100 ms)
+- [ ] Ujian Bahasa Indonesia dengan 3 teks bacaan nyaman dikerjakan di HP 360 px dan desktop (uji pengguna 5 siswa)
+- [ ] Ujian PAI dengan teks Arab berharakat tampil benar di Chrome Android dan Safari iOS

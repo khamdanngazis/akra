@@ -24,7 +24,11 @@ Ujian berjalan di perangkat yang benar-benar ada di sekolah: HP Android murah, i
    - penanganan banyak peserta di belakang satu IP (NAT lab): rate limit tidak memblokir satu lab.
 5. **Layar kecil dan besar:** 360 px sampai 1920 px; orientasi lanskap di HP; zoom browser 200% tetap bisa dipakai.
 
+## Tulisan Arab
+- Matriks perangkat juga diuji dengan ujian PAI/Bahasa Arab: font dimuat, harakat tidak bertumpuk, dan arah tulisan benar di browser bawaan vendor.
+
 ## Kriteria selesai
 - [ ] Skenario ujian penuh lulus di semua perangkat matriks (laporan dengan tangkapan layar)
 - [ ] 40 siswa di belakang satu IP bisa login bersamaan tanpa terkena rate limit
 - [ ] Data per ujian 40 soal (10 bergambar) < 2 MB
+- [ ] Ujian berteks Arab lulus di semua perangkat matriks

@@ -2,7 +2,7 @@
 
 **Fase:** 15 Bank Soal
 **Dependensi:** T123, T127
-**Estimasi:** 5 hari
+**Estimasi:** 6 hari
 
 ## Tujuan
 Guru menulis semua jenis soal, termasuk soal bergambar dan berumus, dengan cepat dan tanpa harus menguasai LaTeX.
@@ -41,6 +41,17 @@ Guru menulis semua jenis soal, termasuk soal bergambar dan berumus, dengan cepat
 9. Validasi per jenis dengan pesan yang menyebut bagian yang salah, misalnya "Tandai satu opsi yang benar" atau "Isian butuh minimal satu jawaban diterima".
 10. Bisa dipakai di tablet. Di HP hanya untuk koreksi kecil, dan ini dijelaskan di UI.
 
+## Stimulus bersama
+1. **Editor stimulus:** teks panjang dengan paragraf bernomor baris (opsional, untuk soal "pada baris ke-3"), tabel, gambar, grafik, rumus.
+2. Dari editor stimulus, guru langsung menambah soal-soal turunannya. Urutan soal di dalam stimulus bisa diseret.
+3. Pratinjau sebagai peserta menampilkan stimulus dan soal dalam tata letak halaman ujian (T138).
+
+## Tulisan Arab
+1. Tombol arah tulisan **← Arab / Latin →** per paragraf, plus deteksi otomatis (`dir="auto"`) saat mengetik atau menempel teks Arab.
+2. Font Arab dari ADR T123 dimuat di editor, halaman ujian, dan cetak. Ukuran teks Arab sedikit lebih besar dari Latin agar harakat terbaca.
+3. Opsi jawaban bisa berupa teks Arab. Label A–E tetap di posisi yang konsisten; tata letak opsi Arab dibalik kanan-ke-kiri.
+4. Isian singkat dalam bahasa Arab menormalkan harakat dan variasi huruf (ا/أ/إ, ة/ه, ى/ي) saat menilai, bila diaktifkan per soal.
+
 ## File yang disentuh
 - `internal/exam/question.go`, `question_validate.go`, `sanitize.go`, `mathrender/` (render server), tes
 - `internal/exam/question_handler.go`
@@ -53,3 +64,6 @@ Guru menulis semua jenis soal, termasuk soal bergambar dan berumus, dengan cepat
 - [ ] Rumus contoh (pecahan bersarang, matriks 3×3, integral, kimia sederhana) tampil sama di pratinjau, halaman ujian, dan cetak
 - [ ] Draf bertahan setelah tab ditutup lalu dibuka lagi
 - [ ] Guru baru bisa membuat 5 soal PG berumus dalam ≤ 10 menit (uji pengguna dengan 3 guru)
+- [ ] Stimulus dengan 5 soal turunan bisa dibuat, diurutkan, dan dipratinjau
+- [ ] Soal PAI campuran Latin–Arab berharakat tampil benar di editor, pratinjau, dan cetak
+- [ ] Isian Arab dengan opsi normalisasi menerima jawaban berharakat dan tanpa harakat

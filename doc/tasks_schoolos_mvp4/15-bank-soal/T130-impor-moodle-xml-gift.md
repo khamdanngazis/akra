@@ -23,6 +23,10 @@ Sekolah yang sebelumnya memakai Moodle memindahkan bank soalnya ke AKRA.
 7. Parser XML aman: tanpa entitas eksternal; ≤ 20 MB; ≤ 2.000 soal.
 8. **Ekspor ke Moodle XML** untuk soal milik sekolah, supaya sekolah tidak terkunci di AKRA. Ini nilai jual untuk sekolah yang ragu.
 
+## Stimulus
+- Soal Moodle jenis `description` yang diikuti beberapa soal dalam kategori yang sama ditawarkan sebagai stimulus di layar pratinjau. Guru mengonfirmasi atau mengubah pengelompokan, karena Moodle tidak menyimpan relasi ini secara eksplisit.
+- Ekspor ke Moodle: stimulus diekspor sebagai soal `description` tepat sebelum soal-soal turunannya.
+
 ## File yang disentuh
 - `internal/exam/import_moodle.go`, `import_gift.go`, `export_moodle.go`, tes, `testdata/`
 - `web/templates/exam/import_moodle.html`
@@ -31,3 +35,4 @@ Sekolah yang sebelumnya memakai Moodle memindahkan bank soalnya ke AKRA.
 - [ ] File ekspor Moodle 4.x berisi semua jenis yang didukung (dengan gambar dan rumus) terimpor benar
 - [ ] Ekspor AKRA lalu impor ke Moodle menghasilkan soal yang sama (dicek manual di Moodle uji)
 - [ ] XXE ditolak; gagal di tengah tidak menyimpan sebagian
+- [ ] Soal `description` Moodle bisa dijadikan stimulus, dan ekspor balik mempertahankan urutan
