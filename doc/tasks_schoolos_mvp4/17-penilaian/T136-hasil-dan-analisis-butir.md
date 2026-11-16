@@ -3,7 +3,7 @@
 **Fase:** 17 Penilaian
 **Dependensi:** T135
 **Estimasi:** 2 hari
-**[keputusan]** Peserta boleh melihat nilai/pembahasan (lihat indeks)
+**Keputusan:** calon siswa tidak melihat hasil; siswa diatur per paket (lihat indeks)
 
 ## Tujuan
 Guru dan TU melihat hasil ujian dengan cepat, dan tahu soal mana yang terlalu mudah, terlalu sulit, atau kuncinya mungkin salah.

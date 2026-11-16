@@ -21,8 +21,9 @@ Sekolah punya bank soal per mapel yang bisa dipakai ulang di banyak paket ujian,
    - `points numeric` (bawaan 1), `difficulty` (`mudah`, `sedang`, `sulit`, NULL), `tags text[]`;
    - `explanation` (pembahasan), `version int`, `created_by`, `updated_at`, `archived_at NULL`.
 3. Soal yang sudah dipakai di ujian yang berjalan atau selesai **tidak diubah di tempat**. Saat disunting, `version` naik dan paket yang sudah terkunci tetap memakai salinan soal (T127).
-4. Akses (menunggu keputusan berbagi bank soal):
-   - guru: bank soal mapel yang ia ampu (T65);
+4. Akses (keputusan: bank soal dipakai bersama per mapel):
+   - **guru pengampu mapel** (T65, semua kelas dan tingkat): melihat semua soal di bank mapel itu, memakainya di paket, menambah soal, dan menduplikat soal guru lain untuk disunting sebagai soal miliknya;
+   - **mengubah dan mengarsipkan soal hanya pembuat soal dan admin_tu.** Tombol ubah tidak tampil untuk guru lain, dan route ubah menolak (403);
    - admin_tu: semua bank, termasuk bank tes seleksi;
    - kepala_sekolah: baca.
 5. Halaman `GET /ujian/bank`: daftar bank dengan filter mapel/tingkat dan jumlah soal per jenis.
@@ -36,6 +37,7 @@ Sekolah punya bank soal per mapel yang bisa dipakai ulang di banyak paket ujian,
 
 ## Kriteria selesai
 - [ ] Guru tidak bisa membuka bank soal mapel yang tidak ia ampu (403/404)
+- [ ] Guru pengampu mapel yang sama bisa memakai dan menduplikat soal guru lain, tetapi tidak bisa mengubah atau mengarsipkannya
 - [ ] `answer_key` tidak pernah ikut ter-render di halaman yang dibuka peserta (uji unit pada fungsi serialisasi soal untuk peserta)
 - [ ] Soal yang dipakai ujian terkunci tidak berubah saat disunting (versi baru)
 - [ ] Route baru masuk daftar uji T58 dan T59

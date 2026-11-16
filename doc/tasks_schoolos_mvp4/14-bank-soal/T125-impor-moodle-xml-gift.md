@@ -22,13 +22,14 @@ Bank soal yang sudah dibuat sekolah di Moodle bisa dipindahkan ke AKRA tanpa dik
 
    Jenis lain (`cloze`, `ddwtos`, `calculated`, dan sebagainya) dilewati dan dilaporkan per soal.
 3. Gambar yang tertanam di Moodle XML (`<file encoding="base64">`) diunggah ke storage; `@@PLUGINFILE@@` diganti dengan URL AKRA.
-4. Kategori Moodle (`$course$/...`) menjadi tag. `generalfeedback` menjadi pembahasan.
-5. Alur pratinjau seperti impor dengan mapping (T82):
+4. Rumus TeX Moodle (`$$...$$`, `\(...\)`, `\[...\]`) dikonversi ke format rumus AKRA (T124). Rumus yang tidak bisa dirender KaTeX dilaporkan per soal.
+5. Kategori Moodle (`$course$/...`) menjadi tag. `generalfeedback` menjadi pembahasan.
+6. Alur pratinjau seperti impor dengan mapping (T82):
    - tabel soal yang akan dibuat, beserta yang dilewati dan alasannya;
    - tombol **Impor**;
    - semua soal masuk dalam satu transaksi.
-6. Batas ukuran file 20 MB. Parser XML aman: tanpa entitas eksternal; batas jumlah soal 2.000 per file.
-7. Ekspor balik ke Moodle XML: opsional (kandidat), tidak wajib di MVP 4.
+7. Batas ukuran file 20 MB. Parser XML aman: tanpa entitas eksternal; batas jumlah soal 2.000 per file.
+8. Ekspor balik ke Moodle XML: opsional (kandidat), tidak wajib di MVP 4.
 
 ## File yang disentuh
 - `internal/exam/import_moodle.go`, `import_gift.go`, `import_test.go`, `testdata/*.xml`, `testdata/*.gift`

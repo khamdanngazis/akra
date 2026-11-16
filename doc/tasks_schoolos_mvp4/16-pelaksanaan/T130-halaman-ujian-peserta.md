@@ -10,7 +10,7 @@ Peserta mengerjakan ujian di HP atau komputer dengan tampilan jelas, ringan, dan
 ## Langkah
 1. Alur peserta:
    1. Login (T129).
-   2. **Konfirmasi data:** nama, mapel, durasi, jumlah soal.
+   2. **Konfirmasi data:** nama, mapel, durasi, jumlah soal; untuk sesi dengan bunyi tanda, ada tes suara (T133).
    3. Masukkan token sesi (bila diwajibkan).
    4. Tombol **Mulai**.
    5. Mengerjakan.

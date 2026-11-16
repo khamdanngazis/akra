@@ -14,6 +14,8 @@ Ujian dijadwalkan per sesi dengan peserta dan pengawas yang jelas, karena lab ti
    - `room NULL`, `proctor_ids uuid[]` (guru pengawas);
    - `token_required bool`, `token`, `token_rotated_at`;
    - `late_entry_minutes`: batas terlambat masuk;
+   - `location_mode`: `di_ruang` (lab atau HP di kelas, ada pengawas) atau `jarak_jauh` (dari rumah). Menentukan bunyi tanda keluar halaman (T133);
+   - `alert_sound bool`: bawaan aktif untuk `di_ruang` dan mati untuk `jarak_jauh`, bisa diubah per sesi;
    - `seb_required bool` (opsional, T133).
 2. Migrasi `exam_participants`:
    - `session_id`, `school_id`;

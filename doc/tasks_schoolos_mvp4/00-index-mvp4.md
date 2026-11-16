@@ -60,16 +60,22 @@ Total perkiraan: 8,5 minggu.
 
 **Titik rilis pertama (tes seleksi online):** T123, T124, T127–T132, T135, T137, T139. Fitur lain menyusul.
 
-## Keputusan yang Harus Diambil
-1. **[keputusan] Login siswa (T129).** Siswa belum punya akun AKRA. Pilihan:
-   - (a) **Kartu peserta per ujian.** NIS + kode acak yang dicetak di kartu dan hanya berlaku di jadwal ujian itu. Tanpa akun permanen. *Saran.*
+## Keputusan (diambil 2026-11-16)
+1. **Rumus matematika wajib didukung** (T124). Gambar saja tidak cukup. Rumus memakai KaTeX dengan tombol bantu rumus, supaya guru tidak perlu hafal LaTeX.
+2. **Safe Exam Browser hanya opsi** (T133) dan boleh tidak diimplementasikan di MVP 4.
+   - Yang wajib: **bunyi tanda** di perangkat peserta saat keluar dari halaman ujian atau membuka halaman/aplikasi lain.
+   - Bunyi diatur per sesi lewat **lokasi ujian** (T128):
+     - **di ruang**, baik lab maupun HP di kelas → bunyi aktif, agar pengawas mendengar;
+     - **jarak jauh** → bunyi mati, hanya dicatat.
+3. **Pembahasan setelah ujian** (T136):
+   - calon siswa tidak melihat nilai maupun pembahasan;
+   - siswa diatur per paket.
+4. **Bank soal dipakai bersama per mapel** di sekolah (T123). Yang bisa mengubah soal hanya pembuat soal dan admin_tu.
+
+## Keputusan yang Masih Terbuka
+1. **[keputusan] Login siswa untuk ulangan dan PTS/PAS (T129).** Login calon siswa untuk tes masuk sudah ditetapkan: nomor pendaftaran + kode akses di kartu tes. Untuk siswa yang sudah bersekolah (belum punya akun AKRA), pilihannya:
+   - (a) **Kartu peserta per ujian:** NIS + kode acak yang dicetak di kartu dan hanya berlaku di jadwal itu. Tanpa akun permanen. *Saran.*
    - (b) Akun siswa permanen (peran baru `siswa`), lengkap dengan aktivasi dan lupa password.
-2. **[keputusan] Rumus matematika (T124).** Perlu dukungan rumus (KaTeX, ditulis seperti `\frac{1}{2}`) sejak MVP 4, atau cukup gambar?
-3. **[keputusan] Aplikasi exam browser (T133).** Untuk lab, perlu dukungan Safe Exam Browser (cek Config Key) atau aplikasi "Exambro" Android? Saran: MVP 4 cukup antikecurangan berbasis browser, dengan dukungan SEB sebagai opsi per jadwal.
-4. **[keputusan] Pembahasan setelah ujian (T136).** Bolehkah peserta melihat nilai dan pembahasan setelah ujian? Saran:
-   - calon siswa: tidak boleh;
-   - siswa: diatur per paket.
-5. **[keputusan] Berbagi bank soal (T123).** Bank soal milik guru pribadi, atau dipakai bersama per mapel di sekolah? Saran: per mapel sekolah, dan yang bisa mengubah hanya pembuat soal dan admin_tu.
 
 ## Di Luar Cakupan
 - Integrasi LTI/Web Services dengan Moodle.
