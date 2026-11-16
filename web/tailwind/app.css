@@ -2656,3 +2656,46 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Modul ujian: bank soal (T127). */
+@layer components {
+  .bank-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .bank-card {
+    @apply block text-slate-900 no-underline transition hover:border-blue-200 hover:bg-blue-50/40;
+  }
+
+  .bank-counts {
+    @apply mt-2 flex flex-wrap gap-1;
+  }
+
+  .bulk-bar {
+    @apply sticky top-16 z-10 mb-3 border-blue-200 bg-blue-50;
+  }
+
+  .question-row {
+    @apply flex items-start gap-3;
+  }
+
+  .question-check {
+    @apply flex-none pt-1;
+  }
+
+  .question-meta {
+    @apply mb-1 flex flex-wrap items-center gap-2;
+  }
+
+  .question-snippet {
+    @apply mb-1 break-words text-slate-900;
+  }
+
+  .question-actions {
+    @apply flex flex-none flex-col items-end gap-1 sm:flex-row;
+  }
+
+  .stimulus-group > summary {
+    @apply cursor-pointer;
+  }
+}

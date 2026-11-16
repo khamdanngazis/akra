@@ -1,0 +1,50 @@
+{{define "title"}}Bank Soal{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" ""}}
+<div class="page-header">
+<div>
+<h1>Bank Soal</h1>
+<p class="muted">Soal dipakai bersama per mapel. Hanya pembuat soal dan admin/TU yang bisa mengubahnya; guru lain bisa memakai dan menduplikat.</p>
+</div>
+{{if .CanCreate}}<div class="action-row"><a class="btn btn-ghost" href="/ujian/tp/">Tujuan pembelajaran</a><a class="btn btn-primary" href="/ujian/bank/baru">Buat bank</a></div>{{end}}
+</div>
+
+{{template "flash" .}}
+
+<form method="get" action="/ujian/bank/" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="tingkat">Tingkat</label>
+<select id="tingkat" name="tingkat">
+<option value="">Semua tingkat</option>
+{{range .Grades}}<option value="{{.}}"{{if eq . $.Grade}} selected{{end}}>Kelas {{.}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+{{if .Banks}}
+<div class="bank-grid">
+{{range .Banks}}
+<a class="card bank-card" href="/ujian/bank/{{.ID}}">
+<span class="text-sm text-slate-500">{{if .SubjectName}}{{.SubjectName}}{{else}}Tes umum{{end}}{{if .GradeLevel}} · Kelas {{.GradeLevel}}{{end}}</span>
+<strong class="block text-lg">{{.Name}}</strong>
+<span class="bank-counts"><span class="badge badge-success">{{.Ready}} siap</span>{{if .Draft}} <span class="badge">{{.Draft}} draf</span>{{end}}</span>
+{{if .Total}}<span class="block text-sm text-slate-500 mt-2">{{range $k, $n := .ByKind}}{{$k.Label}} {{$n}} · {{end}}Mudah {{index .ByDifficulty "mudah"}} · Sedang {{index .ByDifficulty "sedang"}} · Sulit {{index .ByDifficulty "sulit"}}</span>{{end}}
+{{if .UncoveredObjectives}}<span class="block text-sm text-amber-700 mt-1">{{.UncoveredObjectives}} TP belum punya soal</span>{{end}}
+</a>
+{{end}}
+</div>
+{{else}}
+<section class="card">
+<h2 class="card-title">Mulai bank soal</h2>
+<ol class="stack mt-3">
+<li><strong>Buat bank</strong> untuk mapel dan tingkat, mis. "Matematika Kelas 7".</li>
+<li><strong>Tambah soal</strong> satu per satu, atau <strong>impor</strong> dari Word, Moodle, atau Excel.</li>
+<li><strong>Buat ujian</strong> dari soal di bank.</li>
+</ol>
+{{if .CanCreate}}<p class="mt-4"><a class="btn btn-primary" href="/ujian/bank/baru">Buat bank pertama</a></p>
+{{else}}<p class="hint mt-3">Bank soal tampil untuk mapel yang Anda ampu. Minta admin/TU mengatur <a href="/pengaturan/penugasan">penugasan mapel</a>.</p>{{end}}
+</section>
+{{end}}
+{{end}}

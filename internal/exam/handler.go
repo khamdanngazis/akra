@@ -36,6 +36,7 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: admin_tu, kepala_sekolah (baca), guru dengan tugas
 		// koordinator_ujian di tahun ajaran aktif.
 		r.With(RequireAccess(h.db, h.render, h.logger, ActAgenda, Read)).Get("/agenda", h.agenda)
+		h.bankRoutes(r)
 	})
 }
 
@@ -74,7 +75,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		section
 		act Action
 	}{
-		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Release: R1}, ActBank},
+		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Path: "/ujian/bank/", Release: R1, Ready: true}, ActBank},
 		{section{Title: "Tes seleksi", Desc: "Tes online calon siswa; nilai langsung masuk ke peringkat pendaftaran.", Release: R1}, ActAdmissionTest},
 		{section{Title: "Ulangan kelas", Desc: "Ulangan untuk kelas yang Anda ampu, lengkap dengan koreksi dan analisis.", Release: R2}, ActClassExam},
 		{section{Title: "Agenda PTS/PAS", Desc: "Jadwal mapel per hari, ruang, sesi, pengawas, dan kartu peserta.", Path: "/ujian/agenda", Release: R1, Ready: true}, ActAgenda},

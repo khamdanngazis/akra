@@ -40,6 +40,8 @@ var exactDecimalColumns = map[string]map[string]string{
 	"000048_admission_tests.up.sql":  {"score": "numeric(6,2)"}, // nilai tes seleksi (T93a)
 	// Titik pusat provinsi dan kabupaten/kota untuk peta lokasi (T112).
 	"000055_wilayah_titik.up.sql": {"lat": "numeric(9,6)", "lng": "numeric(9,6)"},
+	// Statistik butir soal: tingkat kesukaran 0–1 dan daya beda −1–1 (T127/T148).
+	"000063_exam_banks.up.sql": {"difficulty_index": "numeric(4,3)", "discrimination": "numeric(4,3)"},
 }
 
 // floatInSQL menangkap tipe atau cast pecahan di string SQL.
