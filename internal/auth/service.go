@@ -44,6 +44,10 @@ type User struct {
 	Roles      []string
 	// Timezone adalah zona waktu sekolah (schools.timezone, T126).
 	Timezone string
+	// Duties adalah tugas tambahan di tahun ajaran aktif (T125).
+	Duties []string
+	// Modules adalah modul opsional yang aktif untuk sekolah, mis. "exam".
+	Modules []string
 }
 
 // UserCredentials adalah data pengguna yang dibutuhkan untuk login.

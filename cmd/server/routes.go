@@ -16,6 +16,8 @@ import (
 	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/dapodik"
+	"akra/internal/duty"
+	"akra/internal/exam"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -44,18 +46,22 @@ type routerDeps struct {
 	academicYear *school.AcademicYearHandler
 	// schoolProfile adalah Pengaturan → Profil sekolah (T126).
 	schoolProfile *school.ProfileHandler
-	classes       *classes.Handler
-	subjects      *academic.SubjectHandler
-	assignments   *academic.AssignmentHandler
-	schedule      *schedule.Handler
-	components    *grades.ComponentHandler
-	gradeInput    *grades.InputHandler
-	gradeRecap    *grades.ReportHandler
-	reportConfig  *grades.ReportConfigHandler
-	reportSaved   *builder.ConfigHandler
-	students      *students.Handler
-	admission     *admission.Handler
-	dapodik       *dapodik.Handler
+	// duties adalah Pengaturan → Tugas tambahan (T125).
+	duties *duty.Handler
+	// exam adalah halaman staf modul ujian (MVP 4), aktif per sekolah.
+	exam         *exam.Handler
+	classes      *classes.Handler
+	subjects     *academic.SubjectHandler
+	assignments  *academic.AssignmentHandler
+	schedule     *schedule.Handler
+	components   *grades.ComponentHandler
+	gradeInput   *grades.InputHandler
+	gradeRecap   *grades.ReportHandler
+	reportConfig *grades.ReportConfigHandler
+	reportSaved  *builder.ConfigHandler
+	students     *students.Handler
+	admission    *admission.Handler
+	dapodik      *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
 	// wilayah adalah daftar wilayah untuk isian alamat (T110), publik.
@@ -130,6 +136,8 @@ func newRouter(d routerDeps) http.Handler {
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
 			d.schoolProfile.Routes(r)
+			d.duties.Routes(r)
+			d.exam.Routes(r)
 			d.classes.Routes(r)
 			d.subjects.Routes(r)
 			d.assignments.Routes(r)

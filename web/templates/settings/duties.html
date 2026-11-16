@@ -1,0 +1,87 @@
+{{define "title"}}Tugas Tambahan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Tugas Tambahan</h1>
+<p class="muted">Tugas di luar peran login, per tahun ajaran. Tahun ajaran baru tidak mewarisi tugas tahun sebelumnya.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .NoYear}}
+<section class="card empty-state">
+<p>Belum ada tahun ajaran aktif.</p>
+<p class="muted">Aktifkan tahun ajaran di <a href="/pengaturan/tahun-ajaran">Tahun Ajaran</a> lebih dulu.</p>
+</section>
+{{else}}
+<form method="get" action="/pengaturan/tugas" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="tahun">Tahun ajaran</label>
+<select id="tahun" name="tahun">
+{{range .Years}}<option value="{{.ID}}"{{if eq .ID $.Year.ID}} selected{{end}}>{{.Name}}{{if .IsActive}} (aktif){{end}}</option>{{end}}
+</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+{{if .Assignments}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Guru</th><th>Tugas</th>{{if .CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr></thead>
+<tbody>
+{{range .Assignments}}
+<tr>
+<td><strong class="block">{{.FullName}}</strong><span class="text-sm text-slate-500">{{.Email}}</span></td>
+<td>{{.Label}}</td>
+{{if $.CanEdit}}<td class="text-right">
+<form method="post" action="/pengaturan/tugas/{{.ID}}/hapus" x-data @submit="if (!confirm('Cabut tugas {{.Label}} dari {{.FullName}}?')) $event.preventDefault()">
+{{ csrfField }}<input type="hidden" name="academic_year_id" value="{{.YearID}}">
+<button type="submit" class="btn btn-ghost btn-sm">Cabut</button>
+</form>
+</td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state">
+<p>Belum ada tugas tambahan di tahun ajaran {{.Year.Name}}.</p>
+{{if .CanEdit}}<p class="muted">Tetapkan koordinator ujian agar wakasek kurikulum atau panitia bisa mengatur PTS/PAS tanpa akun TU.</p>{{end}}
+</section>
+{{end}}
+
+{{if .CanEdit}}
+<form method="post" action="/pengaturan/tugas" class="card form-card stack mt-4" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<input type="hidden" name="academic_year_id" value="{{.Year.ID}}">
+<h2 class="card-title">Tambah tugas · {{.Year.Name}}</h2>
+{{if .Teachers}}
+<div class="field-grid">
+<div class="field">
+<label for="user_id">Guru</label>
+<select id="user_id" name="user_id" required>
+<option value="">Pilih guru</option>
+{{range .Teachers}}<option value="{{.ID}}">{{.FullName}} · {{.Email}}</option>{{end}}
+</select>
+</div>
+<div class="field">
+<label for="duty">Tugas</label>
+<select id="duty" name="duty" required>
+{{range .Duties}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+</select>
+{{range .Duties}}<p class="hint">{{.Label}}: {{.Hint}}</p>{{end}}
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan tugas</button></div>
+{{else}}
+<p class="muted">Belum ada akun guru aktif. Tambahkan akun guru lebih dulu.</p>
+{{end}}
+</form>
+{{end}}
+{{end}}
+{{end}}

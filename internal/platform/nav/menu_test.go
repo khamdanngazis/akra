@@ -116,3 +116,38 @@ func TestBottomAndShortcuts(t *testing.T) {
 		}
 	}
 }
+
+// Menu modul ujian (T125): hanya tampil bila modul aktif; "Agenda Ujian"
+// juga untuk guru dengan tugas koordinator_ujian.
+func TestMenuForUser_ModuleAndDuty(t *testing.T) {
+	has := func(items []MenuItem, path string) bool {
+		for _, it := range items {
+			if it.Path == path {
+				return true
+			}
+		}
+		return false
+	}
+	guru := []string{"guru"}
+	if m := MenuForUser(guru, []string{"koordinator_ujian"}, nil); has(m, "/ujian") || has(m, "/ujian/agenda") {
+		t.Error("exam menu shown while module is off")
+	}
+	if m := MenuForUser([]string{"admin_tu"}, nil, nil); has(m, "/pengaturan/tugas") {
+		t.Error("duties menu shown while exam module is off")
+	}
+	m := MenuForUser(guru, nil, []string{"exam"})
+	if !has(m, "/ujian") || has(m, "/ujian/agenda") {
+		t.Errorf("teacher with module on: %s", paths(m))
+	}
+	m = MenuForUser(guru, []string{"koordinator_ujian"}, []string{"exam"})
+	if !has(m, "/ujian/agenda") {
+		t.Errorf("coordinator without agenda: %s", paths(m))
+	}
+	if m := MenuForUser([]string{"admin_tu"}, nil, []string{"exam"}); !has(m, "/pengaturan/tugas") || !has(m, "/ujian/agenda") {
+		t.Errorf("admin with module on: %s", paths(m))
+	}
+	// MenuFor (tanpa modul) sama dengan sebelum T125.
+	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, nil)); got != want {
+		t.Errorf("MenuFor = %s, want %s", got, want)
+	}
+}

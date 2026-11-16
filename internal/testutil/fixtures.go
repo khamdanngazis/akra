@@ -82,6 +82,10 @@ type School struct {
 	AdmissionTestID string
 	// ApplicantFeePaymentID adalah pembayaran biaya formulir ApplicantID (T94).
 	ApplicantFeePaymentID string
+	// DutyID adalah tugas tambahan tahun YearID (T125). Sengaja milik kepala
+	// sekolah (bukan guru), sehingga tidak memberi hak koordinator dan uji
+	// route tidak bergantung urutan.
+	DutyID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -241,6 +245,11 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.Admin.ID, "Absensi "+marker)
 	s.ReportJobID = one(`INSERT INTO report_jobs (school_id, requested_by, report_type, format, status, file_key, file_name, finished_at)
 		VALUES ($1, $2, 'arrears', 'xlsx', 'selesai', $3, 'tunggakan.xlsx', now()) RETURNING id`, s.ID, s.Treasurer.ID, "schools/"+s.ID+"/reports/uji.xlsx")
+
+	s.DutyID = one(`INSERT INTO staff_duties (school_id, academic_year_id, user_id, duty, created_by) VALUES ($1, $2, $3, 'koordinator_ujian', $4) RETURNING id`,
+		s.ID, s.YearID, s.Principal.ID, s.Admin.ID)
+	// Modul ujian aktif sampai tahap 3 agar semua route ujian bisa diuji.
+	exec(`INSERT INTO school_settings (school_id, key, value) VALUES ($1, 'exam.enabled', 'true'), ($1, 'exam.release', 'r3')`, s.ID)
 
 	var rows importer.Rows
 	rows.Data = []importer.Row{{Line: 2, Values: [importer.NumColumns]string{key + "-900", "Impor " + marker, "", "", s.ClassName}}}

@@ -46,6 +46,14 @@ const (
 	// dijadikan siswa tanpa daftar ulang (T120). Belum diatur berarti
 	// memakai daftar ulang.
 	AdmissionReRegistration = "admission.reregistration"
+	// ExamEnabled: "true" jika modul ujian online aktif untuk sekolah
+	// (T125). Diatur pengelola platform lewat cmd/modul, bukan oleh sekolah.
+	// Belum diatur berarti nonaktif.
+	ExamEnabled = "exam.enabled"
+	// ExamRelease: tahap rilis modul ujian yang dibuka untuk sekolah: "r1"
+	// (tes seleksi), "r2" (ulangan guru), atau "r3" (PTS/PAS). Tahap lebih
+	// tinggi mencakup tahap di bawahnya. Belum diatur berarti "r1".
+	ExamRelease = "exam.release"
 )
 
 // Get mengembalikan nilai kunci; ok false jika belum diatur.

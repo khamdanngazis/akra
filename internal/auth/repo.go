@@ -23,7 +23,14 @@ func NewRepository(db database.DB) *PostgresRepository {
 
 const findUserForLoginSQL = `
 SELECT u.id, u.school_id, s.name, s.timezone, u.email, u.full_name, u.password_hash, u.is_active,
-       coalesce(array_agg(r.code ORDER BY r.id) FILTER (WHERE r.code IS NOT NULL), '{}')
+       coalesce(array_agg(r.code ORDER BY r.id) FILTER (WHERE r.code IS NOT NULL), '{}'),
+       -- Tugas tambahan di tahun ajaran aktif (T125), untuk menu.
+       coalesce((SELECT array_agg(DISTINCT d.duty ORDER BY d.duty) FROM staff_duties d
+                 JOIN academic_years y ON y.id = d.academic_year_id AND y.school_id = d.school_id AND y.is_active
+                 WHERE d.school_id = u.school_id AND d.user_id = u.id), '{}'),
+       -- Modul yang aktif untuk sekolah: kunci pengaturan "<modul>.enabled" = true.
+       coalesce((SELECT array_agg(split_part(ss.key, '.', 1) ORDER BY ss.key) FROM school_settings ss
+                 WHERE ss.school_id = u.school_id AND ss.key LIKE '%.enabled' AND ss.value = 'true'), '{}')
 FROM users u
 JOIN schools s ON s.id = u.school_id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
@@ -34,7 +41,7 @@ GROUP BY u.id, s.name, s.timezone`
 func (r *PostgresRepository) FindUserForLogin(ctx context.Context, schoolCode, email string) (UserCredentials, error) {
 	var c UserCredentials
 	err := r.db.QueryRow(ctx, findUserForLoginSQL, schoolCode, email).Scan(
-		&c.ID, &c.SchoolID, &c.SchoolName, &c.Timezone, &c.Email, &c.FullName, &c.PasswordHash, &c.IsActive, &c.Roles,
+		&c.ID, &c.SchoolID, &c.SchoolName, &c.Timezone, &c.Email, &c.FullName, &c.PasswordHash, &c.IsActive, &c.Roles, &c.Duties, &c.Modules,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return UserCredentials{}, ErrNotFound

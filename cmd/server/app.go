@@ -17,6 +17,8 @@ import (
 	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/dapodik"
+	"akra/internal/duty"
+	"akra/internal/exam"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -85,6 +87,8 @@ func newApp(d appDeps) (http.Handler, error) {
 				auth.NewSessionRevoker(d.sessions), d.baseURL, d.logger),
 			d.sessions, d.render, d.logger),
 		activation:    auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
+		duties:        duty.NewHandler(d.db, d.sessions, d.render, d.logger),
+		exam:          exam.NewHandler(d.db, d.sessions, d.render, d.logger),
 		schoolProfile: school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
 		academicYear:  school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
 		classes:       classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),

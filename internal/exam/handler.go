@@ -1,0 +1,100 @@
+package exam
+
+import (
+	"log/slog"
+	"net/http"
+
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-chi/chi/v5"
+
+	"akra/internal/auth"
+	"akra/internal/platform/database"
+	"akra/internal/platform/page"
+)
+
+// Handler melayani halaman staf modul ujian.
+type Handler struct {
+	db       database.DB
+	sessions *scs.SessionManager
+	render   page.Renderer
+	logger   *slog.Logger
+}
+
+// NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
+// RequireLogin.
+func NewHandler(db database.DB, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, sessions: sessions, render: render, logger: logger}
+}
+
+// Routes mendaftarkan route modul ujian. Semua route menjawab 404 bila
+// modul nonaktif untuk sekolah (RequireModule).
+func (h *Handler) Routes(r chi.Router) {
+	r.Route("/ujian", func(r chi.Router) {
+		r.Use(RequireModule(h.db, h.render, h.logger, R1))
+		// Peran: admin_tu, kepala_sekolah, guru.
+		r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru)).Get("/", h.home)
+		// Peran: admin_tu, kepala_sekolah (baca), guru dengan tugas
+		// koordinator_ujian di tahun ajaran aktif.
+		r.With(RequireAccess(h.db, h.render, h.logger, ActAgenda, Read)).Get("/agenda", h.agenda)
+	})
+}
+
+// section adalah satu bagian modul ujian di halaman depan.
+type section struct {
+	Title, Desc, Path string
+	// Release adalah tahap rilis yang membuka bagian ini.
+	Release Release
+	Ready   bool // halaman sudah tersedia di rilis ini
+}
+
+type homeView struct {
+	User     auth.Identity
+	Module   Module
+	Sections []section
+}
+
+var releaseLabels = map[Release]string{
+	R1: "Tahap 1 — tes seleksi online",
+	R2: "Tahap 2 — ulangan guru",
+	R3: "Tahap 3 — PTS/PAS sekolah",
+}
+
+// ReleaseLabel mengembalikan nama tahap rilis untuk tampilan.
+func (m Module) ReleaseLabel() string { return releaseLabels[m.Release] }
+
+func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	a, err := LoadActor(r.Context(), h.db, id)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, id, "load exam actor", err)
+		return
+	}
+	m := ModuleFrom(r.Context())
+	all := []struct {
+		section
+		act Action
+	}{
+		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Release: R1}, ActBank},
+		{section{Title: "Tes seleksi", Desc: "Tes online calon siswa; nilai langsung masuk ke peringkat pendaftaran.", Release: R1}, ActAdmissionTest},
+		{section{Title: "Ulangan kelas", Desc: "Ulangan untuk kelas yang Anda ampu, lengkap dengan koreksi dan analisis.", Release: R2}, ActClassExam},
+		{section{Title: "Agenda PTS/PAS", Desc: "Jadwal mapel per hari, ruang, sesi, pengawas, dan kartu peserta.", Path: "/ujian/agenda", Release: R1, Ready: true}, ActAgenda},
+	}
+	v := homeView{User: id, Module: m}
+	for _, s := range all {
+		if a.CanAny(s.act, Read) && m.Has(s.Release) {
+			v.Sections = append(v.Sections, s.section)
+		}
+	}
+	h.render.Render(w, r, http.StatusOK, "exam/home", v)
+}
+
+type agendaView struct {
+	User    auth.Identity
+	CanEdit bool
+}
+
+func (h *Handler) agenda(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	a, _ := ActorFrom(r.Context())
+	h.render.Render(w, r, http.StatusOK, "exam/agenda", agendaView{User: id, CanEdit: a.CanAny(ActAgenda, Write)})
+}

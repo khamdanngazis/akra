@@ -23,6 +23,12 @@ type Identity struct {
 	// Timezone adalah zona waktu sekolah (T126); kosong berarti
 	// Asia/Jakarta. Pakai Location untuk konversi.
 	Timezone string
+
+	// Duties (tugas tambahan tahun ajaran aktif) dan Modules (modul aktif
+	// sekolah) diambil saat login dan hanya untuk menu. Jangan dipakai untuk
+	// otorisasi; modul ujian membaca ulang dari database (exam.LoadActor).
+	Duties  []string
+	Modules []string
 }
 
 // Location mengembalikan zona waktu sekolah pengguna. Semua tampilan dan
