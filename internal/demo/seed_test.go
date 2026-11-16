@@ -71,7 +71,7 @@ func TestSeed(t *testing.T) {
 		`SELECT count(*) FROM student_guardians sg JOIN users u ON u.guardian_id = sg.guardian_id WHERE u.school_id = $1 AND u.email LIKE 'ortu.wijaya@%'`:                                                     2,
 		`SELECT count(*) FROM invoices i JOIN enrollments e ON e.id = i.enrollment_id JOIN students s ON s.id = e.student_id WHERE i.school_id = $1 AND s.full_name = 'Alya Lestari' AND i.status <> 'lunas'`:  0,
 		`SELECT count(*) FROM payment_voids WHERE school_id = $1 AND status = 'pending'`:                                                                                                                       1,
-		`SELECT count(*) FROM attendance_sessions WHERE school_id = $1 AND session_date = current_date`:                                                                                                        0,
+		`SELECT count(*) FROM attendance_sessions WHERE school_id = $1 AND session_date = (now() AT TIME ZONE 'Asia/Jakarta')::date`:                                                                           0,
 	} {
 		if n := count(sql); n != want {
 			t.Errorf("%s = %d, want %d", sql, n, want)

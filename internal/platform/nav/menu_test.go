@@ -15,10 +15,10 @@ func paths(items []MenuItem) string {
 
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/rapor /pengaturan/mapel",
+		"admin_tu":       "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/rapor /pengaturan/mapel",
 		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /pendaftaran/biaya /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
 		"guru":           "/ /absensi /jadwal/saya /pengumuman /pengaturan/penugasan /nilai/input /nilai/rekap /nilai/komponen /dapodik/nilai",
-		"kepala_sekolah": "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran /nilai/rekap",
+		"kepala_sekolah": "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/sekolah /pengaturan/tahun-ajaran /nilai/rekap",
 		"orang_tua":      "/portal /portal/pengumuman",
 	} {
 		if got := paths(MenuFor([]string{role})); got != want {
@@ -82,6 +82,7 @@ func TestCurrent(t *testing.T) {
 		"/keuangan/tagihan/1":        "",
 		"/laporan/kehadiran":         "/laporan",
 		"/pengaturan/tahun-ajaran":   "/pengaturan/tahun-ajaran",
+		"/pengaturan/sekolah":        "/pengaturan/sekolah",
 		"/siswax":                    "",
 		"/impor/siswa":               "/siswa",
 		"/impor/siswa/template.xlsx": "/siswa",
@@ -113,5 +114,40 @@ func TestBottomAndShortcuts(t *testing.T) {
 		if it.ShortLabel() == "" || len(it.ShortLabel()) > 10 {
 			t.Errorf("short label of %s = %q", it.Path, it.ShortLabel())
 		}
+	}
+}
+
+// Menu modul ujian (T125): hanya tampil bila modul aktif; "Agenda Ujian"
+// juga untuk guru dengan tugas koordinator_ujian.
+func TestMenuForUser_ModuleAndDuty(t *testing.T) {
+	has := func(items []MenuItem, path string) bool {
+		for _, it := range items {
+			if it.Path == path {
+				return true
+			}
+		}
+		return false
+	}
+	guru := []string{"guru"}
+	if m := MenuForUser(guru, []string{"koordinator_ujian"}, nil); has(m, "/ujian") || has(m, "/ujian/agenda") {
+		t.Error("exam menu shown while module is off")
+	}
+	if m := MenuForUser([]string{"admin_tu"}, nil, nil); has(m, "/pengaturan/tugas") {
+		t.Error("duties menu shown while exam module is off")
+	}
+	m := MenuForUser(guru, nil, []string{"exam"})
+	if !has(m, "/ujian") || has(m, "/ujian/agenda") {
+		t.Errorf("teacher with module on: %s", paths(m))
+	}
+	m = MenuForUser(guru, []string{"koordinator_ujian"}, []string{"exam"})
+	if !has(m, "/ujian/agenda") {
+		t.Errorf("coordinator without agenda: %s", paths(m))
+	}
+	if m := MenuForUser([]string{"admin_tu"}, nil, []string{"exam"}); !has(m, "/pengaturan/tugas") || !has(m, "/ujian/agenda") {
+		t.Errorf("admin with module on: %s", paths(m))
+	}
+	// MenuFor (tanpa modul) sama dengan sebelum T125.
+	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, nil)); got != want {
+		t.Errorf("MenuFor = %s, want %s", got, want)
 	}
 }

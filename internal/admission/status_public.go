@@ -57,11 +57,15 @@ func proofData(ctx context.Context, h *Handler, schoolName string, a Applicant) 
 	if err != nil {
 		return ProofData{}, err
 	}
+	loc, err := clock.ForSchool(ctx, h.db, a.SchoolID)
+	if err != nil {
+		return ProofData{}, err
+	}
 	d := ProofData{SchoolName: schoolName, RegistrationNumber: a.RegistrationNumber, FullName: a.FullName, BirthDate: a.BirthDate,
 		PeriodName: p.Name, YearName: p.AcademicYearName, Status: StatusLabels[a.Status],
-		VerificationCode: VerificationCode(a.ID, a.RegistrationNumber), PrintedAt: time.Now().In(clock.Jakarta)}
+		VerificationCode: VerificationCode(a.ID, a.RegistrationNumber), PrintedAt: time.Now().In(loc)}
 	if a.SubmittedAt != nil {
-		d.SubmittedAt = *a.SubmittedAt
+		d.SubmittedAt = a.SubmittedAt.In(loc)
 	}
 	usesTest := false
 	for _, t := range p.Tracks {
@@ -90,12 +94,15 @@ func testSchedule(ctx context.Context, sel *SelectionService, schoolID, periodID
 	if err != nil {
 		return nil, err
 	}
+	loc, err := clock.ForSchool(ctx, sel.db, schoolID)
+	if err != nil {
+		return nil, err
+	}
 	var out []string
 	for _, t := range tests {
 		line := t.Name + ": jadwal menyusul"
 		if t.ScheduledAt != nil {
-			at := t.ScheduledAt.In(clock.Jakarta)
-			line = t.Name + ": " + clock.FormatDateID(at) + " " + at.Format("15.04") + " WIB"
+			line = t.Name + ": " + clock.FormatDateTimeID(*t.ScheduledAt, loc)
 		}
 		if t.Location != "" {
 			line += ", " + t.Location

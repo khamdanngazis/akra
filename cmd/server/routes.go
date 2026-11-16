@@ -16,6 +16,8 @@ import (
 	"akra/internal/billing"
 	"akra/internal/classes"
 	"akra/internal/dapodik"
+	"akra/internal/duty"
+	"akra/internal/exam"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -42,18 +44,28 @@ type routerDeps struct {
 	authHandler  *auth.Handler
 	resetHandler *auth.ResetHandler
 	academicYear *school.AcademicYearHandler
-	classes      *classes.Handler
-	subjects     *academic.SubjectHandler
-	assignments  *academic.AssignmentHandler
-	schedule     *schedule.Handler
-	components   *grades.ComponentHandler
-	gradeInput   *grades.InputHandler
-	gradeRecap   *grades.ReportHandler
-	reportConfig *grades.ReportConfigHandler
-	reportSaved  *builder.ConfigHandler
-	students     *students.Handler
-	admission    *admission.Handler
-	dapodik      *dapodik.Handler
+	// schoolProfile adalah Pengaturan → Profil sekolah (T126).
+	schoolProfile *school.ProfileHandler
+	// duties adalah Pengaturan → Tugas tambahan (T125).
+	duties *duty.Handler
+	// exam adalah halaman staf modul ujian (MVP 4), aktif per sekolah.
+	exam *exam.Handler
+	// participant adalah login dan beranda peserta ujian (/u/..., T124),
+	// dengan sesi peserta sendiri (participantSessions).
+	participant         *exam.ParticipantHandler
+	participantSessions *scs.SessionManager
+	classes             *classes.Handler
+	subjects            *academic.SubjectHandler
+	assignments         *academic.AssignmentHandler
+	schedule            *schedule.Handler
+	components          *grades.ComponentHandler
+	gradeInput          *grades.InputHandler
+	gradeRecap          *grades.ReportHandler
+	reportConfig        *grades.ReportConfigHandler
+	reportSaved         *builder.ConfigHandler
+	students            *students.Handler
+	admission           *admission.Handler
+	dapodik             *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
 	// wilayah adalah daftar wilayah untuk isian alamat (T110), publik.
@@ -106,6 +118,18 @@ func newRouter(d routerDeps) http.Handler {
 		r.Route("/dev", d.dev)
 	}
 
+	// Peserta ujian (T124): sesi peserta terpisah dari sesi staf. Route
+	// staf di bawah tidak pernah membaca sesi ini, dan cookie peserta hanya
+	// berlaku di path /u.
+	if d.participant != nil {
+		r.Group(func(r chi.Router) {
+			r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
+			r.Use(d.csrf)
+			r.Use(d.participantSessions.LoadAndSave)
+			d.participant.Routes(r)
+		})
+	}
+
 	r.Group(func(r chi.Router) {
 		// Batas body dipasang sebelum CSRF: nosurf mem-parse form multipart
 		// (unggahan) seluruhnya untuk mencari token.
@@ -127,6 +151,9 @@ func newRouter(d routerDeps) http.Handler {
 			// Peran: semua peran.
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
+			d.schoolProfile.Routes(r)
+			d.duties.Routes(r)
+			d.exam.Routes(r)
 			d.classes.Routes(r)
 			d.subjects.Routes(r)
 			d.assignments.Routes(r)

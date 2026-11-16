@@ -10,15 +10,16 @@ import (
 	"testing"
 	"time"
 
+	"akra/internal/platform/clock"
 	"akra/internal/platform/pii"
 )
 
 func TestValidateTestPassScore(t *testing.T) {
 	var ve *ValidationError
-	if _, err := validateTest(TestForm{Name: "Baca", Weight: "100", MaxScore: "50", PassScore: "60"}); !errors.As(err, &ve) || ve.Fields["pass_score"] == "" {
+	if _, err := validateTest(TestForm{Name: "Baca", Weight: "100", MaxScore: "50", PassScore: "60"}, clock.Jakarta); !errors.As(err, &ve) || ve.Fields["pass_score"] == "" {
 		t.Errorf("pass above max: %v", err)
 	}
-	in, err := validateTest(TestForm{Name: "Baca", Weight: "100", PassScore: "70", Rubric: "  Lancar: 80–100  "})
+	in, err := validateTest(TestForm{Name: "Baca", Weight: "100", PassScore: "70", Rubric: "  Lancar: 80–100  "}, clock.Jakarta)
 	if err != nil || in.PassScore == nil || *in.PassScore != 70 || *in.Rubric != "Lancar: 80–100" {
 		t.Errorf("valid test = %+v, %v", in, err)
 	}

@@ -1,0 +1,27 @@
+{{define "title"}}Masuk Ujian · {{.School.Name}}{{end}}
+{{define "bodyClass"}}page-auth{{end}}
+{{define "content"}}
+{{template "auth_logo"}}
+<section class="card auth-card">
+<h1>Masuk ujian</h1>
+<p class="auth-sub">{{.School.Name}}</p>
+{{template "flash" .}}
+
+<form method="post" action="/u/{{.School.Code}}" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<div class="field">
+<label for="identifier">NIS atau nomor pendaftaran</label>
+<input id="identifier" name="identifier" value="{{.Identifier}}" inputmode="text" autocomplete="username" autocapitalize="characters" spellcheck="false" maxlength="40" required{{if not .Identifier}} autofocus{{end}}>
+</div>
+<div class="field">
+<label for="code">Kode di kartu ujian</label>
+<input id="code" name="code" placeholder="8 huruf/angka" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" required{{if .Identifier}} autofocus{{end}} class="tracking-widest uppercase">
+<p class="hint">Huruf besar atau kecil sama saja.</p>
+</div>
+<button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
+<span x-show="!submitting">Masuk</span><span x-show="submitting" x-cloak>Memeriksa…</span>
+</button>
+</form>
+<p class="hint mt-4">Lupa kode atau kartu hilang? Minta bantuan pengawas ruang.</p>
+</section>
+{{end}}

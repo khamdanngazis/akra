@@ -62,7 +62,7 @@ type arrearsView struct {
 
 func (h *ArrearsHandler) index(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	today := clock.Today()
+	today := id.Today()
 	f, from, to, badDate := ParseArrearsQuery(r.URL.Query())
 	v := arrearsView{User: id, From: from, To: to, Today: clock.FormatDateID(today), Query: f.Query()}
 	if badDate {

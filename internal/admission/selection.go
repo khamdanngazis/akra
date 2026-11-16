@@ -112,7 +112,9 @@ type testInput struct {
 	PassScore   *int
 }
 
-func validateTest(f TestForm) (testInput, error) {
+// validateTest memvalidasi form tes. Jadwal dibaca di zona waktu sekolah
+// loc (T126).
+func validateTest(f TestForm, loc *time.Location) (testInput, error) {
 	fields := map[string]string{}
 	in := testInput{Name: strings.Join(strings.Fields(f.Name), " ")}
 	switch {
@@ -135,7 +137,7 @@ func validateTest(f TestForm) (testInput, error) {
 		}
 	}
 	if v := strings.TrimSpace(f.ScheduledAt); v != "" {
-		t, err := time.ParseInLocation(scheduleLayout, v, clock.Jakarta)
+		t, err := time.ParseInLocation(scheduleLayout, v, loc)
 		if err != nil {
 			fields["scheduled_at"] = "Jadwal tidak valid."
 		} else {
@@ -169,7 +171,11 @@ func validateTest(f TestForm) (testInput, error) {
 
 // AddTest menambah tes ke periode.
 func (s *SelectionService) AddTest(ctx context.Context, actor school.Actor, periodID string, f TestForm) (SelectionTest, error) {
-	in, err := validateTest(f)
+	loc, err := clock.ForSchool(ctx, s.db, actor.SchoolID)
+	if err != nil {
+		return SelectionTest{}, err
+	}
+	in, err := validateTest(f, loc)
 	if err != nil {
 		return SelectionTest{}, err
 	}
@@ -196,7 +202,11 @@ func (s *SelectionService) AddTest(ctx context.Context, actor school.Actor, peri
 // UpdateTest mengubah tes. Nilai maksimal tidak boleh lebih kecil dari
 // nilai yang sudah tercatat.
 func (s *SelectionService) UpdateTest(ctx context.Context, actor school.Actor, periodID, testID string, f TestForm) error {
-	in, err := validateTest(f)
+	loc, err := clock.ForSchool(ctx, s.db, actor.SchoolID)
+	if err != nil {
+		return err
+	}
+	in, err := validateTest(f, loc)
 	if err != nil {
 		return err
 	}

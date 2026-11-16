@@ -31,8 +31,9 @@ var (
 //   - Nama tabel dan kolom dicek terhadap skema sungguhan oleh
 //     sources_db_test.go (setiap sumber dijalankan dengan semua kolomnya).
 
-// "Hari ini" menurut Asia/Jakarta, sama dengan clock.Today().
-const todayWIB = "(now() AT TIME ZONE 'Asia/Jakarta')::date"
+// "Hari ini" menurut zona waktu sekolah tagihan (T126), sama dengan
+// auth.Identity.Today().
+const todaySchool = "(now() AT TIME ZONE (SELECT sc.timezone FROM schools sc WHERE sc.id = i.school_id))::date"
 
 // studentColumns mengembalikan kolom siswa dan kelas yang dipakai banyak sumber.
 func studentColumns() []Column {
@@ -108,7 +109,7 @@ func arrearsSource() Source {
  JOIN classes c ON c.school_id = e.school_id AND c.id = e.class_id
  LEFT JOIN LATERAL (SELECT ` + billing.ActivePaidSQL + `::bigint AS paid) pd ON true`,
 		SchoolExpr:   "i.school_id",
-		Where:        "i.status <> 'lunas' AND i.voided_at IS NULL AND i.due_date < " + todayWIB,
+		Where:        "i.status <> 'lunas' AND i.voided_at IS NULL AND i.due_date < " + todaySchool,
 		DefaultOrder: "c.name, st.full_name, i.due_date, i.id",
 		Columns: join(studentColumns(), []Column{
 			{Key: "fee_types", Label: "Jenis tagihan", Type: TypeText, Expr: "COALESCE(" + billing.FeeNamesSQL + ", '')"},
@@ -117,7 +118,7 @@ func arrearsSource() Source {
 			{Key: "total", Label: "Total", Type: TypeMoney, Expr: "i.total_amount"},
 			{Key: "paid", Label: "Sudah dibayar", Type: TypeMoney, Expr: "pd.paid"},
 			{Key: "remaining", Label: "Sisa", Type: TypeMoney, Expr: "(i.total_amount - pd.paid)"},
-			{Key: "days_overdue", Label: "Hari terlambat", Type: TypeInt, Expr: "(" + todayWIB + " - i.due_date)"},
+			{Key: "days_overdue", Label: "Hari terlambat", Type: TypeInt, Expr: "(" + todaySchool + " - i.due_date)"},
 		}),
 	}
 }

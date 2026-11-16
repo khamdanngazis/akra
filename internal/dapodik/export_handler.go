@@ -8,7 +8,6 @@ import (
 
 	"akra/internal/audit"
 	"akra/internal/auth"
-	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 )
 
@@ -69,7 +68,7 @@ func (h *Handler) exportPD(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", `attachment; filename="daftar-peserta-didik.xlsx"`)
 	w.Header().Set("Cache-Control", "private, no-store")
-	if err := WritePDExport(w, id.SchoolName, id.FullName, out, time.Now().In(clock.Jakarta)); err != nil {
+	if err := WritePDExport(w, id.SchoolName, id.FullName, out, time.Now().In(id.Location())); err != nil {
 		h.logger.Error("export pd", "error", err)
 	}
 }

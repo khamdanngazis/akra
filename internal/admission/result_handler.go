@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
-	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
 	"akra/internal/reports/export"
 )
@@ -144,7 +143,7 @@ func (h *Handler) exportResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := export.Table{
-		Title: "Peringkat Pendaftar " + p.Name, SchoolName: id.SchoolName, PrintedAt: time.Now().In(clock.Jakarta),
+		Title: "Peringkat Pendaftar " + p.Name, SchoolName: id.SchoolName, PrintedAt: time.Now().In(id.Location()),
 		Meta: []string{"Tahun ajaran: " + p.AcademicYearName},
 		Columns: []export.Column{{Header: "Jalur"}, {Header: "Peringkat", Numeric: true}, {Header: "Nomor"}, {Header: "Nama"},
 			{Header: "Skor"}, {Header: "Status"}, {Header: "Usulan"}},

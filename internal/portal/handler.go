@@ -114,7 +114,7 @@ type childDetailView struct {
 
 func (h *Handler) childDetail(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	d, err := h.svc.GetChildDetail(r.Context(), id.SchoolID, id.UserID, chi.URLParam(r, "id"), clock.Today())
+	d, err := h.svc.GetChildDetail(r.Context(), id.SchoolID, id.UserID, chi.URLParam(r, "id"), id.Today())
 	if errors.Is(err, ErrNotFound) {
 		page.NotFound(h.render, w, r, id, "Data siswa tidak ditemukan.")
 		return
@@ -161,7 +161,7 @@ type billingView struct {
 
 func (h *Handler) childBilling(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	b, err := h.svc.GetChildBilling(r.Context(), id.SchoolID, id.UserID, chi.URLParam(r, "id"), clock.Today())
+	b, err := h.svc.GetChildBilling(r.Context(), id.SchoolID, id.UserID, chi.URLParam(r, "id"), id.Today())
 	if errors.Is(err, ErrNotFound) {
 		page.NotFound(h.render, w, r, id, "Data siswa tidak ditemukan.")
 		return
@@ -203,7 +203,7 @@ func (h *Handler) receipt(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, id, "parent receipt", err)
 		return
 	}
-	rc.PrintedAt = clock.Today()
+	rc.PrintedAt = id.Today()
 	var buf bytes.Buffer
 	if err := payments.WriteReceiptPDF(&buf, rc, true); err != nil {
 		page.ServerError(h.render, h.logger, w, r, id, "render receipt", err)

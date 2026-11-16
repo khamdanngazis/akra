@@ -1,0 +1,5 @@
+body{font-family:system-ui,sans-serif;margin:0;padding:12px;max-width:720px}
+header{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #ddd}
+#status[data-s=offline]{color:#b45309}#status[data-s=ok]{color:#15803d}
+.opt{display:block;border:1px solid #ccc;border-radius:8px;padding:10px;margin:6px 0}
+#grid button{width:40px;height:40px;margin:2px}#grid .done{background:#bbf7d0}

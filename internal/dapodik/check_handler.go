@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/auth"
-	"akra/internal/platform/clock"
 )
 
 // checkIssue adalah satu masalah beserta jenis dan tautan perbaikannya.
@@ -154,7 +153,7 @@ func (h *Handler) checkPage(w http.ResponseWriter, r *http.Request) {
 		view.ClassID = q.Get("kelas")
 	}
 
-	today := clock.Today()
+	today := id.Today()
 	needle := strings.ToLower(view.Query)
 	var scoped []checkStudent // bermasalah, dalam kelas dan pencarian terpilih
 	for _, p := range picks {

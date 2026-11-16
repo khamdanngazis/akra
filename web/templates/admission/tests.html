@@ -34,7 +34,7 @@
 {{if $.CanEdit}}
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}" class="stack" x-show="editing" x-cloak novalidate>
 {{ csrfField }}
-{{template "admission_test_fields" dict "Form" .Form "Errors" .Errors "ID" .ID}}
+{{template "admission_test_fields" dict "Form" .Form "Errors" .Errors "ID" .ID "Zone" $.Zone}}
 <div class="action-row">
 <button type="submit" class="btn btn-primary btn-sm">Simpan tes</button>
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button>
@@ -49,7 +49,7 @@
 <form method="post" action="/pendaftaran/periode/{{.Period.ID}}/tes" class="stack" novalidate>
 {{ csrfField }}
 <h3>Tambah tes</h3>
-{{template "admission_test_fields" dict "Form" .NewTest "Errors" .NewErrors "ID" "baru"}}
+{{template "admission_test_fields" dict "Form" .NewTest "Errors" .NewErrors "ID" "baru" "Zone" .Zone}}
 <div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Tambah tes</button></div>
 </form>
 {{end}}

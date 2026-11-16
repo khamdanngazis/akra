@@ -281,6 +281,37 @@ var Routes = []Route{
 		Requests: post(func(*School) string { return "/pengaturan/keuangan" }, func(*School) url.Values {
 			return url.Values{"void_approval_threshold": {"500000"}}
 		})},
+	// Tugas tambahan (T125).
+	{Method: "GET", Pattern: "/pengaturan/tugas/", Kind: KindPage, Roles: schoolData,
+		Requests: paths(func(o *School) []string {
+			return []string{"/pengaturan/tugas/", "/pengaturan/tugas/?tahun=" + o.YearID}
+		})},
+	{Method: "POST", Pattern: "/pengaturan/tugas/", Kind: KindFormRef, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/tugas/" }, func(o *School) url.Values {
+			return url.Values{"academic_year_id": {o.YearID}, "user_id": {o.Principal.ID}, "duty": {"koordinator_ujian"}}
+		})},
+	{Method: "POST", Pattern: "/pengaturan/tugas/{id}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pengaturan/tugas/" + o.DutyID + "/hapus" }, nil)},
+
+	// Modul ujian (MVP 4). Sekolah uji mengaktifkan modul (fixtures).
+	{Method: "GET", Pattern: "/ujian/", Kind: KindPage, Roles: []string{Admin, Teacher, Principal}},
+	// Guru di data uji bukan koordinator, jadi 403.
+	{Method: "GET", Pattern: "/ujian/agenda", Kind: KindPage, Roles: schoolData},
+
+	// Peserta ujian (T124): sesi peserta terpisah, bukan sesi staf. Login
+	// dan isolasi diuji di paket exam dan TestParticipant_* di cmd/server.
+	{Method: "GET", Pattern: "/u/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/{code}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/{code}", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/beranda", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/keluar", Kind: KindPublic},
+
+	// Profil sekolah dan zona waktu (T126).
+	{Method: "GET", Pattern: "/pengaturan/sekolah/", Kind: KindPage, Roles: schoolData},
+	{Method: "POST", Pattern: "/pengaturan/sekolah/", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/sekolah/" }, func(*School) url.Values {
+			return url.Values{"timezone": {"Asia/Makassar"}}
+		})},
 	{Method: "GET", Pattern: "/pengaturan/tahun-ajaran/", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pengaturan/tahun-ajaran/", Kind: KindOwn, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pengaturan/tahun-ajaran/" }, func(*School) url.Values {

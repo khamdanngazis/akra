@@ -76,7 +76,7 @@ func TestRetention(t *testing.T) {
 	accepted := move(e.submitted(t, apps, p, tr), ApplicantVerified, ApplicantAccepted)
 
 	// Percobaan formulir publik: yang lama dihapus, yang baru dipertahankan.
-	if _, err := e.tx.Exec(ctx, `INSERT INTO admission_attempts (school_id, kind, success, attempted_at) VALUES
+	if _, err := e.tx.Exec(ctx, `INSERT INTO rate_limit_attempts (school_id, kind, success, attempted_at) VALUES
 		($1, 'draft', true, now() - interval '40 days'), ($1, 'draft', true, now() - interval '1 day')`, e.schoolA); err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestRetention(t *testing.T) {
 		t.Errorf("2027-05-01: %d anonymized, want 3 (draft, rejected, withdrawn)", n)
 	}
 	var attempts int
-	_ = e.tx.QueryRow(ctx, `SELECT count(*) FROM admission_attempts WHERE school_id = $1`, e.schoolA).Scan(&attempts)
+	_ = e.tx.QueryRow(ctx, `SELECT count(*) FROM rate_limit_attempts WHERE school_id = $1`, e.schoolA).Scan(&attempts)
 	if attempts != 1 {
 		t.Errorf("attempts left = %d, want 1", attempts)
 	}

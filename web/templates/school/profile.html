@@ -1,0 +1,38 @@
+{{define "title"}}Profil Sekolah{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Profil Sekolah</h1>
+<p class="muted">Data sekolah dan zona waktu. Nama dan NPSN diatur pengelola AKRA; hubungi kami bila ada yang keliru.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<section class="card form-card" aria-labelledby="data-title">
+<h2 id="data-title" class="card-title">Data sekolah</h2>
+<dl class="data-list mt-3">
+<dt>Nama</dt><dd>{{.Profile.Name}}</dd>
+<dt>NPSN</dt><dd>{{or .Profile.NPSN "–"}}</dd>
+<dt>Kode login</dt><dd>{{or .Profile.Code "–"}}</dd>
+</dl>
+</section>
+
+<form method="post" action="/pengaturan/sekolah" class="stack mt-4" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<section class="card form-card" aria-labelledby="tz-title">
+<h2 id="tz-title" class="card-title">Zona waktu</h2>
+<p class="muted mt-1">Dipakai untuk "hari ini" di absensi, jatuh tempo tagihan, jadwal tes dan ujian, serta tanggal cetak dokumen. Jam sekolah sekarang: <strong>{{.Now}}</strong>.</p>
+<fieldset class="stack mt-3">
+<legend class="visually-hidden">Zona waktu sekolah</legend>
+{{range .Zones}}
+<label class="choice items-start"><input type="radio" name="timezone" value="{{.Name}}"{{if eq .Name $.Profile.Timezone}} checked{{end}}{{if not $.CanEdit}} disabled{{end}} class="mt-1 flex-none">
+<span>{{.Long}}</span></label>
+{{end}}
+</fieldset>
+{{if .CanEdit}}<p class="hint mt-2">Jadwal yang sudah tersimpan tidak bergeser: jam 08.00 WIB tetap sama dengan 09.00 WITA. Periksa ulang jadwal tes setelah mengganti zona.</p>{{end}}
+</section>
+{{if .CanEdit}}<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button></div>{{end}}
+</form>
+{{end}}

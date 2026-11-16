@@ -181,7 +181,7 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 		h.render.Render(w, r, http.StatusOK, pageForm, view)
 		return
 	}
-	h.renderStudentForm(w, r, id, http.StatusOK, Form{StudentID: studentID, Method: string(MethodCash), PaidOn: clock.Today().Format("2006-01-02")}, nil, true)
+	h.renderStudentForm(w, r, id, http.StatusOK, Form{StudentID: studentID, Method: string(MethodCash), PaidOn: id.Today().Format("2006-01-02")}, nil, true)
 }
 
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +226,7 @@ func (h *Handler) renderStudentForm(w http.ResponseWriter, r *http.Request, id a
 	}
 	view := formView{
 		User: id, Student: &studentRow{ID: st.ID, NIS: st.NIS, Name: st.FullName, Status: st.Status},
-		Form: f, Today: clock.Today().Format("2006-01-02"), BankAccounts: banks, Errors: errs,
+		Form: f, Today: id.Today().Format("2006-01-02"), BankAccounts: banks, Errors: errs,
 		Flash: auth.PopFlash(r.Context(), h.sessions),
 	}
 	if errs["invoice"] != "" {
@@ -236,7 +236,7 @@ func (h *Handler) renderStudentForm(w http.ResponseWriter, r *http.Request, id a
 	for _, inv := range f.InvoiceIDs {
 		checked[inv] = true
 	}
-	today := clock.Today()
+	today := id.Today()
 	for _, o := range open {
 		row := invoiceRow{
 			ID: o.ID, Label: o.FeeNames, Period: billing.PeriodLabel(o.Period), ClassName: o.ClassName + " · " + o.YearName,
@@ -326,7 +326,7 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 	}
 	view := invoiceView{
 		User: id, Invoice: d, Period: billing.PeriodLabel(d.Period), DueDate: clock.FormatDateID(d.DueDate),
-		Status: statusLabels[d.Status], Overdue: d.VoidedAt == nil && billing.IsOverdue(d.Status, d.DueDate, clock.Today()),
+		Status: statusLabels[d.Status], Overdue: d.VoidedAt == nil && billing.IsOverdue(d.Status, d.DueDate, id.Today()),
 		Total: money.FormatRupiah(d.TotalAmount), Paid: money.FormatRupiah(d.Paid), Remaining: money.FormatRupiah(d.Remaining()),
 		CanPay: id.HasRole(auth.RoleBendahara) && d.VoidedAt == nil && d.Status != billing.StatusPaid,
 		Flash:  auth.PopFlash(r.Context(), h.sessions), Error: errMsg,
@@ -344,7 +344,7 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, id auth.
 		h.serverError(w, r, "list voids", err)
 		return
 	}
-	today := clock.Today()
+	today := id.Today()
 	for _, it := range d.Items {
 		view.Items = append(view.Items, itemRow{Name: it.FeeTypeName, Description: it.Description, Amount: money.FormatRupiah(it.Amount)})
 	}

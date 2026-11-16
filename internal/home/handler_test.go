@@ -118,7 +118,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	sm := auth.NewSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
 	hd := NewHandler(tx, rd, sm, logger)
-	hd.today = func() time.Time { return f.today }
+	hd.today = func(*time.Location) time.Time { return f.today }
 	r := chi.NewRouter()
 	r.Use(sm.LoadAndSave)
 	r.Use(func(next http.Handler) http.Handler {
@@ -169,11 +169,11 @@ func TestTreasurerSummaryMatchesArrears(t *testing.T) {
 	if !strings.Contains(body, "Rp260.000") || !strings.Contains(body, "pembayaran dicatat hari ini") {
 		t.Error("treasurer home page")
 	}
-	recent, err := RecentPaymentsFor(ctx, f.tx, f.schoolA, f.today, 5)
+	recent, err := RecentPaymentsFor(ctx, f.tx, f.schoolA, clock.Jakarta, f.today, 5)
 	if err != nil || len(recent) == 0 || recent[0].Amount != "Rp40.000" || !strings.Contains(body, "Pembayaran terbaru") || !strings.Contains(body, recent[0].Student) {
 		t.Errorf("recent payments = %+v, %v", recent, err)
 	}
-	if other, err := RecentPaymentsFor(ctx, f.tx, f.schoolB, f.today, 5); err != nil || len(other) != 0 {
+	if other, err := RecentPaymentsFor(ctx, f.tx, f.schoolB, clock.Jakarta, f.today, 5); err != nil || len(other) != 0 {
 		t.Errorf("school B recent payments = %+v, %v", other, err)
 	}
 	if n := nav(body); strings.Contains(n, "/absensi") || !strings.Contains(n, `href="/keuangan/pembayaran/baru"`) || !strings.Contains(n, `href="/" aria-current="page"`) {

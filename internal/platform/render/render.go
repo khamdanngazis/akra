@@ -170,7 +170,7 @@ func funcs(versions map[string]string) template.FuncMap {
 		},
 	}
 	// menu mengembalikan item navigasi untuk peran pengguna (T51).
-	m["menu"] = nav.MenuFor
+	m["menu"] = nav.MenuForUser
 	m["roleLabel"] = nav.RoleLabel
 	m["bottomMenu"] = nav.Bottom
 	m["shortcuts"] = nav.Shortcuts

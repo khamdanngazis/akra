@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/auth"
-	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
 	"akra/internal/students"
@@ -21,8 +20,9 @@ import (
 const maxFPDClass = 100
 
 func (h *Handler) writeFPD(w http.ResponseWriter, r *http.Request, schoolName, filename string, inputs []Input) {
+	id, _ := auth.CurrentUser(r.Context())
 	var buf bytes.Buffer
-	if err := WriteFPD(&buf, schoolName, inputs, time.Now().In(clock.Jakarta), true); err != nil {
+	if err := WriteFPD(&buf, schoolName, inputs, time.Now().In(id.Location()), true); err != nil {
 		h.serverError(w, r, "write fpd", err)
 		return
 	}

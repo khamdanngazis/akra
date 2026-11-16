@@ -29,6 +29,14 @@ const (
 	// saat login berikutnya.
 	sessionKeyFullName   = "full_name"
 	sessionKeySchoolName = "school_name"
+	// sessionKeyTimezone: zona waktu sekolah (T126). Sesi lama tanpa kunci
+	// ini dianggap Asia/Jakarta.
+	sessionKeyTimezone = "timezone"
+	// sessionKeyDuties dan sessionKeyModules hanya untuk menu (T125). Cek
+	// akses selalu membaca database, jadi nilai usang hanya membuat menu
+	// tertinggal sampai login berikutnya.
+	sessionKeyDuties  = "duties"
+	sessionKeyModules = "modules"
 	// sessionKeySchoolCode: kode sekolah saat login, tujuan logout (/s/{kode}).
 	sessionKeySchoolCode = "school_code"
 	sessionKeyFlash      = "flash"
@@ -65,7 +73,17 @@ func startSession(ctx context.Context, sm *scs.SessionManager, u User) error {
 	sm.Put(ctx, sessionKeyRoles, u.Roles)
 	sm.Put(ctx, sessionKeyFullName, u.FullName)
 	sm.Put(ctx, sessionKeySchoolName, u.SchoolName)
+	sm.Put(ctx, sessionKeyTimezone, u.Timezone)
+	sm.Put(ctx, sessionKeyDuties, u.Duties)
+	sm.Put(ctx, sessionKeyModules, u.Modules)
 	return nil
+}
+
+// SetSessionTimezone memperbarui zona waktu sekolah di sesi saat ini,
+// dipakai setelah profil sekolah diubah. Pengguna lain mendapat zona baru
+// saat login berikutnya.
+func SetSessionTimezone(ctx context.Context, sm *scs.SessionManager, name string) {
+	sm.Put(ctx, sessionKeyTimezone, name)
 }
 
 // SetFlash menyimpan pesan satu kali tampil untuk request berikutnya.

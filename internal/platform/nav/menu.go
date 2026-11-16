@@ -11,6 +11,9 @@ const (
 	guru      = "guru"
 	kepala    = "kepala_sekolah"
 	orangTua  = "orang_tua"
+
+	// Kode tugas tambahan (sama dengan duty.ExamCoordinator).
+	koordinatorUjian = "koordinator_ujian"
 )
 
 // MenuItem adalah satu tautan menu.
@@ -27,6 +30,12 @@ type MenuItem struct {
 	// di luar prefix Path (mis. /impor/siswa milik menu Siswa).
 	Also  []string
 	Roles []string
+	// Duties adalah tugas tambahan yang juga memunculkan item ini (T125),
+	// mis. guru dengan tugas koordinator_ujian.
+	Duties []string
+	// Module: item hanya tampil bila modul ini aktif untuk sekolah (T125).
+	// Kosong berarti fitur inti yang selalu aktif.
+	Module string
 }
 
 // ShortLabel mengembalikan label pendek item (untuk bottom navigation).
@@ -62,36 +71,57 @@ var Items = []MenuItem{
 	{Label: "Pengumuman", Path: "/portal/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Informasi dari sekolah", Roles: []string{orangTua}},
 	{Label: "Audit", Path: "/keuangan/audit", Icon: "shield", Desc: "Jejak setiap aksi keuangan", Roles: []string{kepala, adminTU}},
 	{Label: "Pengaturan Keuangan", Path: "/pengaturan/keuangan", Icon: "settings", Short: "Atur", Desc: "Ambang persetujuan pembatalan", Roles: []string{bendahara, kepala}},
+	{Label: "Profil Sekolah", Path: "/pengaturan/sekolah", Icon: "school", Short: "Sekolah", Desc: "Data sekolah dan zona waktu", Roles: []string{adminTU, kepala}},
 	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Short: "Tahun", Desc: "Atur tahun ajaran aktif", Roles: []string{adminTU, kepala}},
 	{Label: "Penugasan Guru", Path: "/pengaturan/penugasan", Icon: "user-check", Short: "Mapel", Desc: "Guru pengampu mapel per kelas", Roles: []string{adminTU, guru}},
 	{Label: "Input Nilai", Path: "/nilai/input", Icon: "spreadsheet", Short: "Nilai", Desc: "Isi nilai siswa per komponen", Roles: []string{guru}},
 	{Label: "Rekap Nilai", Path: "/nilai/rekap", Icon: "report", Short: "Rekap", Desc: "Nilai akhir per mapel dan kelas", Roles: []string{adminTU, kepala, guru}},
 	{Label: "Komponen Nilai", Path: "/nilai/komponen", Icon: "percent", Short: "Bobot", Desc: "Komponen dan bobot nilai per mapel", Roles: []string{adminTU, guru}},
 	{Label: "Nilai ke Dapodik", Path: "/dapodik/nilai", Icon: "upload", Short: "Dapodik", Desc: "Isi format import nilai Dapodik", Roles: []string{guru}},
+	{Label: "Ujian", Path: "/ujian", Icon: "file-text", Desc: "Bank soal, ujian, dan hasil", Module: "exam", Roles: []string{adminTU, kepala, guru}},
+	{Label: "Agenda Ujian", Path: "/ujian/agenda", Icon: "calendar", Short: "Agenda", Desc: "PTS/PAS: ruang, sesi, dan pengawas", Module: "exam", Roles: []string{adminTU, kepala}, Duties: []string{koordinatorUjian}},
+	{Label: "Tugas Tambahan", Path: "/pengaturan/tugas", Icon: "user-check", Short: "Tugas", Desc: "Koordinator ujian per tahun ajaran", Module: "exam", Roles: []string{adminTU}},
 	{Label: "Pengaturan Rapor", Path: "/pengaturan/rapor", Icon: "settings", Short: "Rapor", Desc: "Skala huruf, KKM, penanda tangan", Roles: []string{adminTU}},
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Short: "Mapel", Desc: "Daftar mata pelajaran sekolah", Roles: []string{adminTU}},
 }
 
-// MenuFor mengembalikan item menu untuk pengguna dengan peran roles, dalam
-// urutan Items. Pengguna dengan beberapa peran mendapat gabungan menu tanpa
-// duplikat.
+// MenuFor mengembalikan item menu fitur inti untuk pengguna dengan peran
+// roles, dalam urutan Items. Pengguna dengan beberapa peran mendapat
+// gabungan menu tanpa duplikat.
 func MenuFor(roles []string) []MenuItem {
-	has := make(map[string]bool, len(roles))
+	return MenuForUser(roles, nil, nil)
+}
+
+// MenuForUser seperti MenuFor, ditambah item yang muncul karena tugas
+// tambahan (duties) dan item modul opsional yang aktif (modules).
+func MenuForUser(roles, duties, modules []string) []MenuItem {
+	has := make(map[string]bool, len(roles)+len(duties))
 	for _, r := range roles {
-		has[r] = true
+		has["role:"+r] = true
+	}
+	for _, d := range duties {
+		has["duty:"+d] = true
+	}
+	on := make(map[string]bool, len(modules))
+	for _, m := range modules {
+		on[m] = true
 	}
 	var out []MenuItem
 	seen := map[string]bool{}
 	for _, it := range Items {
-		if seen[it.Path] {
+		if seen[it.Path] || (it.Module != "" && !on[it.Module]) {
 			continue
 		}
+		match := false
 		for _, r := range it.Roles {
-			if has[r] {
-				out = append(out, it)
-				seen[it.Path] = true
-				break
-			}
+			match = match || has["role:"+r]
+		}
+		for _, d := range it.Duties {
+			match = match || has["duty:"+d]
+		}
+		if match {
+			out = append(out, it)
+			seen[it.Path] = true
 		}
 	}
 	return out

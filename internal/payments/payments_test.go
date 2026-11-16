@@ -175,15 +175,25 @@ func TestPayments_AppendOnly(t *testing.T) {
 		`DELETE FROM payments WHERE id = $1`,
 		`TRUNCATE payments CASCADE`,
 	} {
-		err := f.sp(t, func(q pgx.Tx) error {
-			args := []any{p.ID}
-			if strings.HasPrefix(sql, "TRUNCATE") {
-				args = nil
-			}
-			_, err := q.Exec(ctx, sql, args...)
-			return err
-		})
+		var err error
 		var pgErr *pgconn.PgError
+		// TRUNCATE butuh kunci eksklusif atas payments, sementara paket uji
+		// lain berjalan paralel dengan transaksi yang juga mengisi payments.
+		// Deadlock (40P01) di sini artefak uji paralel, bukan perilaku yang
+		// diuji: savepoint diulang (kunci subtransaksi dilepas saat rollback).
+		for range 5 {
+			err = f.sp(t, func(q pgx.Tx) error {
+				args := []any{p.ID}
+				if strings.HasPrefix(sql, "TRUNCATE") {
+					args = nil
+				}
+				_, err := q.Exec(ctx, sql, args...)
+				return err
+			})
+			if !errors.As(err, &pgErr) || pgErr.Code != "40P01" {
+				break
+			}
+		}
 		if !errors.As(err, &pgErr) || pgErr.Code != "42501" || !strings.Contains(pgErr.Message, "append-only") {
 			t.Errorf("%s: error = %v, want append-only rejection", sql, err)
 		}

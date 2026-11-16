@@ -31,6 +31,8 @@ type testsView struct {
 	NewTest      TestForm
 	NewErrors    map[string]string
 	Flash, Error string
+	// Zone adalah singkatan zona waktu sekolah untuk label jadwal (T126).
+	Zone string
 }
 
 func (h *Handler) selection() *SelectionService { return NewSelectionService(h.db) }
@@ -57,7 +59,7 @@ func (h *Handler) renderTests(w http.ResponseWriter, r *http.Request, id auth.Id
 		h.serverError(w, r, "list tests", err)
 		return
 	}
-	view := testsView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Period: p, Total: WeightsTotal(tests), Error: msg,
+	view := testsView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Period: p, Total: WeightsTotal(tests), Error: msg, Zone: clock.ZoneLabel(id.Location()),
 		Flash: auth.PopFlash(r.Context(), h.sessions)}
 	for _, t := range p.Tracks {
 		view.UsesTest = view.UsesTest || t.UsesTest
@@ -68,9 +70,8 @@ func (h *Handler) renderTests(w http.ResponseWriter, r *http.Request, id auth.Id
 			row.Form.PassScore = strconv.Itoa(t.PassScore)
 		}
 		if t.ScheduledAt != nil {
-			local := t.ScheduledAt.In(clock.Jakarta)
-			row.Schedule = clock.FormatDateID(local) + " " + local.Format("15:04") + " WIB"
-			row.Form.ScheduledAt = local.Format(scheduleLayout)
+			row.Schedule = clock.FormatDateTimeID(*t.ScheduledAt, id.Location())
+			row.Form.ScheduledAt = t.ScheduledAt.In(id.Location()).Format(scheduleLayout)
 		}
 		if editID == t.ID {
 			row.Form, row.Errors = f, errs
@@ -249,7 +250,7 @@ func (h *Handler) testSheet(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "list tests", err)
 		return
 	}
-	d := TestSheetData{SchoolName: id.SchoolName, PeriodName: p.Name, PrintedAt: time.Now().In(clock.Jakarta)}
+	d := TestSheetData{SchoolName: id.SchoolName, PeriodName: p.Name, PrintedAt: time.Now().In(id.Location()), Loc: id.Location()}
 	found := false
 	for _, t := range tests {
 		if t.ID == chi.URLParam(r, "testID") {

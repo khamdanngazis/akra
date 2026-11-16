@@ -21,6 +21,8 @@ type TestSheetData struct {
 	Test       SelectionTest
 	Rows       []TestSheetRow
 	PrintedAt  time.Time
+	// Loc adalah zona waktu sekolah untuk jadwal (T126); nil = WIB.
+	Loc *time.Location
 }
 
 // TestSheetRow adalah satu peserta tes.
@@ -105,8 +107,11 @@ func WriteTestSheetPDF(w io.Writer, d TestSheetData, compress bool) error {
 		info[0][1] += " (minimal lulus " + strconv.Itoa(d.Test.PassScore) + ")"
 	}
 	if d.Test.ScheduledAt != nil {
-		at := d.Test.ScheduledAt.In(clock.Jakarta)
-		info = append(info, [2]string{"Jadwal", clock.FormatDateID(at) + " " + at.Format("15.04") + " WIB"})
+		loc := d.Loc
+		if loc == nil {
+			loc = clock.Jakarta
+		}
+		info = append(info, [2]string{"Jadwal", clock.FormatDateTimeID(*d.Test.ScheduledAt, loc)})
 	}
 	if d.Test.Location != "" {
 		info = append(info, [2]string{"Lokasi", d.Test.Location})

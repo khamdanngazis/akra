@@ -249,6 +249,31 @@ Tabel `academic_years` (migrasi 000008), fungsi di [internal/school/academic_yea
 - ID di URL divalidasi formatnya (`database.IsUUID`) sebelum query; ID milik sekolah lain atau tidak valid menghasilkan `404`.
 - Semua fungsi repository menerima `school_id` dan memperlakukan data sekolah lain sebagai tidak ada (`school.ErrNotFound`). Fungsi repository menerima `database.DBTX` (pool atau transaksi), sehingga perubahan data dan `audit.Record` bisa berada di satu transaksi.
 
+## Profil Sekolah dan Zona Waktu
+
+Kolom `schools.timezone` (migrasi 000060): `Asia/Jakarta` (WIB, bawaan), `Asia/Makassar` (WITA), atau `Asia/Jayapura` (WIT). Diatur `admin_tu` di `/pengaturan/sekolah` (kepala sekolah hanya baca), dicatat di audit (`school.timezone`). Aturan pemakaian dan daftar periksa sisa pemakaian WIB ada di [doc/zona-waktu.md](doc/zona-waktu.md).
+
+## Tugas Tambahan dan Modul Ujian
+
+- Tabel `staff_duties` (migrasi 000061): tugas tambahan per tahun ajaran, mis. `koordinator_ujian`. Diatur `admin_tu` di `/pengaturan/tugas`; hanya untuk akun berperan guru. Tahun ajaran baru tidak mewarisi tugas. Haknya dibaca dari database di setiap request modul ujian; menu baru muncul setelah login ulang.
+- Matriks akses modul ujian ada di [internal/exam/access.go](internal/exam/access.go) dan diuji per sel.
+- Modul ujian aktif per sekolah lewat pengaturan `exam.enabled` dan `exam.release` (`r1`, `r2`, `r3`). Modul nonaktif: menu tidak tampil dan semua route `/ujian/...` menjawab `404`. Diatur pengelola platform, bukan sekolah:
+
+```sh
+railway ssh --service akra -- akra-modul -school <kode>                  # lihat status
+railway ssh --service akra -- akra-modul -school <kode> -exam on -release r1
+railway ssh --service akra -- akra-modul -school <kode> -exam off
+```
+
+## Login Peserta Ujian
+
+- Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.
+- Tabel `student_credentials` (migrasi 000062): kode ujian 8 karakter (tanpa huruf/angka mirip), disimpan sebagai hash argon2id dengan parameter ringan (`exam.CodeParams`). Teks kode hanya ada saat dibuat (untuk kartu) dan tidak pernah tercatat di log.
+- Kode berlaku untuk mengerjakan dari 30 menit sebelum sesi sampai sesi berakhir, terikat ke perangkat pertama (cookie `akra_perangkat`). Setelah sesi, kode hanya membuka hasil (baca saja) selama `results_until` (diisi T151).
+- 5 kali kode salah: peserta terkunci sampai pengawas membuka (`exam.Unlock`); pengawas juga bisa melepas ikatan perangkat (`exam.ResetDevice`).
+- Sesi peserta memakai cookie `akra_peserta` (path `/u`) dan `SessionManager` sendiri, berakhir 30 menit setelah sesi ujian. Route staf tidak membaca sesi ini (diuji ke semua route di registry: `TestParticipant_StaffRoutesRejected`).
+- Rate limit login dibagi dengan halaman pendaftaran publik: paket [internal/platform/ratelimit](internal/platform/ratelimit), tabel `rate_limit_attempts`.
+
 ## Kelas
 
 Tabel `classes` (migrasi 000009), fungsi di [internal/classes/repo.go](internal/classes/repo.go): `Create`, `GetByID`, `ListByYear`.

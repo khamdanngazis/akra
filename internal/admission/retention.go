@@ -252,7 +252,7 @@ func (w *RetentionWorker) Run(ctx context.Context) (int, error) {
 			break
 		}
 	}
-	if _, err := w.db.Exec(ctx, `DELETE FROM admission_attempts WHERE attempted_at < $1`, w.now().Add(-attemptRetention)); err != nil {
+	if _, err := w.db.Exec(ctx, `DELETE FROM rate_limit_attempts WHERE attempted_at < $1`, w.now().Add(-attemptRetention)); err != nil {
 		return done, fmt.Errorf("admission: delete old attempts: %w", err)
 	}
 	if done > 0 {

@@ -251,7 +251,7 @@ func (h *Handler) renderDetail(w http.ResponseWriter, r *http.Request, id auth.I
 	}
 	view := detailView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Student: st, Move: move, Readiness: readiness, Errors: errs, Flash: auth.PopFlash(r.Context(), h.sessions)}
 	if view.Move.Date == "" {
-		view.Move.Date = clock.Today().Format(dateLayout)
+		view.Move.Date = id.Today().Format(dateLayout)
 	}
 	for _, e := range history {
 		row := historyRow{ClassName: e.ClassName, Start: clock.FormatDateID(e.StartDate), Active: e.Active()}
