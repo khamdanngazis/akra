@@ -298,6 +298,14 @@ var Routes = []Route{
 	// Guru di data uji bukan koordinator, jadi 403.
 	{Method: "GET", Pattern: "/ujian/agenda", Kind: KindPage, Roles: schoolData},
 
+	// Peserta ujian (T124): sesi peserta terpisah, bukan sesi staf. Login
+	// dan isolasi diuji di paket exam dan TestParticipant_* di cmd/server.
+	{Method: "GET", Pattern: "/u/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/{code}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/{code}", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/beranda", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/keluar", Kind: KindPublic},
+
 	// Profil sekolah dan zona waktu (T126).
 	{Method: "GET", Pattern: "/pengaturan/sekolah/", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pengaturan/sekolah/", Kind: KindOwn, Roles: adminTU,

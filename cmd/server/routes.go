@@ -49,19 +49,23 @@ type routerDeps struct {
 	// duties adalah Pengaturan → Tugas tambahan (T125).
 	duties *duty.Handler
 	// exam adalah halaman staf modul ujian (MVP 4), aktif per sekolah.
-	exam         *exam.Handler
-	classes      *classes.Handler
-	subjects     *academic.SubjectHandler
-	assignments  *academic.AssignmentHandler
-	schedule     *schedule.Handler
-	components   *grades.ComponentHandler
-	gradeInput   *grades.InputHandler
-	gradeRecap   *grades.ReportHandler
-	reportConfig *grades.ReportConfigHandler
-	reportSaved  *builder.ConfigHandler
-	students     *students.Handler
-	admission    *admission.Handler
-	dapodik      *dapodik.Handler
+	exam *exam.Handler
+	// participant adalah login dan beranda peserta ujian (/u/..., T124),
+	// dengan sesi peserta sendiri (participantSessions).
+	participant         *exam.ParticipantHandler
+	participantSessions *scs.SessionManager
+	classes             *classes.Handler
+	subjects            *academic.SubjectHandler
+	assignments         *academic.AssignmentHandler
+	schedule            *schedule.Handler
+	components          *grades.ComponentHandler
+	gradeInput          *grades.InputHandler
+	gradeRecap          *grades.ReportHandler
+	reportConfig        *grades.ReportConfigHandler
+	reportSaved         *builder.ConfigHandler
+	students            *students.Handler
+	admission           *admission.Handler
+	dapodik             *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
 	// wilayah adalah daftar wilayah untuk isian alamat (T110), publik.
@@ -112,6 +116,18 @@ func newRouter(d routerDeps) http.Handler {
 	// Hanya development: alat bantu tanpa sesi dan tanpa CSRF.
 	if d.dev != nil {
 		r.Route("/dev", d.dev)
+	}
+
+	// Peserta ujian (T124): sesi peserta terpisah dari sesi staf. Route
+	// staf di bawah tidak pernah membaca sesi ini, dan cookie peserta hanya
+	// berlaku di path /u.
+	if d.participant != nil {
+		r.Group(func(r chi.Router) {
+			r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
+			r.Use(d.csrf)
+			r.Use(d.participantSessions.LoadAndSave)
+			d.participant.Routes(r)
+		})
 	}
 
 	r.Group(func(r chi.Router) {

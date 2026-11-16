@@ -265,6 +265,15 @@ railway ssh --service akra -- akra-modul -school <kode> -exam on -release r1
 railway ssh --service akra -- akra-modul -school <kode> -exam off
 ```
 
+## Login Peserta Ujian
+
+- Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.
+- Tabel `student_credentials` (migrasi 000062): kode ujian 8 karakter (tanpa huruf/angka mirip), disimpan sebagai hash argon2id dengan parameter ringan (`exam.CodeParams`). Teks kode hanya ada saat dibuat (untuk kartu) dan tidak pernah tercatat di log.
+- Kode berlaku untuk mengerjakan dari 30 menit sebelum sesi sampai sesi berakhir, terikat ke perangkat pertama (cookie `akra_perangkat`). Setelah sesi, kode hanya membuka hasil (baca saja) selama `results_until` (diisi T151).
+- 5 kali kode salah: peserta terkunci sampai pengawas membuka (`exam.Unlock`); pengawas juga bisa melepas ikatan perangkat (`exam.ResetDevice`).
+- Sesi peserta memakai cookie `akra_peserta` (path `/u`) dan `SessionManager` sendiri, berakhir 30 menit setelah sesi ujian. Route staf tidak membaca sesi ini (diuji ke semua route di registry: `TestParticipant_StaffRoutesRejected`).
+- Rate limit login dibagi dengan halaman pendaftaran publik: paket [internal/platform/ratelimit](internal/platform/ratelimit), tabel `rate_limit_attempts`.
+
 ## Kelas
 
 Tabel `classes` (migrasi 000009), fungsi di [internal/classes/repo.go](internal/classes/repo.go): `Create`, `GetByID`, `ListByYear`.

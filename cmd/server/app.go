@@ -73,6 +73,7 @@ func newApp(d appDeps) (http.Handler, error) {
 	documents := admission.NewDocumentService(d.db, d.store, d.pii)
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
 	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
+	participantSessions := auth.NewParticipantSessionManager(d.sessions.Store, d.secure, d.logger)
 	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
 
 	return newRouter(routerDeps{
@@ -86,20 +87,22 @@ func newApp(d appDeps) (http.Handler, error) {
 			auth.NewResetService(auth.NewRepository(d.db), d.hasher, d.mailer,
 				auth.NewSessionRevoker(d.sessions), d.baseURL, d.logger),
 			d.sessions, d.render, d.logger),
-		activation:    auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
-		duties:        duty.NewHandler(d.db, d.sessions, d.render, d.logger),
-		exam:          exam.NewHandler(d.db, d.sessions, d.render, d.logger),
-		schoolProfile: school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
-		academicYear:  school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
-		classes:       classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
-		subjects:      academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
-		assignments:   academic.NewAssignmentHandler(academic.NewAssignmentService(d.db), d.db, d.sessions, d.render, d.logger),
-		schedule:      schedule.NewHandler(schedule.NewService(d.db), d.db, d.sessions, d.render, d.logger),
-		components:    grades.NewComponentHandler(grades.NewComponentService(d.db), d.db, d.sessions, d.render, d.logger),
-		gradeInput:    grades.NewInputHandler(grades.NewInputService(d.db), d.db, d.sessions, d.render, d.logger),
-		gradeRecap:    grades.NewReportHandler(d.db, d.sessions, d.render, d.logger),
-		reportConfig:  grades.NewReportConfigHandler(d.db, d.sessions, d.render, d.logger),
-		reportSaved:   builder.NewConfigHandler(builder.NewConfigService(d.db, builder.Default), reportsHandler, d.sessions, d.render, d.logger),
+		activation:          auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
+		duties:              duty.NewHandler(d.db, d.sessions, d.render, d.logger),
+		exam:                exam.NewHandler(d.db, d.sessions, d.render, d.logger),
+		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure),
+		participantSessions: participantSessions,
+		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
+		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
+		classes:             classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		subjects:            academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),
+		assignments:         academic.NewAssignmentHandler(academic.NewAssignmentService(d.db), d.db, d.sessions, d.render, d.logger),
+		schedule:            schedule.NewHandler(schedule.NewService(d.db), d.db, d.sessions, d.render, d.logger),
+		components:          grades.NewComponentHandler(grades.NewComponentService(d.db), d.db, d.sessions, d.render, d.logger),
+		gradeInput:          grades.NewInputHandler(grades.NewInputService(d.db), d.db, d.sessions, d.render, d.logger),
+		gradeRecap:          grades.NewReportHandler(d.db, d.sessions, d.render, d.logger),
+		reportConfig:        grades.NewReportConfigHandler(d.db, d.sessions, d.render, d.logger),
+		reportSaved:         builder.NewConfigHandler(builder.NewConfigService(d.db, builder.Default), reportsHandler, d.sessions, d.render, d.logger),
 		students: students.NewHandler(
 			students.NewService(d.db),
 			students.NewGuardianService(d.db),
