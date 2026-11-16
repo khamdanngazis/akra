@@ -22,19 +22,19 @@ func NewRepository(db database.DB) *PostgresRepository {
 }
 
 const findUserForLoginSQL = `
-SELECT u.id, u.school_id, s.name, u.email, u.full_name, u.password_hash, u.is_active,
+SELECT u.id, u.school_id, s.name, s.timezone, u.email, u.full_name, u.password_hash, u.is_active,
        coalesce(array_agg(r.code ORDER BY r.id) FILTER (WHERE r.code IS NOT NULL), '{}')
 FROM users u
 JOIN schools s ON s.id = u.school_id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
 WHERE s.code = $1 AND u.email = $2
-GROUP BY u.id, s.name`
+GROUP BY u.id, s.name, s.timezone`
 
 func (r *PostgresRepository) FindUserForLogin(ctx context.Context, schoolCode, email string) (UserCredentials, error) {
 	var c UserCredentials
 	err := r.db.QueryRow(ctx, findUserForLoginSQL, schoolCode, email).Scan(
-		&c.ID, &c.SchoolID, &c.SchoolName, &c.Email, &c.FullName, &c.PasswordHash, &c.IsActive, &c.Roles,
+		&c.ID, &c.SchoolID, &c.SchoolName, &c.Timezone, &c.Email, &c.FullName, &c.PasswordHash, &c.IsActive, &c.Roles,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return UserCredentials{}, ErrNotFound

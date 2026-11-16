@@ -51,7 +51,7 @@ func (h *Handler) renderFees(w http.ResponseWriter, r *http.Request, id auth.Ide
 		h.serverError(w, r, "list fees", err)
 		return
 	}
-	view := feesView{User: id, CanRecord: id.HasRole(auth.RoleBendahara), UnpaidOnly: unpaid, Today: clock.Today().Format(dateLayout),
+	view := feesView{User: id, CanRecord: id.HasRole(auth.RoleBendahara), UnpaidOnly: unpaid, Today: id.Today().Format(dateLayout),
 		FailedID: failedID, Form: f, Errors: errs, Error: msg, Flash: auth.PopFlash(r.Context(), h.sessions)}
 	for _, x := range rows {
 		v := feeRowView{FeeRow: x, AmountText: money.FormatRupiah(x.Amount)}
@@ -132,7 +132,7 @@ func (h *Handler) feeReceipt(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "fee receipt", err)
 		return
 	}
-	rec.PrintedAt = time.Now().In(clock.Jakarta)
+	rec.PrintedAt = time.Now().In(id.Location())
 	var buf bytes.Buffer
 	if err := payments.WriteReceiptPDF(&buf, rec, true); err != nil {
 		h.serverError(w, r, "write receipt pdf", err)

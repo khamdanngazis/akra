@@ -262,10 +262,11 @@ func (s *FeeService) Receipt(ctx context.Context, schoolID, applicantID, payment
 	var r payments.Receipt
 	var method string
 	var voidedAt *time.Time
+	var tz string
 	var regNumber, period, year string
 	err := s.db.QueryRow(ctx, `
 		SELECT f.receipt_number, sc.name, a.full_name, coalesce(a.registration_number, ''), p.name, y.name, f.amount, f.paid_on, f.method,
-		       coalesce(f.bank_account, ''), coalesce(f.reference, ''), u.full_name, f.voided_at, coalesce(f.void_reason, '')
+		       coalesce(f.bank_account, ''), coalesce(f.reference, ''), u.full_name, f.voided_at, coalesce(f.void_reason, ''), sc.timezone
 		FROM applicant_fee_payments f
 		JOIN applicants a ON a.id = f.applicant_id
 		JOIN admission_periods p ON p.id = a.period_id
@@ -274,7 +275,7 @@ func (s *FeeService) Receipt(ctx context.Context, schoolID, applicantID, payment
 		JOIN users u ON u.id = f.recorded_by
 		WHERE f.school_id = $1 AND f.applicant_id = $2 AND f.id = $3`, schoolID, applicantID, paymentID).
 		Scan(&r.Number, &r.SchoolName, &r.StudentName, &regNumber, &period, &year, &r.Amount, &r.PaidOn, &method,
-			&r.BankAccount, &r.Reference, &r.Treasurer, &voidedAt, &r.VoidReason)
+			&r.BankAccount, &r.Reference, &r.Treasurer, &voidedAt, &r.VoidReason, &tz)
 	if err != nil {
 		return payments.Receipt{}, mapApplicantError(err)
 	}
@@ -282,7 +283,7 @@ func (s *FeeService) Receipt(ctx context.Context, schoolID, applicantID, payment
 	r.Voided = voidedAt != nil
 	r.Applicant = fmt.Sprintf("%s (no. pendaftaran %s), %s, tahun ajaran %s", r.StudentName, regNumber, period, year)
 	r.FeeNames = "Biaya formulir pendaftaran"
-	r.PrintedAt = clock.Today()
+	r.PrintedAt = clock.TodayIn(clock.Location(tz))
 	return r, nil
 }
 

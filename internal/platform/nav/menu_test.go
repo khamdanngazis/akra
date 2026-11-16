@@ -15,10 +15,10 @@ func paths(items []MenuItem) string {
 
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/rapor /pengaturan/mapel",
+		"admin_tu":       "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/rapor /pengaturan/mapel",
 		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /pendaftaran/biaya /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
 		"guru":           "/ /absensi /jadwal/saya /pengumuman /pengaturan/penugasan /nilai/input /nilai/rekap /nilai/komponen /dapodik/nilai",
-		"kepala_sekolah": "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/tahun-ajaran /nilai/rekap",
+		"kepala_sekolah": "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/sekolah /pengaturan/tahun-ajaran /nilai/rekap",
 		"orang_tua":      "/portal /portal/pengumuman",
 	} {
 		if got := paths(MenuFor([]string{role})); got != want {
@@ -82,6 +82,7 @@ func TestCurrent(t *testing.T) {
 		"/keuangan/tagihan/1":        "",
 		"/laporan/kehadiran":         "/laporan",
 		"/pengaturan/tahun-ajaran":   "/pengaturan/tahun-ajaran",
+		"/pengaturan/sekolah":        "/pengaturan/sekolah",
 		"/siswax":                    "",
 		"/impor/siswa":               "/siswa",
 		"/impor/siswa/template.xlsx": "/siswa",

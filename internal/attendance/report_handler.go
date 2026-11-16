@@ -125,7 +125,7 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Default: awal tahun ajaran sampai hari ini (atau akhir tahun ajaran).
-	to := minDate(h.today(), class.YearEnd)
+	to := minDate(h.today(id.Location()), class.YearEnd)
 	if to.Before(class.YearStart) {
 		to = class.YearEnd
 	}

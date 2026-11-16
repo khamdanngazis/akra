@@ -82,7 +82,7 @@ func (h *Handler) exportApplicants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := export.Table{
-		Title: "Daftar Pendaftar", SchoolName: id.SchoolName, PrintedAt: time.Now().In(clock.Jakarta),
+		Title: "Daftar Pendaftar", SchoolName: id.SchoolName, PrintedAt: time.Now().In(id.Location()),
 		Columns: []export.Column{{Header: "Nomor"}, {Header: "Nama"}, {Header: "JK"}, {Header: "Tanggal lahir"}, {Header: "NIK"}, {Header: "NISN"},
 			{Header: "Agama"}, {Header: "Sekolah asal"}, {Header: "Nama ibu kandung"}, {Header: "HP orang tua"}, {Header: "Gelombang"}, {Header: "Jalur"}, {Header: "Status"}},
 	}

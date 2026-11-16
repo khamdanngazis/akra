@@ -35,13 +35,13 @@ type Handler struct {
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
-	today    func() time.Time
+	today    func(*time.Location) time.Time
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(svc *Service, db database.DBTX, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{svc: svc, db: db, sessions: sessions, render: render, logger: logger, today: clock.Today}
+	return &Handler{svc: svc, db: db, sessions: sessions, render: render, logger: logger, today: clock.TodayIn}
 }
 
 // Routes mendaftarkan route absensi. Form hanya untuk peran guru, dan di
@@ -104,7 +104,7 @@ func (h *Handler) form(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	q := r.URL.Query()
 	classID := q.Get("kelas")
-	today := h.today()
+	today := h.today(id.Location())
 
 	if classID == "" {
 		classes, err := TeacherClasses(r.Context(), h.db, id.SchoolID, id.UserID)
@@ -202,7 +202,7 @@ func (h *Handler) save(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(w, r, id, session.ClassID, session.SubjectID) {
 		return
 	}
-	if err := CheckDate(session.SessionDate, h.today()); err != nil {
+	if err := CheckDate(session.SessionDate, h.today(id.Location())); err != nil {
 		page.BadRequest(h.render, w, r, id, "Tanggal belum tiba", "Absensi hanya bisa diisi untuk hari ini atau tanggal yang sudah lewat.")
 		return
 	}

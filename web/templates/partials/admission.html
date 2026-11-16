@@ -107,7 +107,7 @@
 </div>
 <div class="field-grid">
 <div class="field{{if .Errors.scheduled_at}} has-error{{end}}">
-<label for="scheduled_at-{{.ID}}">Jadwal <span class="muted">(opsional, WIB)</span></label>
+<label for="scheduled_at-{{.ID}}">Jadwal <span class="muted">(opsional, {{or .Zone "WIB"}})</span></label>
 <input id="scheduled_at-{{.ID}}" type="datetime-local" name="scheduled_at" value="{{.Form.ScheduledAt}}">
 {{with .Errors.scheduled_at}}<p class="field-error">{{.}}</p>{{end}}
 </div>

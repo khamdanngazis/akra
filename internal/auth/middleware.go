@@ -35,6 +35,7 @@ func identityFromSession(r *http.Request, sm *scs.SessionManager) (Identity, boo
 		SchoolID:   sm.GetString(ctx, sessionKeySchoolID),
 		FullName:   sm.GetString(ctx, sessionKeyFullName),
 		SchoolName: sm.GetString(ctx, sessionKeySchoolName),
+		Timezone:   sm.GetString(ctx, sessionKeyTimezone),
 	}
 	id.Roles, _ = sm.Get(ctx, sessionKeyRoles).([]string)
 	if id.UserID == "" || id.SchoolID == "" {

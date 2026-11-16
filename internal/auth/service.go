@@ -42,6 +42,8 @@ type User struct {
 	Email      string
 	FullName   string
 	Roles      []string
+	// Timezone adalah zona waktu sekolah (schools.timezone, T126).
+	Timezone string
 }
 
 // UserCredentials adalah data pengguna yang dibutuhkan untuk login.

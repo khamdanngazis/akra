@@ -11,7 +11,6 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/grades"
-	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
 	"akra/internal/school"
 )
@@ -52,7 +51,7 @@ func (h *Handler) childReportCard(w http.ResponseWriter, r *http.Request) {
 		semester = n
 	}
 	actor := school.Actor{SchoolID: id.SchoolID, UserID: id.UserID, IP: auth.ClientIP(r)}
-	card, err := h.svc.ChildReportCard(r.Context(), actor, chi.URLParam(r, "id"), semester, clock.Today())
+	card, err := h.svc.ChildReportCard(r.Context(), actor, chi.URLParam(r, "id"), semester, id.Today())
 	switch {
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, "Data siswa tidak ditemukan.")

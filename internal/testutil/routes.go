@@ -281,6 +281,12 @@ var Routes = []Route{
 		Requests: post(func(*School) string { return "/pengaturan/keuangan" }, func(*School) url.Values {
 			return url.Values{"void_approval_threshold": {"500000"}}
 		})},
+	// Profil sekolah dan zona waktu (T126).
+	{Method: "GET", Pattern: "/pengaturan/sekolah/", Kind: KindPage, Roles: schoolData},
+	{Method: "POST", Pattern: "/pengaturan/sekolah/", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/pengaturan/sekolah/" }, func(*School) url.Values {
+			return url.Values{"timezone": {"Asia/Makassar"}}
+		})},
 	{Method: "GET", Pattern: "/pengaturan/tahun-ajaran/", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pengaturan/tahun-ajaran/", Kind: KindOwn, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pengaturan/tahun-ajaran/" }, func(*School) url.Values {

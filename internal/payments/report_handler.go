@@ -134,7 +134,7 @@ func recapError(err error) (string, bool) {
 // recap menampilkan rekap pembayaran harian atau bulanan (T80).
 func (h *Handler) recap(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	today := clock.Today()
+	today := id.Today()
 	rq, bad := parseRecap(r.URL.Query(), today)
 	v := recapView{User: id, Mode: rq.mode, From: rq.from.Format(time.DateOnly), To: rq.to.Format(time.DateOnly), Year: rq.year, Range: rq.rangeLabel()}
 	for y := today.Year() + 1; y >= today.Year()-5; y-- {
@@ -166,7 +166,7 @@ func (h *Handler) recap(w http.ResponseWriter, r *http.Request) {
 // recapExcel mengunduh rekap sebagai .xlsx dengan pola T47 (export.Table).
 func (h *Handler) recapExcel(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	today := clock.Today()
+	today := id.Today()
 	rq, bad := parseRecap(r.URL.Query(), today)
 	if bad != "" {
 		page.BadRequest(h.render, w, r, id, "Filter tidak valid", bad)

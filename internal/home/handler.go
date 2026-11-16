@@ -32,13 +32,13 @@ type Handler struct {
 	render   page.Renderer
 	sessions *scs.SessionManager
 	logger   *slog.Logger
-	today    func() time.Time
+	today    func(*time.Location) time.Time
 }
 
 // NewHandler mengembalikan Handler. Harus dipasang di dalam grup
 // RequireLogin.
 func NewHandler(db database.DB, render page.Renderer, sessions *scs.SessionManager, logger *slog.Logger) *Handler {
-	return &Handler{db: db, render: render, sessions: sessions, logger: logger, today: clock.Today}
+	return &Handler{db: db, render: render, sessions: sessions, logger: logger, today: clock.TodayIn}
 }
 
 // TreasurerSummary adalah ringkasan bendahara.
@@ -120,7 +120,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	today := h.today()
+	today := h.today(id.Location())
 	v := view{User: id, Today: clock.FormatDateID(today), Flash: auth.PopFlash(ctx, h.sessions),
 		CanSetYear: auth.HasAnyRole(id, auth.RoleAdminTU, auth.RoleKepalaSekolah)}
 	year, err := school.GetActiveAcademicYear(ctx, h.db, id.SchoolID)
@@ -171,7 +171,7 @@ func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.Academ
 		v.Principal = s
 	}
 	if id.HasRole(auth.RoleBendahara) {
-		list, err := RecentPaymentsFor(ctx, h.db, id.SchoolID, today, 5)
+		list, err := RecentPaymentsFor(ctx, h.db, id.SchoolID, id.Location(), today, 5)
 		if err != nil {
 			return err
 		}
@@ -254,7 +254,7 @@ func SchoolSummaryFor(ctx context.Context, q database.DBTX, schoolID string) (Ad
 }
 
 // RecentPaymentsFor mengembalikan pembayaran yang paling baru dicatat.
-func RecentPaymentsFor(ctx context.Context, q database.DBTX, schoolID string, today time.Time, limit int) ([]RecentPayment, error) {
+func RecentPaymentsFor(ctx context.Context, q database.DBTX, schoolID string, loc *time.Location, today time.Time, limit int) ([]RecentPayment, error) {
 	rows, err := q.Query(ctx, `
 		SELECT i.id, st.full_name, coalesce(`+billing.FeeNamesSQL+`, ''), i.period, p.amount, p.created_at,
 		       EXISTS (SELECT 1 FROM payment_voids v WHERE v.payment_id = p.id AND v.status = 'approved')
@@ -281,8 +281,8 @@ func RecentPaymentsFor(ctx context.Context, q database.DBTX, schoolID string, to
 			return nil, fmt.Errorf("home: recent payments: %w", err)
 		}
 		p.Period, p.Amount = billing.PeriodLabel(period), money.FormatRupiah(amount)
-		p.Time = at.In(clock.Jakarta).Format("15.04")
-		if d := clock.DateOf(at); !d.Equal(today) {
+		p.Time = at.In(loc).Format("15.04")
+		if d := clock.DateIn(at, loc); !d.Equal(today) {
 			p.Time = clock.FormatDateID(d)
 		}
 		out = append(out, p)
@@ -292,7 +292,7 @@ func RecentPaymentsFor(ctx context.Context, q database.DBTX, schoolID string, to
 
 // TreasurerFor menghitung ringkasan bendahara: total tunggakan dari
 // billing.ListArrears (sama dengan halaman tunggakan) dan pembayaran aktif
-// yang dicatat hari ini (Asia/Jakarta).
+// yang dicatat hari ini (zona waktu sekolah).
 func TreasurerFor(ctx context.Context, q database.DBTX, schoolID string, today time.Time) (TreasurerSummary, error) {
 	a, err := billing.ListArrears(ctx, q, schoolID, billing.ArrearsFilter{}, today)
 	if err != nil {
@@ -301,7 +301,7 @@ func TreasurerFor(ctx context.Context, q database.DBTX, schoolID string, today t
 	var n int
 	var sum int64
 	err = q.QueryRow(ctx, `SELECT count(*), coalesce(sum(p.amount), 0) FROM payments p
-		WHERE p.school_id = $1 AND (p.created_at AT TIME ZONE 'Asia/Jakarta')::date = $2
+		WHERE p.school_id = $1 AND (p.created_at AT TIME ZONE (SELECT timezone FROM schools WHERE id = $1))::date = $2
 		  AND NOT EXISTS (SELECT 1 FROM payment_voids v WHERE v.payment_id = p.id AND v.status = 'approved')`, schoolID, today).Scan(&n, &sum)
 	if err != nil {
 		return TreasurerSummary{}, fmt.Errorf("home: payments today: %w", err)

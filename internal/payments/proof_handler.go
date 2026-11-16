@@ -9,7 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
-	"akra/internal/platform/clock"
 	"akra/internal/school"
 )
 
@@ -113,7 +112,7 @@ func (h *Handler) receipt(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "get receipt", err)
 		return
 	}
-	rc.PrintedAt = clock.Today()
+	rc.PrintedAt = id.Today()
 	var buf bytes.Buffer
 	if err := WriteReceiptPDF(&buf, rc, true); err != nil {
 		h.serverError(w, r, "render receipt", err)

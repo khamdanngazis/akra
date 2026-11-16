@@ -42,18 +42,20 @@ type routerDeps struct {
 	authHandler  *auth.Handler
 	resetHandler *auth.ResetHandler
 	academicYear *school.AcademicYearHandler
-	classes      *classes.Handler
-	subjects     *academic.SubjectHandler
-	assignments  *academic.AssignmentHandler
-	schedule     *schedule.Handler
-	components   *grades.ComponentHandler
-	gradeInput   *grades.InputHandler
-	gradeRecap   *grades.ReportHandler
-	reportConfig *grades.ReportConfigHandler
-	reportSaved  *builder.ConfigHandler
-	students     *students.Handler
-	admission    *admission.Handler
-	dapodik      *dapodik.Handler
+	// schoolProfile adalah Pengaturan → Profil sekolah (T126).
+	schoolProfile *school.ProfileHandler
+	classes       *classes.Handler
+	subjects      *academic.SubjectHandler
+	assignments   *academic.AssignmentHandler
+	schedule      *schedule.Handler
+	components    *grades.ComponentHandler
+	gradeInput    *grades.InputHandler
+	gradeRecap    *grades.ReportHandler
+	reportConfig  *grades.ReportConfigHandler
+	reportSaved   *builder.ConfigHandler
+	students      *students.Handler
+	admission     *admission.Handler
+	dapodik       *dapodik.Handler
 	// admissionPublic adalah formulir pendaftaran tanpa login (T90).
 	admissionPublic *admission.PublicHandler
 	// wilayah adalah daftar wilayah untuk isian alamat (T110), publik.
@@ -127,6 +129,7 @@ func newRouter(d routerDeps) http.Handler {
 			// Peran: semua peran.
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
+			d.schoolProfile.Routes(r)
 			d.classes.Routes(r)
 			d.subjects.Routes(r)
 			d.assignments.Routes(r)

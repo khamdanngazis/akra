@@ -86,6 +86,19 @@ func TestPostgresRepository_Login(t *testing.T) {
 		if u.ID != userID || len(u.Roles) != 2 || u.Roles[0] != "bendahara" || u.Roles[1] != "guru" {
 			t.Errorf("user = %+v, want id %s with roles [bendahara guru]", u, userID)
 		}
+		if u.Timezone != "Asia/Jakarta" {
+			t.Errorf("Timezone = %q, want Asia/Jakarta (default)", u.Timezone)
+		}
+	})
+
+	t.Run("school timezone is loaded at login", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `UPDATE schools SET timezone = 'Asia/Makassar' WHERE code = $1`, schoolCode); err != nil {
+			t.Fatal(err)
+		}
+		c, err := repo.FindUserForLogin(ctx, schoolCode, "budi@sekolah.id")
+		if err != nil || c.Timezone != "Asia/Makassar" {
+			t.Errorf("FindUserForLogin() timezone = %q, %v", c.Timezone, err)
+		}
 	})
 
 	t.Run("unknown email", func(t *testing.T) {

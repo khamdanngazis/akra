@@ -62,6 +62,7 @@ var Items = []MenuItem{
 	{Label: "Pengumuman", Path: "/portal/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Informasi dari sekolah", Roles: []string{orangTua}},
 	{Label: "Audit", Path: "/keuangan/audit", Icon: "shield", Desc: "Jejak setiap aksi keuangan", Roles: []string{kepala, adminTU}},
 	{Label: "Pengaturan Keuangan", Path: "/pengaturan/keuangan", Icon: "settings", Short: "Atur", Desc: "Ambang persetujuan pembatalan", Roles: []string{bendahara, kepala}},
+	{Label: "Profil Sekolah", Path: "/pengaturan/sekolah", Icon: "school", Short: "Sekolah", Desc: "Data sekolah dan zona waktu", Roles: []string{adminTU, kepala}},
 	{Label: "Tahun Ajaran", Path: "/pengaturan/tahun-ajaran", Icon: "calendar", Short: "Tahun", Desc: "Atur tahun ajaran aktif", Roles: []string{adminTU, kepala}},
 	{Label: "Penugasan Guru", Path: "/pengaturan/penugasan", Icon: "user-check", Short: "Mapel", Desc: "Guru pengampu mapel per kelas", Roles: []string{adminTU, guru}},
 	{Label: "Input Nilai", Path: "/nilai/input", Icon: "spreadsheet", Short: "Nilai", Desc: "Isi nilai siswa per komponen", Roles: []string{guru}},

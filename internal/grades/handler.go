@@ -15,7 +15,6 @@ import (
 	"akra/internal/audit"
 	"akra/internal/auth"
 	"akra/internal/classes"
-	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
 )
@@ -236,7 +235,7 @@ func (h *ReportHandler) reportCard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	card, err := BuildReportCard(r.Context(), h.db, id.SchoolID, e, semester, clock.Today())
+	card, err := BuildReportCard(r.Context(), h.db, id.SchoolID, e, semester, id.Today())
 	var ie *IncompleteError
 	switch {
 	case errors.As(err, &ie):

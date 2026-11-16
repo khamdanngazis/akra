@@ -3,6 +3,9 @@ package auth
 import (
 	"context"
 	"slices"
+	"time"
+
+	"akra/internal/platform/clock"
 )
 
 // Identity adalah identitas pengguna yang sedang login, diambil dari sesi.
@@ -16,6 +19,21 @@ type Identity struct {
 	// Hanya untuk tampilan; jangan dipakai untuk otorisasi.
 	FullName   string
 	SchoolName string
+
+	// Timezone adalah zona waktu sekolah (T126); kosong berarti
+	// Asia/Jakarta. Pakai Location untuk konversi.
+	Timezone string
+}
+
+// Location mengembalikan zona waktu sekolah pengguna. Semua tampilan dan
+// input jam/tanggal di halaman staf memakai lokasi ini, bukan clock.Jakarta.
+func (id Identity) Location() *time.Location {
+	return clock.Location(id.Timezone)
+}
+
+// Today mengembalikan tanggal hari ini di zona waktu sekolah pengguna.
+func (id Identity) Today() time.Time {
+	return clock.TodayIn(id.Location())
 }
 
 type identityKey struct{}

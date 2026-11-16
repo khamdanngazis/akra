@@ -22,7 +22,7 @@ type ProofData struct {
 	PeriodName         string
 	TrackName          string
 	YearName           string
-	SubmittedAt        time.Time
+	SubmittedAt        time.Time // sudah di zona waktu sekolah
 	Documents          []string
 	Tests              []string // "Tes tertulis: Senin, 10 Januari 2027 08.00 WIB, Aula"
 	Status             string
@@ -74,7 +74,7 @@ func WriteProofPDF(w io.Writer, d ProofData, compress bool) error {
 		{"Tahun ajaran", d.YearName},
 		{"Gelombang", d.PeriodName},
 		{"Jalur", d.TrackName},
-		{"Tanggal kirim", clock.FormatDateID(d.SubmittedAt.In(clock.Jakarta))},
+		{"Tanggal kirim", clock.FormatDateID(d.SubmittedAt)},
 		{"Status", d.Status},
 	}
 	if len(d.Documents) > 0 {
