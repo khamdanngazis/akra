@@ -3,7 +3,7 @@
 **Fase:** 14 Fondasi
 **Dependensi:** T123
 **Estimasi:** 3 hari
-**[keputusan]** Model gabungan (lihat indeks), menunggu konfirmasi
+**Keputusan:** model gabungan (indeks, keputusan 8)
 
 ## Tujuan
 Siswa dan calon siswa bisa masuk ke ujian dengan cara yang paling sedikit masalahnya di hari ujian. Desain datanya sudah siap untuk portal siswa ke depan.

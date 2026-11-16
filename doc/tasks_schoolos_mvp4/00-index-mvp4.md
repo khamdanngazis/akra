@@ -90,7 +90,7 @@ Berlaku untuk **semua** task MVP 4. Task belum selesai bila standar ini tidak te
 
 ## 5. Keputusan
 
-**Diambil 2026-11-16:**
+**Semua keputusan diambil 2026-11-16:**
 1. **Modul sendiri di AKRA** (bukan integrasi Moodle), dengan impor Moodle XML/GIFT. LTI 1.3 menjadi kandidat MVP berikutnya.
 2. **Peserta:** calon siswa (tes seleksi) **dan** siswa (ulangan, PTS/PAS).
 3. **Perangkat:** HP dan lab. Skala ratusan peserta per sekolah.
@@ -99,12 +99,11 @@ Berlaku untuk **semua** task MVP 4. Task belum selesai bila standar ini tidak te
 6. **Pembahasan:** calon siswa tidak melihat nilai maupun pembahasan; untuk siswa diatur per paket.
 7. **Bank soal dipakai bersama per mapel.** Yang bisa mengubah soal hanya pembuat soal dan admin_tu.
 
-**Menunggu konfirmasi:**
-- **[keputusan] Login siswa (T124).** Disarankan model **gabungan**:
-  - identitas siswa yang sesungguhnya (peran `siswa`, session terikat `student_id`), dengan login MVP 4 memakai **NIS + kode kartu ujian**;
-  - tabel kredensial sudah mendukung password permanen, untuk portal siswa di MVP berikutnya.
-
-  T124 ditulis mengikuti saran ini.
+8. **Login siswa memakai model gabungan** (T124):
+   - identitas siswa yang sesungguhnya: peran `siswa`, session terikat `student_id`;
+   - di MVP 4, login dengan **NIS + kode kartu ujian**;
+   - tabel kredensial sudah mendukung password permanen untuk portal siswa di MVP berikutnya.
+9. **Jadwal rilis tidak dipaksa.** Target bulan di bagian 7 adalah arah, bukan tenggat. Kualitas dan standar siap produksi (bagian 4) didahulukan; rilis bergeser bila kriteria pilot (T155) belum terpenuhi.
 
 ## 6. Daftar Fase
 
@@ -122,7 +121,7 @@ Total perkiraan: **± 19 minggu pengembangan** (95 hari kerja, satu pengembang p
 
 ## 7. Rilis Bertahap
 
-| Rilis | Isi | Task | Target pakai |
+| Rilis | Isi | Task | Perkiraan pakai (bukan tenggat) |
 |---|---|---|---|
 | **R1 — Tes seleksi online** | Calon siswa ujian online; nilai masuk ke peringkat | T123–T128, T133 (tanpa varian), T135 (kartu), T136, T138–T141, T143, T145, T146, T149, T152–T153 (lingkup R1), T154 (panduan TU) | Gelombang akhir pendaftaran 2027 (Feb–Mar 2027) |
 | **R2 — Ulangan guru** | Guru membuat ulangan untuk kelasnya, dari Word; koreksi, analisis, rapor | T129–T132, T137, T142, T147, T148, T150, T151 | Semester genap 2026/2027 (Mar–Mei 2027) |
@@ -130,7 +129,12 @@ Total perkiraan: **± 19 minggu pengembangan** (95 hari kerja, satu pengembang p
 
 Setiap rilis diaktifkan **per sekolah** lewat aktivasi modul (T125). Pilot dulu, lalu dibuka bertahap.
 
-## 8. Urutan Kritis
+## 8. Gerbang Masuk dan Urutan Kritis
+**Gerbang masuk:** task MVP 4 dimulai setelah:
+1. MVP 3 lulus T105 (uji dengan operator dan Dapodik asli);
+2. ADR hasil spike T123 disetujui. Spike T123 sendiri boleh dikerjakan lebih awal.
+
+**Urutan kritis:**
 1. T123 (spike) lebih dulu: rendering rumus, impor Word, dan protokol simpan jawaban adalah risiko terbesar.
 2. T124, T125, T126 → T127 → T128
 3. T133 → T136 → T138 → T139 → T140 → T141 → T143 → T146 → T149 (jalur R1)
