@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "description": "Spike T123 (dibuang setelah ADR 0001 disetujui)",
+  "dependencies": {
+    "katex": "0.19.1",
+    "mathlive": "0.111.4",
+    "puppeteer-core": "24.6.1",
+    "@fontsource/noto-naskh-arabic": "5.3.0",
+    "@fontsource/amiri": "5.3.0",
+    "@fontsource/scheherazade-new": "5.3.0"
+  }
+}
