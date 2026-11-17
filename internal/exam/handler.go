@@ -19,6 +19,7 @@ type Handler struct {
 	db       database.DB
 	store    storage.Store        // gambar soal
 	math     *mathrender.Renderer // rumus dirender server saat simpan
+	jobs     ImportJobInserter    // job baca impor; nil = langsung
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger

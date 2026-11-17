@@ -8,10 +8,10 @@
 {{define "content"}}
 {{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) (or (and .IsNew "Tambah stimulus") "Ubah stimulus") ""}}
 <section class="card form-card">
-<h1>{{if .IsNew}}Tambah stimulus{{else}}Ubah stimulus{{end}}</h1>
+<h1>{{if .Action}}Perbaiki stimulus impor{{else if .IsNew}}Tambah stimulus{{else}}Ubah stimulus{{end}}</h1>
 <p class="muted">Teks bacaan, tabel, gambar, atau grafik yang dipakai beberapa soal.{{if not .IsNew}} Menyimpan membuat versi baru; ujian lama tidak berubah.{{end}}</p>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
-<form method="post" action="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}/stimulus{{else}}/ujian/stimulus/{{.Stimulus.ID}}{{end}}" class="stack" novalidate
+<form method="post" action="{{if .Action}}{{.Action}}{{else if .IsNew}}/ujian/bank/{{.Bank.ID}}/stimulus{{else}}/ujian/stimulus/{{.Stimulus.ID}}{{end}}" class="stack" novalidate
  data-editor data-bank="{{.Bank.ID}}" data-upload="/ujian/bank/{{.Bank.ID}}/gambar" x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
 <div class="field{{if .Errors.title}} has-error{{end}}">
@@ -26,7 +26,7 @@
 <label class="choice"><input type="checkbox" name="numbered"{{if .Numbered}} checked{{end}}><span>Beri nomor baris di setiap paragraf (untuk soal "pada baris ke-3")</span></label>
 <div class="action-row">
 <button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
-<a class="btn btn-ghost" href="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}{{else}}/ujian/stimulus/{{.Stimulus.ID}}{{end}}">Batal</a>
+<a class="btn btn-ghost" href="{{if .CancelURL}}{{.CancelURL}}{{else if .IsNew}}/ujian/bank/{{.Bank.ID}}{{else}}/ujian/stimulus/{{.Stimulus.ID}}{{end}}">Batal</a>
 </div>
 </form>
 </section>

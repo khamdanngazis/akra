@@ -11,7 +11,7 @@
 {{with $r.ObjectiveCode}}<span class="text-sm text-slate-500">{{.}}</span>{{end}}
 <span class="text-sm text-slate-500">{{$r.Points}} poin</span>
 </div>
-<p class="question-snippet" dir="auto">{{$r.Snippet}}</p>
+<p class="question-snippet" dir="auto"><a class="text-slate-900 no-underline hover:underline" href="/ujian/soal/{{$r.ID}}">{{$r.Snippet}}</a></p>
 <p class="text-sm text-slate-500 mb-0">{{$r.CreatorName}} · v{{$r.Version}}{{if $r.UsedIn}} · dipakai di {{$r.UsedIn}} ujian{{end}}{{with $r.LastP}} · p={{printf "%.2f" .}}{{end}}{{with $r.LastD}} · D={{printf "%.2f" .}}{{end}}{{range $r.Tags}} · #{{.}}{{end}}</p>
 </div>
 <div class="question-actions">

@@ -398,6 +398,26 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/ujian/tp/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/tp/" + o.ExamObjectiveID + "/arsip" }, nil)},
 
+	// Impor soal (T129–T131). Simpan impor: kontrol positif oleh guru
+	// pembuatnya, karena impor yang sudah disimpan tidak bisa diubah lagi.
+	{Method: "GET", Pattern: "/ujian/bank/{id}/impor", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/impor"} })},
+	{Method: "POST", Pattern: "/ujian/bank/{id}/impor", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/impor" }, nil)},
+	{Method: "GET", Pattern: "/ujian/impor/template-soal.docx", Kind: KindPage, Roles: examWriters},
+	{Method: "GET", Pattern: "/ujian/impor/{id}", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/impor/" + o.ExamImportID} })},
+	{Method: "GET", Pattern: "/ujian/impor/{id}/butir/{seq}", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/impor/" + o.ExamImportID + "/butir/0"} })},
+	{Method: "POST", Pattern: "/ujian/impor/{id}/butir/{seq}", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/impor/" + o.ExamImportID + "/butir/0" }, func(*School) url.Values {
+			return url.Values{"kind": {"esai"}, "body": {"Diperbaiki"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/impor/{id}/simpan", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/impor/" + o.ExamImportID + "/simpan" }, func(*School) url.Values {
+			return url.Values{"include": {"0"}}
+		})},
+
 	// Arsip (bank, soal, stimulus, TP): kontrol positif oleh guru pemilik,
 	// penulis terakhir di urutan uji, dan arsip bank paling akhir, sehingga
 	// kontrol positif lain selalu memakai data yang masih aktif.

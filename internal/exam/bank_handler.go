@@ -31,6 +31,7 @@ func (h *Handler) bankRoutes(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleGuru))
 			h.editorRoutes(readers, r)
+			h.importRoutes(r)
 			r.Get("/bank/baru", h.bankNew)
 			r.Post("/bank/", h.bankCreate)
 			r.Get("/bank/{id}/ubah", h.bankEdit)

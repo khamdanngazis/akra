@@ -10,6 +10,9 @@
 <div class="action-row">
 {{if .Bank.SubjectID}}<a class="btn btn-ghost" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">TP</a>{{end}}
 {{if .CanManage}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ubah">Ubah</a>{{end}}
+{{if .CanWrite}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/stimulus/baru">Tambah stimulus</a>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor</a>
+<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a>{{end}}
 </div>
 </div>
 
@@ -85,7 +88,7 @@
 {{range .Groups}}
 {{if .StimulusID}}
 <details class="card stimulus-group" open>
-<summary><strong>{{.StimulusTitle}}</strong> <span class="muted">· {{len .Rows}} soal</span></summary>
+<summary><strong>{{.StimulusTitle}}</strong> <span class="muted">· {{len .Rows}} soal ·</span> <a href="/ujian/stimulus/{{.StimulusID}}">Buka stimulus</a></summary>
 <div class="stack mt-3">{{range .Rows}}{{template "exam_question_row" dict "Row" . "Editable" $.HasEditable}}{{end}}</div>
 </details>
 {{else}}
@@ -105,7 +108,8 @@
 {{else}}
 <section class="card empty-state">
 {{if .HasFilter}}<p>Tidak ada soal yang cocok dengan pencarian.</p>
-{{else}}<p>Bank ini belum punya soal.</p>{{if .CanWrite}}<p class="muted">Tambahkan soal satu per satu atau impor dari Word, Moodle, atau Excel.</p>{{end}}{{end}}
+{{else}}<p>Bank ini belum punya soal.</p>{{if .CanWrite}}<p class="muted">Tambahkan soal satu per satu atau impor dari Word, Moodle, atau Excel.</p>
+<p class="action-row justify-center"><a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a><a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor soal</a></p>{{end}}{{end}}
 </section>
 {{end}}
 

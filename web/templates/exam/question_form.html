@@ -6,12 +6,13 @@
 {{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{if .IsNew}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Tambah soal" ""}}
+{{if .ImportMode}}{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Pratinjau impor" .CancelURL "Perbaiki soal" ""}}
+{{else if .IsNew}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Tambah soal" ""}}
 {{else}}{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Soal" (printf "/ujian/soal/%s" .Question.ID) "Ubah" ""}}{{end}}
 
 <div class="page-header">
 <div>
-<h1>{{if .IsNew}}Tambah soal{{else}}Ubah soal{{end}}</h1>
+<h1>{{if .ImportMode}}Perbaiki soal impor{{else if .IsNew}}Tambah soal{{else}}Ubah soal{{end}}</h1>
 <p class="muted">{{.Bank.Name}}{{if not .IsNew}} · versi {{.Question.Version}}; menyimpan membuat versi baru, ujian lama tidak berubah{{end}}.
 <span class="sm:hidden">Editor paling nyaman di laptop atau tablet; di HP sebaiknya hanya untuk koreksi kecil.</span></p>
 </div>
@@ -25,12 +26,13 @@
 <form method="post" action="/ujian/draf/buang" class="inline">{{ csrfField }}<input type="hidden" name="bank_id" value="{{.Bank.ID}}"><input type="hidden" name="question_id" value="{{.Question.ID}}"><button type="submit" class="btn btn-ghost btn-sm">Buang draf</button></form>
 </div>
 {{end}}
+{{if .Problems}}<div class="alert" role="status">Perlu dicek:{{range .Problems}}<br>• {{.}}{{end}}</div>{{end}}
 {{if .Restored}}<div class="alert alert-success" role="status">Draf dipulihkan. Periksa lalu simpan.</div>{{end}}
 {{if .Errors}}<div class="alert alert-error" role="alert">Soal belum disimpan. Periksa bagian yang ditandai.{{range .Errors}}<br>• {{.}}{{end}}</div>{{end}}
 <noscript><div class="alert alert-error">Editor soal membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</div></noscript>
 
-<form method="post" id="question-form" action="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}/soal{{else}}/ujian/soal/{{.Question.ID}}{{end}}" novalidate
- data-editor data-bank="{{.Bank.ID}}" data-question="{{.Question.ID}}" data-saved-at="{{.SavedAt}}" data-upload="/ujian/bank/{{.Bank.ID}}/gambar"
+<form method="post" id="question-form" action="{{if .Action}}{{.Action}}{{else if .IsNew}}/ujian/bank/{{.Bank.ID}}/soal{{else}}/ujian/soal/{{.Question.ID}}{{end}}" novalidate
+ data-editor data-bank="{{.Bank.ID}}"{{if not .ImportMode}} data-question="{{.Question.ID}}"{{end}} data-saved-at="{{.SavedAt}}" data-upload="/ujian/bank/{{.Bank.ID}}/gambar"
  x-data="{ kind: '{{.Form.Kind}}', input: '{{.Form.Input}}', choices: 4, statements: 3, pairs: 3, submitting: false }"
  @submit="submitting = true">
 {{ csrfField }}
@@ -43,7 +45,7 @@
 <label for="kind">Jenis soal</label>
 <select id="kind" name="kind" x-model="kind">{{range .Kinds}}<option value="{{.Value}}"{{if eq .Value $.Form.Kind}} selected{{end}}>{{.Label}}</option>{{end}}</select>
 </div>
-{{if .IsNew}}
+{{if and .IsNew (not .ImportMode)}}
 <div class="field">
 <label for="stimulus_id">Stimulus (bacaan bersama)</label>
 <select id="stimulus_id" name="stimulus_id"><option value="">Tanpa stimulus</option>{{range .Stimuli}}<option value="{{.ID}}"{{if eq .ID $.Form.StimulusID}} selected{{end}}>{{.Title}}</option>{{end}}</select>
@@ -201,8 +203,8 @@
 </section>
 <div class="card form-card stack">
 <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">Simpan <span class="text-xs opacity-75">(Ctrl+Enter)</span></button>
-<button type="submit" name="next" value="1" class="btn btn-ghost btn-block" :disabled="submitting">Simpan &amp; tambah berikutnya</button>
-<a class="btn btn-ghost btn-block" href="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}{{else}}/ujian/soal/{{.Question.ID}}{{end}}">Batal</a>
+{{if not .ImportMode}}<button type="submit" name="next" value="1" class="btn btn-ghost btn-block" :disabled="submitting">Simpan &amp; tambah berikutnya</button>{{end}}
+<a class="btn btn-ghost btn-block" href="{{if .CancelURL}}{{.CancelURL}}{{else if .IsNew}}/ujian/bank/{{.Bank.ID}}{{else}}/ujian/soal/{{.Question.ID}}{{end}}">Batal</a>
 </div>
 </aside>
 </div>

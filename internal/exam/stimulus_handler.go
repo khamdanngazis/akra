@@ -21,6 +21,9 @@ type stimulusFormView struct {
 	Body     template.HTML
 	Numbered bool
 	Errors   map[string]string
+	// Perbaikan stimulus impor.
+	Action    string
+	CancelURL string
 }
 
 func (h *Handler) renderStimulusForm(w http.ResponseWriter, r *http.Request, status int, v stimulusFormView) {

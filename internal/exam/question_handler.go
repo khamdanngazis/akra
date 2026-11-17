@@ -82,6 +82,12 @@ type editorView struct {
 	SavedAt      int64 // unix detik saat halaman dibuat (pembanding draf lokal)
 	Flash        string
 	Error        string
+	// Mode perbaikan butir impor: form dikirim ke Action, tanpa draf
+	// otomatis dan tanpa "simpan & tambah".
+	Action     string
+	ImportMode bool
+	CancelURL  string
+	Problems   []string
 	// Teks kaya siap dimuat ke editor.
 	Body, Explanation, Rubric template.HTML
 	Choices, Statements       []template.HTML
