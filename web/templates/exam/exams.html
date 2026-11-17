@@ -1,0 +1,57 @@
+{{define "title"}}Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" ""}}
+<div class="page-header">
+<div>
+<h1>{{if .Archived}}Ujian diarsipkan{{else}}Ujian{{end}}</h1>
+<p class="muted">Ulangan, ujian latihan, PTS/PAS, dan tes seleksi. Ujian disusun dari bank soal lewat wizard, lalu dijadwalkan.</p>
+</div>
+<div class="action-row">
+{{if .Archived}}<a class="btn btn-ghost" href="/ujian/paket/">Ujian aktif</a>{{else}}<a class="btn btn-ghost" href="/ujian/paket/?arsip=1">Arsip</a>{{end}}
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if and .CanCreate (not .Archived)}}
+<section class="card stack">
+<h2 class="card-title">Buat ujian</h2>
+<div class="option-cards">
+{{range .Purposes}}<a class="option-card no-underline" href="/ujian/paket/baru?tujuan={{.Value}}"><span><strong>{{.Label}}</strong><span class="block text-sm text-slate-600">{{.Hint}}</span></span></a>{{end}}
+</div>
+</section>
+{{end}}
+
+{{if .Rows}}
+<div class="table-wrap mt-4">
+<table>
+<thead><tr><th>Ujian</th><th>Tujuan</th><th>Mapel</th><th>Soal</th><th>Sesi</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Rows}}
+<tr>
+<td><a href="{{.Href}}"><strong>{{.Name}}</strong></a><span class="block text-sm text-slate-500">{{.OwnerName}}{{with .When}} · mulai {{.}}{{end}}</span></td>
+<td>{{.Purpose.Label}}</td>
+<td>{{if .SubjectName}}{{.SubjectName}}{{else}}—{{end}}{{if .GradeLevel}} · Kelas {{.GradeLevel}}{{end}}</td>
+<td>{{.Questions}}</td>
+<td>{{.Sessions}}</td>
+<td>{{template "exam_status_badge" .Status}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<section class="card mt-4">
+{{if .Archived}}<p class="mb-0">Belum ada ujian yang diarsipkan.</p>
+{{else}}
+<h2 class="card-title">Belum ada ujian</h2>
+<ol class="stack mt-3">
+<li><strong>Siapkan soal</strong> di <a href="/ujian/bank/">bank soal</a>, atau impor dari Word.</li>
+<li><strong>Buat ujian</strong>: pilih soal atau tulis aturan ambil acak, atur aturan, lalu pilih kelas dan waktu.</li>
+<li><strong>Cek kesiapan</strong> lalu jadwalkan. Siswa masuk dengan NIS dan kode di kartu ujian.</li>
+</ol>
+{{end}}
+</section>
+{{end}}
+{{end}}

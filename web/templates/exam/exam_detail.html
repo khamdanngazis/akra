@@ -1,0 +1,101 @@
+{{define "title"}}{{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}{{if eq .Tab "soal"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name ""}}
+<div class="page-header">
+<div>
+<h1>{{.Exam.Name}}</h1>
+<p class="muted">{{.Exam.Purpose.Label}}{{with .Exam.SubjectName}} · {{.}}{{end}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}} · {{.Exam.DurationMinutes}} menit · {{.Exam.OwnerName}} · {{template "exam_status_badge" .Exam.Status}}</p>
+</div>
+{{if .CanWrite}}
+<div class="action-row">
+{{if .Exam.Editable}}<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/atur/{{if eq .Exam.Status "draf"}}{{.Exam.WizardStep}}{{else}}soal{{end}}">Atur</a>{{end}}
+<details class="menu-details">
+<summary class="btn btn-ghost">Lainnya</summary>
+<div class="menu-panel stack">
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/salin" class="stack">{{ csrfField }}
+<label class="text-sm" for="copy-name">Salin untuk kelas lain atau tahun depan</label>
+<input id="copy-name" name="name" maxlength="120" value="{{.Exam.Name}} (salinan)">
+<button type="submit" class="btn btn-ghost btn-sm">Salin ujian</button></form>
+{{if ne .Exam.Status "berlangsung"}}<form method="post" action="/ujian/paket/{{.Exam.ID}}/arsip" x-data @submit="if (!confirm('Arsipkan ujian ini? Sesi yang belum mulai dibatalkan.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan</button></form>{{end}}
+</div>
+</details>
+</div>
+{{end}}
+</div>
+
+{{template "flash" .}}
+{{template "exam_next_step" .Next}}
+
+<nav class="tabs mt-4" aria-label="Bagian ujian">
+<a href="/ujian/paket/{{.Exam.ID}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
+<a href="/ujian/paket/{{.Exam.ID}}?tab=soal"{{if eq .Tab "soal"}} aria-current="page"{{end}}>Soal</a>
+<a href="/ujian/paket/{{.Exam.ID}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
+<a href="/ujian/paket/{{.Exam.ID}}?tab=hasil"{{if eq .Tab "hasil"}} aria-current="page"{{end}}>Hasil</a>
+</nav>
+
+{{if eq .Tab "ringkasan"}}
+<div class="wizard-aside-grid mt-4">
+<div class="stack">
+{{if .Readiness.Items}}
+<section class="card stack"><h2 class="card-title">Cek kesiapan</h2>{{template "exam_readiness" .Readiness}}</section>
+{{else if .Exam.Locked}}
+<section class="card"><p class="mb-0">Soal dibekukan sejak sesi pertama mulai. Menyunting soal di bank tidak mengubah ujian ini.</p></section>
+{{end}}
+<section class="card stack">
+<h2 class="card-title">Aturan</h2>
+<ul class="text-sm stack">
+<li>{{if .Rules.ShuffleQuestions}}Urutan soal diacak per peserta{{if .Rules.ShuffleInStimulus}}, termasuk di dalam teks/stimulus{{else}}; soal di dalam satu teks tetap berurutan{{end}}{{else}}Urutan soal tetap{{end}}. {{if .Rules.ShuffleOptions}}Opsi diacak.{{end}}</li>
+<li>Hasil: {{if eq .Rules.ResultsMode "tidak"}}tidak ditampilkan ke peserta{{else if eq .Rules.ResultsMode "nilai"}}nilai saja{{else}}nilai dan pembahasan{{end}}{{if and (ne .Rules.ResultsMode "tidak") .Rules.ResultsAfterAll}}, dibuka setelah sesi terakhir{{end}}.</li>
+<li>{{.Rules.MaxAttempts}} kali percobaan.{{with .Rules.PassScore}} KKTP {{.}}.{{end}} {{if .Rules.AllowBack}}Boleh kembali ke soal sebelumnya.{{else}}Tidak boleh kembali ke soal sebelumnya.{{end}}</li>
+<li>Keluar halaman: {{if eq .Rules.IntegrityMode "kunci"}}dikunci setelah {{.Rules.IntegrityLimit}} kali{{else}}dicatat dan ditandai ke pengawas{{end}}.</li>
+</ul>
+</section>
+</div>
+<aside class="wizard-aside">{{template "exam_comp_panel" .Comp}}</aside>
+</div>
+
+{{else if eq .Tab "soal"}}
+<section class="card stack mt-4">
+{{if gt (len .Variants) 1}}<nav class="tabs" aria-label="Paket">{{range .Variants}}<a href="/ujian/paket/{{$.Exam.ID}}?tab=soal&amp;paket={{.Label}}"{{if eq .Label $.Variant.Label}} aria-current="page"{{end}}>Paket {{.Label}}</a>{{end}}</nav>{{end}}
+<p class="hint">{{if .Exam.Locked}}Soal saat ujian dibekukan.{{else}}Hasil rakit saat ini; aturan acak dirakit ulang setiap isi ujian berubah. Urutan per peserta diacak saat mengerjakan bila diatur.{{end}}</p>
+{{if .Paper}}
+<ol class="paper-list">
+{{range .Paper}}
+{{$sec := index $.Sections .SectionID}}
+<li>
+{{if and .Stimulus .FirstOfStimulus}}<div class="paper-stimulus"><strong>{{.Stimulus.Title}}</strong></div>{{end}}
+<span class="paper-no">{{.Number}}.</span>
+<span class="min-w-0 flex-1"><span dir="auto">{{.Question.Excerpt}}</span><span class="block text-sm text-slate-500">{{.Question.Kind.Label}}{{with .Question.Difficulty}} · {{.}}{{end}} · {{.Points}} poin · v{{.Question.Version}}{{with $sec.Title}} · {{.}}{{end}}</span></span>
+</li>
+{{end}}
+</ol>
+{{else}}<p class="mb-0">Belum ada soal.</p>{{end}}
+</section>
+
+{{else if eq .Tab "sesi"}}
+<section class="card stack mt-4">
+{{if .Sessions}}
+<div class="table-wrap"><table>
+<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Lokasi</th><th>Peserta</th><th>Pengawas</th></tr></thead>
+<tbody>
+{{range .Sessions}}<tr><td><a href="/ujian/paket/{{$.Exam.ID}}?tab=sesi&amp;sesi={{.ID}}">{{.Title}}</a>{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}</td><td>{{.When}}</td><td>{{.LocationLabel}}</td><td>{{.Participants}}</td><td>{{range $i, $p := .Proctors}}{{if $i}}, {{end}}{{$p}}{{else}}—{{end}}</td></tr>{{end}}
+</tbody>
+</table></div>
+{{else}}<p class="mb-0">Belum ada sesi.{{if and .CanWrite (not .Exam.Purpose.SchoolWide)}} <a href="/ujian/paket/{{.Exam.ID}}/atur/jadwal">Atur jadwal</a>.{{end}}</p>{{end}}
+</section>
+{{with .Session}}
+<section class="card stack mt-4">
+<h2 class="card-title">Peserta · {{.Title}}</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>No.</th><th>Nama</th><th>NIS / No. daftar</th><th>Kelas</th><th>Paket</th></tr></thead>
+<tbody>{{range $.Participants}}<tr><td>{{.Number}}</td><td>{{.Name}}</td><td>{{.Identifier}}</td><td>{{if .ClassName}}{{.ClassName}}{{else}}—{{end}}</td><td>{{if .Variant}}{{.Variant}}{{else}}—{{end}}</td></tr>{{else}}<tr><td colspan="5">Belum ada peserta.</td></tr>{{end}}</tbody>
+</table></div>
+</section>
+{{end}}
+
+{{else}}
+<section class="card mt-4"><p class="mb-0">Hasil, koreksi esai, dan analisis butir tampil di sini setelah peserta mengumpulkan.</p></section>
+{{end}}
+{{end}}

@@ -272,6 +272,11 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
 - **Impor** (T129–T131): Word (.docx, template di `/ujian/impor/template-soal.docx`), Moodle XML, GIFT, dan Excel (template `/ujian/impor/template-soal.xlsx`) memakai satu alur: baca (job River `exam_import`) → pratinjau dan perbaiki → simpan dalam satu transaksi. Ekspor bank ke Moodle XML dan Excel dicatat di audit.
 - **Kisi-kisi, kartu soal, cek mutu, telaah** (T132): dokumen cetak HTML dan Excel dari soal terpilih atau filter bank; telaah opsional diatur di `/ujian/pengaturan` (admin_tu, koordinator).
 
+## Persiapan Ujian (MVP 4, T133–T137)
+
+- **Wizard buat ujian** `/ujian/paket/` (migrasi 000067): Dasar → Soal → Aturan → Jadwal & peserta → Cek & jadwalkan. Soal dipilih dari bank (stimulus ikut sekelompok) dan/atau aturan ambil acak; aturan yang melebihi isi bank ditolak dengan jumlah tersedia. Varian paket A–E dirakit [internal/exam/assemble.go](internal/exam/assemble.go): varian A diambil acak, varian lain memakai padanan dengan komposisi sama (jenis, kesulitan, TP, level). Pengacakan per peserta menjaga kelompok stimulus sebagai satu blok. Tujuan dibuka per tahap rilis: tes seleksi dan latihan R1, ulangan R2, PTS/PAS R3.
+- **Kunci ujian**: saat sesi pertama mulai (job berkala `exam_advance` tiap menit, juga saat ujian dibuka), soal dibekukan ke `exam_item_snapshots` yang merujuk versi soal/stimulus; menyunting bank sesudahnya tidak mengubah ujian.
+
 ## Login Peserta Ujian
 
 - Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.

@@ -2257,6 +2257,10 @@
     @apply m-0 mb-4 grid list-none grid-cols-4 gap-2 p-0;
   }
 
+  .wizard-steps.is-5 {
+    @apply lg:grid-cols-5;
+  }
+
   .wizard-box {
     @apply flex h-full flex-col items-start gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 no-underline sm:flex-row sm:items-center;
   }
@@ -2776,6 +2780,53 @@
   .math-palette { @apply flex flex-wrap gap-1; }
   .math-palette button { @apply rounded-md border border-slate-200 px-2 py-1 text-sm hover:bg-slate-50; }
   .save-status { @apply text-sm text-slate-500; }
+
+  /* Wizard ujian (T133). */
+  .checklist li.is-warn { @apply border-amber-300 bg-amber-50/60; }
+  .checklist li.is-block { @apply border-red-300 bg-red-50/60; }
+  .checklist li.is-warn .checklist-mark { @apply bg-amber-100 text-amber-700; }
+  .checklist li.is-block .checklist-mark { @apply bg-red-100 text-red-700; }
+  .wizard-aside-grid { @apply grid items-start gap-4; }
+  @media (min-width: 1024px) {
+    .wizard-aside-grid { grid-template-columns: minmax(0, 1fr) 20rem; }
+    .wizard-aside { @apply sticky top-4; }
+  }
+  .comp-stats { @apply m-0 grid grid-cols-2 gap-2; }
+  .comp-stats div { @apply rounded-lg bg-slate-50 p-2; }
+  .comp-stats div.is-warn { @apply bg-amber-50 text-amber-800; }
+  .comp-stats div.is-info { @apply bg-blue-50; }
+  .comp-stats dt { @apply text-xs text-slate-500; }
+  .comp-stats dd { @apply m-0 text-lg font-semibold; }
+  .comp-h { @apply mb-1 mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .comp-bars { @apply m-0 list-none space-y-1 p-0 text-sm; }
+  .comp-bars li { @apply grid items-center gap-2; grid-template-columns: 6rem minmax(0, 1fr) 2rem; }
+  .comp-bars li > span:last-child { @apply text-right tabular-nums; }
+  .comp-bar { @apply block h-2 overflow-hidden rounded-full bg-slate-100; }
+  .comp-bar span { @apply block h-full rounded-full bg-blue-600; }
+  .exam-items { @apply m-0 list-none space-y-2 p-0; }
+  .exam-item { @apply flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-nowrap; }
+  .exam-item[data-stimulus] { @apply border-l-4 border-l-amber-300; }
+  .exam-item.is-rule { @apply border-blue-200 bg-blue-50/50; }
+  .exam-item.is-archived { @apply border-red-200 bg-red-50/50; }
+  .exam-item.is-dragging { @apply opacity-50; }
+  .drag-handle { @apply mt-1 cursor-grab select-none text-slate-400; }
+  .item-actions { @apply flex w-full flex-none justify-end gap-1 sm:w-auto; }
+  .picker-bar { @apply sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3; }
+  .picker-bar > span:first-child { @apply flex-1; }
+  .picker-group { @apply mb-2 space-y-2; }
+  .picker-group.has-stimulus { @apply border-l-4 border-amber-300 pl-3; }
+  .picker-row { @apply flex cursor-pointer items-start gap-3; }
+  .picker-row input { @apply mt-1 size-5; }
+  .picker-row.is-in { @apply opacity-60; }
+  .paper-list { @apply m-0 list-none space-y-2 p-0; }
+  .paper-list li { @apply flex flex-wrap gap-2 border-b border-slate-100 pb-2; }
+  .paper-stimulus { @apply w-full rounded-lg bg-amber-50 px-3 py-1 text-sm; }
+  .paper-no { @apply w-8 flex-none text-right font-semibold tabular-nums; }
+  .menu-details { @apply relative; }
+  .menu-details > summary { @apply list-none; }
+  .menu-panel { @apply absolute right-0 z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-lg; }
+  .section-edit > summary, .rule-form > summary { @apply list-none; }
+  .schedule-table input, .schedule-table select { @apply min-w-28; }
 }
 
 /* Dokumen cetak (kisi-kisi, kartu soal; T132). Dicetak dari browser

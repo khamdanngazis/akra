@@ -1,0 +1,359 @@
+{{define "title"}}{{if .IsNew}}Buat Ujian{{else}}{{.StepTitle}} · {{.Exam.Name}}{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-wizard.js" }}"></script>{{end}}
+{{define "content"}}
+{{if .IsNew}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" "Buat ujian" ""}}
+{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Atur" ""}}{{end}}
+<div class="page-header">
+<div>
+<h1>{{if .IsNew}}Buat {{.Exam.Purpose.Label | printf "%s"}}{{else}}{{.Exam.Name}}{{end}}</h1>
+<p class="muted">{{if .IsNew}}Lima langkah. Ujian disimpan sebagai draf sejak langkah pertama, jadi bisa dilanjutkan kapan saja.{{else}}{{.Exam.Purpose.Label}}{{with .Exam.SubjectName}} · {{.}}{{end}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}} · {{template "exam_status_badge" .Exam.Status}}{{end}}</p>
+</div>
+</div>
+
+{{template "exam_wizard_steps" .Steps}}
+{{template "flash" .}}
+{{if .ReadOnly}}<div class="alert alert-info" role="status">Anda hanya bisa melihat ujian ini.</div>{{end}}
+{{if and (not .IsNew) .Exam.Locked}}<div class="alert alert-info" role="status">Soal dan aturan sudah dibekukan karena sesi pertama sudah mulai. <a href="/ujian/paket/{{.Exam.ID}}">Kembali ke detail</a> atau salin ujian untuk membuat versi baru.</div>{{end}}
+
+{{if eq .Step "dasar"}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="{{if .IsNew}}/ujian/paket/{{else}}/ujian/paket/{{.Exam.ID}}/atur/dasar{{end}}" class="card stack" novalidate
+ x-data="{ purpose: '{{.Form.Purpose}}', durations: { ulangan: 60, latihan: 30, pts: 90, pas: 90, seleksi: 90 } }">
+{{ csrfField }}
+<h2>1. Dasar</h2>
+{{if .IsNew}}
+<fieldset class="field{{if .Errors.purpose}} has-error{{end}}">
+<legend>Tujuan ujian</legend>
+<div class="option-cards">
+{{range .Purposes}}<label class="option-card"><input type="radio" name="purpose" value="{{.Value}}" x-model="purpose" @change="$refs.duration.value = durations[purpose]"{{if .Selected}} checked{{end}}><span><strong>{{.Label}}</strong><span class="block text-sm text-slate-600">{{.Hint}}</span></span></label>{{end}}
+</div>
+<p class="hint">Tujuan mengisi aturan bawaan (mis. tes seleksi: hasil tidak ditampilkan; latihan: pembahasan langsung, boleh mengulang). Tidak bisa diubah setelah ujian dibuat.</p>
+{{with .Errors.purpose}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+{{else}}<input type="hidden" name="purpose" value="{{.Exam.Purpose}}">{{end}}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama ujian</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="120" placeholder="mis. Ulangan Harian Pecahan" autocomplete="off" required{{if .ReadOnly}} disabled{{end}}>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Tampil di kartu peserta dan halaman ujian.</p>{{end}}
+</div>
+<div class="field{{if .Errors.duration}} has-error{{end}}">
+<label for="duration">Durasi (menit)</label>
+<input id="duration" name="duration" x-ref="duration" value="{{.Form.Duration}}" inputmode="numeric" maxlength="3" required{{if .ReadOnly}} disabled{{end}}>
+{{with .Errors.duration}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Waktu mengerjakan setiap peserta.</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.subject_id}} has-error{{end}}">
+<label for="subject_id">Mapel <span class="muted" x-show="purpose === 'seleksi'">(opsional untuk tes seleksi)</span></label>
+<select id="subject_id" name="subject_id"{{if .ReadOnly}} disabled{{end}}>
+<option value="">{{if eq .Form.Purpose "seleksi"}}Tes umum (tanpa mapel){{else}}Pilih mapel{{end}}</option>
+{{range .Subjects}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+{{with .Errors.subject_id}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Soal diambil dari bank mapel ini.{{if not .Subjects}} Belum ada mapel yang Anda ampu; minta admin/TU mengatur penugasan.{{end}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.grade_level}} has-error{{end}}">
+<label for="grade_level">Tingkat</label>
+<select id="grade_level" name="grade_level"{{if .ReadOnly}} disabled{{end}}>
+<option value="">Semua tingkat</option>
+{{range .Grades}}<option value="{{.}}"{{if eq (printf "%d" .) $.Form.GradeLevel}} selected{{end}}>Kelas {{.}}</option>{{end}}
+</select>
+{{with .Errors.grade_level}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Membatasi pilihan kelas dan TP.</p>{{end}}
+</div>
+</div>
+{{if .Owners}}
+<div class="field" x-show="purpose === 'pts' || purpose === 'pas'" x-cloak>
+<label for="owner_id">Guru penyusun soal</label>
+<select id="owner_id" name="owner_id"><option value="">Saya sendiri</option>{{range .Owners}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<p class="hint">Guru ini bisa mengisi soal dan aturan ujian. Jadwal, ruang, dan pengawas tetap diatur di agenda.</p>
+</div>
+{{end}}
+{{if not .ReadOnly}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary">{{if .IsNew}}Buat dan lanjut{{else}}Simpan dan lanjut{{end}}</button>
+{{if not .IsNew}}<button type="submit" name="action" value="keluar" class="btn btn-ghost">Simpan dan keluar</button>{{end}}
+<a class="btn btn-ghost" href="{{if .IsNew}}/ujian/paket/{{else}}/ujian/paket/{{.Exam.ID}}{{end}}">Batal</a>
+</div>
+{{end}}
+</form>
+
+{{else if eq .Step "soal"}}
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+<div class="wizard-aside-grid">
+<div class="stack min-w-0">
+{{range $si, $s := .Plan.Sections}}
+<section class="card stack exam-section" id="bagian-{{$s.ID}}">
+<div class="flex flex-wrap items-start gap-2">
+<div class="min-w-0 flex-1">
+<h2 class="card-title">Bagian {{inc $si}}{{with $s.Title}}: {{.}}{{end}}</h2>
+{{with $s.InstructionsHTML}}<div class="text-sm text-slate-600">{{$s.InstructionsSrc}}</div>{{end}}
+</div>
+{{if and (not $.ReadOnly) $.Exam.Editable}}
+<details class="section-edit">
+<summary class="btn btn-ghost btn-sm">Ubah bagian</summary>
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/bagian/{{$s.ID}}" class="stack mt-2">
+{{ csrfField }}
+<div class="field"><label for="title-{{$s.ID}}">Judul bagian <span class="muted">(opsional)</span></label><input id="title-{{$s.ID}}" name="title" value="{{$s.Title}}" maxlength="120" placeholder="mis. TPA, Bahasa Inggris"></div>
+<div class="field"><label for="ins-{{$s.ID}}">Instruksi untuk peserta <span class="muted">(opsional)</span></label><textarea id="ins-{{$s.ID}}" name="instructions" maxlength="4000" rows="3">{{$s.InstructionsSrc}}</textarea></div>
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan bagian</button></div>
+</form>
+{{if and (not $s.Items) (gt (len $.Plan.Sections) 1)}}<form method="post" action="/ujian/paket/{{$.Exam.ID}}/bagian/{{$s.ID}}/hapus" class="mt-2">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus bagian kosong</button></form>{{end}}
+</details>
+{{end}}
+</div>
+
+{{if $s.Items}}
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/urutan" class="reorder-form" data-reorder>
+{{ csrfField }}<input type="hidden" name="section_id" value="{{$s.ID}}">
+<ol class="exam-items">
+{{range $s.Items}}
+<li id="isi-{{.ID}}" class="exam-item{{if .IsRule}} is-rule{{end}}{{if .Archived}} is-archived{{end}}"{{if and .Question .Question.StimulusID}} data-stimulus="{{.Question.StimulusID}}"{{end}}{{if and (not $.ReadOnly) $.Exam.Editable}} draggable="true"{{end}}>
+<input type="hidden" name="ids" value="{{.ID}}">
+{{if and (not $.ReadOnly) $.Exam.Editable}}<span class="drag-handle" aria-hidden="true" title="Seret untuk mengubah urutan">⋮⋮</span>{{end}}
+<div class="min-w-0 flex-1">
+{{if .IsRule}}
+<p class="mb-0"><span class="badge badge-info">Acak</span> <strong>{{.RuleLabel}}</strong></p>
+<p class="text-sm mb-0 {{if .Short}}text-red-700{{else}}text-slate-500{{end}}">dari {{.BankName}} · tersedia {{.Available}}{{if .Short}} · kurang {{.Short}}{{end}}</p>
+{{else}}
+{{with .StimulusTitle}}<p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-0">Stimulus: {{.}}</p>{{end}}
+<p class="mb-0" dir="auto">{{.Snippet}}</p>
+<p class="text-sm text-slate-500 mb-0">{{.Question.Kind.Label}}{{with .Question.Difficulty}} · {{.}}{{end}}{{with .Question.Cognitive}} · {{.}}{{end}}{{with .ObjectiveCode}} · {{.}}{{end}} · {{.Question.Points}} poin
+{{if .Archived}} · <span class="text-red-700">diarsipkan di bank</span>{{else if ne .Question.Status "siap"}} · <span class="text-amber-700">{{.Question.Status}}</span>{{end}}</p>
+{{end}}
+</div>
+{{if and (not $.ReadOnly) $.Exam.Editable}}
+<span class="item-actions">
+<button type="submit" form="move-{{.ID}}-up" class="btn btn-ghost btn-sm" aria-label="Naikkan">↑</button>
+<button type="submit" form="move-{{.ID}}-down" class="btn btn-ghost btn-sm" aria-label="Turunkan">↓</button>
+<button type="submit" form="remove-{{.ID}}" class="btn btn-ghost btn-sm">Lepas</button>
+</span>
+{{end}}
+</li>
+{{end}}
+</ol>
+<noscript><button type="submit" class="btn btn-ghost btn-sm">Simpan urutan</button></noscript>
+</form>
+{{range $s.Items}}
+<form id="move-{{.ID}}-up" method="post" action="/ujian/paket/{{$.Exam.ID}}/isi/{{.ID}}/geser" hidden>{{ csrfField }}<input type="hidden" name="arah" value="naik"></form>
+<form id="move-{{.ID}}-down" method="post" action="/ujian/paket/{{$.Exam.ID}}/isi/{{.ID}}/geser" hidden>{{ csrfField }}<input type="hidden" name="arah" value="turun"></form>
+<form id="remove-{{.ID}}" method="post" action="/ujian/paket/{{$.Exam.ID}}/isi/{{.ID}}/hapus" hidden>{{ csrfField }}</form>
+{{end}}
+{{else}}
+<p class="text-sm text-slate-600 mb-0">Bagian ini masih kosong. Pilih soal dari bank, atau tulis aturan ambil acak seperti "10 PG mudah TP 3.1".</p>
+{{end}}
+
+{{if and (not $.ReadOnly) $.Exam.Editable}}
+<div class="action-row">
+<a class="btn btn-ghost" href="/ujian/paket/{{$.Exam.ID}}/pilih?bagian={{$s.ID}}">Pilih soal dari bank</a>
+</div>
+<details class="rule-form"{{if eq $.Rule.SectionID $s.ID}} open{{end}}>
+<summary class="btn btn-ghost btn-sm">Tambah aturan ambil acak</summary>
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/acak" class="stack mt-2" novalidate>
+{{ csrfField }}<input type="hidden" name="section_id" value="{{$s.ID}}">
+<div class="field-grid">
+<div class="field{{if and (eq $.Rule.SectionID $s.ID) $.RuleErrors.count}} has-error{{end}}">
+<label for="count-{{$s.ID}}">Jumlah</label>
+<input id="count-{{$s.ID}}" name="count" inputmode="numeric" maxlength="3" value="{{if eq $.Rule.SectionID $s.ID}}{{$.Rule.Count}}{{else}}5{{end}}">
+{{if eq $.Rule.SectionID $s.ID}}{{with $.RuleErrors.count}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+<div class="field{{if and (eq $.Rule.SectionID $s.ID) $.RuleErrors.bank_id}} has-error{{end}}">
+<label for="bank-{{$s.ID}}">Dari bank</label>
+<select id="bank-{{$s.ID}}" name="bank_id">{{range $.Banks}}<option value="{{.ID}}"{{if eq .ID $.Rule.BankID}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+{{if eq $.Rule.SectionID $s.ID}}{{with $.RuleErrors.bank_id}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field"><label for="kind-{{$s.ID}}">Jenis</label><select id="kind-{{$s.ID}}" name="kind"><option value="">Semua jenis</option>{{range $.Kinds}}<option value="{{.Value}}"{{if and (eq $.Rule.SectionID $s.ID) .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="diff-{{$s.ID}}">Kesulitan</label><select id="diff-{{$s.ID}}" name="difficulty"><option value="">Semua</option>{{range $.Diffs}}<option value="{{.Value}}"{{if and (eq $.Rule.SectionID $s.ID) .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+</div>
+{{if $.Objectives}}<div class="field"><label for="tp-{{$s.ID}}">Tujuan pembelajaran</label><select id="tp-{{$s.ID}}" name="objective_id"><option value="">Semua TP</option>{{range $.Objectives}}<option value="{{.ID}}"{{if and (eq $.Rule.SectionID $s.ID) (eq .ID $.Rule.ObjectiveID)}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+<label class="choice"><input type="checkbox" name="stimulus"{{if and (eq $.Rule.SectionID $s.ID) $.Rule.Stimulus}} checked{{end}}> Ambil teks/stimulus beserta semua soalnya (jumlah = banyak teks)</label>
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Tambah aturan</button></div>
+<p class="hint">Aturan yang melebihi isi bank ditolak dan jumlah yang tersedia ditampilkan. Hanya soal berstatus siap yang diambil.</p>
+</form>
+</details>
+{{end}}
+</section>
+{{end}}
+
+{{if and (not .ReadOnly) .Exam.Editable}}
+<section class="card stack">
+<h2 class="card-title">Bagian dan paket</h2>
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/bagian" class="flex flex-wrap items-end gap-2">
+{{ csrfField }}
+<div class="field min-w-0 flex-1"><label for="new-section">Tambah bagian</label><input id="new-section" name="title" maxlength="120" placeholder="mis. Bahasa Inggris"></div>
+<button type="submit" class="btn btn-ghost">Tambah bagian</button>
+</form>
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/varian" class="flex flex-wrap items-end gap-2">
+{{ csrfField }}
+<div class="field min-w-0 flex-1"><label for="variants">Varian paket</label><select id="variants" name="variants">{{range .VariantOps}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<p class="hint">Paket A/B/C berisi soal berbeda dengan komposisi TP, level, dan kesulitan yang sama, dibagikan bergilir ke peserta. Perlindungan utama di lab.</p></div>
+<button type="submit" class="btn btn-ghost">Simpan</button>
+</form>
+</section>
+<div class="action-row">
+<a class="btn btn-primary" href="/ujian/paket/{{.Exam.ID}}/atur/aturan">Lanjut</a>
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}">Keluar</a>
+</div>
+{{end}}
+</div>
+<aside class="wizard-aside">{{template "exam_comp_panel" .Comp}}</aside>
+</div>
+
+{{else if eq .Step "aturan"}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/atur/aturan" class="card stack" novalidate x-data="{ integrity: '{{.Rules.IntegrityMode}}' }">
+{{ csrfField }}
+<fieldset{{if or .ReadOnly (not .Exam.Editable)}} disabled{{end}} class="stack">
+<h2>3. Aturan</h2>
+<fieldset class="field">
+<legend>Urutan</legend>
+<label class="choice"><input type="checkbox" name="shuffle_questions"{{if .Rules.ShuffleQuestions}} checked{{end}}> Acak urutan soal per peserta</label>
+<label class="choice"><input type="checkbox" name="shuffle_options"{{if .Rules.ShuffleOptions}} checked{{end}}> Acak urutan opsi jawaban</label>
+<label class="choice"><input type="checkbox" name="shuffle_in_stimulus"{{if .Rules.ShuffleInStimulus}} checked{{end}}> Acak juga soal di dalam satu teks/stimulus</label>
+<p class="hint">Teks/stimulus selalu tampil bersama soalnya. Tanpa centang terakhir, soal di dalam satu teks tetap berurutan.</p>
+<label class="choice"><input type="checkbox" name="allow_back"{{if .Rules.AllowBack}} checked{{end}}> Peserta boleh kembali ke soal sebelumnya</label>
+</fieldset>
+<div class="field-grid">
+<div class="field{{if .Errors.results_mode}} has-error{{end}}">
+<label for="results_mode">Hasil untuk peserta</label>
+<select id="results_mode" name="results_mode"{{if eq .Exam.Purpose "seleksi"}} disabled{{end}}>
+<option value="tidak"{{if eq .Rules.ResultsMode "tidak"}} selected{{end}}>Tidak ditampilkan</option>
+<option value="nilai"{{if eq .Rules.ResultsMode "nilai"}} selected{{end}}>Nilai saja</option>
+<option value="nilai_dan_pembahasan"{{if eq .Rules.ResultsMode "nilai_dan_pembahasan"}} selected{{end}}>Nilai dan pembahasan</option>
+</select>
+{{if eq .Exam.Purpose "seleksi"}}<input type="hidden" name="results_mode" value="tidak"><p class="hint">Calon siswa tidak melihat nilai maupun pembahasan.</p>{{end}}
+{{with .Errors.results_mode}}<p class="field-error">{{.}}</p>{{end}}
+<label class="choice mt-2"><input type="checkbox" name="results_after_all"{{if .Rules.ResultsAfterAll}} checked{{end}}> Buka hasil setelah sesi terakhir selesai</label>
+</div>
+<div class="field{{if .Errors.max_attempts}} has-error{{end}}">
+<label for="max_attempts">Jumlah percobaan</label>
+<input id="max_attempts" name="max_attempts" value="{{.Rules.MaxAttempts}}" inputmode="numeric" maxlength="2">
+{{with .Errors.max_attempts}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">1 untuk ulangan dan tes; ujian latihan boleh lebih.</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.pass_score}} has-error{{end}}">
+<label for="pass_score">KKTP / nilai minimal <span class="muted">(opsional)</span></label>
+<input id="pass_score" name="pass_score" value="{{.Rules.PassScore}}" inputmode="numeric" maxlength="3" placeholder="mis. 75">
+{{with .Errors.pass_score}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dipakai untuk daftar remedial.</p>{{end}}
+</div>
+<div class="field{{if or .Errors.integrity_mode .Errors.integrity_limit}} has-error{{end}}">
+<label for="integrity_mode">Saat peserta keluar halaman</label>
+<select id="integrity_mode" name="integrity_mode" x-model="integrity">
+<option value="catat"{{if eq .Rules.IntegrityMode "catat"}} selected{{end}}>Hanya catat dan beri tanda ke pengawas</option>
+<option value="kunci"{{if eq .Rules.IntegrityMode "kunci"}} selected{{end}}>Kunci setelah beberapa kali keluar</option>
+</select>
+<div x-show="integrity === 'kunci'" x-cloak class="mt-2"><label for="integrity_limit" class="text-sm">Kunci setelah keluar sebanyak</label> <input id="integrity_limit" name="integrity_limit" value="{{.Rules.IntegrityLimit}}" inputmode="numeric" maxlength="2" class="w-20"> kali</div>
+{{with .Errors.integrity_limit}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Pengawas bisa membuka kunci dari layar pengawas.</p>{{end}}
+</div>
+</div>
+</fieldset>
+{{if and (not .ReadOnly) .Exam.Editable}}
+<div class="action-row">
+<button type="submit" class="btn btn-primary">Simpan dan lanjut</button>
+<button type="submit" name="action" value="keluar" class="btn btn-ghost">Simpan dan keluar</button>
+</div>
+{{end}}
+</form>
+
+{{else if eq .Step "jadwal"}}
+<section class="card stack">
+<h2>4. Jadwal &amp; peserta</h2>
+{{if .Exam.Purpose.SchoolWide}}
+<p class="mb-0">{{.Exam.Purpose.Label}} tidak dijadwalkan di sini. Koordinator ujian mengatur jadwal mapel, ruang, sesi, peserta, dan pengawas di <a href="/ujian/agenda">agenda ujian</a>.</p>
+{{else if eq .Exam.Purpose "seleksi"}}
+{{if not .ReadOnly}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/sesi" class="stack" novalidate x-data="{ period: '' }">
+{{ csrfField }}
+<div class="field-grid">
+<div class="field"><label for="period_id">Gelombang</label>
+<select id="period_id" name="period_id" x-model="period"><option value="">Pilih gelombang</option>{{range .Periods}}<option value="{{.ID}}">{{.Name}} ({{.Verified}} terverifikasi)</option>{{end}}</select></div>
+<div class="field"><label for="track_id">Jalur <span class="muted">(opsional)</span></label>
+<select id="track_id" name="track_id"><option value="">Semua jalur</option>{{range .Periods}}{{$p := .ID}}{{range .Tracks}}<option value="{{.Value}}" x-show="period === '{{$p}}'">{{.Label}}</option>{{end}}{{end}}</select></div>
+</div>
+<div class="field-grid">
+<div class="field"><label for="date">Tanggal mulai</label><input id="date" type="date" name="date" value="{{.DefaultDate}}"></div>
+<div class="field"><label for="start">Jam mulai ({{.Zone}})</label><input id="start" type="time" name="start" value="{{.DefaultTime}}"></div>
+</div>
+<div class="field-grid">
+<div class="field"><label for="end_date">Tanggal selesai</label><input id="end_date" type="date" name="end_date" value="{{.DefaultDate}}"><p class="hint">Tes dari rumah boleh berjendela beberapa hari.</p></div>
+<div class="field"><label for="end">Jam selesai ({{.Zone}})</label><input id="end" type="time" name="end" value="10:00"></div>
+</div>
+<div class="field"><label for="location">Lokasi</label><select id="location" name="location"><option value="di_ruang">Di sekolah (diawasi)</option><option value="jarak_jauh">Dari rumah (jarak jauh)</option></select></div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Buat sesi</button></div>
+<p class="hint">Peserta otomatis dari pendaftar terverifikasi di gelombang (dan jalur) itu.</p>
+</form>
+{{end}}
+{{else}}
+{{if .Classes}}
+{{if not .ReadOnly}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/sesi" class="stack" novalidate>
+{{ csrfField }}
+<p class="hint">Centang kelas, lalu atur waktunya. Satu sesi dibuat per kelas. Jam dalam {{.Zone}}.</p>
+<div class="table-wrap">
+<table class="schedule-table">
+<thead><tr><th>Kelas</th><th>Tanggal</th><th>Mulai</th><th>Selesai</th><th>Lokasi</th></tr></thead>
+<tbody>
+{{range .Classes}}
+<tr x-data="{ on: false }">
+<td><label class="choice"><input type="checkbox" name="class_id" value="{{.ID}}" x-model="on"> <strong>{{.Name}}</strong></label><span class="block text-sm text-slate-500">{{.Students}} siswa{{if .Scheduled}} · sudah ada sesi{{end}}</span></td>
+<td><input type="date" name="date_{{.ID}}" value="{{$.DefaultDate}}" aria-label="Tanggal {{.Name}}" :disabled="!on"></td>
+<td><input type="time" name="start_{{.ID}}" value="{{$.DefaultTime}}" aria-label="Mulai {{.Name}}" :disabled="!on"></td>
+<td><input type="time" name="end_{{.ID}}" value="09:00" aria-label="Selesai {{.Name}}" :disabled="!on"></td>
+<td><select name="location_{{.ID}}" aria-label="Lokasi {{.Name}}" :disabled="!on"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+<div class="action-row">
+<button type="submit" name="action" value="lanjut" class="btn btn-primary">Buat sesi dan lanjut</button>
+<button type="submit" class="btn btn-ghost">Buat sesi</button>
+</div>
+<p class="hint">Di ruang: bunyi tanda saat keluar halaman aktif dan pengawas memantau. Jarak jauh: peserta mengerjakan dari rumah.</p>
+</form>
+{{end}}
+{{else}}
+<p class="mb-0">Tidak ada kelas yang bisa dipilih.{{if .Exam.GradeLevel}} Ujian ini untuk kelas {{.Exam.GradeLevel}}.{{end}} Guru hanya bisa memilih kelas yang ia ampu untuk mapel ini; minta admin/TU mengatur <a href="/pengaturan/penugasan">penugasan mengajar</a>.</p>
+{{end}}
+{{end}}
+</section>
+
+{{if .Sessions}}
+<section class="card stack mt-4">
+<h2 class="card-title">Sesi</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Sesi</th><th>Waktu</th><th>Lokasi</th><th>Peserta</th><th>Pengawas</th><th></th></tr></thead>
+<tbody>
+{{range .Sessions}}<tr><td>{{.Title}}{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}</td><td>{{.When}}</td><td>{{.LocationLabel}}</td><td>{{.Participants}}</td><td>{{range $i, $p := .Proctors}}{{if $i}}, {{end}}{{$p}}{{else}}—{{end}}</td>
+<td>{{if .CanCancel}}<form method="post" action="/ujian/paket/{{$.Exam.ID}}/sesi/{{.ID}}/batal" x-data @submit="if (!confirm('Batalkan sesi ini? Kode ujian sesi ini tidak berlaku lagi.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Batalkan</button></form>{{end}}</td></tr>{{end}}
+</tbody>
+</table></div>
+</section>
+{{end}}
+<div class="action-row mt-4">
+<a class="btn btn-primary" href="/ujian/paket/{{.Exam.ID}}/atur/cek">Lanjut</a>
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}">Keluar</a>
+</div>
+
+{{else if eq .Step "cek"}}
+<div class="wizard-aside-grid">
+<section class="card stack">
+<h2>5. Cek kesiapan</h2>
+<p class="hint">Butir bertanda <strong>Wajib</strong> harus beres sebelum ujian dijadwalkan. Peringatan boleh dilewati.</p>
+{{template "exam_readiness" .Readiness}}
+{{if and (not .ReadOnly) .Exam.Editable}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/jadwalkan" class="action-row">
+{{ csrfField }}
+<button type="submit" class="btn btn-primary"{{if .Readiness.Blocked}} disabled{{end}}>{{if .Exam.Purpose.SchoolWide}}Tandai siap{{else if eq .Exam.Status "terjadwal"}}Perbarui jadwal{{else}}Jadwalkan{{end}}</button>
+{{if .Readiness.Blocked}}<span class="muted small">Selesaikan butir wajib dulu.</span>{{end}}
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}">Keluar</a>
+</form>
+{{end}}
+</section>
+<aside class="wizard-aside">{{template "exam_comp_panel" .Comp}}</aside>
+</div>
+{{end}}
+{{end}}

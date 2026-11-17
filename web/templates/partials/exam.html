@@ -116,3 +116,57 @@
 </form>
 </dialog>
 {{end}}
+
+{{/* exam_status_badge: status ujian (T133). Argumen: string status. */}}
+{{define "exam_status_badge"}}{{if eq . "draf"}}<span class="badge badge-warning">Draf</span>{{else if eq . "terjadwal"}}<span class="badge badge-info">Terjadwal</span>{{else if eq . "berlangsung"}}<span class="badge badge-success">Berlangsung</span>{{else if eq . "selesai"}}<span class="badge">Selesai</span>{{else}}<span class="badge">Arsip</span>{{end}}{{end}}
+
+{{/* exam_readiness: daftar cek kesiapan ujian (T133/T136). Argumen: Readiness. */}}
+{{define "exam_readiness"}}
+<ul class="checklist">
+{{range .Items}}<li class="is-{{.Level}}"><span class="checklist-mark" aria-hidden="true">{{if eq .Level "ok"}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}</span><span class="min-w-0 flex-1"><strong>{{.Label}}</strong>{{if eq .Level "block"}} <span class="badge badge-danger">Wajib</span>{{else if eq .Level "warn"}} <span class="badge badge-warning">Peringatan</span>{{end}}{{with .Hint}}<span class="block text-sm text-slate-600">{{.}}</span>{{end}}</span>{{if and .FixURL (ne .Level "ok")}}<a class="btn btn-ghost btn-sm" href="{{.FixURL}}">{{.FixLabel}}</a>{{end}}</li>{{end}}
+</ul>
+{{end}}
+
+{{/* exam_comp_panel: panel ringkas komposisi ujian (T133). Argumen: compView. */}}
+{{define "exam_comp_panel"}}
+<section class="card comp-panel" aria-labelledby="comp-title">
+<h2 id="comp-title" class="card-title">Ringkasan</h2>
+<dl class="comp-stats">
+<div><dt>Soal</dt><dd>{{.Count}}</dd></div>
+<div><dt>Total poin</dt><dd>{{.Points}}</dd></div>
+<div{{if .OverTime}} class="is-warn"{{end}}><dt>Perkiraan waktu</dt><dd>± {{.Minutes}} / {{.Duration}} mnt</dd></div>
+<div{{if .Essays}} class="is-info"{{end}}><dt>Esai (koreksi manual)</dt><dd>{{.Essays}}</dd></div>
+</dl>
+{{if .Stimuli}}<p class="text-sm text-slate-600 mb-2">{{.Stimuli}} teks/stimulus bersama.</p>{{end}}
+{{if .ShortRules}}<p class="alert alert-error text-sm">{{.ShortRules}} aturan acak kekurangan soal di bank.</p>{{end}}
+{{if .HasQuestions}}
+{{with .Kinds}}<h3 class="comp-h">Jenis</h3><ul class="comp-bars">{{range .}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>{{end}}
+<h3 class="comp-h">Kesulitan</h3><ul class="comp-bars">{{range .Difficulty}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>
+<h3 class="comp-h">Level kognitif</h3><ul class="comp-bars">{{range .Cognitive}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>
+<h3 class="comp-h">Tujuan pembelajaran</h3>
+{{if .Objectives}}<ul class="comp-bars">{{range .Objectives}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>{{end}}
+{{if .Untagged}}<p class="text-sm text-amber-700 mb-0">{{.Untagged}} soal belum bertanda TP.</p>{{end}}
+{{end}}
+{{if gt .Variants 1}}<p class="text-sm mt-3 mb-0"><strong>{{.Variants}} paket</strong> dengan komposisi sama.{{if .Shared}} <span class="text-amber-700">{{.Shared}} soal sama di beberapa paket (bank kurang padanan).</span>{{end}}</p>{{end}}
+</section>
+{{end}}
+
+{{/* exam_next_step: kartu langkah berikutnya di detail ujian (T133, pola T116). Argumen: nextStep. */}}
+{{define "exam_next_step"}}
+<section class="card next-step is-{{.Tone}}" aria-labelledby="next-step-title">
+<ol class="flow" aria-label="Alur ujian">
+{{range .Flow}}<li class="is-{{.State}}"{{if eq .State "current"}} aria-current="step"{{end}}><span class="flow-dot" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{end}}</span><span class="flow-label">{{.Label}}</span></li>{{end}}
+</ol>
+<p class="next-step-eyebrow">Langkah berikutnya</p>
+<h2 id="next-step-title">{{.Title}}</h2>
+<p class="next-step-hint">{{.Hint}}</p>
+{{if .URL}}<div class="next-step-actions"><a class="btn btn-primary" href="{{.URL}}">{{.Label}}</a></div>{{end}}
+</section>
+{{end}}
+
+{{/* exam_wizard_steps: kepala langkah wizard ujian. Argumen: []stepLink. */}}
+{{define "exam_wizard_steps"}}
+<ol class="wizard-steps is-5" aria-label="Langkah">
+{{range .}}<li class="is-{{.State}}">{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
+</ol>
+{{end}}
