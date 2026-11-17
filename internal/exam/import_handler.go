@@ -1,7 +1,9 @@
 package exam
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -11,9 +13,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 
+	"akra/internal/audit"
 	"akra/internal/auth"
 	"akra/internal/exam/richtext"
+	"akra/internal/platform/database"
 )
 
 // WithJobs memasang antrean job untuk membaca impor besar. Tanpa antrean
@@ -33,6 +38,7 @@ func (h *Handler) importRoutes(r chi.Router) {
 	r.Get("/impor/{id}/butir/{seq}", h.importItemEdit)
 	r.Post("/impor/{id}/butir/{seq}", h.importItemSave)
 	r.Post("/impor/{id}/simpan", h.importCommit)
+	r.Get("/bank/{id}/ekspor/moodle.xml", h.exportMoodle)
 }
 
 type importSource struct {
@@ -41,6 +47,8 @@ type importSource struct {
 
 var importSources = []importSource{
 	{SourceWord, "Word (.docx)", "Soal bernomor dengan opsi A–E dan baris Kunci. Rumus Equation Word, gambar, tabel, dan teks Arab ikut terbaca.", ".docx", "/ujian/impor/template-soal.docx"},
+	{SourceMoodle, "Moodle XML (.xml)", "Ekspor bank soal Moodle. Pilihan ganda, benar/salah, isian, numerik, menjodohkan, esai, dan deskripsi (sebagai stimulus). Kategori menjadi tag.", ".xml", ""},
+	{SourceGIFT, "GIFT (.txt)", "Format teks Moodle, mis. ::Judul:: Soal {=benar ~salah}.", ".txt,.gift", ""},
 }
 
 type importPageView struct {
@@ -378,4 +386,106 @@ func importSummary(res ImportResult) string {
 		s += ", " + strconv.Itoa(res.Stimuli) + " stimulus"
 	}
 	return s + ", " + strconv.Itoa(res.Skipped) + " dilewati."
+}
+
+// bankQuestions mengembalikan semua soal aktif bank (urut seperti di
+// daftar) dan stimulusnya, untuk ekspor.
+func bankQuestions(ctx context.Context, q database.DBTX, b Bank) ([]Question, map[string]Stimulus, error) {
+	rows, err := q.Query(ctx, `SELECT `+questionCols+` FROM exam_questions q
+		LEFT JOIN exam_stimuli st ON st.id = q.stimulus_id AND st.school_id = q.school_id
+		WHERE q.school_id = $1 AND q.bank_id = $2 AND q.archived_at IS NULL
+		ORDER BY coalesce(st.created_at, q.created_at), coalesce(q.stimulus_id, q.id), q.stimulus_order NULLS FIRST, q.created_at`, b.SchoolID, b.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("exam: export questions: %w", err)
+	}
+	defer rows.Close()
+	var qs []Question
+	for rows.Next() {
+		qq, err := scanQuestion(rows)
+		if err != nil {
+			return nil, nil, err
+		}
+		qs = append(qs, qq)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	stims, err := ListStimuli(ctx, q, b.SchoolID, b.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	sm := map[string]Stimulus{}
+	for _, s := range stims {
+		sm[s.ID] = s
+	}
+	return qs, sm, nil
+}
+
+// exportImages membaca gambar soal dari storage untuk ekspor.
+func (h *Handler) exportImages(ctx context.Context, schoolID string) exportImage {
+	return func(id string) (string, []byte, error) {
+		a, err := GetAsset(ctx, h.db, schoolID, id)
+		if err != nil {
+			return "", nil, err
+		}
+		rc, err := h.store.Get(ctx, a.StorageKey)
+		if err != nil {
+			return "", nil, err
+		}
+		defer rc.Close()
+		data, err := io.ReadAll(io.LimitReader(rc, MaxAssetBytes*4))
+		return a.ID + "." + extOf[a.ContentType], data, err
+	}
+}
+
+// exportMoodle mengunduh bank sebagai Moodle XML (termasuk kunci), dicatat
+// di audit. Hanya penulis bank.
+func (h *Handler) exportMoodle(w http.ResponseWriter, r *http.Request) {
+	_, sa := h.staff(r)
+	b, ok := h.loadBank(w, r, sa)
+	if !ok {
+		return
+	}
+	if sa.Can(ActBank, b.resource(), time.Now()) < Write {
+		h.fail(w, r, "export moodle", ErrNotEditable)
+		return
+	}
+	qs, stims, err := bankQuestions(r.Context(), h.db, b)
+	if err != nil {
+		h.fail(w, r, "export moodle", err)
+		return
+	}
+	if err := h.auditExport(r.Context(), sa, b, "moodle", len(qs)); err != nil {
+		h.fail(w, r, "export moodle", err)
+		return
+	}
+	data := ExportMoodleXML(b.Name, stims, qs, h.exportImages(r.Context(), sa.SchoolID))
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+safeFileName(b.Name)+`-moodle.xml"`)
+	_, _ = w.Write(data)
+}
+
+// safeFileName membuat nama file unduhan dari teks bebas.
+func safeFileName(s string) string {
+	out := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
+			return r
+		case r == ' ' || r == '_':
+			return '-'
+		}
+		return -1
+	}, s)
+	if out == "" {
+		return "bank-soal"
+	}
+	return out
+}
+
+// auditExport mencatat ekspor bank (berisi kunci jawaban) di audit.
+func (h *Handler) auditExport(ctx context.Context, sa StaffActor, b Bank, format string, n int) error {
+	return pgx.BeginFunc(ctx, h.db, func(tx pgx.Tx) error {
+		return audit.Record(ctx, tx, audit.Entry{SchoolID: sa.SchoolID, UserID: sa.UserID, Action: "exam_bank.export",
+			EntityType: "exam_bank", EntityID: b.ID, After: map[string]any{"format": format, "questions": n}, IP: sa.IP})
+	})
 }

@@ -405,6 +405,8 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/ujian/bank/{id}/impor", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/impor" }, nil)},
 	{Method: "GET", Pattern: "/ujian/impor/template-soal.docx", Kind: KindPage, Roles: examWriters},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/ekspor/moodle.xml", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/ekspor/moodle.xml"} })},
 	{Method: "GET", Pattern: "/ujian/impor/{id}", Kind: KindByID, Roles: examWriters,
 		Requests: paths(func(o *School) []string { return []string{"/ujian/impor/" + o.ExamImportID} })},
 	{Method: "GET", Pattern: "/ujian/impor/{id}/butir/{seq}", Kind: KindByID, Roles: examWriters,
