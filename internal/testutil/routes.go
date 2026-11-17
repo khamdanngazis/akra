@@ -465,7 +465,8 @@ var Routes = []Route{
 		})},
 	{Method: "GET", Pattern: "/ujian/paket/{id}", Kind: KindByID, Roles: examStaff,
 		Requests: paths(func(o *School) []string {
-			return []string{"/ujian/paket/" + o.ExamID, "/ujian/paket/" + o.ExamID + "?tab=soal", "/ujian/paket/" + o.ExamID + "?tab=sesi&sesi=" + o.ExamSessionID}
+			return []string{"/ujian/paket/" + o.ExamID, "/ujian/paket/" + o.ExamID + "?tab=soal", "/ujian/paket/" + o.ExamID + "?tab=sesi&sesi=" + o.ExamSessionID,
+				"/ujian/paket/" + o.ExamID + "?tab=dokumen", "/ujian/paket/" + o.ExamID + "?tab=lanjut"}
 		})},
 	{Method: "GET", Pattern: "/ujian/paket/{id}/atur/{step}", Kind: KindByID, Roles: examStaff,
 		Requests: paths(func(o *School) []string {
@@ -540,6 +541,15 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/naskah?paket=A"} })},
 	{Method: "GET", Pattern: "/ujian/paket/{id}/kunci", Kind: KindByID, Roles: examWriters,
 		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/kunci"} })},
+	// Susulan, remedial, pengayaan (T137).
+	{Method: "POST", Pattern: "/ujian/paket/{id}/susulan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/susulan" }, func(*School) url.Values {
+			return url.Values{"date": {"2030-02-04"}, "start": {"07:30"}, "end_date": {"2030-02-04"}, "end": {"09:00"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/tindak-lanjut", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/tindak-lanjut" }, func(*School) url.Values {
+			return url.Values{"kind": {"pengayaan"}, "date": {"2030-02-04"}, "start": {"07:30"}, "end_date": {"2030-02-04"}, "end": {"09:00"}}
+		})},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/isi/{item}/hapus", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/isi/" + o.ExamItemID + "/hapus" }, nil)},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi/{sid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},

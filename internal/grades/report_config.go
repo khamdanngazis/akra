@@ -41,7 +41,16 @@ type ReportConfig struct {
 	SignerTitle   string
 	// PortalComponents: orang tua melihat nilai per komponen (T75).
 	PortalComponents bool
+	// RemedialPolicy: aturan nilai remedial ujian (T137), lihat
+	// RemedialCapAtThreshold dan RemedialHighest.
+	RemedialPolicy string
 }
+
+// Aturan nilai remedial di rapor (T137).
+const (
+	RemedialCapAtThreshold = "maks_kktp" // paling tinggi sama dengan KKM/KKTP
+	RemedialHighest        = "tertinggi" // ambil nilai tertinggi
+)
 
 // ThresholdLabel mengembalikan "KKM" atau "KKTP" sesuai format.
 func (c ReportConfig) ThresholdLabel() string { return academic.ThresholdLabel(c.Format) }
@@ -49,7 +58,7 @@ func (c ReportConfig) ThresholdLabel() string { return academic.ThresholdLabel(c
 // LoadReportConfig membaca pengaturan rapor dengan default untuk kunci yang
 // belum diatur. Nilai tersimpan yang rusak adalah error.
 func LoadReportConfig(ctx context.Context, q database.DBTX, schoolID string) (ReportConfig, error) {
-	c := ReportConfig{Format: academic.ReportFormatNumeric, SignerTitle: DefaultSignerTitle}
+	c := ReportConfig{Format: academic.ReportFormatNumeric, SignerTitle: DefaultSignerTitle, RemedialPolicy: RemedialCapAtThreshold}
 	var err error
 	if c.Scale, err = LoadScale(ctx, q, schoolID); err != nil {
 		return ReportConfig{}, err
@@ -58,9 +67,10 @@ func LoadReportConfig(ctx context.Context, q database.DBTX, schoolID string) (Re
 		return ReportConfig{}, err
 	}
 	for key, dst := range map[string]*string{
-		settings.ReportFormat:        &c.Format,
-		settings.ReportPrincipalName: &c.PrincipalName,
-		settings.ReportSignerTitle:   &c.SignerTitle,
+		settings.ReportFormat:         &c.Format,
+		settings.ReportPrincipalName:  &c.PrincipalName,
+		settings.ReportSignerTitle:    &c.SignerTitle,
+		settings.ReportRemedialPolicy: &c.RemedialPolicy,
 	} {
 		v, ok, err := settings.Get(ctx, q, schoolID, key)
 		if err != nil {
@@ -75,6 +85,9 @@ func LoadReportConfig(ctx context.Context, q database.DBTX, schoolID string) (Re
 	}
 	if c.PortalComponents, err = settings.Bool(ctx, q, schoolID, settings.ReportPortalComponents, false); err != nil {
 		return ReportConfig{}, err
+	}
+	if c.RemedialPolicy != RemedialCapAtThreshold && c.RemedialPolicy != RemedialHighest {
+		return ReportConfig{}, fmt.Errorf("grades: stored %s is invalid: %q", settings.ReportRemedialPolicy, c.RemedialPolicy)
 	}
 	return c, nil
 }
@@ -92,13 +105,14 @@ type ReportConfigForm struct {
 	SignerTitle   string
 	// PortalComponents: isian kotak centang ("on" = dicentang).
 	PortalComponents bool
+	RemedialPolicy   string
 	Bands            []BandInput
 }
 
 // FormOf mengisi form dari pengaturan tersimpan.
 func FormOf(c ReportConfig) ReportConfigForm {
 	f := ReportConfigForm{Format: c.Format, KKMDefault: strconv.Itoa(c.KKMDefault), PrincipalName: c.PrincipalName, SignerTitle: c.SignerTitle,
-		PortalComponents: c.PortalComponents}
+		PortalComponents: c.PortalComponents, RemedialPolicy: c.RemedialPolicy}
 	for _, b := range c.Scale {
 		f.Bands = append(f.Bands, BandInput{b.Letter, strconv.Itoa(b.Min), strconv.Itoa(b.Max)})
 	}
@@ -123,9 +137,16 @@ func ValidateReportConfig(f ReportConfigForm) (ReportConfig, error) {
 		PrincipalName:    strings.Join(strings.Fields(f.PrincipalName), " "),
 		SignerTitle:      strings.Join(strings.Fields(f.SignerTitle), " "),
 		PortalComponents: f.PortalComponents,
+		RemedialPolicy:   strings.TrimSpace(f.RemedialPolicy),
 	}
 	if c.Format != academic.ReportFormatNumeric && c.Format != academic.ReportFormatMerdeka {
 		fields["format"] = "Pilih format rapor."
+	}
+	if c.RemedialPolicy == "" {
+		c.RemedialPolicy = RemedialCapAtThreshold
+	}
+	if c.RemedialPolicy != RemedialCapAtThreshold && c.RemedialPolicy != RemedialHighest {
+		fields["remedial_policy"] = "Pilih aturan nilai remedial."
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(f.KKMDefault))
 	if err != nil || n < 0 || n > 100 {
@@ -218,6 +239,7 @@ func (s *ReportConfigService) Save(ctx context.Context, actor school.Actor, f Re
 			settings.ReportPrincipalName:    c.PrincipalName,
 			settings.ReportSignerTitle:      c.SignerTitle,
 			settings.ReportPortalComponents: strconv.FormatBool(c.PortalComponents),
+			settings.ReportRemedialPolicy:   c.RemedialPolicy,
 		} {
 			if err := settings.Set(ctx, tx, actor.SchoolID, key, value); err != nil {
 				return err
@@ -238,10 +260,11 @@ func (s *ReportConfigService) Save(ctx context.Context, actor school.Actor, f Re
 }
 
 func configSnapshot(c ReportConfig) string {
-	return strings.Join([]string{c.Format, c.Scale.JSON(), strconv.Itoa(c.KKMDefault), c.PrincipalName, c.SignerTitle, strconv.FormatBool(c.PortalComponents)}, "\x00")
+	return strings.Join([]string{c.Format, c.Scale.JSON(), strconv.Itoa(c.KKMDefault), c.PrincipalName, c.SignerTitle, strconv.FormatBool(c.PortalComponents), c.RemedialPolicy}, "\x00")
 }
 
 func configAudit(c ReportConfig) map[string]any {
 	return map[string]any{"format": c.Format, "scale": c.Scale, "kkm_default": c.KKMDefault,
-		"principal_name": c.PrincipalName, "signer_title": c.SignerTitle, "portal_components": c.PortalComponents}
+		"principal_name": c.PrincipalName, "signer_title": c.SignerTitle, "portal_components": c.PortalComponents,
+		"remedial_policy": c.RemedialPolicy}
 }

@@ -381,7 +381,7 @@ func assignParticipantVariants(ctx context.Context, tx pgx.Tx, examID string) er
 		WITH ranked AS (
 			SELECT p.id, (row_number() OVER (PARTITION BY p.session_id ORDER BY p.seat NULLS LAST, p.participant_no, p.id) - 1) AS rn
 			FROM exam_session_participants p JOIN exam_sessions x ON x.id = p.session_id
-			WHERE x.exam_id = $1 AND x.cancelled_at IS NULL`+cond+`)
+			WHERE x.exam_id = $1 AND x.cancelled_at IS NULL AND (x.kind = 'utama' OR p.variant_id IS NULL)`+cond+`)
 		UPDATE exam_session_participants p SET variant_id = ($2::uuid[])[(r.rn % array_length($2::uuid[], 1)) + 1]
 		FROM ranked r WHERE r.id = p.id`, examID, ids)
 	if err != nil {

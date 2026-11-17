@@ -28,6 +28,7 @@ func (h *Handler) examRoutes(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleGuru))
 			h.examWizardRoutes(readers, r)
 			h.examDocsRoutes(readers, r)
+			h.followUpRoutes(r)
 			r.Post("/paket/{id}/salin", h.examCopy)
 			r.Post("/paket/{id}/arsip", h.examArchive)
 		})
@@ -178,6 +179,8 @@ type examDetailView struct {
 	Participants []ParticipantRow
 	Rules        RulesForm
 	DocSessions  []docSession
+	Follow       followView
+	DefaultDate  string
 	Flash        string
 	Error        string
 	Zone         string
@@ -194,7 +197,7 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 	loc := id.Location()
 	tab := r.URL.Query().Get("tab")
 	switch tab {
-	case "soal", "sesi", "hasil", "dokumen":
+	case "soal", "sesi", "hasil", "dokumen", "lanjut":
 	default:
 		tab = "ringkasan"
 	}
@@ -253,6 +256,12 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	case "dokumen":
 		v.DocSessions = h.examDocSessions(r, v.Sessions, loc, now)
+	case "lanjut":
+		if v.Follow, err = h.loadFollowView(r, e, codes, plan.Composition(), now); err != nil {
+			h.fail(w, r, "followup view", err)
+			return
+		}
+		v.DefaultDate = now.In(loc).AddDate(0, 0, 1).Format("2006-01-02")
 	case "sesi":
 		if sid := r.URL.Query().Get("sesi"); sid != "" {
 			for i := range v.Sessions {

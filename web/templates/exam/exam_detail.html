@@ -33,6 +33,7 @@
 <a href="/ujian/paket/{{.Exam.ID}}?tab=soal"{{if eq .Tab "soal"}} aria-current="page"{{end}}>Soal</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
+<a href="/ujian/paket/{{.Exam.ID}}?tab=lanjut"{{if eq .Tab "lanjut"}} aria-current="page"{{end}}>Tindak lanjut</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=hasil"{{if eq .Tab "hasil"}} aria-current="page"{{end}}>Hasil</a>
 </nav>
 
@@ -135,6 +136,69 @@
 </div>
 </section>
 {{end}}
+
+{{else if eq .Tab "lanjut"}}
+{{$f := .Follow}}
+{{with $f.Parent}}<p class="alert alert-info mt-4">Ujian ini adalah {{$.Exam.FollowUp}} dari <a href="/ujian/paket/{{.ID}}?tab=lanjut">{{.Name}}</a>.</p>{{end}}
+{{if and .CanWrite (not .Exam.FollowUp)}}
+<section class="card stack mt-4">
+<h2 class="card-title">Sesi susulan</h2>
+<p class="hint">Untuk siswa yang sakit atau izin. Memakai paket soal lain bila ada, dan nilainya masuk ke ujian ini (satu kolom nilai). Peserta yang tidak pernah masuk di sesinya sudah dicentang.</p>
+{{if $f.Candidates}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/susulan" class="stack" novalidate>
+{{ csrfField }}
+<div class="check-grid">{{range $f.Candidates}}<label class="choice"><input type="checkbox" name="participant" value="{{.ID}}"{{if .Absent}} checked{{end}}> {{.Name}} <span class="muted small">{{.ClassName}}{{if .Absent}} · tidak hadir{{end}}</span></label>{{end}}</div>
+<div class="field-grid">
+<div class="field"><label for="mk-date">Mulai</label><span class="flex gap-2"><input id="mk-date" type="date" name="date" value="{{.DefaultDate}}"><input type="time" name="start" value="07:30" aria-label="Jam mulai"></span></div>
+<div class="field"><label for="mk-end">Selesai</label><span class="flex gap-2"><input id="mk-end" type="date" name="end_date" value="{{.DefaultDate}}"><input type="time" name="end" value="09:00" aria-label="Jam selesai"></span></div>
+</div>
+<div class="field"><label for="mk-loc">Lokasi</label><select id="mk-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Buat sesi susulan</button></div>
+</form>
+{{else}}<p class="mb-0">Belum ada peserta yang perlu susulan.</p>{{end}}
+</section>
+
+<section class="card stack mt-4">
+<h2 class="card-title">Remedial dan pengayaan</h2>
+<p class="hint">Remedial untuk siswa yang belum tuntas{{with .Rules.PassScore}} (KKTP {{.}}){{end}}: soal diambil acak dari bank untuk TP yang dipilih, satu bagian per TP. Pengayaan untuk siswa yang sudah tuntas; nilainya tidak menurunkan nilai rapor. Daftar siswa belum tuntas terisi otomatis setelah penilaian tersedia.</p>
+{{if $f.Students}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/tindak-lanjut" class="stack" novalidate x-data="{ kind: 'remedial' }">
+{{ csrfField }}
+<div class="option-cards">
+<label class="option-card"><input type="radio" name="kind" value="remedial" x-model="kind" checked><span><strong>Remedial</strong><span class="block text-sm text-slate-600">Fokus pada TP yang belum tuntas.</span></span></label>
+<label class="option-card"><input type="radio" name="kind" value="pengayaan" x-model="kind"><span><strong>Pengayaan</strong><span class="block text-sm text-slate-600">Paket tambahan yang Anda susun sendiri.</span></span></label>
+</div>
+<fieldset class="field"><legend>Siswa</legend><div class="check-grid">{{range $f.Students}}<label class="choice"><input type="checkbox" name="student" value="{{.Value}}"> {{.Label}}</label>{{end}}</div></fieldset>
+{{if $f.Objectives}}<fieldset class="field" x-show="kind === 'remedial'"><legend>TP yang belum tuntas</legend><div class="check-grid">{{range $f.Objectives}}<label class="choice"><input type="checkbox" name="objective" value="{{.Value}}"> {{.Label}}</label>{{end}}</div>
+<p class="hint">Kosongkan untuk semua TP di ujian ini.</p></fieldset>{{end}}
+<div class="field-grid">
+<div class="field"><label for="fu-date">Mulai</label><span class="flex gap-2"><input id="fu-date" type="date" name="date" value="{{.DefaultDate}}"><input type="time" name="start" value="07:30" aria-label="Jam mulai"></span></div>
+<div class="field"><label for="fu-end">Selesai</label><span class="flex gap-2"><input id="fu-end" type="date" name="end_date" value="{{.DefaultDate}}"><input type="time" name="end" value="09:00" aria-label="Jam selesai"></span></div>
+</div>
+<div class="field"><label for="fu-loc">Lokasi</label><select id="fu-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Buat ujian tindak lanjut</button></div>
+</form>
+{{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}
+</section>
+{{end}}
+
+{{if $f.FollowUps}}
+<section class="card stack mt-4">
+<h2 class="card-title">Ujian tindak lanjut</h2>
+<ul class="stack">{{range $f.FollowUps}}<li><a href="/ujian/paket/{{.ID}}">{{.Name}}</a> {{template "exam_status_badge" .Status}}</li>{{end}}</ul>
+</section>
+{{end}}
+
+<section class="card stack mt-4">
+<h2 class="card-title">Riwayat percobaan per siswa</h2>
+{{if $f.History}}
+<div class="table-wrap"><table>
+<thead><tr><th>Siswa</th><th>Kelas</th><th>Percobaan</th></tr></thead>
+<tbody>{{range $f.History}}<tr><td>{{.Name}}</td><td>{{.ClassName}}</td><td>{{.Summary}}</td></tr>{{end}}</tbody>
+</table></div>
+<p class="hint">Nilai tiap percobaan tampil setelah penilaian tersedia.</p>
+{{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}
+</section>
 
 {{else}}
 <section class="card mt-4"><p class="mb-0">Hasil, koreksi esai, dan analisis butir tampil di sini setelah peserta mengumpulkan.</p></section>

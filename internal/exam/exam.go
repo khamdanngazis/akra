@@ -114,6 +114,10 @@ type Exam struct {
 	ArchivedAt        *time.Time
 	// Builtin: paket ujian latihan bawaan sekolah (T136).
 	Builtin bool
+	// ParentExamID dan FollowUp ("remedial"/"pengayaan") untuk ujian
+	// tindak lanjut (T137).
+	ParentExamID string
+	FollowUp     string
 }
 
 // StatusLabel mengembalikan nama status untuk tampilan.
@@ -193,7 +197,7 @@ const examCols = `e.id, e.school_id, coalesce(e.academic_year_id::text, ''), e.n
 	coalesce(s.name, ''), coalesce(e.grade_level, 0), e.duration_minutes, e.shuffle_questions, e.shuffle_options, e.shuffle_in_stimulus,
 	e.results_mode, e.results_after_all, e.max_attempts, e.pass_score, e.integrity_mode, coalesce(e.integrity_limit, 0), e.allow_back,
 	e.variant_count, e.status, e.wizard_step, e.owner_id, ou.full_name, coalesce(e.copied_from::text, ''), e.scheduled_at, e.locked_at,
-	e.created_by, e.created_at, e.updated_at, e.archived_at, e.builtin`
+	e.created_by, e.created_at, e.updated_at, e.archived_at, e.builtin, coalesce(e.parent_exam_id::text, ''), coalesce(e.followup, '')`
 
 const examFrom = ` FROM exams e
 	LEFT JOIN subjects s ON s.id = e.subject_id AND s.school_id = e.school_id
@@ -206,7 +210,7 @@ func scanExam(r pgx.Row) (Exam, error) {
 	err := r.Scan(&e.ID, &e.SchoolID, &e.AcademicYearID, &e.Name, &e.Purpose, &e.SubjectID, &e.SubjectName, &grade, &dur,
 		&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 		&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
-		&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin)
+		&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp)
 	e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 	if pass != nil {
 		v := int(*pass)
@@ -271,7 +275,7 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 		err := r.Scan(&e.ID, &e.SchoolID, &e.AcademicYearID, &e.Name, &e.Purpose, &e.SubjectID, &e.SubjectName, &grade, &dur,
 			&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 			&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
-			&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin,
+			&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
 			&x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
 		e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 		if pass != nil {
