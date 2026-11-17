@@ -205,3 +205,18 @@
 </div>
 <p class="hint">Bila siswa lebih banyak dari komputer, lab dipakai beberapa gelombang: gelombang 2 mulai setelah gelombang 1 selesai ditambah jeda.</p>
 {{end}}
+
+{{/* exam_paper_question: soal di naskah cetak (T135), tanpa kunci. Argumen: QuestionView. */}}
+{{define "exam_paper_question"}}
+<div class="paper-q">
+<div class="paper-q-head"><span class="paper-q-no">{{.Number}}.</span><div class="exam-content min-w-0 flex-1">{{.Body}}</div></div>
+{{if .Choices}}<ol class="paper-options">{{range .Choices}}<li><span class="paper-letter">{{.Letter}}.</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol>
+{{if .Multiple}}<p class="paper-hint">Jawaban benar bisa lebih dari satu.</p>{{end}}{{end}}
+{{if .Statements}}<table class="print-table paper-tf"><thead><tr><th>Pernyataan</th><th class="w-12">B</th><th class="w-12">S</th></tr></thead>
+<tbody>{{range .Statements}}<tr><td class="exam-content">{{.HTML}}</td><td></td><td></td></tr>{{end}}</tbody></table>{{end}}
+{{if .Left}}<div class="paper-match"><ol>{{range $i, $l := .Left}}<li><span class="exam-content">{{$l.HTML}}</span> <span class="paper-blank">( ...... )</span></li>{{end}}</ol>
+<ol class="paper-options">{{range .Right}}<li><span class="paper-letter">{{.Letter}}.</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol></div>{{end}}
+{{if eq .Kind "isian"}}<p class="paper-line">Jawaban: ................................................................</p>{{end}}
+{{if eq .Kind "esai"}}<div class="paper-essay"></div>{{end}}
+</div>
+{{end}}

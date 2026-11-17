@@ -514,6 +514,21 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/salin" }, func(*School) url.Values {
 			return url.Values{"name": {"Salinan"}}
 		})},
+	// Dokumen ujian (T135).
+	{Method: "GET", Pattern: "/ujian/paket/{id}/daftar-hadir.pdf", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/paket/" + o.ExamID + "/daftar-hadir.pdf?sesi=" + o.ExamSessionID}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/berita-acara.pdf", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/berita-acara.pdf"} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/kartu", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/kartu" }, func(o *School) url.Values {
+			return url.Values{"session_id": {o.ExamSessionID}}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/naskah", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/naskah?paket=A"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/kunci", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/kunci"} })},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/isi/{item}/hapus", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/isi/" + o.ExamItemID + "/hapus" }, nil)},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi/{sid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
@@ -580,6 +595,24 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/terapkan" }, nil)},
 	{Method: "POST", Pattern: "/ujian/agenda/{id}/umumkan", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/umumkan" }, nil)},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/dokumen", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/dokumen"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/daftar-hadir.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/daftar-hadir.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/berita-acara.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/berita-acara.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/denah.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/denah.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/pintu.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/agenda/" + o.ExamEventID + "/pintu.pdf?ruang=" + o.ExamRoomID}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/kartu", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/kartu" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/duduk", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/duduk" }, func(*School) url.Values {
+			return url.Values{"selang": {"1"}}
+		})},
 	{Method: "POST", Pattern: "/ujian/agenda/{id}/jam/{slot}/hapus", Kind: KindByID, Roles: adminTU,
 		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/jam/" + o.ExamSlotID + "/hapus" }, nil)},
 	{Method: "POST", Pattern: "/ujian/agenda/{id}/arsip", Kind: KindByID, Roles: adminTU,

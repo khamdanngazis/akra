@@ -2860,6 +2860,30 @@
   .print-table th { @apply bg-slate-100; }
   .print-card { @apply mb-6 rounded-lg border border-slate-400 p-4; break-inside: avoid; }
   .print-sign { @apply mt-10 ms-auto w-64 text-center; }
+  /* Naskah cadangan (T135). */
+  .paper-section { @apply mb-2 mt-4; break-after: avoid; }
+  .paper-section h2 { @apply text-base font-bold; }
+  .paper-group { break-inside: avoid; }
+  .paper-stimulus-box { @apply mb-2 rounded border border-slate-400 p-3; }
+  .paper-stimulus-box h3 { @apply mb-1 font-semibold; }
+  .paper-q { @apply mb-4; break-inside: avoid; }
+  .paper-q-head { @apply flex gap-2; }
+  .paper-q-no { @apply w-8 flex-none text-right font-semibold; }
+  .paper-options { @apply m-0 mt-1 list-none space-y-1 ps-10; }
+  .paper-options li { @apply flex gap-2; }
+  .paper-letter { @apply w-5 flex-none font-semibold; }
+  .paper-hint { @apply ps-10 text-sm italic; }
+  .paper-tf { @apply mt-2 ms-10 w-auto; }
+  .paper-match { @apply mt-2 grid gap-4 ps-10; grid-template-columns: 1fr 1fr; }
+  .paper-blank { @apply text-slate-500; }
+  .paper-line { @apply mt-2 ps-10; }
+  .paper-essay { @apply mt-2 ms-10 h-32 border border-slate-300; }
+  .paper-answer-sheet { break-before: page; @apply mt-8; }
+  .answer-grid { @apply m-0 grid list-none gap-x-6 gap-y-2 p-0; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+  .answer-grid li { @apply flex items-center gap-1.5; }
+  .bubble { @apply inline-grid size-6 place-items-center rounded-full border border-slate-500 text-xs; }
+  .answer-line { @apply inline-block w-40 border-b border-slate-500; }
+  .paper-key-q { @apply text-sm; max-width: 28rem; }
   @media print {
     .no-print { display: none !important; }
     .page-print .page { @apply max-w-none p-0; }

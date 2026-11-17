@@ -20,6 +20,8 @@ type Handler struct {
 	store    storage.Store        // gambar soal
 	math     *mathrender.Renderer // rumus dirender server saat simpan
 	jobs     ImportJobInserter    // job baca impor; nil = langsung
+	issuer   *Issuer              // kode kartu peserta (T135)
+	baseURL  string               // URL publik untuk QR kartu
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
@@ -28,7 +30,7 @@ type Handler struct {
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(db database.DB, store storage.Store, math *mathrender.Renderer, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger}
+	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger, issuer: NewIssuer()}
 }
 
 // Routes mendaftarkan route modul ujian. Semua route menjawab 404 bila

@@ -16,6 +16,7 @@
 <a href="/ujian/agenda/{{.Event.ID}}/jadwal"{{if eq .Tab "jadwal"}} aria-current="page"{{end}}>Jadwal mapel</a>
 <a href="/ujian/agenda/{{.Event.ID}}/ruang"{{if eq .Tab "ruang"}} aria-current="page"{{end}}>Ruang &amp; peserta</a>
 <a href="/ujian/agenda/{{.Event.ID}}/pengawas"{{if eq .Tab "pengawas"}} aria-current="page"{{end}}>Pengawas</a>
+<a href="/ujian/agenda/{{.Event.ID}}/dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
 </nav>
 
 {{if eq .Tab "ringkasan"}}
@@ -160,6 +161,49 @@
 </section>
 {{end}}
 </div>
+
+{{else if eq .Tab "dokumen"}}
+<section class="card stack mt-4">
+<h2 class="card-title">Kartu peserta</h2>
+<p class="hint">Satu kartu per siswa dengan satu kode untuk semua mapel agenda. Kartu baru bisa dicetak mulai H-3 sebelum sesi pertama; mencetak ulang membuat kode baru dan kartu lama tidak berlaku lagi.</p>
+{{if not .Summary.SessionsApplied}}<p class="mb-0">Terapkan agenda ke sesi ujian dulu dari tab Ringkasan.</p>
+{{else if not .CardsOpen}}<p class="mb-0">Kartu bisa dicetak mulai <strong>{{.OpensAt}}</strong>.</p>
+{{else if .CanEdit}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/kartu" class="flex flex-wrap items-end gap-2">
+{{ csrfField }}
+<div class="field"><label for="card-room">Ruang</label><select id="card-room" name="room_id"><option value="">Semua ruang</option>{{range .Plans}}{{if eq .Shift 1}}<option value="{{.Room.ID}}">{{.Room.Name}}</option>{{end}}{{end}}</select></div>
+<div class="field"><label for="card-class">Kelas</label><select id="card-class" name="class_id"><option value="">Semua kelas</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+{{if .Issued}}<label class="choice text-sm"><input type="checkbox" name="ulang" value="1"> Cetak ulang ({{.Issued}} siswa sudah punya kartu; kartu lama tidak berlaku)</label>{{end}}
+<button type="submit" class="btn btn-primary">Cetak kartu</button>
+</form>
+{{end}}
+</section>
+<section class="card stack mt-4">
+<h2 class="card-title">Per ruang</h2>
+{{if .Plans}}
+{{if .CanEdit}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/duduk" class="action-row">{{ csrfField }}
+<label class="choice"><input type="checkbox" name="selang" value="1"> Siswa sekelas duduk berselang</label>
+<button type="submit" class="btn btn-ghost btn-sm">Atur tempat duduk</button></form>
+{{end}}
+<div class="table-wrap"><table>
+<thead><tr><th>Ruang</th><th>Peserta</th><th>Dokumen</th></tr></thead>
+<tbody>
+{{range .Plans}}<tr><td>{{.Room.Name}}{{if gt .Shift 1}} · gel. {{.Shift}}{{end}}</td><td>{{len .Seats}} · {{.FirstNo}}–{{.LastNo}}</td>
+<td class="whitespace-nowrap">{{if eq .Shift 1}}<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{$.Event.ID}}/daftar-hadir.pdf?ruang={{.Room.ID}}">Daftar hadir</a>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{$.Event.ID}}/berita-acara.pdf?ruang={{.Room.ID}}">Berita acara</a>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{$.Event.ID}}/denah.pdf?ruang={{.Room.ID}}">Denah</a>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{$.Event.ID}}/pintu.pdf?ruang={{.Room.ID}}">Tempelan pintu</a>{{end}}</td></tr>{{end}}
+</tbody>
+</table></div>
+<div class="action-row">
+<a class="btn btn-ghost" href="/ujian/agenda/{{.Event.ID}}/daftar-hadir.pdf">Semua daftar hadir</a>
+<a class="btn btn-ghost" href="/ujian/agenda/{{.Event.ID}}/berita-acara.pdf">Semua berita acara</a>
+<a class="btn btn-ghost" href="/ujian/agenda/{{.Event.ID}}/denah.pdf">Semua denah</a>
+<a class="btn btn-ghost" href="/ujian/agenda/{{.Event.ID}}/pintu.pdf">Semua tempelan pintu</a>
+</div>
+{{else}}<p class="mb-0">Bagi peserta ke ruang dulu.</p>{{end}}
+</section>
 
 {{else if eq .Tab "pengawas"}}
 <section class="card stack mt-4">

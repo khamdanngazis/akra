@@ -28,8 +28,10 @@ func (h *Handler) eventRoutes(r chi.Router) {
 			r.Get("/agenda/{id}/"+tab, h.eventDetail)
 		}
 		r.Get("/ruang", h.rooms)
+		readers := r
 		r.Group(func(r chi.Router) {
 			r.Use(RequireAccess(h.db, h.render, h.logger, ActAgenda, Write))
+			h.eventDocsRoutes(readers, r)
 			r.Get("/agenda/baru", h.eventNew)
 			r.Post("/agenda/", h.eventCreate)
 			r.Post("/agenda/{id}", h.eventUpdate)
@@ -251,6 +253,11 @@ type eventDetailView struct {
 	Unplaced  []boardChip
 	Targets   []optionItem
 	Roster    []rosterRow
+	Classes   []optionItem
+	Plans     []RoomPlan
+	Issued    int
+	CardsOpen bool
+	OpensAt   string
 	Flash     string
 	Error     string
 	Zone      string
@@ -269,7 +276,7 @@ func (h *Handler) eventDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tab := "ringkasan"
-	for _, t := range []string{"jadwal", "ruang", "pengawas"} {
+	for _, t := range []string{"jadwal", "ruang", "pengawas", "dokumen"} {
 		if strings.HasSuffix(r.URL.Path, "/"+t) {
 			tab = t
 		}
@@ -384,6 +391,26 @@ func (h *Handler) eventDetail(w http.ResponseWriter, r *http.Request) {
 				v.Unplaced = append(v.Unplaced, *c)
 			}
 		}
+	case "dokumen":
+		seen := map[string]bool{}
+		for _, pt := range p.Participants {
+			if !seen[pt.ClassID] {
+				seen[pt.ClassID] = true
+				v.Classes = append(v.Classes, optionItem{Value: pt.ClassID, Label: pt.ClassName})
+			}
+		}
+		v.Plans, _ = LoadRoomPlans(ctx, h.db, ev, "")
+		var first *time.Time
+		if err := h.db.QueryRow(ctx, `SELECT min(starts_at) FROM exam_sessions WHERE event_id = $1 AND cancelled_at IS NULL`, ev.ID).Scan(&first); err != nil {
+			h.fail(w, r, "event first session", err)
+			return
+		}
+		if first != nil {
+			v.CardsOpen = first.Sub(time.Now()) <= CardLead
+			v.OpensAt = clock.FormatDateTimeID(first.Add(-CardLead), loc)
+		}
+		_ = h.db.QueryRow(ctx, `SELECT count(DISTINCT c.student_id) FROM student_credentials c JOIN exam_sessions x ON x.id = c.exam_session_id
+			WHERE x.event_id = $1 AND c.revoked_at IS NULL`, ev.ID).Scan(&v.Issued)
 	case "pengawas":
 		issues := map[string][]string{}
 		for _, is := range p.Issues {

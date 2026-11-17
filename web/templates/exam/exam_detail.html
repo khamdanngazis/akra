@@ -32,6 +32,7 @@
 <a href="/ujian/paket/{{.Exam.ID}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=soal"{{if eq .Tab "soal"}} aria-current="page"{{end}}>Soal</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
+<a href="/ujian/paket/{{.Exam.ID}}?tab=dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=hasil"{{if eq .Tab "hasil"}} aria-current="page"{{end}}>Hasil</a>
 </nav>
 
@@ -92,6 +93,46 @@
 <thead><tr><th>No.</th><th>Nama</th><th>NIS / No. daftar</th><th>Kelas</th><th>Paket</th></tr></thead>
 <tbody>{{range $.Participants}}<tr><td>{{.Number}}</td><td>{{.Name}}</td><td>{{.Identifier}}</td><td>{{if .ClassName}}{{.ClassName}}{{else}}—{{end}}</td><td>{{if .Variant}}{{.Variant}}{{else}}—{{end}}</td></tr>{{else}}<tr><td colspan="5">Belum ada peserta.</td></tr>{{end}}</tbody>
 </table></div>
+</section>
+{{end}}
+
+{{else if eq .Tab "dokumen"}}
+<section class="card stack mt-4">
+<h2 class="card-title">Per sesi</h2>
+<p class="hint">Kartu berisi kode masuk dan baru bisa dicetak mulai H-3 sebelum sesi. Mencetak ulang membuat kode baru; kartu lama tidak berlaku lagi.</p>
+{{if .DocSessions}}
+<div class="table-wrap"><table>
+<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Kartu</th><th>Dokumen</th></tr></thead>
+<tbody>
+{{range .DocSessions}}
+<tr>
+<td>{{.Title}}{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}<span class="block text-sm text-slate-500">{{.Participants}} peserta</span></td>
+<td>{{.When}}</td>
+<td>{{if not $.CanWrite}}—{{else if .CardsOpen}}
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/kartu" class="stack">{{ csrfField }}<input type="hidden" name="session_id" value="{{.ID}}">
+{{if .Issued}}<label class="choice text-sm"><input type="checkbox" name="ulang" value="1"> Cetak ulang ({{.Issued}} kartu lama tidak berlaku)</label>{{end}}
+<button type="submit" class="btn btn-ghost btn-sm">{{if .Issued}}Cetak ulang kartu{{else}}Cetak kartu{{end}}</button></form>
+{{else}}<span class="text-sm text-slate-500">Mulai {{.OpensAt}}</span>{{end}}</td>
+<td class="whitespace-nowrap"><a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/daftar-hadir.pdf?sesi={{.ID}}">Daftar hadir</a>
+<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/berita-acara.pdf?sesi={{.ID}}">Berita acara</a></td>
+</tr>
+{{end}}
+</tbody>
+</table></div>
+<div class="action-row">
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/daftar-hadir.pdf">Semua daftar hadir</a>
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/berita-acara.pdf">Semua berita acara</a>
+</div>
+{{else}}<p class="mb-0">Belum ada sesi.</p>{{end}}
+</section>
+{{if .CanWrite}}
+<section class="card stack mt-4">
+<h2 class="card-title">Naskah dan kunci</h2>
+<p class="hint">Naskah cadangan untuk keadaan darurat (tanpa kunci, dengan lembar jawaban terpisah). Kunci jawaban hanya untuk pengelola ujian; setiap pembukaan tercatat di audit. Cetak dari Chrome agar rumus dan tulisan Arab tampil benar.</p>
+<div class="action-row">
+{{range .Variants}}<a class="btn btn-ghost" href="/ujian/paket/{{$.Exam.ID}}/naskah?paket={{.Label}}" target="_blank" rel="noopener">Naskah{{if gt (len $.Variants) 1}} paket {{.Label}}{{end}}</a>{{end}}
+{{range .Variants}}<a class="btn btn-ghost" href="/ujian/paket/{{$.Exam.ID}}/kunci?paket={{.Label}}" target="_blank" rel="noopener">Kunci{{if gt (len $.Variants) 1}} paket {{.Label}}{{end}}</a>{{end}}
+</div>
 </section>
 {{end}}
 
