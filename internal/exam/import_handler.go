@@ -39,6 +39,8 @@ func (h *Handler) importRoutes(r chi.Router) {
 	r.Post("/impor/{id}/butir/{seq}", h.importItemSave)
 	r.Post("/impor/{id}/simpan", h.importCommit)
 	r.Get("/bank/{id}/ekspor/moodle.xml", h.exportMoodle)
+	r.Get("/bank/{id}/ekspor/soal.xlsx", h.exportExcel)
+	r.Get("/impor/template-soal.xlsx", h.importExcelTemplate)
 }
 
 type importSource struct {
@@ -48,6 +50,7 @@ type importSource struct {
 var importSources = []importSource{
 	{SourceWord, "Word (.docx)", "Soal bernomor dengan opsi A–E dan baris Kunci. Rumus Equation Word, gambar, tabel, dan teks Arab ikut terbaca.", ".docx", "/ujian/impor/template-soal.docx"},
 	{SourceMoodle, "Moodle XML (.xml)", "Ekspor bank soal Moodle. Pilihan ganda, benar/salah, isian, numerik, menjodohkan, esai, dan deskripsi (sebagai stimulus). Kategori menjadi tag.", ".xml", ""},
+	{SourceExcel, "Excel (.xlsx)", "Satu baris satu soal, cocok untuk soal yang disusun bersama (MGMP). Rumus ditulis \\( … \\); gambar tidak didukung.", ".xlsx", "/ujian/impor/template-soal.xlsx"},
 	{SourceGIFT, "GIFT (.txt)", "Format teks Moodle, mis. ::Judul:: Soal {=benar ~salah}.", ".txt,.gift", ""},
 }
 
@@ -488,4 +491,66 @@ func (h *Handler) auditExport(ctx context.Context, sa StaffActor, b Bank, format
 		return audit.Record(ctx, tx, audit.Entry{SchoolID: sa.SchoolID, UserID: sa.UserID, Action: "exam_bank.export",
 			EntityType: "exam_bank", EntityID: b.ID, After: map[string]any{"format": format, "questions": n}, IP: sa.IP})
 	})
+}
+
+func (h *Handler) importExcelTemplate(w http.ResponseWriter, r *http.Request) {
+	data, err := ExcelTemplate()
+	if err != nil {
+		h.fail(w, r, "excel template", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", `attachment; filename="template-soal-akra.xlsx"`)
+	_, _ = w.Write(data)
+}
+
+// exportExcel mengunduh bank sebagai Excel berformat impor (termasuk
+// kunci), dicatat di audit. Hanya penulis bank.
+func (h *Handler) exportExcel(w http.ResponseWriter, r *http.Request) {
+	_, sa := h.staff(r)
+	b, ok := h.loadBank(w, r, sa)
+	if !ok {
+		return
+	}
+	if sa.Can(ActBank, b.resource(), time.Now()) < Write {
+		h.fail(w, r, "export excel", ErrNotEditable)
+		return
+	}
+	qs, stimMap, err := bankQuestions(r.Context(), h.db, b)
+	if err != nil {
+		h.fail(w, r, "export excel", err)
+		return
+	}
+	codes := map[string]string{}
+	if b.SubjectID != "" {
+		objs, err := ListObjectives(r.Context(), h.db, sa.SchoolID, b.SubjectID, 0)
+		if err != nil {
+			h.fail(w, r, "export excel", err)
+			return
+		}
+		for _, o := range objs {
+			codes[o.ID] = o.Code
+		}
+	}
+	// Stimulus diurutkan sesuai kemunculan pertama di daftar soal.
+	var stims []Stimulus
+	seen := map[string]bool{}
+	for _, q := range qs {
+		if s, ok := stimMap[q.StimulusID]; ok && !seen[s.ID] {
+			seen[s.ID] = true
+			stims = append(stims, s)
+		}
+	}
+	data, err := buildWorkbook(qs, codes, stims)
+	if err != nil {
+		h.fail(w, r, "export excel", err)
+		return
+	}
+	if err := h.auditExport(r.Context(), sa, b, "excel", len(qs)); err != nil {
+		h.fail(w, r, "export excel", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+safeFileName(b.Name)+`.xlsx"`)
+	_, _ = w.Write(data)
 }
