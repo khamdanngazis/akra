@@ -433,6 +433,10 @@ func CommitImport(ctx context.Context, db database.DB, math *mathrender.Renderer
 			usedStim[stimOf(it)] = true
 		}
 	}
+	es, err := LoadExamSettings(ctx, db, sa.SchoolID)
+	if err != nil {
+		return res, err
+	}
 	err = pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
 		stimIDs := map[int]string{}
 		for _, it := range items {
@@ -489,10 +493,11 @@ func CommitImport(ctx context.Context, db database.DB, math *mathrender.Renderer
 			if err := checkAssets(ctx, tx, sa.SchoolID, assets); err != nil {
 				return err
 			}
+			q.Status = reviewStatus(q.Status, es)
 			if _, err := createQuestionTx(ctx, tx, sa, imp.BankID, q, now); err != nil {
 				return fmt.Errorf("soal %s: %w", it.Number, err)
 			}
-			if q.Status == StatusReady {
+			if q.Status != StatusDraft {
 				res.Ready++
 			} else {
 				res.Draft++

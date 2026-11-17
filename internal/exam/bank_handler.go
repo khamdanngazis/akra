@@ -31,6 +31,7 @@ func (h *Handler) bankRoutes(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleGuru))
 			h.editorRoutes(readers, r)
+			h.blueprintRoutes(readers, r)
 			h.importRoutes(r)
 			r.Get("/bank/baru", h.bankNew)
 			r.Post("/bank/", h.bankCreate)
@@ -302,6 +303,8 @@ type bankDetailView struct {
 	Error       string
 	BulkErrors  map[string]string
 	HasEditable bool
+	// QueryString adalah filter aktif (untuk dokumen kisi-kisi/kartu soal).
+	QueryString string
 }
 
 func (h *Handler) bankDetail(w http.ResponseWriter, r *http.Request) {
@@ -388,6 +391,13 @@ func (h *Handler) showBankDetail(w http.ResponseWriter, r *http.Request, status 
 		}
 		v.Groups = append(v.Groups, questionGroup{StimulusID: row.StimulusID, StimulusTitle: row.StimulusTitle, Rows: []QuestionRow{row}})
 	}
+	fq := url.Values{}
+	for _, k := range []string{"q", "jenis", "tp", "kesulitan", "status", "pembuat"} {
+		if s := q.Get(k); s != "" {
+			fq.Set(k, s)
+		}
+	}
+	v.QueryString = fq.Encode()
 	if pg.Total > 0 {
 		v.From = (pg.Page-1)*QuestionPageSize + 1
 		v.To = v.From + len(pg.Rows) - 1

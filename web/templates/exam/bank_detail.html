@@ -56,6 +56,12 @@
 </form>
 
 {{if .Page.Rows}}
+<div class="action-row mb-3" x-data="{ docs(path) { const ids = [...document.querySelectorAll('input[name=ids]:checked')].map(i => 'ids=' + i.value); location.href = '/ujian/bank/{{.Bank.ID}}/' + path + '?' + (ids.length ? ids.join('&') : '{{.QueryString}}'); } }">
+<button type="button" class="btn btn-ghost btn-sm" @click="docs('kisi-kisi')">Kisi-kisi</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="docs('kartu-soal')">Kartu soal</button>
+<a class="btn btn-ghost btn-sm" href="/ujian/bank/{{.Bank.ID}}/mutu">Cek mutu</a>
+<span class="hint self-center">Untuk soal terpilih, atau semua soal sesuai filter.</span>
+</div>
 <div x-data="{ n: 0, action: '' }" @change="n = document.querySelectorAll('input[name=ids]:checked').length">
 <p class="muted result-count">Menampilkan {{.From}}–{{.To}} dari {{.Page.Total}} soal.</p>
 

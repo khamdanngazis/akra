@@ -224,6 +224,9 @@ func (h *Handler) questionCreate(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = checkAssets(r.Context(), h.db, sa.SchoolID, assets)
 	}
+	if err == nil {
+		err = h.applyReview(r, sa, &q)
+	}
 	var saved Question
 	if err == nil {
 		saved, err = CreateQuestion(r.Context(), h.db, sa, b.ID, q, time.Now())
@@ -310,6 +313,9 @@ func (h *Handler) questionUpdate(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = checkAssets(r.Context(), h.db, sa.SchoolID, assets)
 	}
+	if err == nil {
+		err = h.applyReview(r, sa, &q)
+	}
 	var saved Question
 	if err == nil {
 		saved, err = UpdateQuestion(r.Context(), h.db, sa, cur.ID, q, time.Now())
@@ -341,6 +347,11 @@ type questionPageView struct {
 	Stimulus      *Stimulus
 	Flash, Error  string
 	CognitiveText string
+	// Telaah (T132).
+	ReviewOn  bool
+	Reviews   []Review
+	CanSubmit bool
+	CanReview bool
 }
 
 // keyLines menjelaskan kunci jawaban untuk staf.
@@ -398,6 +409,12 @@ func (h *Handler) questionView(w http.ResponseWriter, r *http.Request) {
 		View:        NewQuestionView(ForParticipant(q), 1, staffAssetURL),
 		Explanation: trusted(q.ExplanationHTML, staffAssetURL), Rubric: trusted(q.Key.RubricHTML, staffAssetURL),
 		Key: keyLines(q), Flash: auth.PopFlash(r.Context(), h.sessions), CognitiveText: cognitiveLabels[q.CognitiveLevel]}
+	if s, err := LoadExamSettings(r.Context(), h.db, sa.SchoolID); err == nil && s.Review {
+		v.ReviewOn = true
+		v.Reviews, _ = ListReviews(r.Context(), h.db, sa.SchoolID, q.ID)
+		v.CanSubmit = v.CanEdit && q.Status == StatusDraft
+		v.CanReview = q.Status == StatusInReview && q.CreatedBy != sa.UserID && v.CanWrite && q.ArchivedAt == nil
+	}
 	if q.ObjectiveID != "" {
 		if o, err := getObjective(r.Context(), h.db, sa.SchoolID, q.ObjectiveID); err == nil {
 			v.Objective = o.Code + " — " + o.Description
@@ -578,4 +595,14 @@ func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/preview_fragment", v)
+}
+
+// applyReview mengajukan soal "siap" untuk ditelaah bila telaah aktif.
+func (h *Handler) applyReview(r *http.Request, sa StaffActor, q *Question) error {
+	s, err := LoadExamSettings(r.Context(), h.db, sa.SchoolID)
+	if err != nil {
+		return err
+	}
+	q.Status = reviewStatus(q.Status, s)
+	return nil
 }

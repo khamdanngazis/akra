@@ -412,9 +412,8 @@ func likePattern(s string) string {
 	return "%" + r.Replace(s) + "%"
 }
 
-// ListQuestions mengembalikan soal aktif bank b sesuai filter. Soal
-// berstimulus diurutkan berkelompok di bawah stimulusnya.
-func ListQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f QuestionFilter, now time.Time) (QuestionPage, error) {
+// questionWhere menyusun FROM ... WHERE daftar soal bank dengan filter.
+func questionWhere(b Bank, f QuestionFilter) (string, []any) {
 	where := []string{"q.school_id = $1", "q.bank_id = $2", "q.archived_at IS NULL"}
 	args := []any{b.SchoolID, b.ID}
 	add := func(cond string, v any) {
@@ -445,12 +444,39 @@ func ListQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f Ques
 	from := ` FROM exam_questions q
 		LEFT JOIN exam_stimuli st ON st.id = q.stimulus_id AND st.school_id = q.school_id
 		WHERE ` + strings.Join(where, " AND ")
+	return from, args
+}
+
+// ListQuestions mengembalikan soal aktif bank b sesuai filter. Soal
+// berstimulus diurutkan berkelompok di bawah stimulusnya.
+func ListQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f QuestionFilter, now time.Time) (QuestionPage, error) {
+	from, args := questionWhere(b, f)
 	var total int
 	if err := q.QueryRow(ctx, `SELECT count(*)`+from, args...).Scan(&total); err != nil {
 		return QuestionPage{}, fmt.Errorf("exam: count questions: %w", err)
 	}
 	pages := max(1, (total+QuestionPageSize-1)/QuestionPageSize)
 	page := min(max(f.Page, 1), pages)
+	return listQuestionRows(ctx, q, a, b, from, args, total, page, pages, QuestionPageSize, now)
+}
+
+// AllQuestions mengembalikan semua soal aktif bank sesuai filter (maks.
+// 5.000), untuk kisi-kisi, kartu soal, dan cek mutu.
+func AllQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f QuestionFilter, ids []string, now time.Time) ([]QuestionRow, error) {
+	if len(ids) > 0 {
+		f = QuestionFilter{}
+	}
+	f.Page = 1
+	where, args := questionWhere(b, f)
+	if len(ids) > 0 {
+		args = append(args, ids)
+		where += fmt.Sprintf(" AND q.id = ANY($%d)", len(args))
+	}
+	p, err := listQuestionRows(ctx, q, a, b, where, args, 0, 1, 1, 5000, now)
+	return p.Rows, err
+}
+
+func listQuestionRows(ctx context.Context, q database.DBTX, a Actor, b Bank, from string, args []any, total, page, pages, size int, now time.Time) (QuestionPage, error) {
 	rows, err := q.Query(ctx, `
 		SELECT `+questionCols+`, u.full_name, coalesce(o.code, ''), coalesce(st.title, ''),
 		       (SELECT count(DISTINCT s.exam_id) FROM exam_question_stats s WHERE s.question_id = q.id AND s.exam_id IS NOT NULL),
@@ -461,7 +487,7 @@ func ListQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f Ques
 		LEFT JOIN LATERAL (SELECT difficulty_index, discrimination FROM exam_question_stats s
 		                   WHERE s.question_id = q.id ORDER BY computed_at DESC LIMIT 1) ls ON true`, 1)+`
 		ORDER BY coalesce(st.created_at, q.created_at), coalesce(q.stimulus_id, q.id), q.stimulus_order NULLS FIRST, q.created_at
-		LIMIT `+fmt.Sprint(QuestionPageSize)+` OFFSET `+fmt.Sprint((page-1)*QuestionPageSize), args...)
+		LIMIT `+fmt.Sprint(size)+` OFFSET `+fmt.Sprint((page-1)*size), args...)
 	if err != nil {
 		return QuestionPage{}, fmt.Errorf("exam: list questions: %w", err)
 	}
@@ -479,6 +505,9 @@ func ListQuestions(ctx context.Context, q database.DBTX, a Actor, b Bank, f Ques
 		}
 		if err := json.Unmarshal(opts, &r.Options); err != nil {
 			return QuestionPage{}, fmt.Errorf("exam: decode options: %w", err)
+		}
+		if err := json.Unmarshal(key, &r.Key); err != nil {
+			return QuestionPage{}, fmt.Errorf("exam: decode answer key: %w", err)
 		}
 		r.Snippet = Snippet(PlainText(r.BodySrc), 160)
 		r.CanEdit = CanEditQuestion(a, b, r.Question, now)

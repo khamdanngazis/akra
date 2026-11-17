@@ -423,6 +423,28 @@ var Routes = []Route{
 			return url.Values{"include": {"0"}}
 		})},
 
+	// Kisi-kisi, kartu soal, cek mutu, telaah, pengaturan ujian (T132).
+	{Method: "GET", Pattern: "/ujian/bank/{id}/kisi-kisi", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/kisi-kisi"} })},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/kisi-kisi.xlsx", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/kisi-kisi.xlsx"} })},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/kartu-soal", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/kartu-soal"} })},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/mutu", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/mutu"} })},
+	{Method: "GET", Pattern: "/ujian/telaah", Kind: KindPage, Roles: examWriters},
+	{Method: "POST", Pattern: "/ujian/soal/{id}/ajukan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/soal/" + o.ExamQuestionID + "/ajukan" }, nil)},
+	{Method: "POST", Pattern: "/ujian/soal/{id}/telaah", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/soal/" + o.ExamQuestionID + "/telaah" }, func(*School) url.Values {
+			return url.Values{"decision": {"setuju"}}
+		})},
+	{Method: "GET", Pattern: "/ujian/pengaturan", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/ujian/pengaturan", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/ujian/pengaturan" }, func(*School) url.Values {
+			return url.Values{"cognitive": {"30/50/20"}, "difficulty": {"30/50/20"}}
+		})},
+
 	// Arsip (bank, soal, stimulus, TP): kontrol positif oleh guru pemilik,
 	// penulis terakhir di urutan uji, dan arsip bank paling akhir, sehingga
 	// kontrol positif lain selalu memakai data yang masih aktif.

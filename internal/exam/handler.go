@@ -42,6 +42,7 @@ func (h *Handler) Routes(r chi.Router) {
 		// koordinator_ujian di tahun ajaran aktif.
 		r.With(RequireAccess(h.db, h.render, h.logger, ActAgenda, Read)).Get("/agenda", h.agenda)
 		h.bankRoutes(r)
+		h.settingsRoutes(r)
 	})
 }
 

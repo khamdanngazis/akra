@@ -2777,3 +2777,23 @@
   .math-palette button { @apply rounded-md border border-slate-200 px-2 py-1 text-sm hover:bg-slate-50; }
   .save-status { @apply text-sm text-slate-500; }
 }
+
+/* Dokumen cetak (kisi-kisi, kartu soal; T132). Dicetak dari browser
+   ("Simpan sebagai PDF") karena memuat rumus (ADR 0001). */
+@layer components {
+  .page-print { @apply bg-white; }
+  .page-print .page { @apply mx-auto max-w-5xl p-6; }
+  .print-head { @apply mb-4 border-b-2 border-slate-900 pb-2 text-center; }
+  .print-head h1 { @apply text-lg font-bold; }
+  .print-table { @apply w-full border-collapse text-sm; }
+  .print-table th, .print-table td { @apply border border-slate-400 px-2 py-1 align-top; }
+  .print-table th { @apply bg-slate-100; }
+  .print-card { @apply mb-6 rounded-lg border border-slate-400 p-4; break-inside: avoid; }
+  .print-sign { @apply mt-10 ms-auto w-64 text-center; }
+  @media print {
+    .no-print { display: none !important; }
+    .page-print .page { @apply max-w-none p-0; }
+    .print-card { @apply rounded-none; }
+    @page { size: A4; margin: 15mm; }
+  }
+}

@@ -265,6 +265,13 @@ railway ssh --service akra -- akra-modul -school <kode> -exam on -release r1
 railway ssh --service akra -- akra-modul -school <kode> -exam off
 ```
 
+## Bank Soal (MVP 4, T127–T132)
+
+- **Bank soal** `/ujian/bank/` (migrasi 000063): soal dipakai bersama per mapel; hanya pembuat dan admin_tu yang bisa mengubah atau mengarsipkan, guru lain memakai dan menduplikat. Setiap perubahan soal/stimulus menjadi versi baru di `exam_question_versions`/`exam_stimulus_versions` (tidak bisa diubah), sehingga ujian lama tidak berubah. Kunci jawaban disimpan di kolom terpisah dan `exam.ForParticipant` satu-satunya jalan serialisasi soal ke peserta.
+- **Editor soal** (T128): enam jenis soal; teks kaya dibersihkan server dengan allowlist ([internal/exam/richtext](internal/exam/richtext)); rumus dirender KaTeX di server ([internal/exam/mathrender](internal/exam/mathrender), goja dikunci untuk Go 1.22); KaTeX dan Noto Naskh Arabic disimpan di `web/static/vendor/`. Gambar disajikan lewat `/ujian/aset/{id}` (cek akses lalu URL bertanda tangan). Draf tersimpan otomatis tiap 5 detik.
+- **Impor** (T129–T131): Word (.docx, template di `/ujian/impor/template-soal.docx`), Moodle XML, GIFT, dan Excel (template `/ujian/impor/template-soal.xlsx`) memakai satu alur: baca (job River `exam_import`) → pratinjau dan perbaiki → simpan dalam satu transaksi. Ekspor bank ke Moodle XML dan Excel dicatat di audit.
+- **Kisi-kisi, kartu soal, cek mutu, telaah** (T132): dokumen cetak HTML dan Excel dari soal terpilih atau filter bank; telaah opsional diatur di `/ujian/pengaturan` (admin_tu, koordinator).
+
 ## Login Peserta Ujian
 
 - Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.

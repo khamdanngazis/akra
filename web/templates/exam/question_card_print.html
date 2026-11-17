@@ -1,0 +1,26 @@
+{{define "title"}}Kartu Soal · {{.Bank.Name}}{{end}}
+{{define "bodyClass"}}page-print{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "content"}}
+<div class="no-print action-row mb-4">
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}">← Kembali ke bank</a>
+<button type="button" class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button>
+</div>
+{{range .Cards}}
+<article class="print-card">
+<header class="print-head"><p class="font-semibold">{{$.Head.School}}</p><h1>KARTU SOAL NOMOR {{.No}}</h1></header>
+<table class="print-table mb-3"><tbody>
+<tr><th class="w-40 text-left">Mata pelajaran</th><td>{{or $.Bank.SubjectName "Tes umum"}}{{if $.Bank.GradeLevel}} · Kelas {{$.Bank.GradeLevel}}{{end}}</td></tr>
+<tr><th class="text-left">Penyusun</th><td>{{.Creator}}</td></tr>
+<tr><th class="text-left">TP</th><td>{{or .Objective "–"}}</td></tr>
+<tr><th class="text-left">Indikator</th><td dir="auto">{{or .Question.Indicator "–"}}</td></tr>
+<tr><th class="text-left">Level · bentuk · kesulitan</th><td>{{or .Question.CognitiveLevel "–"}} · {{.Question.Kind.Label}} · {{or .Question.Difficulty "–"}} · {{.Question.Points}} poin</td></tr>
+<tr><th class="text-left">Kunci</th><td>{{range .Key}}{{.}}<br>{{end}}</td></tr>
+{{with .Stats}}<tr><th class="text-left">Statistik terakhir</th><td>{{.}}</td></tr>{{end}}
+</tbody></table>
+{{template "exam_question_view" .View}}
+{{if .Rubric}}<h3 class="mt-3 font-semibold">Rubrik</h3><div class="exam-content">{{.Rubric}}</div>{{end}}
+{{if .Explanation}}<h3 class="mt-3 font-semibold">Pembahasan</h3><div class="exam-content">{{.Explanation}}</div>{{end}}
+</article>
+{{else}}<p>Tidak ada soal.</p>{{end}}
+{{end}}
