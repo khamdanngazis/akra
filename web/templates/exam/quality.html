@@ -1,0 +1,33 @@
+{{define "title"}}Cek Mutu · {{.Bank.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Cek mutu" ""}}
+<div class="page-header"><div><h1>Cek mutu soal</h1><p class="muted">Pemeriksaan otomatis untuk {{.Bank.Name}}. Hasil ini saran, bukan larangan.</p></div></div>
+<div class="stack">
+<section class="card">
+<h2 class="card-title">Posisi kunci pilihan ganda</h2>
+{{if .Report.MCCount}}
+<p class="mt-2">{{range .Report.KeyShares}}{{if .Count}}<span class="badge">{{.Label}}: {{.Count}} ({{.Percent}}%)</span> {{end}}{{end}}</p>
+{{with .Report.KeySkewed}}<div class="alert mt-3" role="status">⚠ Kunci terlalu sering di {{.}}. Peserta bisa menebak pola; ubah urutan opsi beberapa soal.</div>{{else}}<p class="hint mt-2">Sebaran kunci wajar.</p>{{end}}
+{{else}}<p class="muted mt-2">Belum ada soal pilihan ganda.</p>{{end}}
+</section>
+<section class="card">
+<h2 class="card-title">Opsi "semua benar"</h2>
+{{if .Report.AllCorrect}}<p class="mt-2">{{len .Report.AllCorrect}} soal memakai opsi "semua benar" atau sejenisnya. Opsi ini sering membuat soal mudah ditebak.</p>
+<ul class="stack mt-2">{{range .Report.AllCorrect}}<li><a href="/ujian/soal/{{.ID}}" dir="auto">{{.Snippet}}</a></li>{{end}}</ul>
+{{else}}<p class="hint mt-2">Tidak ada.</p>{{end}}
+</section>
+<section class="card">
+<h2 class="card-title">Soal tanpa TP</h2>
+{{if .Report.NoObjective}}<p class="mt-2"><a href="/ujian/bank/{{.Bank.ID}}?tp=none">{{.Report.NoObjective}} soal belum ditandai TP</a>. TP dibutuhkan kisi-kisi dan analisis per TP.</p>
+{{else}}<p class="hint mt-2">Semua soal sudah punya TP.</p>{{end}}
+</section>
+<section class="card">
+<h2 class="card-title">Soal kembar atau sangat mirip</h2>
+{{if .Report.Duplicates}}
+<ul class="stack mt-2">{{range .Report.Duplicates}}<li class="card p-3"><a href="/ujian/soal/{{(index . 0).ID}}" dir="auto">{{(index . 0).Snippet}}</a><br><span class="muted">mirip dengan</span> <a href="/ujian/soal/{{(index . 1).ID}}" dir="auto">{{(index . 1).Snippet}}</a></li>{{end}}</ul>
+<p class="hint mt-2">Biasanya terjadi karena file yang sama diimpor dua kali. Arsipkan salah satunya.</p>
+{{else}}<p class="hint mt-2">Tidak ditemukan{{if not .Report.NearDuplicate}} (bank besar: hanya soal yang persis sama yang diperiksa){{end}}.</p>{{end}}
+</section>
+</div>
+{{end}}

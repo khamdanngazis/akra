@@ -1,0 +1,27 @@
+{{define "title"}}Kisi-kisi · {{.Bank.Name}}{{end}}
+{{define "bodyClass"}}page-print{{end}}
+{{define "content"}}
+<div class="no-print action-row mb-4">
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}">← Kembali ke bank</a>
+<button type="button" class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/kisi-kisi.xlsx?{{.Query}}">Unduh Excel</a>
+{{if .CanSetting}}<a class="btn btn-ghost" href="/ujian/pengaturan">Atur target proporsi</a>{{end}}
+</div>
+<header class="print-head">
+<p class="font-semibold">{{.Head.School}}</p>{{with .Head.Address}}<p class="text-sm">{{.}}</p>{{end}}
+<h1>KISI-KISI SOAL</h1>
+<p class="text-sm">{{.Bank.Name}}{{with .Bank.SubjectName}} · {{.}}{{end}}{{if .Bank.GradeLevel}} · Kelas {{.Bank.GradeLevel}}{{end}} · {{len .Blueprint.Rows}} soal · {{.Blueprint.TotalPoints}} poin</p>
+</header>
+{{range .Blueprint.Warnings}}<div class="alert no-print mb-2" role="status">⚠ {{.}}</div>{{end}}
+<table class="print-table">
+<thead><tr><th>No</th><th>Tujuan pembelajaran</th><th>Materi</th><th>Indikator soal</th><th>Level kognitif</th><th>Bentuk soal</th><th>Kesulitan</th><th>Poin</th></tr></thead>
+<tbody>{{range .Blueprint.Rows}}<tr><td>{{.No}}</td><td>{{.Objective}}</td><td>{{.Topic}}</td><td dir="auto">{{.Indicator}}</td><td>{{.CognitiveLevel}}{{with .Group}} ({{.}}){{end}}</td><td>{{.Kind}}</td><td>{{.Difficulty}}</td><td>{{.Points}}</td></tr>{{end}}</tbody>
+</table>
+<div class="mt-4 grid gap-4 sm:grid-cols-2">
+<table class="print-table"><thead><tr><th>Level</th><th>Jumlah</th><th>%</th><th>Target</th></tr></thead>
+<tbody>{{range .Blueprint.Cognitive}}<tr><td>{{.Label}}</td><td>{{.Count}}</td><td>{{.Percent}}%{{if .Off}} ⚠{{end}}</td><td>{{.Target}}%</td></tr>{{end}}</tbody></table>
+<table class="print-table"><thead><tr><th>Kesulitan</th><th>Jumlah</th><th>%</th><th>Target</th></tr></thead>
+<tbody>{{range .Blueprint.Difficulty}}<tr><td>{{.Label}}</td><td>{{.Count}}</td><td>{{.Percent}}%{{if .Off}} ⚠{{end}}</td><td>{{.Target}}%</td></tr>{{end}}</tbody></table>
+</div>
+<div class="print-sign"><p>{{.PrintedAt}}</p><p>{{.Head.SignerTitle}}</p><p class="mt-16">{{or .Head.Principal "...................................."}}</p></div>
+{{end}}

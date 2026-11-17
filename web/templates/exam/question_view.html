@@ -1,0 +1,59 @@
+{{define "title"}}Soal · {{.Bank.Name}}{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Soal" ""}}
+<div class="page-header">
+<div>
+<h1>Soal {{.Question.Kind.Label}}</h1>
+<p class="muted">Versi {{.Question.Version}} · {{if eq .Question.Status "siap"}}Siap{{else if eq .Question.Status "ditelaah"}}Ditelaah{{else}}Draf{{end}} · {{.Question.Points}} poin{{with .Question.Difficulty}} · {{.}}{{end}}{{with .CognitiveText}} · {{.}}{{end}}{{if .Question.ArchivedAt}} · <span class="badge">Diarsipkan</span>{{end}}</p>
+</div>
+<div class="action-row">
+{{if .CanEdit}}<a class="btn btn-primary" href="/ujian/soal/{{.Question.ID}}/ubah">Ubah</a>{{end}}
+{{if .CanWrite}}<form method="post" action="/ujian/soal/{{.Question.ID}}/duplikat">{{ csrfField }}<button type="submit" class="btn btn-ghost">Duplikat</button></form>{{end}}
+</div>
+</div>
+{{template "flash" .}}
+{{if not .CanEdit}}<p class="hint">Soal ini milik guru lain. Anda bisa memakainya di ujian atau menduplikatnya lalu mengubah salinannya.</p>{{end}}
+
+<section class="card" x-data="{ phone: false }">
+<div class="mb-3 flex items-center justify-between gap-2">
+<h2 class="card-title">Tampilan peserta</h2>
+<div class="action-row"><button type="button" class="btn btn-ghost btn-sm" @click="phone = true" :aria-pressed="phone">HP</button><button type="button" class="btn btn-ghost btn-sm" @click="phone = false" :aria-pressed="!phone">Layar lebar</button></div>
+</div>
+<div class="preview-frame" :class="phone && 'is-phone'">{{template "exam_question_view" .View}}</div>
+</section>
+
+{{if .ReviewOn}}
+<section class="card mt-4 stack" id="telaah">
+<h2 class="card-title">Telaah</h2>
+{{if .CanSubmit}}<form method="post" action="/ujian/soal/{{.Question.ID}}/ajukan">{{ csrfField }}<button type="submit" class="btn btn-primary">Ajukan untuk ditelaah</button></form>{{end}}
+{{if .CanReview}}
+<form method="post" action="/ujian/soal/{{.Question.ID}}/telaah" class="stack">
+{{ csrfField }}
+<div class="field"><label for="note">Catatan untuk pembuat soal</label><textarea id="note" name="note" rows="3" maxlength="2000" dir="auto"></textarea></div>
+<div class="action-row"><button type="submit" name="decision" value="setuju" class="btn btn-primary">Setujui</button><button type="submit" name="decision" value="perbaiki" class="btn btn-ghost">Minta perbaikan</button></div>
+</form>
+{{else if eq .Question.Status "ditelaah"}}<p class="muted">Menunggu penelaah.</p>{{end}}
+{{if .Reviews}}<ul class="stack">{{range .Reviews}}<li class="text-sm"><strong>{{.ReviewerName}}</strong> · {{if eq .Decision "setuju"}}disetujui{{else}}minta perbaikan{{end}} (v{{.Version}}){{with .Note}}: <span dir="auto">{{.}}</span>{{end}}</li>{{end}}</ul>{{end}}
+</section>
+{{end}}
+
+<div class="detail-split mt-4">
+<section class="card stack">
+<h2 class="card-title">Kunci (hanya staf)</h2>
+<ul class="stack">{{range .Key}}<li>{{.}}</li>{{end}}</ul>
+{{if .Rubric}}<h3 class="font-semibold">Rubrik</h3><div class="exam-content">{{.Rubric}}</div>{{end}}
+{{if .Explanation}}<h3 class="font-semibold">Pembahasan</h3><div class="exam-content">{{.Explanation}}</div>{{end}}
+</section>
+<section class="card">
+<h2 class="card-title">Keterangan</h2>
+<dl class="data-list mt-3">
+<dt>TP</dt><dd>{{or .Objective "–"}}</dd>
+<dt>Indikator</dt><dd>{{or .Question.Indicator "–"}}</dd>
+<dt>Tag</dt><dd>{{range .Question.Tags}}#{{.}} {{else}}–{{end}}</dd>
+{{if .Stimulus}}<dt>Stimulus</dt><dd><a href="/ujian/stimulus/{{.Stimulus.ID}}">{{.Stimulus.Title}}</a></dd>{{end}}
+</dl>
+</section>
+</div>
+{{end}}

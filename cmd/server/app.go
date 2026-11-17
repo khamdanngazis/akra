@@ -19,6 +19,7 @@ import (
 	"akra/internal/dapodik"
 	"akra/internal/duty"
 	"akra/internal/exam"
+	"akra/internal/exam/mathrender"
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
@@ -74,6 +75,10 @@ func newApp(d appDeps) (http.Handler, error) {
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
 	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
 	participantSessions := auth.NewParticipantSessionManager(d.sessions.Store, d.secure, d.logger)
+	math, err := mathrender.New(d.static)
+	if err != nil {
+		return nil, err
+	}
 	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
 
 	return newRouter(routerDeps{
@@ -89,7 +94,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			d.sessions, d.render, d.logger),
 		activation:          auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		duties:              duty.NewHandler(d.db, d.sessions, d.render, d.logger),
-		exam:                exam.NewHandler(d.db, d.sessions, d.render, d.logger),
+		exam:                exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)),
 		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
@@ -152,6 +157,15 @@ func importJobs(c *jobs.Client) importer.JobInserter {
 // reportJobs mengembalikan inserter job laporan, atau nil (interface nil,
 // bukan pointer nil) jika antrean job tidak tersedia.
 func reportJobs(c *jobs.Client) reports.JobInserter {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
+// examJobs mengembalikan inserter job impor soal, atau nil (interface nil)
+// jika antrean job tidak tersedia.
+func examJobs(c *jobs.Client) exam.ImportJobInserter {
 	if c == nil {
 		return nil
 	}

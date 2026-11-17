@@ -1,0 +1,5 @@
+{{define "title"}}Pratinjau{{end}}
+{{define "content"}}
+{{if .Errors}}<div class="alert alert-error mb-3" role="alert">Belum lengkap:{{range .Errors}}<br>• {{.}}{{end}}</div>{{end}}
+{{template "exam_question_view" .View}}
+{{end}}

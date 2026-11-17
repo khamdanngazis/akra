@@ -1,0 +1,30 @@
+{{define "title"}}Impor Soal · {{.Bank.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" ""}}
+<div class="page-header">
+<div>
+<h1>Impor soal</h1>
+<p class="muted">Ke bank {{.Bank.Name}}. Anda melihat pratinjau dan bisa memperbaiki setiap soal sebelum disimpan. Maks. 20 MB dan 500 soal per file.</p>
+</div>
+</div>
+{{template "flash" .}}
+<div class="bank-grid">
+{{range .Sources}}
+<form method="post" action="/ujian/bank/{{$.Bank.ID}}/impor" enctype="multipart/form-data" class="card stack" x-data="{ busy: false }" @submit="busy = true">
+{{ csrfField }}<input type="hidden" name="source" value="{{.Value}}">
+<h2 class="card-title">{{.Title}}</h2>
+<p class="muted">{{.Desc}}</p>
+{{with .Template}}<p><a href="{{.}}">Unduh template resmi</a></p>{{end}}
+<div class="field"><label for="file-{{.Value}}">File</label><input id="file-{{.Value}}" type="file" name="file" accept="{{.Accept}}" required></div>
+<button type="submit" class="btn btn-primary" :disabled="busy"><span x-show="!busy">Baca file</span><span x-show="busy" x-cloak>Membaca…</span></button>
+</form>
+{{end}}
+</div>
+{{if .Recent}}
+<section class="card mt-4">
+<h2 class="card-title">Impor terakhir Anda</h2>
+<ul class="stack mt-3">{{range .Recent}}<li><a href="/ujian/impor/{{.ID}}">{{.FileName}}</a> <span class="muted">· {{.Status}}{{if eq .Status "selesai"}} · {{.Result.Ready}} siap, {{.Result.Draft}} draf{{end}}</span></li>{{end}}</ul>
+</section>
+{{end}}
+{{end}}

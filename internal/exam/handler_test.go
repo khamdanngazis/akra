@@ -21,12 +21,14 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/render"
 	"akra/internal/platform/settings"
+	"akra/internal/platform/storage"
 	"akra/internal/testutil"
 	"akra/web"
 )
 
 type env struct {
 	t      *testing.T
+	store  storage.Store
 	tx     pgx.Tx
 	a, b   *testutil.School
 	router http.Handler
@@ -52,7 +54,7 @@ func newEnv(t *testing.T) *env {
 	e := &env{t: t, tx: tx}
 	e.a, e.b = testutil.SeedTwoSchools(t, tx, "$argon2id$v=19$m=1024,t=1,p=1$c2FsdA$aGFzaA")
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.NewTextHandler(debugOut(), nil))
 	templates, _ := fs.Sub(web.FS, "templates")
 	static, _ := fs.Sub(web.FS, "static")
 	rd, err := render.New(templates, static, logger)
@@ -70,7 +72,12 @@ func newEnv(t *testing.T) *env {
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})
-	NewHandler(tx, sm, rd, logger).Routes(r)
+	store, err := storage.NewLocal(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.store = store
+	NewHandler(tx, store, mr(t), sm, rd, logger).Routes(r)
 	e.router = r
 	return e
 }
@@ -179,4 +186,12 @@ func TestLoadActor(t *testing.T) {
 	if err != nil || act.Coordinator || act.Can(ActAgenda, Resource{}, now) != Read {
 		t.Errorf("principal actor = %+v, %v", act, err)
 	}
+}
+
+// debugOut mengarahkan log uji ke stderr bila AKRA_TEST_LOG=1.
+func debugOut() io.Writer {
+	if os.Getenv("AKRA_TEST_LOG") == "1" {
+		return os.Stderr
+	}
+	return io.Discard
 }

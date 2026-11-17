@@ -1,0 +1,41 @@
+{{define "title"}}{{if .IsNew}}Buat Bank Soal{{else}}Ubah Bank Soal{{end}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .IsNew}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" "Buat bank" ""}}{{else}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Ubah" ""}}{{end}}
+<section class="card form-card">
+<h1>{{if .IsNew}}Buat bank soal{{else}}Ubah bank soal{{end}}</h1>
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="{{if .IsNew}}/ujian/bank/{{else}}/ujian/bank/{{.Bank.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+{{if .IsNew}}
+<div class="field{{if .Errors.subject_id}} has-error{{end}}">
+<label for="subject_id">Mata pelajaran</label>
+<select id="subject_id" name="subject_id"{{if .Errors.subject_id}} aria-invalid="true"{{end}}>
+{{if .AllowNoSub}}<option value="">Tanpa mapel (tes seleksi umum)</option>{{end}}
+{{range .Subjects}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+{{with .Errors.subject_id}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Mapel tidak bisa diubah setelah bank dibuat, karena TP dan soal terikat mapel.</p>{{end}}
+</div>
+{{else}}
+<p class="muted">Mapel: <strong>{{if .Bank.SubjectName}}{{.Bank.SubjectName}}{{else}}Tes umum{{end}}</strong></p>
+{{end}}
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama bank</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="120" placeholder="mis. Matematika Kelas 7" required{{if .Errors.name}} aria-invalid="true"{{end}}>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.grade_level}} has-error{{end}}">
+<label for="grade_level">Tingkat</label>
+<select id="grade_level" name="grade_level">
+<option value="">Semua tingkat</option>
+{{range .Grades}}<option value="{{.}}"{{if eq (printf "%d" .) $.Form.GradeLevel}} selected{{end}}>Kelas {{.}}</option>{{end}}
+</select>
+{{with .Errors.grade_level}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="action-row">
+<button type="submit" class="btn btn-primary" :disabled="submitting">Simpan</button>
+<a class="btn btn-ghost" href="{{if .IsNew}}/ujian/bank/{{else}}/ujian/bank/{{.Bank.ID}}{{end}}">Batal</a>
+</div>
+</form>
+</section>
+{{end}}

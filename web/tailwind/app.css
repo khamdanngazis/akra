@@ -2656,3 +2656,144 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Modul ujian: bank soal (T127). */
+@layer components {
+  .bank-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .bank-card {
+    @apply block text-slate-900 no-underline transition hover:border-blue-200 hover:bg-blue-50/40;
+  }
+
+  .bank-counts {
+    @apply mt-2 flex flex-wrap gap-1;
+  }
+
+  .bulk-bar {
+    @apply sticky top-16 z-10 mb-3 border-blue-200 bg-blue-50;
+  }
+
+  .question-row {
+    @apply flex items-start gap-3;
+  }
+
+  .question-check {
+    @apply flex-none pt-1;
+  }
+
+  .question-meta {
+    @apply mb-1 flex flex-wrap items-center gap-2;
+  }
+
+  .question-snippet {
+    @apply mb-1 break-words text-slate-900;
+  }
+
+  .question-actions {
+    @apply flex flex-none flex-col items-end gap-1 sm:flex-row;
+  }
+
+  .stimulus-group > summary {
+    @apply cursor-pointer;
+  }
+}
+
+/* Teks soal (T128, ADR 0001). Font Arab hanya diunduh bila ada huruf Arab
+   (unicode-range) dan diperbesar otomatis (size-adjust) agar harakat
+   terbaca. Rumus diisolasi dari arah tulisan paragraf. */
+@font-face {
+  font-family: "AKRA Naskh";
+  src: url("../vendor/arabic/noto-naskh-arabic-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  size-adjust: 135%;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "AKRA Naskh";
+  src: url("../vendor/arabic/noto-naskh-arabic-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  size-adjust: 135%;
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@layer components {
+  .exam-content {
+    font-family: "AKRA Naskh", var(--font-sans);
+    @apply leading-relaxed text-slate-900;
+  }
+  .exam-content p { @apply my-1; }
+  .exam-content [lang="ar"], .exam-content [dir="rtl"] { line-height: 2.1; }
+  .exam-content img { @apply my-2 h-auto max-w-full rounded; }
+  .exam-content table { @apply my-2 w-auto border-collapse text-sm; }
+  .exam-content td, .exam-content th { @apply border border-slate-300 px-2 py-1; }
+  .exam-content ul { @apply my-1 list-disc ps-6; }
+  .exam-content ol { @apply my-1 list-decimal ps-6; }
+  .exam-content .katex { direction: ltr; unicode-bidi: isolate; }
+  .exam-content .math-display { @apply my-2 block overflow-x-auto text-center; }
+  .exam-content .math-error { @apply rounded bg-red-50 px-1 font-mono text-red-700; }
+  .exam-content.numbered { counter-reset: baris; }
+  .exam-content.numbered p { counter-increment: baris; @apply relative ps-8; }
+  .exam-content.numbered p::before { content: counter(baris); @apply absolute start-0 w-6 text-end text-xs text-slate-400; }
+
+  /* Tampilan soal peserta (pratinjau guru dan halaman ujian T138). */
+  .exam-q { @apply grid gap-4; }
+  @media (min-width: 1024px) {
+    .exam-q.has-stimulus { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  .exam-stimulus { @apply max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4; }
+  .exam-stimulus h3 { @apply mb-2 text-sm font-semibold text-slate-600; }
+  .exam-q-number { @apply inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-navy-900 px-2 text-sm font-bold text-white; }
+  .exam-options { @apply mt-3 grid gap-2 p-0; list-style: none; }
+  .exam-option { @apply flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3; }
+  .exam-option:has(input:checked) { @apply border-blue-500 bg-blue-50; }
+  .exam-option input { @apply sr-only; }
+  .exam-letter { @apply inline-flex h-7 w-7 flex-none items-center justify-center rounded-full border border-slate-300 text-sm font-semibold; direction: ltr; }
+  .exam-option:has(input:checked) .exam-letter { @apply border-blue-600 bg-blue-600 text-white; }
+  .exam-tf td { @apply align-top; }
+
+  .preview-frame { @apply mx-auto rounded-2xl border border-slate-200 bg-white p-4 transition-all; }
+  .preview-frame.is-phone { max-width: 380px; }
+
+  /* Editor soal. */
+  .rte { @apply rounded-xl border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100; }
+  .rte-toolbar { @apply flex flex-wrap gap-1 border-b border-slate-200 p-1; }
+  .rte-toolbar button { @apply min-h-8 min-w-8 rounded-md px-2 text-sm text-slate-700 hover:bg-slate-100; }
+  .rte-area { @apply min-h-24 p-3 outline-none; }
+  .rte-small .rte-area { @apply min-h-10 py-2; }
+  .rte-area .math { @apply cursor-pointer rounded px-0.5 hover:bg-blue-50; }
+  .rte-area .math.math-display { @apply block; }
+  .editor-grid { @apply grid gap-4; }
+  @media (min-width: 1024px) {
+    .editor-grid { grid-template-columns: minmax(0, 1fr) 20rem; }
+  }
+  .option-row { @apply flex items-start gap-2; }
+  .option-row .rte { @apply min-w-0 flex-1; }
+  .option-mark { @apply mt-2 flex flex-none flex-col items-center text-xs font-semibold; }
+  .math-palette { @apply flex flex-wrap gap-1; }
+  .math-palette button { @apply rounded-md border border-slate-200 px-2 py-1 text-sm hover:bg-slate-50; }
+  .save-status { @apply text-sm text-slate-500; }
+}
+
+/* Dokumen cetak (kisi-kisi, kartu soal; T132). Dicetak dari browser
+   ("Simpan sebagai PDF") karena memuat rumus (ADR 0001). */
+@layer components {
+  .page-print { @apply bg-white; }
+  .page-print .page { @apply mx-auto max-w-5xl p-6; }
+  .print-head { @apply mb-4 border-b-2 border-slate-900 pb-2 text-center; }
+  .print-head h1 { @apply text-lg font-bold; }
+  .print-table { @apply w-full border-collapse text-sm; }
+  .print-table th, .print-table td { @apply border border-slate-400 px-2 py-1 align-top; }
+  .print-table th { @apply bg-slate-100; }
+  .print-card { @apply mb-6 rounded-lg border border-slate-400 p-4; break-inside: avoid; }
+  .print-sign { @apply mt-10 ms-auto w-64 text-center; }
+  @media print {
+    .no-print { display: none !important; }
+    .page-print .page { @apply max-w-none p-0; }
+    .print-card { @apply rounded-none; }
+    @page { size: A4; margin: 15mm; }
+  }
+}

@@ -80,6 +80,8 @@ var Items = []MenuItem{
 	{Label: "Nilai ke Dapodik", Path: "/dapodik/nilai", Icon: "upload", Short: "Dapodik", Desc: "Isi format import nilai Dapodik", Roles: []string{guru}},
 	{Label: "Ujian", Path: "/ujian", Icon: "file-text", Desc: "Bank soal, ujian, dan hasil", Module: "exam", Roles: []string{adminTU, kepala, guru}},
 	{Label: "Agenda Ujian", Path: "/ujian/agenda", Icon: "calendar", Short: "Agenda", Desc: "PTS/PAS: ruang, sesi, dan pengawas", Module: "exam", Roles: []string{adminTU, kepala}, Duties: []string{koordinatorUjian}},
+	{Label: "Telaah Soal", Path: "/ujian/telaah", Icon: "check", Short: "Telaah", Desc: "Soal yang menunggu persetujuan", Module: "exam", Roles: []string{adminTU, guru}},
+	{Label: "Pengaturan Ujian", Path: "/ujian/pengaturan", Icon: "settings", Short: "Atur", Desc: "Telaah soal dan target kisi-kisi", Module: "exam", Roles: []string{adminTU}, Duties: []string{koordinatorUjian}},
 	{Label: "Tugas Tambahan", Path: "/pengaturan/tugas", Icon: "user-check", Short: "Tugas", Desc: "Koordinator ujian per tahun ajaran", Module: "exam", Roles: []string{adminTU}},
 	{Label: "Pengaturan Rapor", Path: "/pengaturan/rapor", Icon: "settings", Short: "Rapor", Desc: "Skala huruf, KKM, penanda tangan", Roles: []string{adminTU}},
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Short: "Mapel", Desc: "Daftar mata pelajaran sekolah", Roles: []string{adminTU}},

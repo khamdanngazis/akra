@@ -1,0 +1,72 @@
+{{define "title"}}Pratinjau Impor · {{.Import.FileName}}{{end}}
+{{define "head"}}{{if eq .Import.Status "memproses"}}<meta http-equiv="refresh" content="2">{{end}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" (printf "/ujian/bank/%s/impor" .Bank.ID) .Import.FileName ""}}
+<div class="page-header">
+<div>
+<h1>Pratinjau impor</h1>
+<p class="muted">{{.Import.FileName}} → {{.Bank.Name}}</p>
+</div>
+</div>
+{{template "flash" .}}
+
+{{if eq .Import.Status "memproses"}}
+<section class="card" role="status"><p><strong>Membaca file…</strong> {{if .Import.Total}}{{.Import.Progress}} dari {{.Import.Total}} butir.{{end}} Halaman ini diperbarui otomatis.</p></section>
+{{else if eq .Import.Status "gagal"}}
+<section class="card"><div class="alert alert-error" role="alert">{{.Import.Error}}</div><p><a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Unggah file lain</a></p></section>
+{{else if eq .Import.Status "selesai"}}
+<section class="card stack">
+<h2 class="card-title">Impor selesai</h2>
+<p>{{.Import.Result.Total}} soal masuk (siap {{.Import.Result.Ready}}, draf {{.Import.Result.Draft}}){{if .Import.Result.Stimuli}}, {{.Import.Result.Stimuli}} stimulus{{end}}, {{.Import.Result.Skipped}} dilewati.</p>
+<p class="action-row"><a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}">Buka bank</a>{{if .Import.Result.Draft}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}?status=draf">Lihat soal draf</a>{{end}}</p>
+</section>
+{{else}}
+<form method="post" action="/ujian/impor/{{.Import.ID}}/simpan" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<section class="card stack">
+<p><span class="badge badge-success">✓ {{index .Counts "siap"}} siap</span> <span class="badge badge-warning">⚠ {{index .Counts "cek"}} perlu dicek</span> <span class="badge">✗ {{index .Counts "lewati"}} dilewati</span></p>
+<fieldset class="stack">
+<legend class="font-semibold">Yang disimpan</legend>
+<label class="choice"><input type="radio" name="mode" value="siap" checked><span>Hanya soal yang siap</span></label>
+<label class="choice"><input type="radio" name="mode" value="semua"><span>Termasuk yang perlu dicek, disimpan sebagai draf</span></label>
+</fieldset>
+<details><summary class="font-semibold">Bawaan untuk semua soal di file ini</summary>
+<div class="field-grid mt-3">
+{{if .Objectives}}<div class="field"><label for="objective_id">TP</label><select id="objective_id" name="objective_id"><option value="">–</option>{{range .Objectives}}<option value="{{.ID}}">{{.Label}}</option>{{end}}</select></div>{{end}}
+<div class="field"><label for="difficulty">Kesulitan</label><select id="difficulty" name="difficulty"><option value="">–</option>{{range .Diffs}}<option value="{{.}}">{{.}}</option>{{end}}</select></div>
+<div class="field"><label for="tags">Tag</label><input id="tags" name="tags" placeholder="mis. pas-ganjil-2026"></div>
+</div>
+<p class="hint">Hanya mengisi soal yang belum punya TP, kesulitan, atau tag dari file.</p>
+</details>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan ke bank</button></div>
+</section>
+
+{{range .Rows}}
+<article class="card stack" id="butir-{{.Seq}}">
+<div class="flex flex-wrap items-center gap-2">
+{{if eq .Status "siap"}}<span class="badge badge-success">✓ Siap</span>{{else if eq .Status "cek"}}<span class="badge badge-warning">⚠ Perlu dicek</span>{{else}}<span class="badge">✗ Dilewati</span>{{end}}
+<strong>{{if eq .Kind "stimulus"}}Stimulus: {{.Stim.Title}}{{else}}Soal {{.Number}}{{end}}</strong>
+<span class="ml-auto"></span>
+{{if ne .Status "lewati"}}{{if eq .Kind "soal"}}<label class="choice"><input type="checkbox" name="include" value="{{.Seq}}"{{if .Include}} checked{{end}}><span>Impor</span></label>{{end}}{{end}}
+<a class="btn btn-ghost btn-sm" href="/ujian/impor/{{$.Import.ID}}/butir/{{.Seq}}">Perbaiki</a>
+</div>
+{{if .Problems}}<ul class="text-sm text-amber-800">{{range .Problems}}<li>• {{.}}</li>{{end}}</ul>{{end}}
+<div class="detail-split">
+<div><h3 class="text-sm font-semibold text-slate-500">Di file</h3><p class="text-sm text-slate-600" dir="auto">{{.Origin}}</p></div>
+<div><h3 class="text-sm font-semibold text-slate-500">Di AKRA</h3>
+{{if eq .Kind "stimulus"}}<div class="exam-content exam-stimulus">{{.StimHTML}}</div>
+{{else if .View}}<div class="preview-frame">{{template "exam_question_view" .View}}</div>{{if .Key}}<p class="text-sm text-slate-600 mt-2">{{range .Key}}{{.}} · {{end}}</p>{{end}}
+{{else}}<p class="muted">Belum bisa ditampilkan. Perbaiki soal ini.</p>{{end}}
+</div>
+</div>
+{{if and (eq .Kind "soal") $.Stimuli}}
+<div class="field"><label for="stim-{{.Seq}}">Stimulus</label>
+<select id="stim-{{.Seq}}" name="stim_{{.Seq}}"><option value="-1">Tanpa stimulus</option>{{$cur := .StimulusSeq}}{{range $.Stimuli}}<option value="{{.Seq}}"{{if eq .Seq $cur}} selected{{end}}>{{.Stim.Title}}</option>{{end}}</select></div>
+{{end}}
+</article>
+{{end}}
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan ke bank</button></div>
+</form>
+{{end}}
+{{end}}

@@ -1,0 +1,20 @@
+{{define "title"}}Pengaturan Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Pengaturan" ""}}
+<section class="card form-card">
+<h1>Pengaturan ujian</h1>
+{{template "flash" .}}
+<form method="post" action="/ujian/pengaturan" class="stack" novalidate>
+{{ csrfField }}
+<label class="choice items-start"><input type="checkbox" name="review" class="mt-1 flex-none"{{if .Review}} checked{{end}}>
+<span><strong class="block">Telaah soal</strong><span class="block text-sm text-slate-500">Soal baru dan soal yang diubah harus disetujui penelaah (guru mapel lain, koordinator, atau admin/TU) sebelum siap. Ujian PTS/PAS hanya memakai soal yang sudah disetujui.</span></span></label>
+<div class="field-grid">
+<div class="field{{if .Errors.cognitive}} has-error{{end}}"><label for="cognitive">Target LOTS/MOTS/HOTS (%)</label><input id="cognitive" name="cognitive" value="{{.Cognitive}}" placeholder="30/50/20">{{with .Errors.cognitive}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div class="field{{if .Errors.difficulty}} has-error{{end}}"><label for="difficulty">Target mudah/sedang/sulit (%)</label><input id="difficulty" name="difficulty" value="{{.Difficulty}}" placeholder="30/50/20">{{with .Errors.difficulty}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+<p class="hint">Kisi-kisi memberi peringatan bila proporsi menyimpang lebih dari 10 poin persen dari target.</p>
+<div class="action-row"><button type="submit" class="btn btn-primary">Simpan</button></div>
+</form>
+</section>
+{{end}}

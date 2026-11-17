@@ -1,0 +1,110 @@
+{{define "title"}}Tujuan Pembelajaran{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .Back}}{{template "back_nav" crumbs "Bank soal" .Back "TP" ""}}{{else}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" "TP" ""}}{{end}}
+<div class="page-header">
+<div>
+<h1>Tujuan Pembelajaran</h1>
+<p class="muted">TP per mapel dan tingkat. Dipakai untuk menandai soal, kisi-kisi, analisis per TP, dan deskripsi capaian rapor.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+{{if .Subjects}}
+<form method="get" action="/ujian/tp/" class="filter-bar" x-data @change="$el.submit()">
+<div class="field">
+<label for="mapel">Mata pelajaran</label>
+<select id="mapel" name="mapel">{{range .Subjects}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+</div>
+<div class="field">
+<label for="tingkat">Tingkat</label>
+<select id="tingkat" name="tingkat"><option value="">Semua tingkat</option>{{range .Grades}}<option value="{{.}}"{{if eq . $.Grade}} selected{{end}}>Kelas {{.}}</option>{{end}}</select>
+</div>
+<noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
+</form>
+
+{{if .Objectives}}
+<div class="card card-flush">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tingkat</th><th>Kode</th><th>Deskripsi</th><th>Soal</th>{{if .CanEdit}}<th><span class="visually-hidden">Aksi</span></th>{{end}}</tr></thead>
+<tbody>
+{{range .Objectives}}
+<tr x-data="{ edit: {{if eq .ID $.EditID}}true{{else}}false{{end}} }">
+<td class="nowrap">{{.GradeLevel}}</td>
+<td class="nowrap"><strong>{{.Code}}</strong></td>
+<td>
+<span x-show="!edit">{{.Description}}</span>
+{{if $.CanEdit}}
+<form method="post" action="/ujian/tp/{{.ID}}" class="stack" x-show="edit" x-cloak>
+{{ csrfField }}
+<input name="code" value="{{if eq .ID $.EditID}}{{$.Form.Code}}{{else}}{{.Code}}{{end}}" maxlength="30" aria-label="Kode TP">
+<textarea name="description" rows="2" maxlength="1000" aria-label="Deskripsi TP">{{if eq .ID $.EditID}}{{$.Form.Description}}{{else}}{{.Description}}{{end}}</textarea>
+{{if eq .ID $.EditID}}{{range $.Errors}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan</button><button type="button" class="btn btn-ghost btn-sm" @click="edit = false">Batal</button></div>
+</form>
+{{end}}
+</td>
+<td>{{.Questions}}</td>
+{{if $.CanEdit}}<td class="text-right nowrap">
+<button type="button" class="btn btn-ghost btn-sm" @click="edit = true" x-show="!edit">Ubah</button>
+<form method="post" action="/ujian/tp/{{.ID}}/arsip" class="inline" x-data @submit="if (!confirm('Arsipkan TP {{.Code}}?')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan</button></form>
+</td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+</div>
+{{else}}
+<section class="card empty-state"><p>Belum ada TP untuk pilihan ini.</p></section>
+{{end}}
+
+{{if .CanEdit}}
+<div class="detail-split mt-4">
+<form method="post" action="/ujian/tp/" class="card form-card stack" novalidate>
+{{ csrfField }}<input type="hidden" name="subject_id" value="{{.SubjectID}}">
+<h2 class="card-title">Tambah TP</h2>
+{{if and .Errors (not .EditID)}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<div class="field-grid">
+<div class="field{{if .Errors.grade_level}} has-error{{end}}">
+<label for="grade_level">Tingkat</label>
+<select id="grade_level" name="grade_level">{{range .Grades}}<option value="{{.}}"{{if eq . $.Grade}} selected{{end}}>Kelas {{.}}</option>{{end}}</select>
+{{with .Errors.grade_level}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if and .Errors.code (not .EditID)}} has-error{{end}}">
+<label for="code">Kode</label>
+<input id="code" name="code" value="{{if not .EditID}}{{.Form.Code}}{{end}}" maxlength="30" placeholder="TP 3.2">
+{{if not .EditID}}{{with .Errors.code}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+</div>
+<div class="field{{if and .Errors.description (not .EditID)}} has-error{{end}}">
+<label for="description">Deskripsi</label>
+<textarea id="description" name="description" rows="3" maxlength="1000">{{if not .EditID}}{{.Form.Description}}{{end}}</textarea>
+{{if not .EditID}}{{with .Errors.description}}<p class="field-error">{{.}}</p>{{end}}{{end}}
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tambah</button></div>
+</form>
+
+<form method="post" action="/ujian/tp/tempel" class="card form-card stack" novalidate>
+{{ csrfField }}<input type="hidden" name="subject_id" value="{{.SubjectID}}">
+<h2 class="card-title">Tempel banyak TP</h2>
+<p class="muted">Salin dua kolom (kode dan deskripsi) dari Excel atau Word, lalu tempel di sini. Satu TP per baris.</p>
+<div class="field">
+<label for="grade_level_paste">Tingkat</label>
+<select id="grade_level_paste" name="grade_level">{{range .Grades}}<option value="{{.}}"{{if eq . $.Grade}} selected{{end}}>Kelas {{.}}</option>{{end}}</select>
+</div>
+<div class="field{{if .Errors.paste}} has-error{{end}}">
+<label for="paste">Daftar TP</label>
+<textarea id="paste" name="paste" rows="6" placeholder="TP 1.1	Mengenal bilangan bulat&#10;TP 1.2	Operasi pecahan"></textarea>
+{{with .Errors.paste}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tambahkan semua</button></div>
+</form>
+</div>
+{{end}}
+{{else}}
+<section class="card empty-state"><p>Belum ada mapel yang bisa Anda lihat. TP diatur oleh guru pengampu mapel, koordinator ujian, atau admin/TU.</p></section>
+{{end}}
+{{end}}

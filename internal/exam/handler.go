@@ -8,13 +8,18 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/exam/mathrender"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
+	"akra/internal/platform/storage"
 )
 
 // Handler melayani halaman staf modul ujian.
 type Handler struct {
 	db       database.DB
+	store    storage.Store        // gambar soal
+	math     *mathrender.Renderer // rumus dirender server saat simpan
+	jobs     ImportJobInserter    // job baca impor; nil = langsung
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
@@ -22,8 +27,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(db database.DB, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, sessions: sessions, render: render, logger: logger}
+func NewHandler(db database.DB, store storage.Store, math *mathrender.Renderer, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route modul ujian. Semua route menjawab 404 bila
@@ -36,6 +41,8 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: admin_tu, kepala_sekolah (baca), guru dengan tugas
 		// koordinator_ujian di tahun ajaran aktif.
 		r.With(RequireAccess(h.db, h.render, h.logger, ActAgenda, Read)).Get("/agenda", h.agenda)
+		h.bankRoutes(r)
+		h.settingsRoutes(r)
 	})
 }
 
@@ -74,7 +81,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		section
 		act Action
 	}{
-		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Release: R1}, ActBank},
+		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Path: "/ujian/bank/", Release: R1, Ready: true}, ActBank},
 		{section{Title: "Tes seleksi", Desc: "Tes online calon siswa; nilai langsung masuk ke peringkat pendaftaran.", Release: R1}, ActAdmissionTest},
 		{section{Title: "Ulangan kelas", Desc: "Ulangan untuk kelas yang Anda ampu, lengkap dengan koreksi dan analisis.", Release: R2}, ActClassExam},
 		{section{Title: "Agenda PTS/PAS", Desc: "Jadwal mapel per hari, ruang, sesi, pengawas, dan kartu peserta.", Path: "/ujian/agenda", Release: R1, Ready: true}, ActAgenda},

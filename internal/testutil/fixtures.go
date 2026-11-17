@@ -86,6 +86,15 @@ type School struct {
 	// sekolah (bukan guru), sehingga tidak memberi hak koordinator dan uji
 	// route tidak bergantung urutan.
 	DutyID string
+	// ExamBankID adalah bank soal mapel SubjectID milik Teacher (T127),
+	// berisi ExamQuestionID (bertanda ExamObjectiveID).
+	ExamBankID, ExamQuestionID, ExamObjectiveID string
+	// ExamStimulusID adalah stimulus tanpa soal di ExamBankID, dan
+	// ExamAssetID gambar di bank itu (T128).
+	ExamStimulusID, ExamAssetID string
+	// ExamImportID adalah impor Word milik Teacher berstatus siap dengan
+	// satu butir soal (T129).
+	ExamImportID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -250,6 +259,24 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.YearID, s.Principal.ID, s.Admin.ID)
 	// Modul ujian aktif sampai tahap 3 agar semua route ujian bisa diuji.
 	exec(`INSERT INTO school_settings (school_id, key, value) VALUES ($1, 'exam.enabled', 'true'), ($1, 'exam.release', 'r3')`, s.ID)
+
+	s.ExamBankID = one(`INSERT INTO exam_banks (school_id, name, subject_id, created_by) VALUES ($1, $2, $3, $4) RETURNING id`,
+		s.ID, "Bank "+marker, s.SubjectID, s.Teacher.ID)
+	s.ExamObjectiveID = one(`INSERT INTO learning_objectives (school_id, subject_id, grade_level, code, description, created_by) VALUES ($1, $2, 1, 'TP 1.1', $3, $4) RETURNING id`,
+		s.ID, s.SubjectID, "TP "+marker, s.Teacher.ID)
+	s.ExamQuestionID = one(`INSERT INTO exam_questions (school_id, bank_id, kind, body_src, body_html, options, answer_key, objective_id, status, search_text, created_by, updated_by)
+		VALUES ($1, $2, 'pg', $3, $3, '{"choices":[{"id":"a","src":"1","html":"1"},{"id":"b","src":"2","html":"2"}]}', '{"correct":["a"]}', $4, 'siap', $3, $5, $5) RETURNING id`,
+		s.ID, s.ExamBankID, "<p>Soal "+marker+"</p>", s.ExamObjectiveID, s.Teacher.ID)
+	exec(`INSERT INTO exam_question_versions (school_id, question_id, version, snapshot, created_by) VALUES ($1, $2, 1, '{}', $3)`, s.ID, s.ExamQuestionID, s.Teacher.ID)
+	s.ExamStimulusID = one(`INSERT INTO exam_stimuli (school_id, bank_id, title, body_src, body_html, created_by, updated_by) VALUES ($1, $2, $3, '<p>Bacaan</p>', '<p>Bacaan</p>', $4, $4) RETURNING id`,
+		s.ID, s.ExamBankID, "Stimulus "+marker, s.Teacher.ID)
+	exec(`INSERT INTO exam_stimulus_versions (school_id, stimulus_id, version, snapshot, created_by) VALUES ($1, $2, 1, '{}', $3)`, s.ID, s.ExamStimulusID, s.Teacher.ID)
+	s.ExamImportID = one(`INSERT INTO exam_imports (school_id, bank_id, source, file_name, status, created_by) VALUES ($1, $2, 'word', 'uji.docx', 'siap', $3) RETURNING id`,
+		s.ID, s.ExamBankID, s.Teacher.ID)
+	exec(`INSERT INTO exam_import_items (import_id, school_id, seq, kind, status, data, number) VALUES ($1, $2, 0, 'soal', 'siap', '{"kind":["esai"],"body":["Soal impor"]}', '1')`,
+		s.ExamImportID, s.ID)
+	s.ExamAssetID = one(`INSERT INTO exam_assets (school_id, bank_id, storage_key, content_type, width, height, size_bytes, created_by) VALUES ($1, $2, $3, 'image/png', 10, 10, 100, $4) RETURNING id`,
+		s.ID, s.ExamBankID, "schools/"+s.ID+"/exam/uji.png", s.Teacher.ID)
 
 	var rows importer.Rows
 	rows.Data = []importer.Row{{Line: 2, Values: [importer.NumColumns]string{key + "-900", "Impor " + marker, "", "", s.ClassName}}}

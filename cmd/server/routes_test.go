@@ -95,7 +95,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(nil), sessions, rd, logger),
 		duties:              duty.NewHandler(nil, sessions, rd, logger),
-		exam:                exam.NewHandler(nil, sessions, rd, logger),
+		exam:                exam.NewHandler(nil, nil, nil, sessions, rd, logger),
 		participant:         exam.NewParticipantHandler(nil, sessions, rd, logger, false),
 		participantSessions: auth.NewParticipantSessionManager(memstore.NewWithCleanupInterval(0), false, logger),
 		subjects:            academic.NewSubjectHandler(academic.NewSubjectService(nil), sessions, rd, logger),

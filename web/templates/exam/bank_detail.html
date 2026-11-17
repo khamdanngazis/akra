@@ -1,0 +1,129 @@
+{{define "title"}}{{.Bank.Name}} · Bank Soal{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name ""}}
+<div class="page-header">
+<div>
+<h1>{{.Bank.Name}}</h1>
+<p class="muted">{{if .Bank.SubjectName}}{{.Bank.SubjectName}}{{else}}Tes umum{{end}}{{if .Bank.GradeLevel}} · Kelas {{.Bank.GradeLevel}}{{end}} · dibuat {{.Bank.CreatorName}}{{if .Bank.ArchivedAt}} · <span class="badge">Diarsipkan</span>{{end}}</p>
+</div>
+<div class="action-row">
+{{if .Bank.SubjectID}}<a class="btn btn-ghost" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">TP</a>{{end}}
+{{if .CanManage}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ubah">Ubah</a>{{end}}
+{{if .CanWrite}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/stimulus/baru">Tambah stimulus</a>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor</a>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ekspor/soal.xlsx">Ekspor Excel</a>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ekspor/moodle.xml">Ekspor Moodle</a>
+<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a>{{end}}
+</div>
+</div>
+
+{{template "flash" .}}
+
+<form method="get" action="/ujian/bank/{{.Bank.ID}}" class="filter-bar filter-grid">
+<div class="field">
+<label for="q">Cari teks soal</label>
+<input id="q" type="search" name="q" value="{{.Filter.Text}}" placeholder="mis. pecahan atau الصلاة" autocomplete="off" dir="auto">
+</div>
+<div class="field">
+<label for="jenis">Jenis</label>
+<select id="jenis" name="jenis" onchange="this.form.submit()"><option value="">Semua</option>{{range .Kinds}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{if .Objectives}}
+<div class="field">
+<label for="tp">TP</label>
+<select id="tp" name="tp" onchange="this.form.submit()"><option value="">Semua</option><option value="none"{{if eq .Filter.ObjectiveID "none"}} selected{{end}}>Tanpa TP</option>{{range .Objectives}}<option value="{{.ID}}"{{if eq .ID $.Filter.ObjectiveID}} selected{{end}}>{{.Code}}</option>{{end}}</select>
+</div>
+{{end}}
+<div class="field">
+<label for="kesulitan">Kesulitan</label>
+<select id="kesulitan" name="kesulitan" onchange="this.form.submit()"><option value="">Semua</option>{{range .Diffs}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+<div class="field">
+<label for="status">Status</label>
+<select id="status" name="status" onchange="this.form.submit()"><option value="">Semua</option>{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{if gt (len .Creators) 1}}
+<div class="field">
+<label for="pembuat">Pembuat</label>
+<select id="pembuat" name="pembuat" onchange="this.form.submit()"><option value="">Semua</option>{{range .Creators}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{end}}
+<div class="filter-actions">
+<button type="submit" class="btn btn-ghost">Cari</button>
+{{if .HasFilter}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}">Reset</a>{{end}}
+</div>
+</form>
+
+{{if .Page.Rows}}
+<div class="action-row mb-3" x-data="{ docs(path) { const ids = [...document.querySelectorAll('input[name=ids]:checked')].map(i => 'ids=' + i.value); location.href = '/ujian/bank/{{.Bank.ID}}/' + path + '?' + (ids.length ? ids.join('&') : '{{.QueryString}}'); } }">
+<button type="button" class="btn btn-ghost btn-sm" @click="docs('kisi-kisi')">Kisi-kisi</button>
+<button type="button" class="btn btn-ghost btn-sm" @click="docs('kartu-soal')">Kartu soal</button>
+<a class="btn btn-ghost btn-sm" href="/ujian/bank/{{.Bank.ID}}/mutu">Cek mutu</a>
+<span class="hint self-center">Untuk soal terpilih, atau semua soal sesuai filter.</span>
+</div>
+<div x-data="{ n: 0, action: '' }" @change="n = document.querySelectorAll('input[name=ids]:checked').length">
+<p class="muted result-count">Menampilkan {{.From}}–{{.To}} dari {{.Page.Total}} soal.</p>
+
+{{if .HasEditable}}
+<form id="bulk" method="post" action="/ujian/bank/{{.Bank.ID}}/massal" class="card bulk-bar" x-show="n > 0" x-cloak>
+{{ csrfField }}
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}{{range $.BulkErrors}} {{.}}{{end}}</div>{{end}}
+<div class="flex flex-wrap items-end gap-3">
+<strong x-text="n + ' soal dipilih'"></strong>
+<div class="field mb-0">
+<label for="action">Aksi</label>
+<select id="action" name="action" x-model="action" required>
+<option value="">Pilih aksi</option>
+{{if .Objectives}}<option value="tp">Ubah TP</option>{{end}}
+<option value="tag">Tambah tag</option>
+<option value="kesulitan">Ubah kesulitan</option>
+{{if .OtherBanks}}<option value="pindah">Pindah bank</option>{{end}}
+<option value="arsip">Arsipkan</option>
+</select>
+</div>
+{{if .Objectives}}<div class="field mb-0" x-show="action === 'tp'"><label for="objective_id">TP</label><select id="objective_id" name="objective_id"><option value="">Tanpa TP</option>{{range .Objectives}}<option value="{{.ID}}">{{.Label}}</option>{{end}}</select></div>{{end}}
+<div class="field mb-0" x-show="action === 'tag'"><label for="tags">Tag (pisah koma)</label><input id="tags" name="tags" maxlength="200"></div>
+<div class="field mb-0" x-show="action === 'kesulitan'"><label for="difficulty">Kesulitan</label><select id="difficulty" name="difficulty">{{range .Diffs}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+{{if .OtherBanks}}<div class="field mb-0" x-show="action === 'pindah'"><label for="target_bank">Bank tujuan</label><select id="target_bank" name="target_bank">{{range .OtherBanks}}<option value="{{.ID}}">{{.Name}}{{with .SubjectName}} · {{.}}{{end}}</option>{{end}}</select></div>{{end}}
+<button type="submit" class="btn btn-primary" :disabled="!action">Terapkan</button>
+</div>
+<p class="hint">Soal milik guru lain akan dilewati.</p>
+</form>
+{{end}}
+
+<div class="stack">
+{{range .Groups}}
+{{if .StimulusID}}
+<details class="card stimulus-group" open>
+<summary><strong>{{.StimulusTitle}}</strong> <span class="muted">· {{len .Rows}} soal ·</span> <a href="/ujian/stimulus/{{.StimulusID}}">Buka stimulus</a></summary>
+<div class="stack mt-3">{{range .Rows}}{{template "exam_question_row" dict "Row" . "Editable" $.HasEditable}}{{end}}</div>
+</details>
+{{else}}
+{{range .Rows}}{{template "exam_question_row" dict "Row" . "Editable" $.HasEditable}}{{end}}
+{{end}}
+{{end}}
+</div>
+</div>
+
+{{if or .PrevURL .NextURL}}
+<nav class="pagination" aria-label="Halaman">
+{{if .PrevURL}}<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}">← Sebelumnya</a>{{else}}<span></span>{{end}}
+<span class="muted">Halaman {{.Page.Page}} dari {{.Page.Pages}}</span>
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}">Berikutnya →</a>{{else}}<span></span>{{end}}
+</nav>
+{{end}}
+{{else}}
+<section class="card empty-state">
+{{if .HasFilter}}<p>Tidak ada soal yang cocok dengan pencarian.</p>
+{{else}}<p>Bank ini belum punya soal.</p>{{if .CanWrite}}<p class="muted">Tambahkan soal satu per satu atau impor dari Word, Moodle, atau Excel.</p>
+<p class="action-row justify-center"><a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a><a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor soal</a></p>{{end}}{{end}}
+</section>
+{{end}}
+
+{{if .CanManage}}
+<form method="post" action="/ujian/bank/{{.Bank.ID}}/arsip" class="mt-6" x-data @submit="if (!confirm('Arsipkan bank ini? Soalnya tidak dihapus.')) $event.preventDefault()">
+{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan bank</button>
+</form>
+{{end}}
+{{end}}
