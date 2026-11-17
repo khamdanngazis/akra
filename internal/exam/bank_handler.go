@@ -25,10 +25,12 @@ func (h *Handler) bankRoutes(r chi.Router) {
 		r.Get("/bank/", h.banks)
 		r.Get("/bank/{id}", h.bankDetail)
 		r.Get("/tp/", h.objectives)
+		readers := r
 		// Menulis: admin_tu dan guru (termasuk koordinator); kepala sekolah
 		// hanya membaca.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireRole(auth.RoleAdminTU, auth.RoleGuru))
+			h.editorRoutes(readers, r)
 			r.Get("/bank/baru", h.bankNew)
 			r.Post("/bank/", h.bankCreate)
 			r.Get("/bank/{id}/ubah", h.bankEdit)

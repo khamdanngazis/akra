@@ -20,3 +20,99 @@
 </div>
 </article>
 {{end}}
+
+{{/* exam_question_view: soal dalam tampilan peserta. Argumen: QuestionView. Dipakai pratinjau guru dan halaman ujian (T138). */}}
+{{define "exam_question_view"}}
+<div class="exam-q{{if .Stimulus}} has-stimulus{{end}}">
+{{if .Stimulus}}<aside class="exam-stimulus" aria-label="Bacaan"><h3>{{.StimulusTitle}}</h3><div class="exam-content{{if .Numbered}} numbered{{end}}">{{.Stimulus}}</div></aside>{{end}}
+<div class="min-w-0">
+<div class="mb-2 flex items-center gap-2"><span class="exam-q-number">{{.Number}}</span><span class="text-sm text-slate-500">{{.Kind.Label}} · {{.Points}} poin</span></div>
+<div class="exam-content">{{.Body}}</div>
+{{if .Choices}}
+{{if .Multiple}}<p class="hint">Pilih semua jawaban yang benar.</p>{{end}}
+<ol class="exam-options">
+{{range .Choices}}<li><label class="exam-option"><input type="{{if $.Multiple}}checkbox{{else}}radio{{end}}" name="q-{{$.ID}}" value="{{.ID}}"><span class="exam-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></label></li>{{end}}
+</ol>
+{{end}}
+{{if .Statements}}
+<div class="table-wrap mt-3"><table class="exam-tf">
+<thead><tr><th>Pernyataan</th><th class="w-16 text-center">Benar</th><th class="w-16 text-center">Salah</th></tr></thead>
+<tbody>{{range $i, $s := .Statements}}<tr><td class="exam-content">{{$s.HTML}}</td>
+<td class="text-center"><input type="radio" name="q-{{$.ID}}-{{$s.ID}}" value="B" aria-label="Pernyataan {{inc $i}} benar"></td>
+<td class="text-center"><input type="radio" name="q-{{$.ID}}-{{$s.ID}}" value="S" aria-label="Pernyataan {{inc $i}} salah"></td></tr>{{end}}</tbody>
+</table></div>
+{{end}}
+{{if .Left}}
+<div class="mt-3 grid gap-3 sm:grid-cols-2">
+<ol class="stack m-0 p-0" style="list-style:none">{{range $i, $l := .Left}}<li class="card flex items-start gap-2 p-3"><span class="exam-content min-w-0 flex-1">{{$l.HTML}}</span>
+<select name="q-{{$.ID}}-{{$l.ID}}" aria-label="Pasangan untuk item {{inc $i}}" class="w-20 flex-none"><option value="">–</option>{{range $.Right}}<option value="{{.ID}}">{{.Letter}}</option>{{end}}</select></li>{{end}}</ol>
+<ol class="exam-options mt-0">{{range .Right}}<li class="exam-option"><span class="exam-letter">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol>
+</div>
+{{end}}
+{{if eq .Kind "isian"}}<div class="field mt-3"><label for="q-{{.ID}}">Jawaban</label><input id="q-{{.ID}}" name="q-{{.ID}}" dir="auto" autocomplete="off"{{if eq .Input "angka"}} inputmode="decimal"{{end}}></div>{{end}}
+{{if eq .Kind "esai"}}<div class="field mt-3"><label for="q-{{.ID}}">Jawaban</label><textarea id="q-{{.ID}}" name="q-{{.ID}}" rows="6" dir="auto"></textarea></div>{{end}}
+</div>
+</div>
+{{end}}
+
+{{/* exam_rte: kolom teks kaya editor soal. Argumen: dict Name, ID, Label, HTML (template.HTML, sudah disanitasi), Small (bool), Error. */}}
+{{define "exam_rte"}}
+<div class="rte{{if .Small}} rte-small{{end}}" data-rte>
+<div class="rte-toolbar" role="toolbar" aria-label="Format: {{.Label}}">
+<button type="button" data-cmd="bold" title="Tebal (Ctrl+B)"><strong>B</strong></button>
+<button type="button" data-cmd="italic" title="Miring (Ctrl+I)"><em>I</em></button>
+{{if not .Small}}<button type="button" data-cmd="underline" title="Garis bawah"><u>U</u></button>{{end}}
+<button type="button" data-cmd="subscript" title="Subskrip, mis. H₂O">x₂</button>
+<button type="button" data-cmd="superscript" title="Superskrip, mis. x²">x²</button>
+{{if not .Small}}<button type="button" data-cmd="insertUnorderedList" title="Daftar">•≡</button>
+<button type="button" data-cmd="table" title="Tabel kecil">▦</button>{{end}}
+<button type="button" data-cmd="math" title="Sisipkan rumus">Σ Rumus</button>
+<button type="button" data-cmd="image" title="Sisipkan gambar">Gambar</button>
+<button type="button" data-cmd="dir" title="Ubah arah paragraf: Arab (kanan ke kiri) atau Latin">← Arab</button>
+</div>
+<div class="rte-area exam-content" id="{{.ID}}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="{{.Label}}"{{if .Error}} aria-invalid="true"{{end}}>{{.HTML}}</div>
+<textarea name="{{.Name}}" hidden>{{.HTML}}</textarea>
+</div>
+{{with .Error}}<p class="field-error">{{.}}</p>{{end}}
+{{end}}
+
+{{/* exam_math_dialog: dialog rumus editor (palet, LaTeX, pratinjau). */}}
+{{define "exam_math_dialog"}}
+<dialog id="math-dialog" class="card" aria-labelledby="math-title">
+<form method="dialog" class="stack">
+<h2 id="math-title" class="card-title">Rumus</h2>
+<div class="math-palette" aria-label="Templat rumus">
+<button type="button" data-tex="\frac{a}{b}">a⁄b pecahan</button>
+<button type="button" data-tex="x^{2}">xⁿ pangkat</button>
+<button type="button" data-tex="x_{1}">xₙ indeks</button>
+<button type="button" data-tex="\sqrt{x}">√ akar</button>
+<button type="button" data-tex="\sqrt[3]{x}">∛ akar n</button>
+<button type="button" data-tex="\begin{pmatrix} a & b \\ c & d \end{pmatrix}">matriks 2×2</button>
+<button type="button" data-tex="\begin{pmatrix} a & b & c \\ d & e & f \\ g & h & i \end{pmatrix}">matriks 3×3</button>
+<button type="button" data-tex="\sum_{i=1}^{n} i">Σ</button>
+<button type="button" data-tex="\int_{a}^{b} f(x)\,dx">∫</button>
+<button type="button" data-tex="\lim_{x \to 0}">lim</button>
+<button type="button" data-tex="\times">×</button>
+<button type="button" data-tex="\div">÷</button>
+<button type="button" data-tex="\pm">±</button>
+<button type="button" data-tex="\le">≤</button>
+<button type="button" data-tex="\ge">≥</button>
+<button type="button" data-tex="\ne">≠</button>
+<button type="button" data-tex="\pi">π</button>
+<button type="button" data-tex="\alpha">α</button>
+<button type="button" data-tex="\theta">θ</button>
+<button type="button" data-tex="^{\circ}">°</button>
+<button type="button" data-tex="\rightarrow">→</button>
+<button type="button" data-tex="\mathrm{H_2O}">H₂O</button>
+</div>
+<div class="field">
+<label for="math-tex">LaTeX</label>
+<textarea id="math-tex" rows="3" class="font-mono" dir="ltr" spellcheck="false"></textarea>
+</div>
+<label class="choice"><input type="checkbox" id="math-display"><span>Tampil di baris sendiri</span></label>
+<div class="rounded-xl border border-slate-200 p-3 text-center" id="math-preview" aria-live="polite"></div>
+<p class="field-error" id="math-error" hidden></p>
+<div class="action-row"><button type="button" class="btn btn-primary" id="math-insert">Sisipkan</button><button value="cancel" class="btn btn-ghost">Batal</button></div>
+</form>
+</dialog>
+{{end}}

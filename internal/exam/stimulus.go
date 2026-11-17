@@ -16,12 +16,14 @@ import (
 
 // Stimulus adalah teks bacaan, tabel, atau gambar untuk beberapa soal.
 type Stimulus struct {
-	ID         string
-	SchoolID   string
-	BankID     string
-	Title      string
-	BodySrc    string
-	BodyHTML   string
+	ID       string
+	SchoolID string
+	BankID   string
+	Title    string
+	BodySrc  string
+	BodyHTML string
+	// Numbered: paragraf bacaan diberi nomor baris.
+	Numbered   bool
 	Version    int
 	CreatedBy  string
 	UpdatedBy  string
@@ -32,11 +34,11 @@ type Stimulus struct {
 	Questions int
 }
 
-const stimulusCols = `id, school_id, bank_id, title, body_src, body_html, version, created_by, updated_by, created_at, updated_at, archived_at`
+const stimulusCols = `id, school_id, bank_id, title, body_src, body_html, numbered, version, created_by, updated_by, created_at, updated_at, archived_at`
 
 func scanStimulus(r pgx.Row) (Stimulus, error) {
 	var s Stimulus
-	err := r.Scan(&s.ID, &s.SchoolID, &s.BankID, &s.Title, &s.BodySrc, &s.BodyHTML, &s.Version, &s.CreatedBy, &s.UpdatedBy,
+	err := r.Scan(&s.ID, &s.SchoolID, &s.BankID, &s.Title, &s.BodySrc, &s.BodyHTML, &s.Numbered, &s.Version, &s.CreatedBy, &s.UpdatedBy,
 		&s.CreatedAt, &s.UpdatedAt, &s.ArchivedAt)
 	return s, err
 }
@@ -69,7 +71,7 @@ func ListStimuli(ctx context.Context, q database.DBTX, schoolID, bankID string) 
 	var out []Stimulus
 	for rows.Next() {
 		var s Stimulus
-		if err := rows.Scan(&s.ID, &s.SchoolID, &s.BankID, &s.Title, &s.BodySrc, &s.BodyHTML, &s.Version, &s.CreatedBy, &s.UpdatedBy,
+		if err := rows.Scan(&s.ID, &s.SchoolID, &s.BankID, &s.Title, &s.BodySrc, &s.BodyHTML, &s.Numbered, &s.Version, &s.CreatedBy, &s.UpdatedBy,
 			&s.CreatedAt, &s.UpdatedAt, &s.ArchivedAt, &s.Questions); err != nil {
 			return nil, fmt.Errorf("exam: list stimuli: %w", err)
 		}
@@ -176,9 +178,9 @@ func createStimulusTx(ctx context.Context, tx pgx.Tx, sa StaffActor, bankID stri
 		return Stimulus{}, err
 	}
 	var id string
-	if err := tx.QueryRow(ctx, `INSERT INTO exam_stimuli (school_id, bank_id, title, body_src, body_html, search_text, created_by, updated_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $7) RETURNING id`,
-		sa.SchoolID, bankID, s.Title, s.BodySrc, s.BodyHTML, NormalizeSearch(s.Title+" "+PlainText(s.BodySrc)), sa.UserID).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO exam_stimuli (school_id, bank_id, title, body_src, body_html, numbered, search_text, created_by, updated_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8) RETURNING id`,
+		sa.SchoolID, bankID, s.Title, s.BodySrc, s.BodyHTML, s.Numbered, NormalizeSearch(s.Title+" "+PlainText(s.BodySrc)), sa.UserID).Scan(&id); err != nil {
 		return Stimulus{}, fmt.Errorf("exam: create stimulus: %w", err)
 	}
 	out, err := GetStimulus(ctx, tx, sa.SchoolID, id)
@@ -215,9 +217,9 @@ func UpdateStimulus(ctx context.Context, db database.DB, sa StaffActor, id strin
 		if err := validateStimulus(&s); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE exam_stimuli SET title = $3, body_src = $4, body_html = $5, search_text = $6,
-			version = version + 1, updated_by = $7, updated_at = now() WHERE school_id = $1 AND id = $2`,
-			sa.SchoolID, id, s.Title, s.BodySrc, s.BodyHTML, NormalizeSearch(s.Title+" "+PlainText(s.BodySrc)), sa.UserID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE exam_stimuli SET title = $3, body_src = $4, body_html = $5, numbered = $6, search_text = $7,
+			version = version + 1, updated_by = $8, updated_at = now() WHERE school_id = $1 AND id = $2`,
+			sa.SchoolID, id, s.Title, s.BodySrc, s.BodyHTML, s.Numbered, NormalizeSearch(s.Title+" "+PlainText(s.BodySrc)), sa.UserID); err != nil {
 			return fmt.Errorf("exam: update stimulus: %w", err)
 		}
 		if out, err = GetStimulus(ctx, tx, sa.SchoolID, id); err != nil {

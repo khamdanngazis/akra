@@ -327,10 +327,57 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/massal" }, func(o *School) url.Values {
 			return url.Values{"action": {"kesulitan"}, "difficulty": {"sulit"}, "ids": {o.ExamQuestionID}}
 		})},
-	// Kontrol positif hanya admin: bank uji diarsipkan di kontrol admin.
-	{Method: "POST", Pattern: "/ujian/soal/{id}/duplikat", Kind: KindByID, Roles: examWriters, ControlRoles: adminTU,
+	// Editor soal dan stimulus (T128).
+	{Method: "GET", Pattern: "/ujian/soal/{id}", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/soal/" + o.ExamQuestionID} })},
+	{Method: "GET", Pattern: "/ujian/stimulus/{id}", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/stimulus/" + o.ExamStimulusID} })},
+	{Method: "GET", Pattern: "/ujian/aset/{id}", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/aset/" + o.ExamAssetID} })},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/soal/baru", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/soal/baru"} })},
+	{Method: "POST", Pattern: "/ujian/bank/{id}/soal", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/soal" }, func(o *School) url.Values {
+			return url.Values{"kind": {"esai"}, "body": {"Soal lintas"}, "objective_id": {o.ExamObjectiveID}}
+		})},
+	{Method: "GET", Pattern: "/ujian/soal/{id}/ubah", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/soal/" + o.ExamQuestionID + "/ubah"} })},
+	{Method: "POST", Pattern: "/ujian/soal/{id}", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/soal/" + o.ExamQuestionID }, func(*School) url.Values {
+			return url.Values{"kind": {"esai"}, "body": {"Diubah"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/bank/{id}/gambar", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/gambar" }, nil)},
+	{Method: "POST", Pattern: "/ujian/draf", Kind: KindFormRef, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/draf" }, func(o *School) url.Values {
+			return url.Values{"bank_id": {o.ExamBankID}, "kind": {"pg"}, "body": {"draf"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/draf/buang", Kind: KindFormRef, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/draf/buang" }, func(o *School) url.Values { return url.Values{"bank_id": {o.ExamBankID}} })},
+	{Method: "POST", Pattern: "/ujian/pratinjau", Kind: KindOwn, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/pratinjau" }, func(o *School) url.Values {
+			return url.Values{"kind": {"pg"}, "body": {"Pratinjau"}, "stimulus_id": {o.ExamStimulusID}}
+		})},
+	{Method: "GET", Pattern: "/ujian/bank/{id}/stimulus/baru", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/bank/" + o.ExamBankID + "/stimulus/baru"} })},
+	{Method: "POST", Pattern: "/ujian/bank/{id}/stimulus", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/stimulus" }, func(*School) url.Values {
+			return url.Values{"title": {"Lintas"}, "body": {"Bacaan lintas"}}
+		})},
+	{Method: "GET", Pattern: "/ujian/stimulus/{id}/ubah", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/stimulus/" + o.ExamStimulusID + "/ubah"} })},
+	{Method: "POST", Pattern: "/ujian/stimulus/{id}", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/stimulus/" + o.ExamStimulusID }, func(*School) url.Values {
+			return url.Values{"title": {"Diubah"}, "body": {"Bacaan"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/stimulus/{id}/urutan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/stimulus/" + o.ExamStimulusID + "/urutan" }, nil)},
+	{Method: "POST", Pattern: "/ujian/stimulus/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/stimulus/" + o.ExamStimulusID + "/arsip" }, nil)},
+
+	{Method: "POST", Pattern: "/ujian/soal/{id}/duplikat", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/soal/" + o.ExamQuestionID + "/duplikat" }, nil)},
-	{Method: "POST", Pattern: "/ujian/soal/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: adminTU,
+	{Method: "POST", Pattern: "/ujian/soal/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/soal/" + o.ExamQuestionID + "/arsip" }, nil)},
 	{Method: "GET", Pattern: "/ujian/tp/", Kind: KindPage, Roles: examStaff,
 		Requests: paths(func(o *School) []string {
@@ -344,15 +391,17 @@ var Routes = []Route{
 		Requests: post(func(*School) string { return "/ujian/tp/tempel" }, func(o *School) url.Values {
 			return url.Values{"subject_id": {o.SubjectID}, "grade_level": {"1"}, "paste": {"TP 8\tLintas"}}
 		})},
-	{Method: "POST", Pattern: "/ujian/tp/{id}", Kind: KindByID, Roles: examWriters, ControlRoles: adminTU,
+	{Method: "POST", Pattern: "/ujian/tp/{id}", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/tp/" + o.ExamObjectiveID }, func(*School) url.Values {
 			return url.Values{"code": {"TP 1.1"}, "description": {"Diubah"}}
 		})},
-	{Method: "POST", Pattern: "/ujian/tp/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: adminTU,
+	{Method: "POST", Pattern: "/ujian/tp/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/tp/" + o.ExamObjectiveID + "/arsip" }, nil)},
 
-	// Arsip bank paling akhir: kontrol positif admin mengarsipkan bank uji.
-	{Method: "POST", Pattern: "/ujian/bank/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: adminTU,
+	// Arsip (bank, soal, stimulus, TP): kontrol positif oleh guru pemilik,
+	// penulis terakhir di urutan uji, dan arsip bank paling akhir, sehingga
+	// kontrol positif lain selalu memakai data yang masih aktif.
+	{Method: "POST", Pattern: "/ujian/bank/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/arsip" }, nil)},
 
 	// Profil sekolah dan zona waktu (T126).

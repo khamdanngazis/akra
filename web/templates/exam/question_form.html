@@ -1,0 +1,212 @@
+{{define "title"}}{{if .IsNew}}Tambah Soal{{else}}Ubah Soal{{end}} · {{.Bank.Name}}{{end}}
+{{define "head"}}
+<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">
+<script defer src="{{ asset "vendor/katex/katex.min.js" }}"></script>
+<script defer src="{{ asset "js/exam-editor.js" }}"></script>
+{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .IsNew}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Tambah soal" ""}}
+{{else}}{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Soal" (printf "/ujian/soal/%s" .Question.ID) "Ubah" ""}}{{end}}
+
+<div class="page-header">
+<div>
+<h1>{{if .IsNew}}Tambah soal{{else}}Ubah soal{{end}}</h1>
+<p class="muted">{{.Bank.Name}}{{if not .IsNew}} · versi {{.Question.Version}}; menyimpan membuat versi baru, ujian lama tidak berubah{{end}}.
+<span class="sm:hidden">Editor paling nyaman di laptop atau tablet; di HP sebaiknya hanya untuk koreksi kecil.</span></p>
+</div>
+<p class="save-status" data-save-status aria-live="polite"></p>
+</div>
+
+{{template "flash" .}}
+{{if .DraftAt}}
+<div class="alert" role="status">Ada draf yang belum disimpan dari {{.DraftAt}}.
+<a class="btn btn-ghost btn-sm" href="?draf=1">Pulihkan draf</a>
+<form method="post" action="/ujian/draf/buang" class="inline">{{ csrfField }}<input type="hidden" name="bank_id" value="{{.Bank.ID}}"><input type="hidden" name="question_id" value="{{.Question.ID}}"><button type="submit" class="btn btn-ghost btn-sm">Buang draf</button></form>
+</div>
+{{end}}
+{{if .Restored}}<div class="alert alert-success" role="status">Draf dipulihkan. Periksa lalu simpan.</div>{{end}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Soal belum disimpan. Periksa bagian yang ditandai.{{range .Errors}}<br>• {{.}}{{end}}</div>{{end}}
+<noscript><div class="alert alert-error">Editor soal membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</div></noscript>
+
+<form method="post" id="question-form" action="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}/soal{{else}}/ujian/soal/{{.Question.ID}}{{end}}" novalidate
+ data-editor data-bank="{{.Bank.ID}}" data-question="{{.Question.ID}}" data-saved-at="{{.SavedAt}}" data-upload="/ujian/bank/{{.Bank.ID}}/gambar"
+ x-data="{ kind: '{{.Form.Kind}}', input: '{{.Form.Input}}', choices: 4, statements: 3, pairs: 3, submitting: false }"
+ @submit="submitting = true">
+{{ csrfField }}
+<div class="editor-grid">
+<div class="stack min-w-0">
+
+<section class="card form-card stack">
+<div class="field-grid">
+<div class="field">
+<label for="kind">Jenis soal</label>
+<select id="kind" name="kind" x-model="kind">{{range .Kinds}}<option value="{{.Value}}"{{if eq .Value $.Form.Kind}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{if .IsNew}}
+<div class="field">
+<label for="stimulus_id">Stimulus (bacaan bersama)</label>
+<select id="stimulus_id" name="stimulus_id"><option value="">Tanpa stimulus</option>{{range .Stimuli}}<option value="{{.ID}}"{{if eq .ID $.Form.StimulusID}} selected{{end}}>{{.Title}}</option>{{end}}</select>
+</div>
+{{else if .Stimulus}}<p class="muted">Stimulus: <a href="/ujian/stimulus/{{.Stimulus.ID}}">{{.Stimulus.Title}}</a></p><input type="hidden" name="stimulus_id" value="{{.Stimulus.ID}}">{{end}}
+</div>
+<div class="field">
+<label for="body-area">Teks soal</label>
+{{template "exam_rte" dict "Name" "body" "ID" "body-area" "Label" "Teks soal" "HTML" .Body "Error" .Errors.body}}
+<p class="hint">Rumus: tombol Σ Rumus, atau ketik LaTeX di antara \( dan \). Teks Arab otomatis kanan ke kiri; tombol ← Arab mengubah arah paragraf.</p>
+</div>
+</section>
+
+{{/* Pilihan ganda dan PG kompleks */}}
+<section class="card form-card stack" x-show="kind === 'pg' || kind === 'pg_kompleks'" x-init="choices = Math.max(4, {{range $i, $c := .Form.Choices}}{{if $c}}{{inc $i}}, {{end}}{{end}}0)">
+<h2 class="card-title">Opsi jawaban</h2>
+<p class="hint" x-show="kind === 'pg'">Tandai satu opsi yang benar (Alt+1…6).</p>
+<p class="hint" x-show="kind === 'pg_kompleks'" x-cloak>Tandai semua opsi yang benar.</p>
+{{with .Errors.correct}}<p class="field-error">{{.}}</p>{{end}}{{with .Errors.choices}}<p class="field-error">{{.}}</p>{{end}}
+{{range $i, $html := .Choices}}
+<div class="option-row" data-row="choice" x-show="{{$i}} < choices">
+<label class="option-mark"><input :type="kind === 'pg' ? 'radio' : 'checkbox'" name="correct" value="{{$i}}" data-correct="{{$i}}"{{if $.Form.IsCorrect $i}} checked{{end}}><span>{{if eq $i 0}}A{{else if eq $i 1}}B{{else if eq $i 2}}C{{else if eq $i 3}}D{{else if eq $i 4}}E{{else}}F{{end}}</span></label>
+<div class="min-w-0 flex-1">{{template "exam_rte" dict "Name" (printf "choice_%d" $i) "ID" (printf "choice-%d" $i) "Label" (printf "Opsi %d" (inc $i)) "HTML" $html "Small" true "Error" (index $.Errors (printf "choice_%d" $i))}}</div>
+<div class="flex flex-none flex-col">
+<button type="button" class="btn btn-ghost btn-sm" data-move="up" aria-label="Naikkan opsi">↑</button>
+<button type="button" class="btn btn-ghost btn-sm" data-move="down" aria-label="Turunkan opsi">↓</button>
+</div>
+</div>
+{{end}}
+<div class="action-row">
+<button type="button" class="btn btn-ghost btn-sm" @click="choices = Math.min(6, choices + 1)" x-show="choices < 6">+ Tambah opsi</button>
+<button type="button" class="btn btn-ghost btn-sm" data-remove-last="choice" @click="choices = Math.max(2, choices - 1)" x-show="choices > 2">− Hapus opsi terakhir</button>
+</div>
+<div class="field" x-show="kind === 'pg_kompleks'" x-cloak>
+<label for="scoring">Penilaian</label>
+<select id="scoring" name="scoring">
+<option value="proporsional"{{if ne .Form.Scoring "semua"}} selected{{end}}>Proporsional (tanpa nilai negatif)</option>
+<option value="semua"{{if eq .Form.Scoring "semua"}} selected{{end}}>Penuh hanya bila semua benar</option>
+</select>
+</div>
+</section>
+
+{{/* Benar/salah */}}
+<section class="card form-card stack" x-show="kind === 'benar_salah'" x-cloak x-init="statements = Math.max(3, {{range $i, $c := .Form.Statements}}{{if $c}}{{inc $i}}, {{end}}{{end}}0)">
+<h2 class="card-title">Pernyataan</h2>
+{{with .Errors.statements}}<p class="field-error">{{.}}</p>{{end}}
+{{range $i, $html := .Statements}}
+<div class="option-row" x-show="{{$i}} < statements">
+<div class="min-w-0 flex-1">{{template "exam_rte" dict "Name" (printf "statement_%d" $i) "ID" (printf "statement-%d" $i) "Label" (printf "Pernyataan %d" (inc $i)) "HTML" $html "Small" true "Error" (index $.Errors (printf "statement_%d" $i))}}</div>
+{{$t := index $.Form.Truth $i}}
+<fieldset class="option-mark"><legend class="visually-hidden">Pernyataan {{inc $i}}</legend>
+<label><input type="radio" name="truth_{{$i}}" value="B"{{if eq $t "B"}} checked{{end}}> Benar</label>
+<label><input type="radio" name="truth_{{$i}}" value="S"{{if eq $t "S"}} checked{{end}}> Salah</label></fieldset>
+</div>
+{{end}}
+<div class="action-row"><button type="button" class="btn btn-ghost btn-sm" @click="statements = Math.min(10, statements + 1)" x-show="statements < 10">+ Tambah pernyataan</button></div>
+</section>
+
+{{/* Isian singkat */}}
+<section class="card form-card stack" x-show="kind === 'isian'" x-cloak>
+<h2 class="card-title">Jawaban diterima</h2>
+<div class="field">
+<label for="input">Bentuk jawaban</label>
+<select id="input" name="input" x-model="input"><option value="teks"{{if ne .Form.Input "angka"}} selected{{end}}>Teks (abaikan huruf besar/kecil, spasi, tanda baca)</option><option value="angka"{{if eq .Form.Input "angka"}} selected{{end}}>Angka (koma atau titik desimal)</option></select>
+</div>
+<div class="field{{if .Errors.accepted}} has-error{{end}}">
+<label for="accepted">Jawaban yang diterima</label>
+<textarea id="accepted" name="accepted" rows="3" dir="auto" placeholder="Satu jawaban per baris, mis.&#10;fotosintesis&#10;foto sintesis">{{.Form.Accepted}}</textarea>
+{{with .Errors.accepted}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.tolerance}} has-error{{end}}" x-show="input === 'angka'" x-cloak>
+<label for="tolerance">Toleransi (±)</label>
+<input id="tolerance" name="tolerance" value="{{.Form.Tolerance}}" inputmode="decimal" placeholder="mis. 0,5">
+{{with .Errors.tolerance}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<label class="choice" x-show="input === 'teks'"><input type="checkbox" name="arabic_normalize"{{if .Form.ArabicNormalize}} checked{{end}}>
+<span>Jawaban Arab: abaikan harakat dan variasi huruf (ا/أ/إ, ة/ه, ى/ي)</span></label>
+</section>
+
+{{/* Menjodohkan */}}
+<section class="card form-card stack" x-show="kind === 'menjodohkan'" x-cloak x-init="pairs = Math.max(3, {{range $i, $c := .Form.Lefts}}{{if $c}}{{inc $i}}, {{end}}{{end}}0)">
+<h2 class="card-title">Pasangan</h2>
+<p class="hint">Kiri berpasangan dengan kanan di baris yang sama. Urutan kanan diacak saat ujian.</p>
+{{with .Errors.pairs}}<p class="field-error">{{.}}</p>{{end}}
+{{range $i, $l := .Lefts}}
+<div class="grid gap-2 sm:grid-cols-2" x-show="{{$i}} < pairs">
+{{template "exam_rte" dict "Name" (printf "left_%d" $i) "ID" (printf "left-%d" $i) "Label" (printf "Pasangan %d kiri" (inc $i)) "HTML" $l "Small" true "Error" (index $.Errors (printf "left_%d" $i))}}
+{{template "exam_rte" dict "Name" (printf "right_%d" $i) "ID" (printf "right-%d" $i) "Label" (printf "Pasangan %d kanan" (inc $i)) "HTML" (index $.Rights $i) "Small" true "Error" (index $.Errors (printf "right_%d" $i))}}
+</div>
+{{end}}
+<div class="action-row"><button type="button" class="btn btn-ghost btn-sm" @click="pairs = Math.min(10, pairs + 1)" x-show="pairs < 10">+ Tambah pasangan</button></div>
+<details><summary class="text-sm font-semibold">Pengecoh di kanan (opsional)</summary>
+<div class="stack mt-2">{{range $i, $d := .Distract}}{{template "exam_rte" dict "Name" (printf "distractor_%d" $i) "ID" (printf "distractor-%d" $i) "Label" (printf "Pengecoh %d" (inc $i)) "HTML" $d "Small" true}}{{end}}</div>
+</details>
+</section>
+
+{{/* Esai */}}
+<section class="card form-card stack" x-show="kind === 'esai'" x-cloak>
+<h2 class="card-title">Rubrik / acuan penilaian</h2>
+{{template "exam_rte" dict "Name" "rubric" "ID" "rubric-area" "Label" "Rubrik" "HTML" .Rubric "Error" .Errors.rubric}}
+<p class="hint">Dinilai manual oleh guru. Rubrik tidak pernah tampil ke peserta.</p>
+</section>
+
+<section class="card form-card stack">
+<h2 class="card-title">Pratinjau sebagai peserta</h2>
+<div class="action-row">
+<button type="button" class="btn btn-ghost btn-sm" data-preview>Tampilkan pratinjau</button>
+<button type="button" class="btn btn-ghost btn-sm" data-preview-width="phone">HP</button>
+<button type="button" class="btn btn-ghost btn-sm" data-preview-width="wide">Layar lebar</button>
+</div>
+<div class="preview-frame is-phone" data-preview-frame><p class="muted">Klik "Tampilkan pratinjau".</p></div>
+</section>
+</div>
+
+<aside class="stack">
+<section class="card form-card stack">
+<fieldset class="stack">
+<legend class="font-semibold">Status</legend>
+<label class="choice"><input type="radio" name="status" value="siap"{{if ne .Form.Status "draf"}} checked{{end}}><span>Siap dipakai</span></label>
+<label class="choice"><input type="radio" name="status" value="draf"{{if eq .Form.Status "draf"}} checked{{end}}><span>Draf (boleh belum lengkap)</span></label>
+</fieldset>
+<div class="field{{if .Errors.points}} has-error{{end}}">
+<label for="points">Poin</label>
+<input id="points" name="points" type="number" min="1" max="100" value="{{.Form.Points}}" inputmode="numeric">
+{{with .Errors.points}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field">
+<label for="difficulty">Kesulitan</label>
+<select id="difficulty" name="difficulty"><option value="">–</option>{{range $d := $.Difficulties}}<option value="{{$d}}"{{if eq $d $.Form.Difficulty}} selected{{end}}>{{$d}}</option>{{end}}</select>
+</div>
+<div class="field">
+<label for="cognitive_level">Level kognitif</label>
+<select id="cognitive_level" name="cognitive_level"><option value="">–</option>{{range .Levels}}<option value="{{.Value}}"{{if eq .Value $.Form.CognitiveLevel}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+</div>
+{{if .Objectives}}
+<div class="field{{if .Errors.objective_id}} has-error{{end}}">
+<label for="objective_id">Tujuan pembelajaran (TP)</label>
+<select id="objective_id" name="objective_id"><option value="">–</option>{{range .Objectives}}<option value="{{.ID}}"{{if eq .ID $.Form.ObjectiveID}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+{{with .Errors.objective_id}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+{{else if .Bank.SubjectID}}<p class="hint">Belum ada TP. <a href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}">Tambah TP</a>.</p>{{end}}
+<div class="field">
+<label for="indicator">Indikator (kisi-kisi)</label>
+<textarea id="indicator" name="indicator" rows="2" maxlength="500" dir="auto">{{.Form.Indicator}}</textarea>
+</div>
+<div class="field{{if .Errors.tags}} has-error{{end}}">
+<label for="tags">Tag</label>
+<input id="tags" name="tags" value="{{.Form.Tags}}" placeholder="pisah dengan koma">
+{{with .Errors.tags}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field">
+<label for="explanation-area">Pembahasan</label>
+{{template "exam_rte" dict "Name" "explanation" "ID" "explanation-area" "Label" "Pembahasan" "HTML" .Explanation "Small" true "Error" .Errors.explanation}}
+</div>
+</section>
+<div class="card form-card stack">
+<button type="submit" class="btn btn-primary btn-block" :disabled="submitting">Simpan <span class="text-xs opacity-75">(Ctrl+Enter)</span></button>
+<button type="submit" name="next" value="1" class="btn btn-ghost btn-block" :disabled="submitting">Simpan &amp; tambah berikutnya</button>
+<a class="btn btn-ghost btn-block" href="{{if .IsNew}}/ujian/bank/{{.Bank.ID}}{{else}}/ujian/soal/{{.Question.ID}}{{end}}">Batal</a>
+</div>
+</aside>
+</div>
+</form>
+
+{{template "exam_math_dialog"}}
+{{end}}

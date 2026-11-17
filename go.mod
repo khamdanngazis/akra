@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.4
+	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/jackc/pgx/v5 v5.7.4
@@ -17,6 +18,7 @@ require (
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.18.0
 	github.com/riverqueue/river/rivertype v0.18.0
 	github.com/xuri/excelize/v2 v2.9.0
+	golang.org/x/image v0.24.0
 	golang.org/x/net v0.30.0
 )
 
@@ -31,6 +33,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.9 // indirect
 	github.com/aws/smithy-go v1.23.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dlclark/regexp2 v1.11.4 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

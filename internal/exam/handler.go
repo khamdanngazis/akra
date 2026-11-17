@@ -8,13 +8,17 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/exam/mathrender"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
+	"akra/internal/platform/storage"
 )
 
 // Handler melayani halaman staf modul ujian.
 type Handler struct {
 	db       database.DB
+	store    storage.Store        // gambar soal
+	math     *mathrender.Renderer // rumus dirender server saat simpan
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
@@ -22,8 +26,8 @@ type Handler struct {
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
-func NewHandler(db database.DB, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, sessions: sessions, render: render, logger: logger}
+func NewHandler(db database.DB, store storage.Store, math *mathrender.Renderer, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
+	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger}
 }
 
 // Routes mendaftarkan route modul ujian. Semua route menjawab 404 bila

@@ -181,3 +181,6 @@ func ForParticipant(q Question) ParticipantQuestion {
 	}
 	return p
 }
+
+// Excerpt mengembalikan potongan teks soal untuk daftar.
+func (q Question) Excerpt() string { return Snippet(PlainText(q.BodySrc), 120) }
