@@ -99,6 +99,10 @@ type School struct {
 	// berisi ExamQuestionID (ExamItemID) di bagian ExamSectionID, dengan
 	// ExamSessionID untuk ClassID (pengawas Teacher, peserta StudentIDs[0]).
 	ExamID, ExamSectionID, ExamItemID, ExamSessionID string
+	// ExamRoomID adalah lab ujian; ExamEventID agenda PAS kelas 1 dengan
+	// ruang itu, satu jam (ExamSlotID), dan sel mapel SubjectID
+	// (ExamCellID) tanpa ujian (T134).
+	ExamRoomID, ExamEventID, ExamSlotID, ExamCellID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -295,6 +299,15 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	exec(`INSERT INTO exam_session_participants (school_id, session_id, student_id, participant_no, variant_id) VALUES ($1, $2, $3, 'P-1', $4)`,
 		s.ID, s.ExamSessionID, s.StudentIDs[0], variant)
 	exec(`INSERT INTO exam_session_proctors (school_id, session_id, user_id, assigned_by) VALUES ($1, $2, $3, $3)`, s.ID, s.ExamSessionID, s.Teacher.ID)
+
+	s.ExamRoomID = one(`INSERT INTO exam_rooms (school_id, name, kind, capacity) VALUES ($1, $2, 'lab', 30) RETURNING id`, s.ID, "Lab "+marker)
+	s.ExamEventID = one(`INSERT INTO exam_events (school_id, academic_year_id, name, purpose, starts_on, ends_on, grades, created_by)
+		VALUES ($1, $2, $3, 'pas', '2030-01-07', '2030-01-11', '{1}', $4) RETURNING id`, s.ID, s.YearID, "PAS "+marker, s.Admin.ID)
+	exec(`INSERT INTO exam_event_rooms (school_id, event_id, room_id) VALUES ($1, $2, $3)`, s.ID, s.ExamEventID, s.ExamRoomID)
+	s.ExamSlotID = one(`INSERT INTO exam_event_slots (school_id, event_id, day, start_time, end_time) VALUES ($1, $2, '2030-01-07', '07:30', '09:00') RETURNING id`,
+		s.ID, s.ExamEventID)
+	s.ExamCellID = one(`INSERT INTO exam_event_cells (school_id, event_id, slot_id, grade_level, subject_id) VALUES ($1, $2, $3, 1, $4) RETURNING id`,
+		s.ID, s.ExamEventID, s.ExamSlotID, s.SubjectID)
 
 	var rows importer.Rows
 	rows.Data = []importer.Row{{Line: 2, Values: [importer.NumColumns]string{key + "-900", "Impor " + marker, "", "", s.ClassName}}}

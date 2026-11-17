@@ -170,3 +170,38 @@
 {{range .}}<li class="is-{{.State}}">{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
 </ol>
 {{end}}
+
+{{/* exam_event_fields: isian dasar agenda PTS/PAS (T134). Argumen: view dengan Form, Errors, Grades, IsNew. */}}
+{{define "exam_event_fields"}}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama agenda</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="120" placeholder="mis. PAS Ganjil 2026/2027" required>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.purpose}} has-error{{end}}">
+<label for="purpose">Tujuan</label>
+{{if .IsNew}}<select id="purpose" name="purpose"><option value="pts"{{if eq .Form.Purpose "pts"}} selected{{end}}>PTS (tengah semester)</option><option value="pas"{{if eq .Form.Purpose "pas"}} selected{{end}}>PAS (akhir semester)</option></select>
+{{else}}<input id="purpose" value="{{if eq .Form.Purpose "pts"}}PTS{{else}}PAS{{end}}" disabled>{{end}}
+{{with .Errors.purpose}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.dates}} has-error{{end}}"><label for="starts_on">Tanggal mulai</label><input id="starts_on" type="date" name="starts_on" value="{{.Form.StartsOn}}"></div>
+<div class="field{{if .Errors.dates}} has-error{{end}}"><label for="ends_on">Tanggal selesai</label><input id="ends_on" type="date" name="ends_on" value="{{.Form.EndsOn}}">{{with .Errors.dates}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+<fieldset class="field{{if .Errors.grades}} has-error{{end}}">
+<legend>Tingkat yang ikut</legend>
+<div class="check-grid">{{range .Grades}}<label class="choice"><input type="checkbox" name="grades" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}</label>{{end}}</div>
+{{with .Errors.grades}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+<div class="field-grid">
+<div class="field{{if .Errors.number_format}} has-error{{end}}"><label for="number_format">Format nomor peserta</label><input id="number_format" name="number_format" value="{{.Form.NumberFormat}}" maxlength="60">
+{{with .Errors.number_format}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Token: {tahun}, {tingkat}, {urut:3} (nomor urut per tingkat, 3 digit), {gelombang}.</p>{{end}}</div>
+<div class="field-grid">
+<div class="field{{if .Errors.max_shifts}} has-error{{end}}"><label for="max_shifts">Gelombang lab maks.</label><input id="max_shifts" name="max_shifts" value="{{.Form.MaxShifts}}" inputmode="numeric" maxlength="1">{{with .Errors.max_shifts}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div class="field{{if .Errors.shift_gap}} has-error{{end}}"><label for="shift_gap">Jeda gelombang (menit)</label><input id="shift_gap" name="shift_gap" value="{{.Form.ShiftGap}}" inputmode="numeric" maxlength="3">{{with .Errors.shift_gap}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+</div>
+<p class="hint">Bila siswa lebih banyak dari komputer, lab dipakai beberapa gelombang: gelombang 2 mulai setelah gelombang 1 selesai ditambah jeda.</p>
+{{end}}

@@ -243,6 +243,12 @@ type participantExam struct {
 type participantHomeView struct {
 	Participant auth.Participant
 	Exams       []participantExam
+	// Schedule adalah jadwal PTS/PAS yang sudah diumumkan (T134).
+	Schedule []scheduleRow
+}
+
+type scheduleRow struct {
+	Date, Time, Subject, Event, Room, Number string
 }
 
 func (h *ParticipantHandler) home(w http.ResponseWriter, r *http.Request) {
@@ -281,6 +287,19 @@ func (h *ParticipantHandler) home(w http.ResponseWriter, r *http.Request) {
 	if err := rows.Err(); err != nil {
 		page.ServerError(h.render, h.logger, w, r, nil, "participant home", err)
 		return
+	}
+	if p.StudentID != "" {
+		items, err := StudentSchedule(r.Context(), h.db, p.SchoolID, p.StudentID, now)
+		if err != nil {
+			page.ServerError(h.render, h.logger, w, r, nil, "participant schedule", err)
+			return
+		}
+		for _, it := range items {
+			a, b := it.Start.In(loc), it.End.In(loc)
+			v.Schedule = append(v.Schedule, scheduleRow{Date: dayNames[a.Weekday()] + ", " + clock.FormatDateID(a),
+				Time: a.Format("15.04") + "–" + b.Format("15.04") + " " + clock.ZoneLabel(loc), Subject: it.Subject, Event: it.Event,
+				Room: it.Room, Number: it.Number})
+		}
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/participant_home", v)
 }

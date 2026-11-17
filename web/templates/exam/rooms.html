@@ -1,0 +1,40 @@
+{{define "title"}}Ruang Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" "Ruang ujian" ""}}
+<div class="page-header"><div><h1>Ruang Ujian</h1><p class="muted">Dicatat sekali dan dipakai ulang di setiap agenda. Lab: komputer sekolah, kapasitas = jumlah komputer. Ruang kelas: peserta memakai HP.</p></div></div>
+{{template "flash" .}}
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+{{if .Rooms}}
+<div class="table-wrap"><table>
+<thead><tr><th>Ruang</th><th>Jenis</th><th>Kapasitas</th>{{if $.CanEdit}}<th></th>{{end}}</tr></thead>
+<tbody>
+{{range .Rooms}}
+<tr x-data="{ edit: false }">
+<td><span x-show="!edit">{{.Name}}</span>
+{{if $.CanEdit}}<form x-show="edit" x-cloak method="post" action="/ujian/ruang/{{.ID}}" class="flex flex-wrap gap-2">{{ csrfField }}
+<input name="name" value="{{.Name}}" maxlength="60" aria-label="Nama ruang"><select name="kind" aria-label="Jenis"><option value="lab"{{if eq .Kind "lab"}} selected{{end}}>Lab komputer</option><option value="kelas"{{if eq .Kind "kelas"}} selected{{end}}>Ruang kelas (HP)</option></select>
+<input name="capacity" value="{{.Capacity}}" inputmode="numeric" maxlength="3" class="w-20" aria-label="Kapasitas"><button type="submit" class="btn btn-primary btn-sm">Simpan</button></form>{{end}}</td>
+<td>{{.KindLabel}}</td><td>{{.Capacity}}</td>
+{{if $.CanEdit}}<td class="whitespace-nowrap"><button type="button" class="btn btn-ghost btn-sm" @click="edit = !edit">Ubah</button>
+<form method="post" action="/ujian/ruang/{{.ID}}/arsip" class="inline">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan</button></form></td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table></div>
+{{else}}<section class="card"><p class="mb-0">Belum ada ruang ujian.</p></section>{{end}}
+{{if .CanEdit}}
+<form method="post" action="/ujian/ruang" class="card stack mt-4" novalidate>
+{{ csrfField }}
+<h2 class="card-title">Tambah ruang</h2>
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}"><label for="name">Nama</label><input id="name" name="name" value="{{.Form.Name}}" maxlength="60" placeholder="mis. Lab 1 atau Ruang 7A">{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div class="field-grid">
+<div class="field{{if .Errors.kind}} has-error{{end}}"><label for="kind">Jenis</label><select id="kind" name="kind"><option value="kelas"{{if eq .Form.Kind "kelas"}} selected{{end}}>Ruang kelas (HP)</option><option value="lab"{{if eq .Form.Kind "lab"}} selected{{end}}>Lab komputer</option></select></div>
+<div class="field{{if .Errors.capacity}} has-error{{end}}"><label for="capacity">Kapasitas</label><input id="capacity" name="capacity" value="{{.Form.Capacity}}" inputmode="numeric" maxlength="3">{{with .Errors.capacity}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+</div>
+<div class="action-row"><button type="submit" class="btn btn-primary">Tambah ruang</button></div>
+</form>
+{{end}}
+{{end}}

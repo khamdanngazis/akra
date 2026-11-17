@@ -1,0 +1,192 @@
+{{define "title"}}{{.Event.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}{{if eq .Tab "ruang"}}<script defer src="{{ asset "js/exam-board.js" }}"></script>{{end}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" .Event.Name ""}}
+<div class="page-header">
+<div>
+<h1>{{.Event.Name}}</h1>
+<p class="muted">{{.Event.Purpose.Label}} · {{.Event.DatesLabel}} · Kelas {{.Event.GradesLabel}} · {{if .Event.AnnouncedAt}}<span class="badge badge-success">Diumumkan</span>{{else}}<span class="badge badge-warning">Disusun</span>{{end}}</p>
+</div>
+</div>
+{{template "flash" .}}
+
+<nav class="tabs" aria-label="Bagian agenda">
+<a href="/ujian/agenda/{{.Event.ID}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
+<a href="/ujian/agenda/{{.Event.ID}}/jadwal"{{if eq .Tab "jadwal"}} aria-current="page"{{end}}>Jadwal mapel</a>
+<a href="/ujian/agenda/{{.Event.ID}}/ruang"{{if eq .Tab "ruang"}} aria-current="page"{{end}}>Ruang &amp; peserta</a>
+<a href="/ujian/agenda/{{.Event.ID}}/pengawas"{{if eq .Tab "pengawas"}} aria-current="page"{{end}}>Pengawas</a>
+</nav>
+
+{{if eq .Tab "ringkasan"}}
+{{$s := .Summary}}
+<div class="wizard-aside-grid mt-4">
+<section class="card stack">
+<h2 class="card-title">Kesiapan agenda</h2>
+<ul class="checklist">
+<li class="is-{{if and $s.Cells (eq $s.CellsReady $s.Cells)}}ok{{else}}warn{{end}}"><span class="checklist-mark" aria-hidden="true">{{if and $s.Cells (eq $s.CellsReady $s.Cells)}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}</span>
+<span class="min-w-0 flex-1"><strong>Ujian siap {{$s.CellsReady}} dari {{$s.Cells}} mapel</strong>
+<span class="block text-sm text-slate-600">{{range $i, $d := $s.Days}}{{if $i}} · {{end}}{{$d.Label}}: {{$d.Ready}}/{{$d.Cells}}{{else}}Jadwal mapel belum diisi.{{end}}{{if $s.CellsNoExam}} {{$s.CellsNoExam}} mapel belum punya soal.{{end}}</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{.Event.ID}}/jadwal">Jadwal</a></li>
+<li class="is-{{if or $s.Unplaced (not $s.Participants) $s.OverCapacity}}block{{else}}ok{{end}}"><span class="checklist-mark" aria-hidden="true">{{if or $s.Unplaced (not $s.Participants) $s.OverCapacity}}{{template "icon" "alert"}}{{else}}{{template "icon" "check"}}{{end}}</span>
+<span class="min-w-0 flex-1"><strong>Peserta mendapat ruang</strong>
+<span class="block text-sm text-slate-600">{{if not $s.Participants}}Peserta belum dibagi.{{else}}{{$s.Participants}} peserta{{if $s.Unplaced}}, {{$s.Unplaced}} tanpa ruang{{end}}.{{end}}{{range $s.OverCapacity}} Melebihi kapasitas: {{.}}.{{end}}</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{.Event.ID}}/ruang">Ruang</a></li>
+{{if $s.RoomClashes}}<li class="is-block"><span class="checklist-mark" aria-hidden="true">{{template "icon" "alert"}}</span>
+<span class="min-w-0 flex-1"><strong>Ruang tidak dipakai dua sesi sekaligus</strong>
+<span class="block text-sm text-slate-600">{{range $s.RoomClashes}}{{.}}. {{end}}Gelombang lab berikutnya mulai setelah gelombang sebelumnya selesai; beri jarak antarjam, kurangi gelombang lab, atau tambah ruang.</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{.Event.ID}}/jadwal">Jadwal</a></li>{{end}}
+<li class="is-{{if or $s.UnitsNoProctor $s.OwnSubject $s.Clashes}}block{{else}}ok{{end}}"><span class="checklist-mark" aria-hidden="true">{{if or $s.UnitsNoProctor $s.OwnSubject $s.Clashes}}{{template "icon" "alert"}}{{else}}{{template "icon" "check"}}{{end}}</span>
+<span class="min-w-0 flex-1"><strong>Pengawas di setiap ruang</strong>
+<span class="block text-sm text-slate-600">{{$s.Units}} tugas mengawasi{{if $s.UnitsNoProctor}}, {{$s.UnitsNoProctor}} tanpa pengawas{{end}}{{if $s.OwnSubject}}, {{$s.OwnSubject}} pengawas mengampu mapel yang diujikan{{end}}{{if $s.Clashes}}, {{$s.Clashes}} bentrok{{end}}.</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{.Event.ID}}/pengawas">Pengawas</a></li>
+<li class="is-{{if eq $s.SessionsApplied $s.SessionsExpected}}ok{{else}}warn{{end}}"><span class="checklist-mark" aria-hidden="true">{{if eq $s.SessionsApplied $s.SessionsExpected}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}</span>
+<span class="min-w-0 flex-1"><strong>Sesi ujian dibuat</strong>
+<span class="block text-sm text-slate-600">{{$s.SessionsApplied}} dari {{$s.SessionsExpected}} sesi. Terapkan lagi setiap jadwal, ruang, atau pengawas berubah.</span></span></li>
+</ul>
+{{if .CanEdit}}
+<div class="action-row">
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/terapkan">{{ csrfField }}<button type="submit" class="btn btn-primary">Terapkan ke sesi ujian</button></form>
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/umumkan">{{ csrfField }}{{if .Event.AnnouncedAt}}<input type="hidden" name="on" value="0"><button type="submit" class="btn btn-ghost">Tarik pengumuman</button>{{else}}<button type="submit" class="btn btn-ghost">Umumkan jadwal ke siswa</button>{{end}}</form>
+</div>
+{{end}}
+</section>
+{{if .CanEdit}}
+<aside class="wizard-aside">
+<details class="card">
+<summary class="card-title cursor-pointer">Ubah agenda</summary>
+<form method="post" action="/ujian/agenda/{{.Event.ID}}" class="stack mt-3" novalidate>
+{{ csrfField }}<input type="hidden" name="purpose" value="{{.Event.Purpose}}">
+{{template "exam_event_fields" .}}
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan</button></div>
+</form>
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/arsip" class="mt-3" x-data @submit="if (!confirm('Arsipkan agenda? Sesi yang belum mulai dibatalkan.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan agenda</button></form>
+</details>
+</aside>
+{{end}}
+</div>
+
+{{else if eq .Tab "jadwal"}}
+<section class="card stack mt-4">
+<p class="hint">Setiap sel menunjuk satu ujian mapel. Buat ujiannya dari sel, lalu guru penyusun mengisi soal dari menu Ujian. Jam dalam {{.Zone}}.</p>
+{{if .Grid}}
+<div class="table-wrap">
+<table class="event-grid">
+<thead><tr><th>Hari &amp; jam</th>{{range .Event.Grades}}<th>Kelas {{.}}</th>{{end}}{{if $.CanEdit}}<th></th>{{end}}</tr></thead>
+<tbody>
+{{range .Grid}}
+<tr{{if .First}} class="day-start"{{end}}>
+<th scope="row"><span class="block">{{.Slot.DayLabel}}</span><span class="text-sm font-normal text-slate-600">{{.Slot.Start}}–{{.Slot.End}} ({{.Slot.Minutes}} mnt)</span></th>
+{{range .Cells}}
+<td>
+{{with .Cell}}
+<div class="event-cell is-{{.Status}}">
+<strong>{{.SubjectName}}</strong>
+<span class="block text-sm">{{.StatusLabel}}</span>
+{{if .ExamID}}<a class="text-sm" href="/ujian/paket/{{.ExamID}}">{{.OwnerName}}</a>
+{{else if $.CanEdit}}
+<form method="post" action="/ujian/agenda/{{$.Event.ID}}/sel/{{.ID}}/ujian" class="stack mt-1">{{ csrfField }}
+<select name="owner_id" aria-label="Guru penyusun {{.SubjectName}}"><option value="">Guru pengampu (otomatis)</option>{{range $.Teachers}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select>
+<button type="submit" class="btn btn-ghost btn-sm">Buat ujian</button></form>
+{{end}}
+</div>
+{{end}}
+{{if and $.CanEdit (not (and .Cell .Cell.ExamID))}}
+{{$cur := ""}}{{with .Cell}}{{$cur = .SubjectID}}{{end}}
+<form method="post" action="/ujian/agenda/{{$.Event.ID}}/sel" class="cell-subject">{{ csrfField }}
+<input type="hidden" name="slot_id" value="{{.SlotID}}"><input type="hidden" name="grade" value="{{.Grade}}">
+<select name="subject_id" aria-label="Mapel kelas {{.Grade}}" onchange="this.form.submit()"><option value="">{{if .Cell}}Kosongkan{{else}}— mapel —{{end}}</option>{{range $.Subjects}}<option value="{{.ID}}"{{if eq .ID $cur}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+<noscript><button type="submit" class="btn btn-ghost btn-sm">Simpan</button></noscript>
+</form>
+{{end}}
+</td>
+{{end}}
+{{if $.CanEdit}}<td><form method="post" action="/ujian/agenda/{{$.Event.ID}}/jam/{{.Slot.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm" aria-label="Hapus jam">Hapus</button></form></td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}<p class="mb-0">Belum ada jam ujian. Tambahkan hari dan jam, mis. Senin 07.30–09.00.</p>{{end}}
+{{if .CanEdit}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/jam" class="flex flex-wrap items-end gap-2">
+{{ csrfField }}
+<div class="field"><label for="day">Hari</label><select id="day" name="day">{{range .Days}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="start">Mulai</label><input id="start" type="time" name="start" value="07:30"></div>
+<div class="field"><label for="end">Selesai</label><input id="end" type="time" name="end" value="09:00"></div>
+<button type="submit" class="btn btn-ghost">Tambah jam</button>
+</form>
+{{end}}
+</section>
+
+{{else if eq .Tab "ruang"}}
+<div class="stack mt-4">
+{{if .CanEdit}}
+<section class="card stack">
+<h2 class="card-title">Ruang yang dipakai</h2>
+{{if .Rooms}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/ruang" class="stack">{{ csrfField }}
+<div class="check-grid">{{range .Rooms}}<label class="choice"><input type="checkbox" name="room_id" value="{{.ID}}"{{if index $.EventRoom .ID}} checked{{end}}> {{.Name}} <span class="muted">({{.KindLabel}}, {{.Capacity}})</span></label>{{end}}</div>
+<div class="action-row"><button type="submit" class="btn btn-ghost btn-sm">Simpan ruang</button><a class="btn btn-ghost btn-sm" href="/ujian/ruang">Kelola ruang</a></div>
+</form>
+{{else}}<p class="mb-0">Belum ada ruang. <a href="/ujian/ruang">Catat ruang ujian</a> dulu.</p>{{end}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/bagi" x-data @submit="if ({{if .Summary.Participants}}true{{else}}false{{end}} && !confirm('Bagi ulang semua peserta? Penyesuaian manual akan diganti.')) $event.preventDefault()">{{ csrfField }}
+<button type="submit" class="btn btn-primary">{{if .Summary.Participants}}Bagi ulang otomatis{{else}}Bagi peserta otomatis{{end}}</button>
+<p class="hint mt-1">Satu kelas tetap bersama bila muat; lab dibagi beberapa gelombang bila siswa lebih banyak dari komputer; nomor peserta dibuat urut.</p></form>
+</section>
+{{end}}
+
+{{if .Board}}
+<section class="card stack">
+<h2 class="card-title">Pembagian ruang</h2>
+{{if .CanEdit}}<p class="hint">Seret kelas ke ruang lain untuk menyesuaikan. Kapasitas dijaga: pemindahan yang melebihi kapasitas ditolak.</p>{{end}}
+<div class="room-board">
+{{range .Board}}
+<div class="room-unit{{if .Over}} is-over{{end}}" data-target="{{.Room.ID}}|{{.Shift}}">
+<p class="mb-1"><strong>{{.Room.Name}}</strong>{{if gt .Shift 1}} · gel. {{.Shift}}{{end}} <span class="muted small">{{.Count}}/{{.Room.Capacity}}</span></p>
+<div class="room-chips">{{range .Chips}}<span class="room-chip"{{if $.CanEdit}} draggable="true"{{end}} data-from="{{.Value}}">{{.ClassName}} · {{.Count}}</span>{{else}}<span class="muted small">Kosong</span>{{end}}</div>
+</div>
+{{end}}
+{{if .Unplaced}}<div class="room-unit is-over"><p class="mb-1"><strong>Belum dapat ruang</strong></p><div class="room-chips">{{range .Unplaced}}<span class="room-chip"{{if $.CanEdit}} draggable="true"{{end}} data-from="{{.Value}}">{{.ClassName}} · {{.Count}}</span>{{end}}</div></div>{{end}}
+</div>
+{{if .CanEdit}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/pindah" class="flex flex-wrap items-end gap-2" data-move-form>
+{{ csrfField }}
+<div class="field"><label for="from">Pindahkan kelas</label><select id="from" name="from">{{range .Board}}{{$u := .}}{{range .Chips}}<option value="{{.Value}}">{{.ClassName}} di {{$u.Room.Name}}{{if gt $u.Shift 1}} gel. {{$u.Shift}}{{end}} ({{.Count}})</option>{{end}}{{end}}{{range .Unplaced}}<option value="{{.Value}}">{{.ClassName}} tanpa ruang ({{.Count}})</option>{{end}}</select></div>
+<div class="field"><label for="to">Ke</label><select id="to" name="to">{{range .Targets}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<button type="submit" class="btn btn-ghost">Pindahkan</button>
+</form>
+{{end}}
+</section>
+{{end}}
+</div>
+
+{{else if eq .Tab "pengawas"}}
+<section class="card stack mt-4">
+<p class="hint">Satu pengawas per ruang per jam. Pembagian otomatis bergilir: guru tidak mengawasi mapel yang ia ampu, beban merata, dan tidak bentrok dengan tugas mengawasi lain.</p>
+{{if .CanEdit}}
+<div class="action-row">
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/pengawas">{{ csrfField }}<button type="submit" class="btn btn-primary">Isi pengawas yang kosong</button></form>
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/pengawas" x-data @submit="if (!confirm('Bagi ulang semua pengawas? Penukaran manual akan diganti.')) $event.preventDefault()">{{ csrfField }}<input type="hidden" name="ulang" value="1"><button type="submit" class="btn btn-ghost">Bagi ulang semua</button></form>
+</div>
+{{end}}
+{{if .Roster}}
+<div class="table-wrap"><table>
+<thead><tr><th>Waktu ({{.Zone}})</th><th>Ruang</th><th>Mapel</th><th>Pengawas</th></tr></thead>
+<tbody>
+{{range .Roster}}
+<tr{{if or .Issues (not .UserID)}} class="row-warn"{{end}}>
+<td>{{.When}}</td><td>{{.Room}}</td><td>{{.Subjects}}</td>
+<td>{{if $.CanEdit}}<form method="post" action="/ujian/agenda/{{$.Event.ID}}/pengawas/tukar" class="flex gap-1">{{ csrfField }}<input type="hidden" name="unit" value="{{.Unit.Key}}">
+<select name="user_id" aria-label="Pengawas {{.Room}} {{.When}}" onchange="this.form.submit()"><option value="">— kosong —</option>{{$uid := .UserID}}{{range $.Teachers}}<option value="{{.Value}}"{{if eq .Value $uid}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<noscript><button type="submit" class="btn btn-ghost btn-sm">Simpan</button></noscript></form>
+{{else}}{{$uid := .UserID}}{{range $.Teachers}}{{if eq .Value $uid}}{{.Label}}{{end}}{{end}}{{end}}
+{{range .Issues}}<span class="block text-sm text-red-700">{{.}}</span>{{end}}{{if not .UserID}}<span class="block text-sm text-amber-700">Belum ada pengawas</span>{{end}}</td>
+</tr>
+{{end}}
+</tbody>
+</table></div>
+{{else}}<p class="mb-0">Tugas mengawasi muncul setelah jadwal mapel diisi dan peserta dibagi ke ruang.</p>{{end}}
+</section>
+{{end}}
+{{end}}

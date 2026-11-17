@@ -276,6 +276,7 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
 
 - **Wizard buat ujian** `/ujian/paket/` (migrasi 000067): Dasar → Soal → Aturan → Jadwal & peserta → Cek & jadwalkan. Soal dipilih dari bank (stimulus ikut sekelompok) dan/atau aturan ambil acak; aturan yang melebihi isi bank ditolak dengan jumlah tersedia. Varian paket A–E dirakit [internal/exam/assemble.go](internal/exam/assemble.go): varian A diambil acak, varian lain memakai padanan dengan komposisi sama (jenis, kesulitan, TP, level). Pengacakan per peserta menjaga kelompok stimulus sebagai satu blok. Tujuan dibuka per tahap rilis: tes seleksi dan latihan R1, ulangan R2, PTS/PAS R3.
 - **Kunci ujian**: saat sesi pertama mulai (job berkala `exam_advance` tiap menit, juga saat ujian dibuka), soal dibekukan ke `exam_item_snapshots` yang merujuk versi soal/stimulus; menyunting bank sesudahnya tidak mengubah ujian.
+- **Agenda PTS/PAS** `/ujian/agenda` (T134, migrasi 000068, tahap R3): ruang ujian `/ujian/ruang` dicatat sekali; jadwal hari × jam × tingkat dengan satu ujian per sel; peserta dibagi otomatis ke ruang dan gelombang ([internal/exam/allocate.go](internal/exam/allocate.go): kelas utuh bila muat, lab beberapa gelombang, kapasitas dijaga) lalu bisa disesuaikan dengan seret; pengawas bergilir ([internal/exam/proctor_roster.go](internal/exam/proctor_roster.go): bukan mapel sendiri, tidak bentrok, beban merata). "Terapkan ke sesi" membuat sesi ujian per sel × ruang × gelombang; setelah diumumkan, jadwal tampil di beranda peserta.
 
 ## Login Peserta Ujian
 
