@@ -35,7 +35,11 @@ const (
 	ReportFormat = "report.format"
 	// ReportPrincipalName dan ReportSignerTitle: penanda tangan rapor.
 	ReportPrincipalName = "report.principal_name"
-	ReportSignerTitle   = "report.signer_title"
+	// ReportRemedialPolicy: aturan nilai remedial di rapor (T137):
+	// "maks_kktp" (nilai remedial paling tinggi sama dengan KKTP) atau
+	// "tertinggi" (ambil nilai tertinggi). Keduanya tidak pernah menurunkan.
+	ReportRemedialPolicy = "report.remedial_policy"
+	ReportSignerTitle    = "report.signer_title"
 	// ReportPortalComponents: "true" jika portal orang tua menampilkan nilai
 	// per komponen, bukan hanya nilai akhir (T75). Belum diatur = tidak.
 	ReportPortalComponents = "report.portal_components"

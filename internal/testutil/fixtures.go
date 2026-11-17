@@ -95,6 +95,17 @@ type School struct {
 	// ExamImportID adalah impor Word milik Teacher berstatus siap dengan
 	// satu butir soal (T129).
 	ExamImportID string
+	// ExamID adalah ulangan draf milik Teacher untuk SubjectID (T133)
+	// berisi ExamQuestionID (ExamItemID) di bagian ExamSectionID, dengan
+	// ExamSessionID untuk ClassID (pengawas Teacher, peserta StudentIDs[0]).
+	ExamID, ExamSectionID, ExamItemID, ExamSessionID string
+	// ExamRoomID adalah lab ujian; ExamEventID agenda PAS kelas 1 dengan
+	// ruang itu, satu jam (ExamSlotID), dan sel mapel SubjectID
+	// (ExamCellID) tanpa ujian (T134).
+	ExamRoomID, ExamEventID, ExamSlotID, ExamCellID string
+	// ExamPracticeSessionID adalah sesi paket latihan bawaan untuk ClassID
+	// (T136).
+	ExamPracticeSessionID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -277,6 +288,36 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ExamImportID, s.ID)
 	s.ExamAssetID = one(`INSERT INTO exam_assets (school_id, bank_id, storage_key, content_type, width, height, size_bytes, created_by) VALUES ($1, $2, $3, 'image/png', 10, 10, 100, $4) RETURNING id`,
 		s.ID, s.ExamBankID, "schools/"+s.ID+"/exam/uji.png", s.Teacher.ID)
+
+	s.ExamID = one(`INSERT INTO exams (school_id, academic_year_id, name, purpose, subject_id, grade_level, duration_minutes, owner_id, created_by)
+		VALUES ($1, $2, $3, 'ulangan', $4, 1, 60, $5, $5) RETURNING id`, s.ID, s.YearID, "Ulangan "+marker, s.SubjectID, s.Teacher.ID)
+	s.ExamSectionID = one(`INSERT INTO exam_sections (school_id, exam_id, position) VALUES ($1, $2, 1) RETURNING id`, s.ID, s.ExamID)
+	s.ExamItemID = one(`INSERT INTO exam_items (school_id, exam_id, section_id, position, kind, question_id) VALUES ($1, $2, $3, 1, 'soal', $4) RETURNING id`,
+		s.ID, s.ExamID, s.ExamSectionID, s.ExamQuestionID)
+	variant := one(`INSERT INTO exam_variants (school_id, exam_id, label, seed) VALUES ($1, $2, 'A', 1) RETURNING id`, s.ID, s.ExamID)
+	exec(`INSERT INTO exam_variant_items (school_id, variant_id, position, section_id, question_id) VALUES ($1, $2, 1, $3, $4)`,
+		s.ID, variant, s.ExamSectionID, s.ExamQuestionID)
+	s.ExamSessionID = one(`INSERT INTO exam_sessions (school_id, exam_id, class_id, starts_at, ends_at, created_by)
+		VALUES ($1, $2, $3, '2030-01-07 01:00+00', '2030-01-07 03:00+00', $4) RETURNING id`, s.ID, s.ExamID, s.ClassID, s.Teacher.ID)
+	exec(`INSERT INTO exam_session_participants (school_id, session_id, student_id, participant_no, variant_id) VALUES ($1, $2, $3, 'P-1', $4)`,
+		s.ID, s.ExamSessionID, s.StudentIDs[0], variant)
+	exec(`INSERT INTO exam_session_proctors (school_id, session_id, user_id, assigned_by) VALUES ($1, $2, $3, $3)`, s.ID, s.ExamSessionID, s.Teacher.ID)
+
+	s.ExamRoomID = one(`INSERT INTO exam_rooms (school_id, name, kind, capacity) VALUES ($1, $2, 'lab', 30) RETURNING id`, s.ID, "Lab "+marker)
+	s.ExamEventID = one(`INSERT INTO exam_events (school_id, academic_year_id, name, purpose, starts_on, ends_on, grades, created_by)
+		VALUES ($1, $2, $3, 'pas', '2030-01-07', '2030-01-11', '{1}', $4) RETURNING id`, s.ID, s.YearID, "PAS "+marker, s.Admin.ID)
+	exec(`INSERT INTO exam_event_rooms (school_id, event_id, room_id) VALUES ($1, $2, $3)`, s.ID, s.ExamEventID, s.ExamRoomID)
+	s.ExamSlotID = one(`INSERT INTO exam_event_slots (school_id, event_id, day, start_time, end_time) VALUES ($1, $2, '2030-01-07', '07:30', '09:00') RETURNING id`,
+		s.ID, s.ExamEventID)
+	s.ExamCellID = one(`INSERT INTO exam_event_cells (school_id, event_id, slot_id, grade_level, subject_id) VALUES ($1, $2, $3, 1, $4) RETURNING id`,
+		s.ID, s.ExamEventID, s.ExamSlotID, s.SubjectID)
+
+	practice := one(`INSERT INTO exams (school_id, name, purpose, duration_minutes, owner_id, created_by, builtin, status, results_mode,
+		results_after_all, max_attempts, shuffle_questions, shuffle_options)
+		VALUES ($1, 'Latihan Antarmuka Ujian', 'latihan', 30, $2, $2, true, 'terjadwal', 'nilai_dan_pembahasan', false, 5, false, false) RETURNING id`, s.ID, s.Admin.ID)
+	exec(`INSERT INTO exam_sections (school_id, exam_id, position) VALUES ($1, $2, 1)`, s.ID, practice)
+	s.ExamPracticeSessionID = one(`INSERT INTO exam_sessions (school_id, exam_id, class_id, label, location, starts_at, ends_at, created_by)
+		VALUES ($1, $2, $3, 'Latihan', 'jarak_jauh', '2030-01-06 01:00+00', '2030-01-09 01:00+00', $4) RETURNING id`, s.ID, practice, s.ClassID, s.Admin.ID)
 
 	var rows importer.Rows
 	rows.Data = []importer.Row{{Line: 2, Values: [importer.NumColumns]string{key + "-900", "Impor " + marker, "", "", s.ClassName}}}

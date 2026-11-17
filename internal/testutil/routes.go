@@ -299,7 +299,6 @@ var Routes = []Route{
 	// Modul ujian (MVP 4). Sekolah uji mengaktifkan modul (fixtures).
 	{Method: "GET", Pattern: "/ujian/", Kind: KindPage, Roles: []string{Admin, Teacher, Principal}},
 	// Guru di data uji bukan koordinator, jadi 403.
-	{Method: "GET", Pattern: "/ujian/agenda", Kind: KindPage, Roles: schoolData},
 
 	// Peserta ujian (T124): sesi peserta terpisah, bukan sesi staf. Login
 	// dan isolasi diuji di paket exam dan TestParticipant_* di cmd/server.
@@ -308,6 +307,17 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/u/{code}", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/beranda", Kind: KindPublic},
 	{Method: "POST", Pattern: "/u/keluar", Kind: KindPublic},
+	// Cek perangkat (T136): publik, tanpa data sekolah.
+	{Method: "GET", Pattern: "/u/cek", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/cek/ping", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/cek/contoh.jpg", Kind: KindPublic},
+
+	// Ujian latihan bawaan (T136).
+	{Method: "GET", Pattern: "/ujian/latihan", Kind: KindPage, Roles: examStaff},
+	{Method: "POST", Pattern: "/ujian/latihan", Kind: KindFormRef, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/latihan" }, func(o *School) url.Values { return url.Values{"class_id": {o.ClassID}} })},
+	{Method: "POST", Pattern: "/ujian/latihan/{sesi}/kartu", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/latihan/" + o.ExamPracticeSessionID + "/kartu" }, nil)},
 
 	// Bank soal dan TP (T127). Kepala sekolah hanya baca.
 	{Method: "GET", Pattern: "/ujian/bank/", Kind: KindPage, Roles: examStaff},
@@ -444,6 +454,192 @@ var Routes = []Route{
 		Requests: post(func(*School) string { return "/ujian/pengaturan" }, func(*School) url.Values {
 			return url.Values{"cognitive": {"30/50/20"}, "difficulty": {"30/50/20"}}
 		})},
+
+	// Ujian (T133): guru pemilik, admin_tu, dan kepala sekolah (baca).
+	{Method: "GET", Pattern: "/ujian/paket/", Kind: KindPage, Roles: examStaff},
+	{Method: "GET", Pattern: "/ujian/paket/baru", Kind: KindPage, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/baru", "/ujian/paket/baru?tujuan=latihan"} })},
+	{Method: "POST", Pattern: "/ujian/paket/", Kind: KindFormRef, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/paket/" }, func(o *School) url.Values {
+			return url.Values{"name": {"Ulangan baru"}, "purpose": {"ulangan"}, "subject_id": {o.SubjectID}, "duration": {"60"}}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/paket/" + o.ExamID, "/ujian/paket/" + o.ExamID + "?tab=soal", "/ujian/paket/" + o.ExamID + "?tab=sesi&sesi=" + o.ExamSessionID,
+				"/ujian/paket/" + o.ExamID + "?tab=dokumen", "/ujian/paket/" + o.ExamID + "?tab=lanjut"}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/atur/{step}", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string {
+			var out []string
+			for _, st := range []string{"dasar", "soal", "aturan", "jadwal", "cek"} {
+				out = append(out, "/ujian/paket/"+o.ExamID+"/atur/"+st)
+			}
+			return out
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/atur/dasar", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/atur/dasar" }, func(o *School) url.Values {
+			return url.Values{"name": {"Ulangan diubah"}, "subject_id": {o.SubjectID}, "duration": {"60"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/atur/aturan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/atur/aturan" }, func(*School) url.Values {
+			return url.Values{"results_mode": {"nilai"}, "max_attempts": {"1"}, "integrity_mode": {"catat"}}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/pilih", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/pilih?bank=" + o.ExamBankID} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/soal", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/soal" }, func(o *School) url.Values {
+			return url.Values{"ids": {o.ExamQuestionID}, "section_id": {o.ExamSectionID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/acak", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/acak" }, func(o *School) url.Values {
+			return url.Values{"bank_id": {o.ExamBankID}, "count": {"50"}, "section_id": {o.ExamSectionID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/isi/{item}/geser", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/isi/" + o.ExamItemID + "/geser" }, func(*School) url.Values {
+			return url.Values{"arah": {"naik"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/urutan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/urutan" }, func(o *School) url.Values {
+			return url.Values{"section_id": {o.ExamSectionID}, "ids": {o.ExamItemID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/bagian", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/bagian" }, func(*School) url.Values {
+			return url.Values{"title": {"Bagian baru"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/bagian/{sid}", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/bagian/" + o.ExamSectionID }, func(*School) url.Values {
+			return url.Values{"title": {"Pilihan ganda"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/bagian/{sid}/hapus", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/bagian/" + o.ExamSectionID + "/hapus" }, nil)},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/varian", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/varian" }, func(*School) url.Values {
+			return url.Values{"variants": {"2"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/sesi" }, func(o *School) url.Values {
+			return url.Values{"class_id": {o.Class2ID}, "date_" + o.Class2ID: {"2030-02-04"}, "start_" + o.Class2ID: {"07:30"}, "end_" + o.Class2ID: {"09:00"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/jadwalkan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/jadwalkan" }, nil)},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/salin", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/salin" }, func(*School) url.Values {
+			return url.Values{"name": {"Salinan"}}
+		})},
+	// Dokumen ujian (T135).
+	{Method: "GET", Pattern: "/ujian/paket/{id}/daftar-hadir.pdf", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/paket/" + o.ExamID + "/daftar-hadir.pdf?sesi=" + o.ExamSessionID}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/berita-acara.pdf", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/berita-acara.pdf"} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/kartu", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/kartu" }, func(o *School) url.Values {
+			return url.Values{"session_id": {o.ExamSessionID}}
+		})},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/naskah", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/naskah?paket=A"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/kunci", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/kunci"} })},
+	// Susulan, remedial, pengayaan (T137).
+	{Method: "POST", Pattern: "/ujian/paket/{id}/susulan", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/susulan" }, func(*School) url.Values {
+			return url.Values{"date": {"2030-02-04"}, "start": {"07:30"}, "end_date": {"2030-02-04"}, "end": {"09:00"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/tindak-lanjut", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/tindak-lanjut" }, func(*School) url.Values {
+			return url.Values{"kind": {"pengayaan"}, "date": {"2030-02-04"}, "start": {"07:30"}, "end_date": {"2030-02-04"}, "end": {"09:00"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/isi/{item}/hapus", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/isi/" + o.ExamItemID + "/hapus" }, nil)},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi/{sid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/sesi/" + o.ExamSessionID + "/batal" }, nil)},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/arsip" }, nil)},
+
+	// Agenda PTS/PAS (T134): admin_tu dan koordinator menulis; kepala
+	// sekolah membaca. Guru biasa 403.
+	{Method: "GET", Pattern: "/ujian/agenda", Kind: KindPage, Roles: []string{Admin, Principal}},
+	{Method: "GET", Pattern: "/ujian/ruang", Kind: KindPage, Roles: []string{Admin, Principal}},
+	{Method: "GET", Pattern: "/ujian/agenda/baru", Kind: KindPage, Roles: adminTU},
+	{Method: "POST", Pattern: "/ujian/agenda/", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/ujian/agenda/" }, func(*School) url.Values {
+			return url.Values{"name": {"PTS"}, "purpose": {"pts"}, "starts_on": {"2030-03-04"}, "ends_on": {"2030-03-08"}, "grades": {"1"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/ruang", Kind: KindOwn, Roles: adminTU,
+		Requests: post(func(*School) string { return "/ujian/ruang" }, func(*School) url.Values {
+			return url.Values{"name": {"Ruang Baru"}, "kind": {"kelas"}, "capacity": {"30"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/ruang/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/ruang/" + o.ExamRoomID }, func(*School) url.Values {
+			return url.Values{"name": {"Lab Satu"}, "kind": {"lab"}, "capacity": {"32"}}
+		})},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/jadwal", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/jadwal"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/ruang", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/ruang"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/pengawas", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/pengawas"} })},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID }, func(*School) url.Values {
+			return url.Values{"name": {"PAS diubah"}, "starts_on": {"2030-01-07"}, "ends_on": {"2030-01-11"}, "grades": {"1"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/jam", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/jam" }, func(*School) url.Values {
+			return url.Values{"day": {"2030-01-08"}, "start": {"07:30"}, "end": {"09:00"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/sel", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/sel" }, func(o *School) url.Values {
+			return url.Values{"slot_id": {o.ExamSlotID}, "grade": {"1"}, "subject_id": {o.SubjectID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/ruang", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/ruang" }, func(o *School) url.Values {
+			return url.Values{"room_id": {o.ExamRoomID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/bagi", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/bagi" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/pindah", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/pindah" }, func(o *School) url.Values {
+			return url.Values{"from": {o.ClassID + "|" + o.ExamRoomID + "|1"}, "to": {o.ExamRoomID + "|1"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/sel/{cell}/ujian", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/sel/" + o.ExamCellID + "/ujian" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/pengawas", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/pengawas" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/pengawas/tukar", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/pengawas/tukar" }, func(o *School) url.Values {
+			return url.Values{"unit": {o.ExamRoomID + "|" + o.ExamSlotID + "|1"}, "user_id": {o.Admin.ID}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/terapkan", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/terapkan" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/umumkan", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/umumkan" }, nil)},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/dokumen", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/dokumen"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/daftar-hadir.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/daftar-hadir.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/berita-acara.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/berita-acara.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/denah.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/agenda/" + o.ExamEventID + "/denah.pdf"} })},
+	{Method: "GET", Pattern: "/ujian/agenda/{id}/pintu.pdf", Kind: KindByID, Roles: []string{Admin, Principal},
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/agenda/" + o.ExamEventID + "/pintu.pdf?ruang=" + o.ExamRoomID}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/kartu", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/kartu" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/duduk", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/duduk" }, func(*School) url.Values {
+			return url.Values{"selang": {"1"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/jam/{slot}/hapus", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/jam/" + o.ExamSlotID + "/hapus" }, nil)},
+	{Method: "POST", Pattern: "/ujian/agenda/{id}/arsip", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/agenda/" + o.ExamEventID + "/arsip" }, nil)},
+	{Method: "POST", Pattern: "/ujian/ruang/{id}/arsip", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/ujian/ruang/" + o.ExamRoomID + "/arsip" }, nil)},
 
 	// Arsip (bank, soal, stimulus, TP): kontrol positif oleh guru pemilik,
 	// penulis terakhir di urutan uji, dan arsip bank paling akhir, sehingga

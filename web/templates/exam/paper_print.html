@@ -1,0 +1,30 @@
+{{define "title"}}Naskah Cadangan · {{.Exam.Name}}{{end}}
+{{define "bodyClass"}}page-print{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "content"}}
+<div class="no-print action-row mb-4">
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}?tab=dokumen">← Kembali</a>
+{{if gt (len .Variants) 1}}{{range .Variants}}<a class="btn btn-ghost{{if eq .Label $.Variant.Label}} is-active{{end}}" href="?paket={{.Label}}">Paket {{.Label}}</a>{{end}}{{end}}
+<button type="button" class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button>
+</div>
+<header class="print-head">
+<p class="font-semibold">{{.Head.School}}</p>
+<h1>{{.Exam.Name}}{{if gt (len .Variants) 1}} · PAKET {{.Variant.Label}}{{end}}</h1>
+<p class="text-sm">{{.Exam.Purpose.Label}}{{with .Exam.SubjectName}} · {{.}}{{end}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}} · {{.Exam.DurationMinutes}} menit</p>
+</header>
+<table class="print-table mb-4"><tbody><tr><th class="w-32 text-left">Nama</th><td></td><th class="w-32 text-left">No. peserta</th><td class="w-40"></td></tr></tbody></table>
+{{range .Items}}
+{{if .First}}{{with .Section}}{{if or .Title .InstructionsSrc}}<section class="paper-section"><h2>{{.Title}}</h2>{{with .InstructionsSrc}}<p class="text-sm">{{.}}</p>{{end}}</section>{{end}}{{end}}{{end}}
+{{if .Stimulus}}<div class="paper-group"><div class="paper-stimulus-box"><h3>{{.StimTitle}}</h3><div class="exam-content">{{.StimHTML}}</div></div>{{end}}
+{{template "exam_paper_question" .View}}
+{{if .Stimulus}}</div>{{end}}
+{{else}}<p>Tidak ada soal.</p>{{end}}
+
+<section class="paper-answer-sheet">
+<header class="print-head"><p class="font-semibold">{{.Head.School}}</p><h1>LEMBAR JAWABAN · {{.Exam.Name}}{{if gt (len .Variants) 1}} · PAKET {{.Variant.Label}}{{end}}</h1></header>
+<table class="print-table mb-4"><tbody><tr><th class="w-32 text-left">Nama</th><td></td><th class="w-32 text-left">No. peserta</th><td class="w-40"></td></tr></tbody></table>
+<ol class="answer-grid">
+{{range .Numbers}}<li><span class="paper-q-no">{{.Number}}.</span>{{if .Letters}}{{range .Letters}}<span class="bubble">{{.}}</span>{{end}}{{else if eq .Kind "esai"}}<span class="text-sm">(jawab di lembar terpisah)</span>{{else if eq .Kind "benar_salah"}}<span class="text-sm">B / S per pernyataan: ..............</span>{{else}}<span class="answer-line"></span>{{end}}</li>{{end}}
+</ol>
+</section>
+{{end}}

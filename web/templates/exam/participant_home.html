@@ -25,5 +25,14 @@
 {{else}}
 <section class="card empty-state"><p>Belum ada ujian untuk Anda.</p></section>
 {{end}}
+{{if .Schedule}}
+<section class="card stack mt-4">
+<h2 class="card-title">Jadwal {{(index .Schedule 0).Event}}</h2>
+<p class="text-sm text-slate-600 mb-0">Nomor peserta <strong>{{(index .Schedule 0).Number}}</strong>{{with (index .Schedule 0).Room}} · Ruang <strong>{{.}}</strong>{{end}}</p>
+<ul class="stack">
+{{range .Schedule}}<li class="flex items-start justify-between gap-3 border-t border-slate-100 pt-2"><span><strong class="block">{{.Subject}}</strong><span class="text-sm text-slate-500">{{.Date}}</span></span><span class="text-sm text-right">{{.Time}}{{with .Room}}<span class="block text-slate-500">{{.}}</span>{{end}}</span></li>{{end}}
+</ul>
+</section>
+{{end}}
 </div>
 {{end}}

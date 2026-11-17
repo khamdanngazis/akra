@@ -73,6 +73,19 @@
 <span><strong class="block">Tampilkan nilai per komponen</strong><span class="block text-sm text-slate-500">Jika dicentang, orang tua melihat nilai setiap komponen (mis. Tugas, UTS, UAS), bukan hanya nilai akhir. Nilai akhir yang belum lengkap tetap tidak ditampilkan.</span></span></label>
 </section>
 
+<section class="card form-card" aria-labelledby="remedial-title">
+<h2 id="remedial-title" class="card-title">Nilai remedial dari ujian</h2>
+<fieldset class="field{{if .Errors.remedial_policy}} has-error{{end}}">
+<legend class="visually-hidden">Aturan nilai remedial</legend>
+<label class="choice items-start mt-2"><input type="radio" name="remedial_policy" value="maks_kktp" class="mt-1 flex-none"{{if ne .Form.RemedialPolicy "tertinggi"}} checked{{end}}>
+<span><strong class="block">Paling tinggi sama dengan {{if eq .Form.Format "merdeka"}}KKTP{{else}}KKM{{end}}</strong><span class="block text-sm text-slate-500">Nilai remedial yang melebihi ambang dicatat sebesar ambang. Nilai awal yang lebih tinggi tetap dipakai.</span></span></label>
+<label class="choice items-start mt-2"><input type="radio" name="remedial_policy" value="tertinggi" class="mt-1 flex-none"{{if eq .Form.RemedialPolicy "tertinggi"}} checked{{end}}>
+<span><strong class="block">Ambil nilai tertinggi</strong><span class="block text-sm text-slate-500">Nilai rapor adalah yang tertinggi antara nilai awal dan nilai remedial.</span></span></label>
+{{with .Errors.remedial_policy}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Remedial tidak pernah menurunkan nilai. Nilai pengayaan juga tidak pernah menurunkan nilai rapor.</p>
+</fieldset>
+</section>
+
 <div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pengaturan</button></div>
 </form>
 {{end}}

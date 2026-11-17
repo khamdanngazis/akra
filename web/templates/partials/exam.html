@@ -116,3 +116,107 @@
 </form>
 </dialog>
 {{end}}
+
+{{/* exam_status_badge: status ujian (T133). Argumen: string status. */}}
+{{define "exam_status_badge"}}{{if eq . "draf"}}<span class="badge badge-warning">Draf</span>{{else if eq . "terjadwal"}}<span class="badge badge-info">Terjadwal</span>{{else if eq . "berlangsung"}}<span class="badge badge-success">Berlangsung</span>{{else if eq . "selesai"}}<span class="badge">Selesai</span>{{else}}<span class="badge">Arsip</span>{{end}}{{end}}
+
+{{/* exam_readiness: daftar cek kesiapan ujian (T133/T136). Argumen: Readiness. */}}
+{{define "exam_readiness"}}
+<ul class="checklist">
+{{range .Items}}<li class="is-{{.Level}}"><span class="checklist-mark" aria-hidden="true">{{if eq .Level "ok"}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}</span><span class="min-w-0 flex-1"><strong>{{.Label}}</strong>{{if eq .Level "block"}} <span class="badge badge-danger">Wajib</span>{{else if eq .Level "warn"}} <span class="badge badge-warning">Peringatan</span>{{end}}{{with .Hint}}<span class="block text-sm text-slate-600">{{.}}</span>{{end}}</span>{{if and .FixURL (ne .Level "ok")}}<a class="btn btn-ghost btn-sm" href="{{.FixURL}}">{{.FixLabel}}</a>{{end}}</li>{{end}}
+</ul>
+{{end}}
+
+{{/* exam_comp_panel: panel ringkas komposisi ujian (T133). Argumen: compView. */}}
+{{define "exam_comp_panel"}}
+<section class="card comp-panel" aria-labelledby="comp-title">
+<h2 id="comp-title" class="card-title">Ringkasan</h2>
+<dl class="comp-stats">
+<div><dt>Soal</dt><dd>{{.Count}}</dd></div>
+<div><dt>Total poin</dt><dd>{{.Points}}</dd></div>
+<div{{if .OverTime}} class="is-warn"{{end}}><dt>Perkiraan waktu</dt><dd>± {{.Minutes}} / {{.Duration}} mnt</dd></div>
+<div{{if .Essays}} class="is-info"{{end}}><dt>Esai (koreksi manual)</dt><dd>{{.Essays}}</dd></div>
+</dl>
+{{if .Stimuli}}<p class="text-sm text-slate-600 mb-2">{{.Stimuli}} teks/stimulus bersama.</p>{{end}}
+{{if .ShortRules}}<p class="alert alert-error text-sm">{{.ShortRules}} aturan acak kekurangan soal di bank.</p>{{end}}
+{{if .HasQuestions}}
+{{with .Kinds}}<h3 class="comp-h">Jenis</h3><ul class="comp-bars">{{range .}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>{{end}}
+<h3 class="comp-h">Kesulitan</h3><ul class="comp-bars">{{range .Difficulty}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>
+<h3 class="comp-h">Level kognitif</h3><ul class="comp-bars">{{range .Cognitive}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>
+<h3 class="comp-h">Tujuan pembelajaran</h3>
+{{if .Objectives}}<ul class="comp-bars">{{range .Objectives}}<li><span>{{.Label}}</span><span class="comp-bar"><span style="width: {{.Percent}}%"></span></span><span>{{.N}}</span></li>{{end}}</ul>{{end}}
+{{if .Untagged}}<p class="text-sm text-amber-700 mb-0">{{.Untagged}} soal belum bertanda TP.</p>{{end}}
+{{end}}
+{{if gt .Variants 1}}<p class="text-sm mt-3 mb-0"><strong>{{.Variants}} paket</strong> dengan komposisi sama.{{if .Shared}} <span class="text-amber-700">{{.Shared}} soal sama di beberapa paket (bank kurang padanan).</span>{{end}}</p>{{end}}
+</section>
+{{end}}
+
+{{/* exam_next_step: kartu langkah berikutnya di detail ujian (T133, pola T116). Argumen: nextStep. */}}
+{{define "exam_next_step"}}
+<section class="card next-step is-{{.Tone}}" aria-labelledby="next-step-title">
+<ol class="flow" aria-label="Alur ujian">
+{{range .Flow}}<li class="is-{{.State}}"{{if eq .State "current"}} aria-current="step"{{end}}><span class="flow-dot" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{end}}</span><span class="flow-label">{{.Label}}</span></li>{{end}}
+</ol>
+<p class="next-step-eyebrow">Langkah berikutnya</p>
+<h2 id="next-step-title">{{.Title}}</h2>
+<p class="next-step-hint">{{.Hint}}</p>
+{{if .URL}}<div class="next-step-actions"><a class="btn btn-primary" href="{{.URL}}">{{.Label}}</a></div>{{end}}
+</section>
+{{end}}
+
+{{/* exam_wizard_steps: kepala langkah wizard ujian. Argumen: []stepLink. */}}
+{{define "exam_wizard_steps"}}
+<ol class="wizard-steps is-5" aria-label="Langkah">
+{{range .}}<li class="is-{{.State}}">{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
+</ol>
+{{end}}
+
+{{/* exam_event_fields: isian dasar agenda PTS/PAS (T134). Argumen: view dengan Form, Errors, Grades, IsNew. */}}
+{{define "exam_event_fields"}}
+<div class="field-grid">
+<div class="field{{if .Errors.name}} has-error{{end}}">
+<label for="name">Nama agenda</label>
+<input id="name" name="name" value="{{.Form.Name}}" maxlength="120" placeholder="mis. PAS Ganjil 2026/2027" required>
+{{with .Errors.name}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+<div class="field{{if .Errors.purpose}} has-error{{end}}">
+<label for="purpose">Tujuan</label>
+{{if .IsNew}}<select id="purpose" name="purpose"><option value="pts"{{if eq .Form.Purpose "pts"}} selected{{end}}>PTS (tengah semester)</option><option value="pas"{{if eq .Form.Purpose "pas"}} selected{{end}}>PAS (akhir semester)</option></select>
+{{else}}<input id="purpose" value="{{if eq .Form.Purpose "pts"}}PTS{{else}}PAS{{end}}" disabled>{{end}}
+{{with .Errors.purpose}}<p class="field-error">{{.}}</p>{{end}}
+</div>
+</div>
+<div class="field-grid">
+<div class="field{{if .Errors.dates}} has-error{{end}}"><label for="starts_on">Tanggal mulai</label><input id="starts_on" type="date" name="starts_on" value="{{.Form.StartsOn}}"></div>
+<div class="field{{if .Errors.dates}} has-error{{end}}"><label for="ends_on">Tanggal selesai</label><input id="ends_on" type="date" name="ends_on" value="{{.Form.EndsOn}}">{{with .Errors.dates}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+<fieldset class="field{{if .Errors.grades}} has-error{{end}}">
+<legend>Tingkat yang ikut</legend>
+<div class="check-grid">{{range .Grades}}<label class="choice"><input type="checkbox" name="grades" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}</label>{{end}}</div>
+{{with .Errors.grades}}<p class="field-error">{{.}}</p>{{end}}
+</fieldset>
+<div class="field-grid">
+<div class="field{{if .Errors.number_format}} has-error{{end}}"><label for="number_format">Format nomor peserta</label><input id="number_format" name="number_format" value="{{.Form.NumberFormat}}" maxlength="60">
+{{with .Errors.number_format}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Token: {tahun}, {tingkat}, {urut:3} (nomor urut per tingkat, 3 digit), {gelombang}.</p>{{end}}</div>
+<div class="field-grid">
+<div class="field{{if .Errors.max_shifts}} has-error{{end}}"><label for="max_shifts">Gelombang lab maks.</label><input id="max_shifts" name="max_shifts" value="{{.Form.MaxShifts}}" inputmode="numeric" maxlength="1">{{with .Errors.max_shifts}}<p class="field-error">{{.}}</p>{{end}}</div>
+<div class="field{{if .Errors.shift_gap}} has-error{{end}}"><label for="shift_gap">Jeda gelombang (menit)</label><input id="shift_gap" name="shift_gap" value="{{.Form.ShiftGap}}" inputmode="numeric" maxlength="3">{{with .Errors.shift_gap}}<p class="field-error">{{.}}</p>{{end}}</div>
+</div>
+</div>
+<p class="hint">Bila siswa lebih banyak dari komputer, lab dipakai beberapa gelombang: gelombang 2 mulai setelah gelombang 1 selesai ditambah jeda.</p>
+{{end}}
+
+{{/* exam_paper_question: soal di naskah cetak (T135), tanpa kunci. Argumen: QuestionView. */}}
+{{define "exam_paper_question"}}
+<div class="paper-q">
+<div class="paper-q-head"><span class="paper-q-no">{{.Number}}.</span><div class="exam-content min-w-0 flex-1">{{.Body}}</div></div>
+{{if .Choices}}<ol class="paper-options">{{range .Choices}}<li><span class="paper-letter">{{.Letter}}.</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol>
+{{if .Multiple}}<p class="paper-hint">Jawaban benar bisa lebih dari satu.</p>{{end}}{{end}}
+{{if .Statements}}<table class="print-table paper-tf"><thead><tr><th>Pernyataan</th><th class="w-12">B</th><th class="w-12">S</th></tr></thead>
+<tbody>{{range .Statements}}<tr><td class="exam-content">{{.HTML}}</td><td></td><td></td></tr>{{end}}</tbody></table>{{end}}
+{{if .Left}}<div class="paper-match"><ol>{{range $i, $l := .Left}}<li><span class="exam-content">{{$l.HTML}}</span> <span class="paper-blank">( ...... )</span></li>{{end}}</ol>
+<ol class="paper-options">{{range .Right}}<li><span class="paper-letter">{{.Letter}}.</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol></div>{{end}}
+{{if eq .Kind "isian"}}<p class="paper-line">Jawaban: ................................................................</p>{{end}}
+{{if eq .Kind "esai"}}<div class="paper-essay"></div>{{end}}
+</div>
+{{end}}

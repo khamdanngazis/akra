@@ -116,7 +116,7 @@ func (h *ReportConfigHandler) save(w http.ResponseWriter, r *http.Request) {
 	}
 	p := r.PostForm
 	f := ReportConfigForm{Format: p.Get("format"), KKMDefault: p.Get("kkm_default"), PrincipalName: p.Get("principal_name"), SignerTitle: p.Get("signer_title"),
-		PortalComponents: p.Get("portal_components") == "on"}
+		PortalComponents: p.Get("portal_components") == "on", RemedialPolicy: p.Get("remedial_policy")}
 	for i := range MaxScaleRows {
 		k := strconv.Itoa(i)
 		f.Bands = append(f.Bands, BandInput{Letter: p.Get("letter_" + k), Min: p.Get("min_" + k), Max: p.Get("max_" + k)})

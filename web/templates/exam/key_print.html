@@ -1,0 +1,22 @@
+{{define "title"}}Kunci Jawaban · {{.Exam.Name}}{{end}}
+{{define "bodyClass"}}page-print{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "content"}}
+<div class="no-print action-row mb-4">
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}?tab=dokumen">← Kembali</a>
+{{if gt (len .Variants) 1}}{{range .Variants}}<a class="btn btn-ghost" href="?paket={{.Label}}">Paket {{.Label}}</a>{{end}}{{end}}
+<button type="button" class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button>
+</div>
+<p class="no-print alert alert-info">Kunci jawaban rahasia. Pembukaan halaman ini tercatat di audit.</p>
+<header class="print-head">
+<p class="font-semibold">{{.Head.School}}</p>
+<h1>KUNCI JAWABAN · {{.Exam.Name}}{{if gt (len .Variants) 1}} · PAKET {{.Variant.Label}}{{end}}</h1>
+<p class="text-sm">RAHASIA · dicetak {{.PrintedAt}}</p>
+</header>
+<table class="print-table">
+<thead><tr><th class="w-12">No</th><th>Soal</th><th class="w-28">Jenis</th><th>Kunci</th><th class="w-14">Poin</th></tr></thead>
+<tbody>
+{{range .Items}}<tr><td class="text-center">{{.View.Number}}</td><td class="exam-content paper-key-q">{{.View.Body}}</td><td>{{.View.Kind.Label}}</td><td dir="auto">{{range .Key}}{{.}}<br>{{end}}</td><td class="text-center">{{.Points}}</td></tr>{{end}}
+</tbody>
+</table>
+{{end}}

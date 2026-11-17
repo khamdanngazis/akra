@@ -1,0 +1,13 @@
+{{define "title"}}Buat Agenda Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" "Buat agenda" ""}}
+<div class="page-header"><div><h1>Buat agenda ujian</h1><p class="muted">Jadwal, ruang, dan pengawas diatur setelah agenda dibuat.</p></div></div>
+{{template "flash" .}}
+{{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
+<form method="post" action="/ujian/agenda/" class="card stack" novalidate>
+{{ csrfField }}
+{{template "exam_event_fields" .}}
+<div class="action-row"><button type="submit" class="btn btn-primary">Buat agenda</button><a class="btn btn-ghost" href="/ujian/agenda">Batal</a></div>
+</form>
+{{end}}

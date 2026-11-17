@@ -1,0 +1,38 @@
+{{define "title"}}Agenda Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" ""}}
+<div class="page-header">
+<div>
+<h1>Agenda Ujian</h1>
+<p class="muted">PTS dan PAS satu sekolah: jadwal mapel per hari, ruang, gelombang, peserta, dan pengawas.</p>
+</div>
+<div class="action-row">
+<a class="btn btn-ghost" href="/ujian/ruang">Ruang ujian ({{.Rooms}})</a>
+{{if .CanEdit}}<a class="btn btn-primary" href="/ujian/agenda/baru">Buat agenda</a>{{end}}
+</div>
+</div>
+{{template "flash" .}}
+{{if .Events}}
+<div class="table-wrap">
+<table>
+<thead><tr><th>Agenda</th><th>Tanggal</th><th>Tingkat</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Events}}<tr><td><a href="/ujian/agenda/{{.ID}}"><strong>{{.Name}}</strong></a></td><td>{{.DatesLabel}}</td><td>Kelas {{.GradesLabel}}</td>
+<td>{{if .AnnouncedAt}}<span class="badge badge-success">Diumumkan</span>{{else}}<span class="badge badge-warning">Disusun</span>{{end}}</td></tr>{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<section class="card">
+<h2 class="card-title">Belum ada agenda</h2>
+<ol class="stack mt-3">
+<li><strong>Catat ruang ujian</strong> sekali: lab komputer dan ruang kelas beserta kapasitasnya. Dipakai ulang di agenda berikutnya.</li>
+<li><strong>Buat agenda</strong> (mis. "PAS Ganjil 2026/2027"), isi jadwal mapel per hari dan tingkat, lalu buat ujian per mapel untuk diisi guru.</li>
+<li><strong>Bagi peserta</strong> ke ruang dan gelombang otomatis, <strong>bagi pengawas</strong> bergilir, lalu terapkan ke sesi dan umumkan.</li>
+</ol>
+{{if .CanEdit}}<p class="mt-4 action-row">{{if not .Rooms}}<a class="btn btn-primary" href="/ujian/ruang">Catat ruang ujian</a>{{else}}<a class="btn btn-primary" href="/ujian/agenda/baru">Buat agenda pertama</a>{{end}}</p>
+{{else}}<p class="hint mt-3">Agenda dibuat oleh admin/TU atau koordinator ujian.</p>{{end}}
+</section>
+{{end}}
+{{end}}

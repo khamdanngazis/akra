@@ -1,0 +1,56 @@
+{{define "title"}}Pilih Soal · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s/atur/soal" .Exam.ID) "Pilih soal" ""}}
+<div class="page-header">
+<div>
+<h1>Pilih soal</h1>
+<p class="muted">Centang soal lalu tambahkan ke ujian. Memilih soal dari satu teks/stimulus menambahkan seluruh kelompoknya; soal tertentu bisa dilepas sesudahnya.</p>
+</div>
+<div class="action-row"><a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/atur/soal">Kembali ke langkah Soal</a></div>
+</div>
+{{template "flash" .}}
+
+{{if not .Banks}}
+<section class="card"><p class="mb-0">Belum ada bank soal untuk mapel ujian ini. <a href="/ujian/bank/baru{{with .Exam.SubjectID}}?mapel={{.}}{{end}}">Buat bank</a> atau impor soal dari Word dulu.</p></section>
+{{else}}
+<form method="get" action="/ujian/paket/{{.Exam.ID}}/pilih" class="filter-bar">
+<input type="hidden" name="bagian" value="{{.SectionID}}">
+<div class="field"><label for="bank">Bank</label><select id="bank" name="bank" onchange="this.form.submit()">{{range .Banks}}<option value="{{.ID}}"{{if eq .ID $.Bank.ID}} selected{{end}}>{{.Name}}</option>{{end}}</select></div>
+<div class="field"><label for="q">Cari</label><input id="q" name="q" value="{{.Filter.Text}}" placeholder="Kata di soal" dir="auto"></div>
+<div class="field"><label for="jenis">Jenis</label><select id="jenis" name="jenis"><option value="">Semua</option>{{range .Kinds}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="kesulitan">Kesulitan</label><select id="kesulitan" name="kesulitan"><option value="">Semua</option>{{range .Diffs}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+{{if .Objectives}}<div class="field"><label for="tp">TP</label><select id="tp" name="tp"><option value="">Semua</option>{{range .Objectives}}<option value="{{.ID}}"{{if eq .ID $.Filter.ObjectiveID}} selected{{end}}>{{.Code}}</option>{{end}}</select></div>{{end}}
+<div class="field"><label for="status">Status</label><select id="status" name="status"><option value="">Semua</option><option value="siap"{{if eq .Filter.Status "siap"}} selected{{end}}>Siap</option><option value="draf"{{if eq .Filter.Status "draf"}} selected{{end}}>Draf</option></select></div>
+<button type="submit" class="btn btn-ghost">Tampilkan</button>
+</form>
+
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/soal" x-data="{ n: 0 }" @change="n = $el.querySelectorAll('input[name=ids]:checked').length">
+{{ csrfField }}
+<input type="hidden" name="kembali" value="pilih"><input type="hidden" name="query" value="{{.Query}}">
+<div class="picker-bar">
+<span><strong x-text="n">0</strong> dipilih · {{.Page.Total}} soal di bank ini</span>
+{{if gt (len .Sections) 1}}<label class="text-sm">Ke bagian <select name="section_id">{{range $i, $s := .Sections}}<option value="{{$s.ID}}"{{if eq $s.ID $.SectionID}} selected{{end}}>Bagian {{inc $i}}{{with $s.Title}}: {{.}}{{end}}</option>{{end}}</select></label>
+{{else}}<input type="hidden" name="section_id" value="{{.SectionID}}">{{end}}
+<button type="submit" class="btn btn-primary" :disabled="n === 0">Tambahkan ke ujian</button>
+</div>
+{{range .Groups}}
+<div class="picker-group{{if .StimulusID}} has-stimulus{{end}}">
+{{if .StimulusID}}<p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Stimulus: {{.StimulusTitle}} · dipilih sekelompok</p>{{end}}
+{{range .Rows}}
+<label class="card picker-row{{if index $.InExam .ID}} is-in{{end}}">
+<input type="checkbox" name="ids" value="{{.ID}}"{{if index $.InExam .ID}} checked disabled{{end}}>
+<span class="min-w-0 flex-1">
+<span class="block" dir="auto">{{.Snippet}}</span>
+<span class="block text-sm text-slate-500">{{.Kind.Label}}{{with .Difficulty}} · {{.}}{{end}}{{with .CognitiveLevel}} · {{.}}{{end}}{{with .ObjectiveCode}} · {{.}}{{end}} · {{.Points}} poin{{if ne .Status "siap"}} · <span class="text-amber-700">{{.Status}}</span>{{end}}{{if index $.InExam .ID}} · <strong>sudah di ujian</strong>{{end}}</span>
+</span>
+</label>
+{{end}}
+</div>
+{{else}}
+<section class="card"><p class="mb-0">Tidak ada soal yang cocok dengan filter.</p></section>
+{{end}}
+</form>
+{{if or .PrevURL .NextURL}}<nav class="action-row mt-4" aria-label="Halaman">{{with .PrevURL}}<a class="btn btn-ghost" href="{{.}}">Sebelumnya</a>{{end}}<span class="muted">Halaman {{.Page.Page}} dari {{.Page.Pages}}</span>{{with .NextURL}}<a class="btn btn-ghost" href="{{.}}">Berikutnya</a>{{end}}</nav>{{end}}
+{{end}}
+{{end}}

@@ -1,0 +1,10 @@
+ALTER TABLE student_credentials DROP CONSTRAINT student_credentials_session_fkey;
+DROP TABLE exam_session_proctors;
+DROP TABLE exam_session_participants;
+DROP TABLE exam_sessions;
+DROP TABLE exam_item_snapshots;
+DROP TABLE exam_variant_items;
+DROP TABLE exam_variants;
+DROP TABLE exam_items;
+DROP TABLE exam_sections;
+DROP TABLE exams;

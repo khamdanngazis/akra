@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"akra/internal/auth"
 	"akra/internal/duty"
@@ -111,14 +112,17 @@ func RequireModule(db database.DBTX, rd page.Renderer, logger *slog.Logger, rel 
 }
 
 // LoadActor membaca fakta akses pengguna id dari database: tugas
-// koordinator dan mapel/kelas yang diampu di tahun ajaran aktif. Penugasan
-// pengawas dibaca di T134 setelah tabel sesi ujian ada.
+// koordinator, mapel/kelas yang diampu di tahun ajaran aktif, dan
+// penugasan pengawas sesi ujian.
 func LoadActor(ctx context.Context, q database.DBTX, id auth.Identity) (Actor, error) {
 	a := Actor{UserID: id.UserID, Roles: id.Roles}
+	var err error
+	if a.Proctors, err = loadProctorAssignments(ctx, q, id.SchoolID, id.UserID, time.Now()); err != nil {
+		return Actor{}, err
+	}
 	if !id.HasRole(roleTeacher) {
 		return a, nil
 	}
-	var err error
 	if a.Coordinator, err = duty.HasActive(ctx, q, id.SchoolID, id.UserID, duty.ExamCoordinator); err != nil {
 		return Actor{}, err
 	}

@@ -145,6 +145,85 @@ func (is *Issuer) Issue(ctx context.Context, q database.DBTX, schoolID, actorID 
 	return c, code, nil
 }
 
+// CardWindow adalah satu sesi yang dicakup satu kartu peserta.
+type CardWindow struct {
+	SessionID  string
+	Start, End time.Time
+}
+
+// IssueCard membuat satu kode untuk kartu peserta yang berlaku di setiap
+// sesi windows (T135): satu baris kredensial per sesi dengan hash yang sama,
+// sehingga peserta PTS/PAS cukup satu kode untuk semua mapel. Kode lama
+// peserta untuk sesi-sesi itu dicabut. Teks kode hanya ada di hasil ini.
+func (is *Issuer) IssueCard(ctx context.Context, q database.DBTX, schoolID, actorID string, owner Owner, windows []CardWindow) (string, error) {
+	if !owner.valid() {
+		return "", errors.New("exam: credential owner must be exactly one of student or applicant")
+	}
+	if len(windows) == 0 {
+		return "", errors.New("exam: card without sessions")
+	}
+	code, err := GenerateCode()
+	if err != nil {
+		return "", err
+	}
+	hash, err := is.hasher.HashPassword(code)
+	if err != nil {
+		return "", err
+	}
+	sid, aid := nilIfEmpty(owner.StudentID), nilIfEmpty(owner.ApplicantID)
+	for _, w := range windows {
+		if !w.End.After(w.Start) {
+			return "", errors.New("exam: session end must be after start")
+		}
+		if _, err := q.Exec(ctx, `UPDATE student_credentials SET revoked_at = now()
+			WHERE school_id = $1 AND kind = 'kode_ujian' AND exam_session_id = $2 AND revoked_at IS NULL
+			  AND student_id IS NOT DISTINCT FROM $3 AND applicant_id IS NOT DISTINCT FROM $4`, schoolID, w.SessionID, sid, aid); err != nil {
+			return "", fmt.Errorf("exam: revoke old code: %w", err)
+		}
+		if _, err := q.Exec(ctx, `
+			INSERT INTO student_credentials (school_id, student_id, applicant_id, kind, secret_hash, valid_from, valid_until, exam_session_id, created_by)
+			VALUES ($1, $2, $3, 'kode_ujian', $4, $5, $6, $7, $8)`,
+			schoolID, sid, aid, hash, w.Start.Add(-CodeEarly), w.End, w.SessionID, actorID); err != nil {
+			return "", fmt.Errorf("exam: issue code: %w", err)
+		}
+	}
+	return code, nil
+}
+
+// pickCredential memilih kredensial yang cocok untuk waktu now dari
+// beberapa kredensial satu kartu: yang jendelanya sedang berlaku, lalu
+// yang paling dekat akan berlaku, lalu yang masih membuka hasil, lalu
+// yang terakhir berakhir.
+func pickCredential(cs []*Credential, now time.Time) *Credential {
+	var current, upcoming, results, last *Credential
+	for _, c := range cs {
+		switch {
+		case !now.Before(c.ValidFrom) && !now.After(c.ValidUntil):
+			if current == nil || c.ValidFrom.Before(current.ValidFrom) {
+				current = c
+			}
+		case now.Before(c.ValidFrom):
+			if upcoming == nil || c.ValidFrom.Before(upcoming.ValidFrom) {
+				upcoming = c
+			}
+		case c.ResultsUntil != nil && !now.After(*c.ResultsUntil):
+			if results == nil || c.ValidUntil.After(results.ValidUntil) {
+				results = c
+			}
+		default:
+			if last == nil || c.ValidUntil.After(last.ValidUntil) {
+				last = c
+			}
+		}
+	}
+	for _, c := range []*Credential{current, upcoming, results, last} {
+		if c != nil {
+			return c
+		}
+	}
+	return nil
+}
+
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil
@@ -267,16 +346,25 @@ func Login(ctx context.Context, db database.DB, req LoginRequest) (auth.Particip
 		code := NormalizeCode(req.Code)
 		var match *Credential
 		if len(code) == CodeLength {
+			// Satu kartu = beberapa baris dengan hash sama; tiap hash
+			// diperiksa sekali.
+			checked := map[string]bool{}
+			var matches []*Credential
 			for i := range creds {
-				ok, err := auth.VerifyPassword(code, creds[i].secretHash)
-				if err != nil {
-					return err
+				h := creds[i].secretHash
+				ok, seen := checked[h]
+				if !seen {
+					var err error
+					if ok, err = auth.VerifyPassword(code, h); err != nil {
+						return err
+					}
+					checked[h] = ok
 				}
 				if ok {
-					match = &creds[i]
-					break
+					matches = append(matches, &creds[i])
 				}
 			}
+			match = pickCredential(matches, req.Now)
 		}
 		if match == nil {
 			if len(creds) == 0 {

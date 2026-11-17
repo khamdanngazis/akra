@@ -1,0 +1,16 @@
+DROP INDEX exam_sessions_event_idx;
+ALTER TABLE exam_sessions
+    DROP CONSTRAINT exam_sessions_cell_fkey,
+    DROP CONSTRAINT exam_sessions_room_fkey,
+    DROP CONSTRAINT exam_sessions_event_fkey,
+    DROP COLUMN shift,
+    DROP COLUMN cell_id,
+    DROP COLUMN room_id,
+    DROP COLUMN event_id;
+DROP TABLE exam_event_proctors;
+DROP TABLE exam_event_participants;
+DROP TABLE exam_event_cells;
+DROP TABLE exam_event_slots;
+DROP TABLE exam_event_rooms;
+DROP TABLE exam_events;
+DROP TABLE exam_rooms;
