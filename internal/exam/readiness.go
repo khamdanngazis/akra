@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 )
 
@@ -60,11 +63,13 @@ func (r Readiness) Item(key string) (ReadyItem, bool) {
 // readyFacts adalah data yang dibaca dari database untuk cek kesiapan.
 type readyFacts struct {
 	// Per soal yang dipakai varian mana pun.
-	noKey     int // soal non-esai tanpa kunci
-	archived  int // soal sudah diarsipkan di bank
-	notReady  int // soal berstatus draf/ditelaah
-	inReview  int
-	questions int
+	mathErrors    int // soal/stimulus dengan rumus tidak valid
+	missingImages int // gambar yang dirujuk tetapi tidak ada
+	noKey         int // soal non-esai tanpa kunci
+	archived      int // soal sudah diarsipkan di bank
+	notReady      int // soal berstatus draf/ditelaah
+	inReview      int
+	questions     int
 }
 
 func loadReadyFacts(ctx context.Context, q database.DBTX, e Exam, plan Plan) (readyFacts, error) {
@@ -90,17 +95,28 @@ func loadReadyFacts(ctx context.Context, q database.DBTX, e Exam, plan Plan) (re
 	for id := range ids {
 		list = append(list, id)
 	}
-	rows, err := q.Query(ctx, `SELECT kind, answer_key, status FROM exam_questions WHERE school_id = $1 AND id = ANY($2)`, e.SchoolID, list)
+	rows, err := q.Query(ctx, `SELECT q.kind, q.answer_key, q.status,
+		       q.body_html || q.options::text || q.explanation_html || coalesce(st.body_html, ''),
+		       q.body_src || q.options::text || q.explanation_src || coalesce(st.body_src, '')
+		FROM exam_questions q LEFT JOIN exam_stimuli st ON st.id = q.stimulus_id
+		WHERE q.school_id = $1 AND q.id = ANY($2)`, e.SchoolID, list)
 	if err != nil {
 		return f, fmt.Errorf("exam: readiness questions: %w", err)
 	}
 	defer rows.Close()
+	assets := map[string]bool{}
 	for rows.Next() {
 		var kind Kind
 		var raw []byte
-		var status string
-		if err := rows.Scan(&kind, &raw, &status); err != nil {
+		var status, html, src string
+		if err := rows.Scan(&kind, &raw, &status, &html, &src); err != nil {
 			return f, fmt.Errorf("exam: readiness questions: %w", err)
+		}
+		if strings.Contains(html, "math-error") {
+			f.mathErrors++
+		}
+		for _, m := range assetRefRe.FindAllStringSubmatch(src, -1) {
+			assets[m[1]] = true
 		}
 		f.questions++
 		var key AnswerKey
@@ -118,8 +134,27 @@ func loadReadyFacts(ctx context.Context, q database.DBTX, e Exam, plan Plan) (re
 			f.inReview++
 		}
 	}
-	return f, rows.Err()
+	if err := rows.Err(); err != nil {
+		return f, err
+	}
+	rows.Close()
+	if len(assets) > 0 {
+		ids := make([]string, 0, len(assets))
+		for id := range assets {
+			ids = append(ids, id)
+		}
+		var found int
+		if err := q.QueryRow(ctx, `SELECT count(*) FROM exam_assets WHERE school_id = $1 AND id = ANY($2)`, e.SchoolID, ids).Scan(&found); err != nil {
+			return f, fmt.Errorf("exam: readiness assets: %w", err)
+		}
+		f.missingImages = len(ids) - found
+	}
+	return f, nil
 }
+
+// assetRefRe menemukan gambar yang dirujuk di sumber teks kaya (termasuk
+// di dalam JSON opsi, dengan kutip ter-escape).
+var assetRefRe = regexp.MustCompile(`data-asset=\\?"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
 
 // present melaporkan apakah kunci jenis kind terisi.
 func (k AnswerKey) present(kind Kind) bool {
@@ -172,6 +207,17 @@ func CheckReadiness(ctx context.Context, q database.DBTX, e Exam, plan Plan, ses
 	it = ReadyItem{Key: "keys", Label: "Semua soal punya kunci jawaban", FixURL: soal, FixLabel: "Periksa soal", Level: ReadyOK}
 	if f.noKey > 0 {
 		it.Level, it.Hint = ReadyBlock, fmt.Sprintf("%d soal belum punya kunci.", f.noKey)
+	}
+	r.add(it)
+
+	it = ReadyItem{Key: "math", Label: "Semua rumus valid", FixURL: soal, FixLabel: "Periksa soal", Level: ReadyOK}
+	if f.mathErrors > 0 {
+		it.Level, it.Hint = ReadyBlock, fmt.Sprintf("%d soal memuat rumus yang tidak bisa ditampilkan.", f.mathErrors)
+	}
+	r.add(it)
+	it = ReadyItem{Key: "images", Label: "Semua gambar terunggah", FixURL: soal, FixLabel: "Periksa soal", Level: ReadyOK}
+	if f.missingImages > 0 {
+		it.Level, it.Hint = ReadyBlock, fmt.Sprintf("%d gambar soal tidak ditemukan.", f.missingImages)
 	}
 	r.add(it)
 
@@ -236,7 +282,84 @@ func CheckReadiness(ctx context.Context, q database.DBTX, e Exam, plan Plan, ses
 		it.Level, it.Hint = ReadyBlock, fmt.Sprintf("%d sesi lebih pendek dari durasi ujian (%d menit).", short, e.DurationMinutes)
 	}
 	r.add(it)
+	if len(sessions) == 0 {
+		return r, nil
+	}
+	if err := sessionReadiness(ctx, q, e, sessions, &r, jadwal, now); err != nil {
+		return r, err
+	}
 	return r, nil
+}
+
+// sessionReadiness menambahkan butir sesi (T136): pengawas, kartu, zona
+// waktu, dan ujian latihan.
+func sessionReadiness(ctx context.Context, q database.DBTX, e Exam, sessions []Session, r *Readiness, jadwal string, now time.Time) error {
+	noProctor := 0
+	ids := make([]string, 0, len(sessions))
+	cardsDue := false
+	var opens time.Time
+	for _, s := range sessions {
+		ids = append(ids, s.ID)
+		if s.Location == LocationRoom && len(s.ProctorIDs) == 0 {
+			noProctor++
+		}
+		if s.StartsAt.Sub(now) <= CardLead {
+			cardsDue = true
+		}
+		if o := s.StartsAt.Add(-CardLead); opens.IsZero() || o.Before(opens) {
+			opens = o
+		}
+	}
+	it := ReadyItem{Key: "proctors", Label: "Pengawas di setiap sesi di ruang", FixURL: jadwal, FixLabel: "Atur jadwal", Level: ReadyOK}
+	if e.Purpose.SchoolWide() {
+		it.FixURL, it.FixLabel = "/ujian/agenda", "Agenda"
+	}
+	if noProctor > 0 {
+		it.Level, it.Hint = ReadyBlock, fmt.Sprintf("%d sesi di ruang belum punya pengawas.", noProctor)
+	}
+	r.add(it)
+
+	loc, err := clock.ForSchool(ctx, q, e.SchoolID)
+	if err != nil {
+		return err
+	}
+	var withoutCard int
+	if err := q.QueryRow(ctx, `SELECT count(*) FROM exam_session_participants p WHERE p.session_id = ANY($1) AND NOT EXISTS (
+		SELECT 1 FROM student_credentials c WHERE c.exam_session_id = p.session_id AND c.revoked_at IS NULL
+		  AND c.student_id IS NOT DISTINCT FROM p.student_id AND c.applicant_id IS NOT DISTINCT FROM p.applicant_id)`, ids).Scan(&withoutCard); err != nil {
+		return fmt.Errorf("exam: readiness cards: %w", err)
+	}
+	it = ReadyItem{Key: "cards", Label: "Setiap peserta punya kartu dan kode", FixURL: examPath(e.ID) + "?tab=dokumen", FixLabel: "Cetak kartu", Level: ReadyOK}
+	switch {
+	case withoutCard == 0:
+	case cardsDue:
+		it.Level, it.Hint = ReadyWarn, fmt.Sprintf("%d peserta belum punya kartu.", withoutCard)
+	default:
+		it.Hint = "Kartu bisa dicetak mulai " + clock.FormatDateTimeID(opens, loc) + " (H-3)."
+	}
+	r.add(it)
+	r.add(ReadyItem{Key: "zone", Label: "Jadwal memakai zona waktu sekolah", Level: ReadyOK,
+		Hint: "Semua jam ditampilkan dalam " + clock.ZoneLabel(loc) + ". Ubah zona di profil sekolah bila salah.", FixURL: "/pengaturan/sekolah/"})
+
+	if e.Purpose == PurposePractice || e.Purpose == PurposeAdmission {
+		return nil
+	}
+	var notPracticed int
+	if err := q.QueryRow(ctx, `
+		SELECT count(DISTINCT p.student_id) FROM exam_session_participants p JOIN exam_sessions x ON x.id = p.session_id
+		WHERE p.session_id = ANY($1) AND p.student_id IS NOT NULL AND NOT EXISTS (
+			SELECT 1 FROM exam_session_participants pp
+			JOIN exam_sessions xx ON xx.id = pp.session_id AND xx.cancelled_at IS NULL AND xx.starts_at < x.starts_at
+			JOIN exams ee ON ee.id = xx.exam_id AND ee.purpose = 'latihan'
+			WHERE pp.student_id = p.student_id)`, ids).Scan(&notPracticed); err != nil {
+		return fmt.Errorf("exam: readiness practice: %w", err)
+	}
+	it = ReadyItem{Key: "practice", Label: "Siswa sudah mencoba ujian latihan", FixURL: "/ujian/latihan", FixLabel: "Buka latihan", Level: ReadyOK}
+	if notPracticed > 0 {
+		it.Level, it.Hint = ReadyWarn, fmt.Sprintf("%d siswa belum pernah ujian latihan sebelum ujian ini. Disarankan sekali sebelum ujian online pertama.", notPracticed)
+	}
+	r.add(it)
+	return nil
 }
 
 // ErrNotReady: cek kesiapan masih punya butir merah.

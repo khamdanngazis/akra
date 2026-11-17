@@ -1,0 +1,26 @@
+{{define "title"}}Cek Perangkat Ujian{{end}}
+{{define "bodyClass"}}page-auth{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}"><script defer src="{{ asset "js/exam-device.js" }}"></script>{{end}}
+{{define "content"}}
+{{template "auth_logo"}}
+<section class="card auth-card device-check" data-device-check data-server-level="{{.Verdict.Level}}">
+<h1>Cek perangkat ujian</h1>
+<p class="auth-sub">Buka halaman ini di HP atau komputer yang akan dipakai ujian, dengan sinyal yang sama seperti saat ujian.</p>
+<div class="device-verdict is-checking" data-verdict role="status" aria-live="polite">
+<strong data-verdict-title>Memeriksa…</strong>
+<span data-verdict-text>Tunggu sebentar.</span>
+</div>
+<ul class="device-list">
+<li class="is-{{.Verdict.Level}}" data-item="browser"><span class="device-mark" aria-hidden="true"></span><span><strong>Browser</strong><span class="block text-sm">{{.Verdict.Browser}} · {{.Verdict.Message}}</span></span></li>
+<li class="is-checking" data-item="features"><span class="device-mark" aria-hidden="true"></span><span><strong>Fitur ujian</strong><span class="block text-sm" data-detail>Memeriksa…</span></span></li>
+<li class="is-checking" data-item="network"><span class="device-mark" aria-hidden="true"></span><span><strong>Koneksi</strong><span class="block text-sm" data-detail>Mengukur kecepatan…</span></span></li>
+<li class="is-checking" data-item="math"><span class="device-mark" aria-hidden="true"></span><span><strong>Rumus matematika</strong><span class="block text-sm" data-detail>Memeriksa…</span>
+<span class="device-math" data-math>{{.Math}}</span></span></li>
+<li class="is-checking" data-item="sound"><span class="device-mark" aria-hidden="true"></span><span class="min-w-0 flex-1"><strong>Tes suara</strong>
+<span class="block text-sm" data-detail>Saat ujian di ruang, bunyi tanda terdengar bila peserta keluar dari halaman ujian.</span>
+<span class="action-row mt-2"><button type="button" class="btn btn-ghost btn-sm" data-sound-play>Putar bunyi</button>
+<button type="button" class="btn btn-ghost btn-sm" data-sound-yes hidden>Terdengar</button><button type="button" class="btn btn-ghost btn-sm" data-sound-no hidden>Tidak terdengar</button></span></span></li>
+</ul>
+<p class="hint mt-3">Halaman ini tidak meminta data apa pun dan tidak menyimpan hasil. Ulangi bila pindah tempat atau jaringan.</p>
+</section>
+{{end}}

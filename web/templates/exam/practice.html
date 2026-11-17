@@ -1,0 +1,49 @@
+{{define "title"}}Ujian Latihan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Ujian latihan" ""}}
+<div class="page-header">
+<div>
+<h1>Ujian Latihan</h1>
+<p class="muted">Siswa mencoba halaman ujian sebelum ujian sungguhan: ragu-ragu, grid nomor, offline, dan kumpulkan. Disarankan sekali sebelum ujian online pertama. Nilai latihan tidak dipakai.</p>
+</div>
+</div>
+{{template "flash" .}}
+<div class="wizard-aside-grid">
+<div class="stack">
+{{if .CanOpen}}
+<section class="card stack">
+<h2 class="card-title">Buka untuk kelas</h2>
+{{if .Classes}}
+<form method="post" action="/ujian/latihan" class="flex flex-wrap items-end gap-2">
+{{ csrfField }}
+<div class="field min-w-0 flex-1"><label for="class_id">Kelas</label><select id="class_id" name="class_id">{{range .Classes}}<option value="{{.ID}}">{{.Name}} ({{.Students}} siswa)</option>{{end}}</select></div>
+<button type="submit" class="btn btn-primary">Buka latihan</button>
+</form>
+<p class="hint">Dibuka mulai sekarang selama {{.Window}}, boleh dicoba dari rumah. Setelah dibuka, cetak kartu agar siswa bisa masuk dengan NIS dan kode.</p>
+{{else}}<p class="mb-0">Tidak ada kelas yang Anda ajar tahun ini.</p>{{end}}
+</section>
+{{end}}
+<section class="card stack">
+<h2 class="card-title">Sesi latihan</h2>
+{{if .Sessions}}
+<div class="table-wrap"><table>
+<thead><tr><th>Kelas</th><th>Waktu</th><th>Peserta</th><th></th></tr></thead>
+<tbody>
+{{range .Sessions}}<tr><td>{{.Title}}{{if .Active}} <span class="badge badge-success">Dibuka</span>{{end}}</td><td>{{.When}}</td><td>{{.Participants}}{{if .Issued}} · {{.Issued}} kartu{{end}}</td>
+<td>{{if .CanCard}}<form method="post" action="/ujian/latihan/{{.ID}}/kartu">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">{{if .Issued}}Cetak ulang kartu{{else}}Cetak kartu{{end}}</button></form>{{end}}</td></tr>{{end}}
+</tbody>
+</table></div>
+{{else}}<p class="mb-0">Belum ada kelas yang membuka latihan.</p>{{end}}
+</section>
+</div>
+<aside class="wizard-aside">
+<section class="card stack">
+<h2 class="card-title">{{.Exam.Name}}</h2>
+<p class="text-sm mb-0">{{.Comp.Count}} soal: {{range $i, $q := .Questions}}{{if $i}}, {{end}}{{$q}}{{end}}. Hasil dan pembahasan langsung terlihat, boleh mengulang.</p>
+<a class="btn btn-ghost btn-sm" href="{{.ExamLink}}">Lihat soal</a>
+<p class="hint mb-0">Bagikan juga <a href="/u/cek" target="_blank" rel="noopener">halaman cek perangkat</a> ke siswa H-7 agar masalah HP ketahuan lebih awal.</p>
+</section>
+</aside>
+</div>
+{{end}}

@@ -2828,6 +2828,21 @@
   .section-edit > summary, .rule-form > summary { @apply list-none; }
   .schedule-table input, .schedule-table select { @apply min-w-28; }
 
+  /* Cek perangkat peserta (T136). */
+  .device-verdict { @apply mb-3 mt-3 flex flex-col rounded-xl border p-3; }
+  .device-verdict strong { @apply text-lg; }
+  .device-verdict.is-checking { @apply border-slate-200 bg-slate-50; }
+  .device-verdict.is-ok { @apply border-green-300 bg-green-50 text-green-900; }
+  .device-verdict.is-warn { @apply border-amber-300 bg-amber-50 text-amber-900; }
+  .device-verdict.is-fail { @apply border-red-300 bg-red-50 text-red-900; }
+  .device-list { @apply m-0 flex list-none flex-col gap-2 p-0; }
+  .device-list > li { @apply flex items-start gap-3 rounded-xl border border-slate-200 p-3; }
+  .device-mark { @apply mt-1 size-3 flex-none rounded-full bg-slate-300; }
+  .device-list > li.is-ok .device-mark { @apply bg-green-500; }
+  .device-list > li.is-warn .device-mark { @apply bg-amber-500; }
+  .device-list > li.is-fail .device-mark { @apply bg-red-500; }
+  .device-math { @apply mt-2 block text-lg; }
+
   /* Agenda PTS/PAS (T134). */
   .event-grid th[scope="row"] { @apply min-w-40 align-top; }
   .event-grid tr.day-start > * { @apply border-t-2 border-t-slate-300; }

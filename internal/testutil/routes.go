@@ -307,6 +307,17 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/u/{code}", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/beranda", Kind: KindPublic},
 	{Method: "POST", Pattern: "/u/keluar", Kind: KindPublic},
+	// Cek perangkat (T136): publik, tanpa data sekolah.
+	{Method: "GET", Pattern: "/u/cek", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/cek/ping", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/cek/contoh.jpg", Kind: KindPublic},
+
+	// Ujian latihan bawaan (T136).
+	{Method: "GET", Pattern: "/ujian/latihan", Kind: KindPage, Roles: examStaff},
+	{Method: "POST", Pattern: "/ujian/latihan", Kind: KindFormRef, Roles: examWriters,
+		Requests: post(func(*School) string { return "/ujian/latihan" }, func(o *School) url.Values { return url.Values{"class_id": {o.ClassID}} })},
+	{Method: "POST", Pattern: "/ujian/latihan/{sesi}/kartu", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/latihan/" + o.ExamPracticeSessionID + "/kartu" }, nil)},
 
 	// Bank soal dan TP (T127). Kepala sekolah hanya baca.
 	{Method: "GET", Pattern: "/ujian/bank/", Kind: KindPage, Roles: examStaff},

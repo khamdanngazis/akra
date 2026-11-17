@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/auth"
+	"akra/internal/exam/mathrender"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
@@ -43,6 +44,7 @@ type ParticipantHandler struct {
 	limiter  *ratelimit.Limiter
 	secure   bool
 	now      func() time.Time
+	math     *mathrender.Renderer // contoh rumus di cek perangkat
 }
 
 // NewParticipantHandler mengembalikan ParticipantHandler. sessions harus
@@ -63,6 +65,10 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 		})
 		// Peserta (atau tanpa sesi): keluar.
 		r.Post("/keluar", h.logout)
+		// Publik: cek perangkat sebelum ujian (T136), tanpa login.
+		r.Get("/cek", h.deviceCheck)
+		r.Get("/cek/ping", h.devicePing)
+		r.Get("/cek/contoh.jpg", h.deviceSample)
 		// Publik: petunjuk bila peserta belum/tidak lagi masuk.
 		r.Get("/", h.index)
 		// Publik: login peserta per sekolah.

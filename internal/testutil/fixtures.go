@@ -103,6 +103,9 @@ type School struct {
 	// ruang itu, satu jam (ExamSlotID), dan sel mapel SubjectID
 	// (ExamCellID) tanpa ujian (T134).
 	ExamRoomID, ExamEventID, ExamSlotID, ExamCellID string
+	// ExamPracticeSessionID adalah sesi paket latihan bawaan untuk ClassID
+	// (T136).
+	ExamPracticeSessionID string
 }
 
 // Users mengembalikan semua pengguna sekolah.
@@ -308,6 +311,13 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 		s.ID, s.ExamEventID)
 	s.ExamCellID = one(`INSERT INTO exam_event_cells (school_id, event_id, slot_id, grade_level, subject_id) VALUES ($1, $2, $3, 1, $4) RETURNING id`,
 		s.ID, s.ExamEventID, s.ExamSlotID, s.SubjectID)
+
+	practice := one(`INSERT INTO exams (school_id, name, purpose, duration_minutes, owner_id, created_by, builtin, status, results_mode,
+		results_after_all, max_attempts, shuffle_questions, shuffle_options)
+		VALUES ($1, 'Latihan Antarmuka Ujian', 'latihan', 30, $2, $2, true, 'terjadwal', 'nilai_dan_pembahasan', false, 5, false, false) RETURNING id`, s.ID, s.Admin.ID)
+	exec(`INSERT INTO exam_sections (school_id, exam_id, position) VALUES ($1, $2, 1)`, s.ID, practice)
+	s.ExamPracticeSessionID = one(`INSERT INTO exam_sessions (school_id, exam_id, class_id, label, location, starts_at, ends_at, created_by)
+		VALUES ($1, $2, $3, 'Latihan', 'jarak_jauh', '2030-01-06 01:00+00', '2030-01-09 01:00+00', $4) RETURNING id`, s.ID, practice, s.ClassID, s.Admin.ID)
 
 	var rows importer.Rows
 	rows.Data = []importer.Row{{Line: 2, Values: [importer.NumColumns]string{key + "-900", "Impor " + marker, "", "", s.ClassName}}}

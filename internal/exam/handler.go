@@ -43,6 +43,7 @@ func (h *Handler) Routes(r chi.Router) {
 		h.bankRoutes(r)
 		h.examRoutes(r)
 		h.eventRoutes(r)
+		h.practiceRoutes(r)
 		h.settingsRoutes(r)
 	})
 }
@@ -85,6 +86,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Path: "/ujian/bank/", Release: R1, Ready: true}, ActBank},
 		{section{Title: "Tes seleksi", Desc: "Tes online calon siswa; nilai langsung masuk ke peringkat pendaftaran.", Path: "/ujian/paket/", Release: R1, Ready: true}, ActAdmissionTest},
 		{section{Title: "Ulangan kelas", Desc: "Ulangan dan ujian latihan untuk kelas yang Anda ampu, dari bank soal.", Path: "/ujian/paket/", Release: R2, Ready: true}, ActClassExam},
+		{section{Title: "Ujian latihan", Desc: "Siswa mencoba halaman ujian sebelum ujian sungguhan. Buka untuk satu kelas dalam satu klik.", Path: "/ujian/latihan", Release: R1, Ready: true}, ActClassExam},
 		{section{Title: "Agenda PTS/PAS", Desc: "Jadwal mapel per hari, ruang, sesi, pengawas, dan kartu peserta.", Path: "/ujian/agenda", Release: R3, Ready: true}, ActAgenda},
 	}
 	v := homeView{User: id, Module: m}
