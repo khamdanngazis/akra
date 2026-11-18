@@ -27,10 +27,23 @@ func (h *ParticipantHandler) takeRoutes(r chi.Router) {
 	r.Get("/ujian/{session}", h.confirm)
 	r.Post("/ujian/{session}/mulai", h.start)
 	r.Get("/a/{attempt}", h.take)
-	r.Post("/a/{attempt}/simpan", h.save)
 	r.Post("/a/{attempt}/kumpul", h.submit)
 	r.Get("/a/{attempt}/selesai", h.done)
 	r.Get("/a/{attempt}/gambar/{asset}", h.image)
+}
+
+// WithTokens memasang penanda tangan token attempt (T139).
+func (h *ParticipantHandler) WithTokens(t *TokenSigner) *ParticipantHandler {
+	h.tokens = t
+	return h
+}
+
+// TokenRoutes mendaftarkan route bertoken attempt. Dipasang di luar
+// middleware sesi dan CSRF: ribuan peserta menyimpan jawaban bersamaan,
+// dan membaca sesi di setiap simpan tidak layak (ADR 0001 bagian 4).
+func (h *ParticipantHandler) TokenRoutes(r chi.Router) {
+	// Peserta (token attempt di header): simpan jawaban.
+	r.Post("/u/a/{attempt}/simpan", h.save)
 }
 
 func (h *ParticipantHandler) deviceID(r *http.Request) string {
@@ -181,7 +194,8 @@ type takeState struct {
 	Now      int64                  `json:"now"`
 	Back     bool                   `json:"back"`
 	Sound    bool                   `json:"sound"`
-	Key      string                 `json:"key"` // kunci penyimpanan preferensi tampilan
+	Key      string                 `json:"key"`   // kunci penyimpanan preferensi tampilan
+	Token    string                 `json:"token"` // token attempt untuk simpan (T139)
 }
 
 type takeView struct {
@@ -235,10 +249,15 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, nil, "attempt answers", err)
 		return
 	}
+	token, err := h.tokens.TokenFor(a)
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, nil, "attempt token", err)
+		return
+	}
 	owner := p.StudentID + p.ApplicantID
 	v := takeView{Participant: p, Info: info, Attempt: a, Delivery: d, State: takeState{IDs: a.QuestionOrder, Answers: answers,
 		Pos: a.CurrentPosition, Deadline: a.DeadlineAt.UnixMilli(), Now: now.UnixMilli(), Back: e.AllowBack, Sound: info.AlertSound(),
-		Key: "akra-ujian-" + owner}}
+		Key: "akra-ujian-" + owner, Token: token}}
 	// Halaman berisi soal: jangan disimpan cache bersama atau riwayat.
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
@@ -259,23 +278,26 @@ type saveRequest struct {
 
 type saveResponse struct {
 	OK       bool   `json:"ok"`
+	Seq      int64  `json:"seq,omitempty"` // seq tertinggi yang sudah aman di server
 	Closed   bool   `json:"closed,omitempty"`
 	Redirect string `json:"redirect,omitempty"`
 	Now      int64  `json:"now"`
 	Deadline int64  `json:"deadline,omitempty"`
 }
 
+// save menyimpan perubahan jawaban (T139). Hanya memverifikasi token
+// attempt (CPU) lalu menjalankan satu pernyataan SQL; tidak membaca sesi
+// peserta. Attempt yang sudah dikumpulkan, dipindah perangkat, atau lewat
+// tenggat + tenggang dijawab 409.
 func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
-	p, _ := auth.CurrentParticipant(r.Context())
 	now := h.now()
-	a, err := GetAttempt(r.Context(), h.db, p, chi.URLParam(r, "attempt"))
-	if errors.Is(err, ErrNotFound) {
-		writeJSON(w, http.StatusNotFound, saveResponse{Now: now.UnixMilli()})
-		return
-	}
-	if err != nil {
-		h.logger.ErrorContext(r.Context(), "save answers", "error", err)
-		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
+	w.Header().Set("Cache-Control", "no-store")
+	id := chi.URLParam(r, "attempt")
+	c, err := h.tokens.Verify(r.Header.Get(AttemptTokenHeader), now)
+	if err != nil || c.AttemptID != id {
+		// Token kedaluwarsa/salah: halaman dimuat ulang untuk token baru
+		// (lewat sesi peserta); jawaban tetap di antrian perangkat.
+		writeJSON(w, http.StatusUnauthorized, saveResponse{Redirect: "/u/a/" + id, Now: now.UnixMilli()})
 		return
 	}
 	var req saveRequest
@@ -288,18 +310,17 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 	if req.Pos != nil {
 		pos = *req.Pos
 	}
-	res, err := SaveAnswers(r.Context(), h.db, p.SchoolID, a.ID, h.deviceID(r), req.Changes, pos, now)
+	res, err := SaveAnswers(r.Context(), h.db, c.SchoolID, c.AttemptID, c.DeviceID, req.Changes, pos, now)
 	switch {
 	case errors.Is(err, ErrAttemptClosed):
-		writeJSON(w, http.StatusConflict, saveResponse{Closed: true, Redirect: "/u/a/" + a.ID, Now: now.UnixMilli()})
+		writeJSON(w, http.StatusConflict, saveResponse{Closed: true, Redirect: "/u/a/" + id, Now: now.UnixMilli()})
 	case errors.Is(err, ErrBadAnswer):
 		writeJSON(w, http.StatusBadRequest, saveResponse{Now: now.UnixMilli()})
 	case err != nil:
-		h.logger.ErrorContext(r.Context(), "save answers", "attempt_id", a.ID, "error", err)
+		h.logger.ErrorContext(r.Context(), "save answers", "attempt_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
 	default:
-		w.Header().Set("Cache-Control", "no-store")
-		writeJSON(w, http.StatusOK, saveResponse{OK: true, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli()})
+		writeJSON(w, http.StatusOK, saveResponse{OK: true, Seq: res.Seq, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli()})
 	}
 }
 

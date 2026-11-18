@@ -17,7 +17,7 @@
 <script defer src="{{ asset "js/exam-take.js" }}"></script>
 </head>
 <body class="take-body">
-<div class="take" data-take data-size="m" data-save-url="/u/a/{{.Attempt.ID}}/simpan">
+<div class="take" data-take data-size="m" data-attempt="{{.Attempt.ID}}" data-save-url="/u/a/{{.Attempt.ID}}/simpan">
 <header class="take-head">
 <div class="take-who min-w-0"><strong>{{.Participant.Name}}</strong><span>{{.Info.ExamName}}{{with .Info.Subject}} · {{.}}{{end}}</span></div>
 <div class="take-timer" data-timer><span class="sr-only">Sisa waktu </span><span data-timer-text>--:--</span></div>
@@ -110,7 +110,7 @@
 <h2 id="sum-title" class="card-title">Periksa sebelum mengumpulkan</h2>
 <p class="take-sum-line" data-sum-line></p>
 <div data-sum-lists></div>
-<p class="hint" data-sum-offline hidden>Belum semua jawaban terkirim. Hubungkan internet untuk mengumpulkan; jawaban tidak hilang dan waktu tetap berjalan.</p>
+<p class="hint" data-sum-offline hidden>Belum semua jawaban terkirim. Hubungkan internet untuk mengumpulkan. Jawaban tidak hilang, waktu tetap berjalan.</p>
 <div class="action-row mt-3"><button type="button" class="btn btn-ghost" data-close>Kembali mengerjakan</button><button type="button" class="btn btn-primary" data-to-step2>Kumpulkan</button></div>
 </div>
 <div data-step="2" hidden>

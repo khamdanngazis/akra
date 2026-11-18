@@ -126,6 +126,18 @@ func newRouter(d routerDeps) http.Handler {
 	// staf di bawah tidak pernah membaca sesi ini, dan cookie peserta hanya
 	// berlaku di path /u.
 	if d.participant != nil {
+		// Simpan jawaban (T139): token attempt di header, tanpa sesi dan
+		// tanpa CSRF (ADR 0001 bagian 4).
+		r.Group(func(r chi.Router) {
+			r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
+			r.Use(compress)
+			d.participant.TokenRoutes(r)
+		})
+		// Service worker halaman ujian (T139): di bawah /u agar boleh
+		// mengendalikan /u/a/. Selalu divalidasi ulang agar versi baru
+		// segera terpasang.
+		sw := compress(serviceWorker(d.static))
+		r.Get("/u/sw.js", sw.ServeHTTP)
 		r.Group(func(r chi.Router) {
 			r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
 			r.Use(compress)
@@ -186,4 +198,20 @@ func newRouter(d routerDeps) http.Handler {
 	})
 
 	return r
+}
+
+// serviceWorker menyajikan js/exam-sw.js dari aset statis sebagai
+// /u/sw.js.
+func serviceWorker(static fs.FS) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := fs.ReadFile(static, "js/exam-sw.js")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = w.Write(b)
+	})
 }

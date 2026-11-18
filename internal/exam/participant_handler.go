@@ -47,6 +47,7 @@ type ParticipantHandler struct {
 	now      func() time.Time
 	math     *mathrender.Renderer // contoh rumus di cek perangkat
 	store    storage.Store        // gambar soal di halaman ujian
+	tokens   *TokenSigner         // token attempt untuk simpan jawaban (T139)
 }
 
 // NewParticipantHandler mengembalikan ParticipantHandler. sessions harus
@@ -54,7 +55,7 @@ type ParticipantHandler struct {
 // luar grup sesi staf.
 func NewParticipantHandler(db database.DB, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger, secure bool) *ParticipantHandler {
 	return &ParticipantHandler{db: db, sessions: sessions, render: render, logger: logger,
-		limiter: ratelimit.New(db, participantLimits), secure: secure, now: time.Now}
+		limiter: ratelimit.New(db, participantLimits), secure: secure, now: time.Now, tokens: DevTokenSigner()}
 }
 
 // Routes mendaftarkan route peserta.

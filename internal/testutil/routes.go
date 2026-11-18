@@ -312,7 +312,10 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/u/ujian/{session}", Kind: KindPublic},
 	{Method: "POST", Pattern: "/u/ujian/{session}/mulai", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/a/{attempt}", Kind: KindPublic},
+	// Token attempt di header, di luar sesi dan CSRF (T139).
 	{Method: "POST", Pattern: "/u/a/{attempt}/simpan", Kind: KindPublic},
+	// Service worker halaman ujian (T139).
+	{Method: "GET", Pattern: "/u/sw.js", Kind: KindPublic},
 	{Method: "POST", Pattern: "/u/a/{attempt}/kumpul", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/a/{attempt}/selesai", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/a/{attempt}/gambar/{asset}", Kind: KindPublic},
