@@ -27,6 +27,7 @@ func registerWorkers(workers *jobs.Workers, pool *pgxpool.Pool, store storage.St
 	}
 	river.AddWorker(workers, &exam.ImportWorker{DB: pool, Store: store, Math: math, Logger: logger})
 	river.AddWorker(workers, &exam.AdvanceWorker{DB: pool, Logger: logger})
+	river.AddWorker(workers, &exam.AutoSubmitWorker{DB: pool, Logger: logger})
 	river.AddWorker(workers, &jobs.PingWorker{Logger: logger})
 	river.AddWorker(workers, billing.NewBulkInvoiceWorker(pool, logger))
 	river.AddWorker(workers, reports.NewExportWorker(pool, store, logger))
@@ -38,5 +39,6 @@ func registerWorkers(workers *jobs.Workers, pool *pgxpool.Pool, store storage.St
 
 // periodicJobs adalah job terjadwal.
 func periodicJobs() []*river.PeriodicJob {
-	return []*river.PeriodicJob{reports.CleanupPeriodicJob(), admission.RetentionPeriodicJob(), exam.AdvancePeriodicJob()}
+	return []*river.PeriodicJob{reports.CleanupPeriodicJob(), admission.RetentionPeriodicJob(), exam.AdvancePeriodicJob(),
+		exam.AutoSubmitPeriodicJob()}
 }

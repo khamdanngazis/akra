@@ -31,6 +31,9 @@ const (
 const (
 	SubmitByParticipant = "peserta"
 	SubmitByTime        = "waktu"
+	// SubmitBySystem: dikumpulkan job karena lewat tenggat dan perangkat
+	// tidak mengumpulkan sendiri (HP mati, browser ditutup; T140).
+	SubmitBySystem = "sistem"
 )
 
 // Attempt adalah satu kali mengerjakan ujian.
@@ -51,10 +54,20 @@ type Attempt struct {
 	SubmittedAt     *time.Time
 	SubmitReason    string
 	CurrentPosition int
+	// PausedAt: attempt sedang dijeda sejak waktu ini (T140).
+	PausedAt *time.Time
+	PausedMS int64 // total jeda yang sudah selesai
 }
 
 // Running melaporkan apakah attempt masih bisa dikerjakan.
 func (a Attempt) Running() bool { return a.Status == AttemptRunning }
+
+// Expired melaporkan apakah attempt berjalan sudah lewat tenggat +
+// tenggang sehingga tidak menerima jawaban lagi. Attempt yang dijeda tidak
+// pernah kedaluwarsa: waktunya berhenti.
+func (a Attempt) Expired(now time.Time) bool {
+	return a.Running() && a.PausedAt == nil && !now.Before(a.DeadlineAt.Add(SaveGrace))
+}
 
 // OptionOrder adalah urutan opsi satu soal hasil acak (ID opsi).
 type OptionOrder struct {
@@ -75,6 +88,8 @@ var (
 	ErrNoAttemptsLeft = errors.New("exam: no attempts left")
 	// ErrAttemptClosed: attempt sudah dikumpulkan atau lewat tenggat.
 	ErrAttemptClosed = errors.New("exam: attempt closed")
+	// ErrSessionPaused: sesi sedang dijeda pengawas.
+	ErrSessionPaused = errors.New("exam: session paused")
 )
 
 // SaveGrace adalah tenggang setelah tenggat: jawaban yang terkirim sedikit
@@ -90,8 +105,8 @@ type SessionInfo struct {
 	ExamName      string
 	Purpose       Purpose
 	Subject       string
-	Duration      int // menit, termasuk waktu tambahan peserta
-	ExtraMinutes  int
+	Duration      int // menit, termasuk waktu tambahan peserta dan sesi
+	ExtraMinutes  int // waktu tambahan peserta
 	Questions     int
 	MaxAttempts   int
 	Location      string
@@ -99,6 +114,8 @@ type SessionInfo struct {
 	StartsAt      time.Time
 	EndsAt        time.Time
 	Cancelled     bool
+	Paused        bool   // sesi sedang dijeda
+	LatePolicy    string // aturan terlambat masuk (T140)
 	Locked        bool
 	Last          *Attempt // attempt terakhir (bila ada)
 	Attempts      int
@@ -111,7 +128,7 @@ func (s SessionInfo) AlertSound() bool { return s.Location == "di_ruang" }
 // Phase adalah keadaan sesi untuk peserta pada waktu now.
 func (s SessionInfo) Phase(now time.Time) string {
 	switch {
-	case s.Last != nil && s.Last.Running() && now.Before(s.Last.DeadlineAt.Add(SaveGrace)):
+	case s.Last != nil && s.Last.Running() && !s.Last.Expired(now):
 		return "berjalan"
 	case s.Cancelled:
 		return "batal"
@@ -133,7 +150,8 @@ func ownerArgs(p auth.Participant) (any, any) {
 }
 
 const sessionInfoCols = `p.id, x.id, e.id, e.name, e.purpose, coalesce(sub.name, ''), e.duration_minutes, p.extra_minutes,
-	e.max_attempts, x.location, x.token_required, x.starts_at, x.ends_at, x.cancelled_at IS NOT NULL, e.locked_at IS NOT NULL,
+	e.max_attempts, x.location, x.token_required, x.starts_at, x.ends_at, x.cancelled_at IS NOT NULL, x.paused_at IS NOT NULL,
+	x.extra_minutes, x.late_policy, e.locked_at IS NOT NULL,
 	(SELECT count(*) FROM exam_variant_items vi WHERE vi.variant_id = p.variant_id),
 	(SELECT count(*) FROM exam_attempts t WHERE t.participant_id = p.id)`
 
@@ -148,10 +166,12 @@ func scanSessionInfo(r pgx.Row) (SessionInfo, error) {
 	var s SessionInfo
 	var questions, attempts int64
 	var purpose string
+	var sessionExtra int
 	err := r.Scan(&s.ParticipantID, &s.SessionID, &s.ExamID, &s.ExamName, &purpose, &s.Subject, &s.Duration, &s.ExtraMinutes,
-		&s.MaxAttempts, &s.Location, &s.TokenRequired, &s.StartsAt, &s.EndsAt, &s.Cancelled, &s.Locked, &questions, &attempts)
+		&s.MaxAttempts, &s.Location, &s.TokenRequired, &s.StartsAt, &s.EndsAt, &s.Cancelled, &s.Paused, &sessionExtra, &s.LatePolicy, &s.Locked,
+		&questions, &attempts)
 	s.Purpose, s.Questions, s.Attempts = Purpose(purpose), int(questions), int(attempts)
-	s.Duration += s.ExtraMinutes
+	s.Duration += s.ExtraMinutes + sessionExtra
 	return s, err
 }
 
@@ -204,13 +224,13 @@ func GetSessionInfo(ctx context.Context, q database.DBTX, p auth.Participant, se
 }
 
 const attemptCols = `id, school_id, exam_id, session_id, participant_id, attempt_no, variant_id, question_order::text[], option_order,
-	status, device_id::text, started_at, deadline_at, submitted_at, coalesce(submit_reason, ''), current_position`
+	status, device_id::text, started_at, deadline_at, submitted_at, coalesce(submit_reason, ''), current_position, paused_at, paused_ms`
 
 func scanAttempt(r pgx.Row) (Attempt, error) {
 	var a Attempt
 	var opts []byte
 	err := r.Scan(&a.ID, &a.SchoolID, &a.ExamID, &a.SessionID, &a.ParticipantID, &a.No, &a.VariantID, &a.QuestionOrder, &opts,
-		&a.Status, &a.DeviceID, &a.StartedAt, &a.DeadlineAt, &a.SubmittedAt, &a.SubmitReason, &a.CurrentPosition)
+		&a.Status, &a.DeviceID, &a.StartedAt, &a.DeadlineAt, &a.SubmittedAt, &a.SubmitReason, &a.CurrentPosition, &a.PausedAt, &a.PausedMS)
 	if err != nil {
 		return a, err
 	}
@@ -286,11 +306,14 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 		var cancelled bool
 		var startsAt, endsAt time.Time
 		var token *string
-		var tokenRequired bool
-		if err := tx.QueryRow(ctx, `SELECT p.variant_id, x.cancelled_at IS NOT NULL, x.starts_at, x.ends_at, x.token_required, x.token
+		var tokenRequired, paused bool
+		var latePolicy string
+		var participantExtra, sessionExtra int
+		if err := tx.QueryRow(ctx, `SELECT p.variant_id, x.cancelled_at IS NOT NULL, x.starts_at, x.ends_at, x.token_required, x.token,
+				x.paused_at IS NOT NULL, x.late_policy, p.extra_minutes, x.extra_minutes
 			FROM exam_session_participants p JOIN exam_sessions x ON x.id = p.session_id
 			WHERE p.school_id = $1 AND p.id = $2 FOR UPDATE OF p`, p.SchoolID, info.ParticipantID).
-			Scan(&variantID, &cancelled, &startsAt, &endsAt, &tokenRequired, &token); err != nil {
+			Scan(&variantID, &cancelled, &startsAt, &endsAt, &tokenRequired, &token, &paused, &latePolicy, &participantExtra, &sessionExtra); err != nil {
 			return fmt.Errorf("exam: lock participant: %w", err)
 		}
 		running, err := scanAttempt(tx.QueryRow(ctx, `SELECT `+attemptCols+` FROM exam_attempts
@@ -321,6 +344,8 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 			return ErrNoAttemptsLeft
 		case variantID == nil || !e.Locked():
 			return ErrNotFound
+		case paused:
+			return ErrSessionPaused
 		}
 		if tokenRequired {
 			given := NormalizeToken(req.Token)
@@ -337,9 +362,11 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 		}
 		seed := rand.Int63()
 		order, opts := arrange(paper, e, seed)
-		deadline := req.Now.Add(time.Duration(e.DurationMinutes+info.ExtraMinutes) * time.Minute)
-		if deadline.After(endsAt) {
-			deadline = endsAt
+		deadline := ComputeDeadline(DeadlineInput{StartedAt: req.Now, SessionStart: startsAt, SessionEnd: endsAt, LatePolicy: latePolicy,
+			DurationMinutes: e.DurationMinutes, ParticipantExtra: participantExtra, SessionExtra: sessionExtra})
+		if !deadline.After(req.Now) {
+			// Aturan potong: keterlambatan menghabiskan seluruh waktu.
+			return ErrSessionOver
 		}
 		optJSON, err := json.Marshal(opts)
 		if err != nil {
@@ -478,6 +505,8 @@ var ErrBadAnswer = errors.New("exam: invalid answer payload")
 // SaveResult adalah balasan simpan.
 type SaveResult struct {
 	Deadline time.Time
+	// PausedAt: attempt sedang dijeda (layar peserta dikunci).
+	PausedAt *time.Time
 	// Seq adalah seq tertinggi dalam batch. Semua perubahan sampai seq ini
 	// aman di server: tersimpan, atau tergantikan jawaban yang lebih baru.
 	Seq int64
@@ -485,7 +514,7 @@ type SaveResult struct {
 
 // SaveAnswers menyimpan perubahan jawaban attempt dalam satu pernyataan
 // SQL: attempt harus masih berjalan, dari perangkat yang sama, dan belum
-// lewat tenggat + tenggang. Perubahan dengan seq tidak lebih besar dari
+// lewat tenggat + tenggang (attempt yang dijeda tetap menerima antrian). Perubahan dengan seq tidak lebih besar dari
 // yang tersimpan diabaikan. pos (indeks soal terakhir dibuka) disimpan
 // bila >= 0. ErrAttemptClosed bila attempt tidak lagi menerima jawaban.
 func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, deviceID string, changes []AnswerChange, pos int, now time.Time) (SaveResult, error) {
@@ -520,10 +549,12 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	}
 	var found bool
 	var deadline time.Time
+	var pausedAt *time.Time
 	err := q.QueryRow(ctx, `
 		WITH a AS (
-			SELECT id, school_id, question_order, deadline_at FROM exam_attempts
-			WHERE school_id = $1 AND id = $2 AND status = 'berjalan' AND device_id = $3 AND deadline_at + $4::interval > $5),
+			SELECT id, school_id, question_order, deadline_at, paused_at FROM exam_attempts
+			WHERE school_id = $1 AND id = $2 AND status = 'berjalan' AND device_id = $3
+			  AND (paused_at IS NOT NULL OR deadline_at + $4::interval > $5)),
 		ins AS (
 			INSERT INTO exam_answers (school_id, attempt_id, question_id, value, flagged, client_seq, saved_at)
 			SELECT a.school_id, a.id, u.q, u.v, u.f, u.s, $5
@@ -537,8 +568,8 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 			UPDATE exam_attempts t SET current_position = least($10::int, cardinality(a.question_order) - 1)
 			FROM a WHERE t.id = a.id AND $10::int >= 0 AND t.current_position <> $10::int
 			RETURNING 1)
-		SELECT EXISTS (SELECT 1 FROM a), coalesce((SELECT deadline_at FROM a), $5)`,
-		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, pos).Scan(&found, &deadline)
+		SELECT EXISTS (SELECT 1 FROM a), coalesce((SELECT deadline_at FROM a), $5), (SELECT paused_at FROM a)`,
+		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, pos).Scan(&found, &deadline, &pausedAt)
 	if err != nil {
 		return SaveResult{}, fmt.Errorf("exam: save answers: %w", err)
 	}
@@ -549,7 +580,7 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	for _, x := range ss {
 		maxSeq = max(maxSeq, x)
 	}
-	return SaveResult{Deadline: deadline, Seq: maxSeq}, nil
+	return SaveResult{Deadline: deadline, PausedAt: pausedAt, Seq: maxSeq}, nil
 }
 
 // SubmitAttempt mengumpulkan attempt. Jawaban yang sudah tersimpan
@@ -562,7 +593,8 @@ func SubmitAttempt(ctx context.Context, db database.DB, p auth.Participant, a At
 	var out Attempt
 	err := pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
 		var err error
-		out, err = scanAttempt(tx.QueryRow(ctx, `UPDATE exam_attempts SET status = 'dikumpulkan', submitted_at = $3, submit_reason = $4
+		out, err = scanAttempt(tx.QueryRow(ctx, `UPDATE exam_attempts SET status = 'dikumpulkan', submitted_at = $3, submit_reason = $4,
+				paused_at = NULL
 			WHERE school_id = $1 AND id = $2 AND status = 'berjalan' RETURNING `+attemptCols, a.SchoolID, a.ID, now, reason))
 		if errors.Is(err, pgx.ErrNoRows) {
 			out, err = scanAttempt(tx.QueryRow(ctx, `SELECT `+attemptCols+` FROM exam_attempts WHERE id = $1`, a.ID))

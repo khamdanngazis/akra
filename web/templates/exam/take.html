@@ -128,6 +128,13 @@
 <p class="hint m-0">Layar penuh akan dinyalakan.</p>
 </div>
 </div>
+<div class="take-cover take-pause" data-pause role="alertdialog" aria-modal="true" aria-labelledby="take-pause-title" aria-describedby="take-pause-text" hidden>
+<div class="card take-cover-card">
+<h2 class="text-lg font-bold" id="take-pause-title">Ujian dijeda</h2>
+<p class="mb-0" id="take-pause-text">Pengawas menjeda ujian. Tunggu instruksi pengawas; halaman ini terbuka lagi dengan sendirinya. Jangan tutup halaman.</p>
+<p class="mb-0">Sisa waktu <strong data-pause-left>--:--</strong>, tidak berkurang selama jeda.</p>
+</div>
+</div>
 <div class="take-banner" data-banner role="alert" hidden></div>
 <div class="take-zoom" data-zoom hidden><img alt="" data-zoom-img><button type="button" class="take-icon-btn" data-zoom-close aria-label="Tutup gambar">✕</button></div>
 <form method="post" action="/u/a/{{.Attempt.ID}}/kumpul" data-submit-form hidden>{{ csrfField }}<input type="hidden" name="alasan" value="peserta"></form>
