@@ -1,13 +1,18 @@
 // Halaman mengerjakan ujian (T138): satu soal per layar, grid nomor,
 // ragu-ragu, simpan otomatis, hitung mundur, ringkasan dan kumpul dua
 // langkah. Tanpa pustaka; jalan di Chrome Android lama.
+//
+// Simpan dan offline (T139): setiap perubahan ditulis dulu ke IndexedDB
+// (salinan jawaban per attempt), lalu dikirim dengan token attempt.
+// Service worker (/u/sw.js) menyimpan halaman, aset, dan gambar soal agar
+// muat ulang saat offline tetap membuka ujian dengan jawaban terakhir.
 (function () {
   "use strict";
 
   var root = document.querySelector("[data-take]");
   if (!root) return;
   var state = JSON.parse(document.getElementById("take-state").textContent);
-  var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || "";
+  var attemptID = root.getAttribute("data-attempt");
   var saveURL = root.getAttribute("data-save-url");
   var qs = Array.prototype.slice.call(root.querySelectorAll("[data-q]"));
   var cells = Array.prototype.slice.call(root.querySelectorAll("[data-goto]"));
@@ -25,6 +30,75 @@
   var offset = state.now - Date.now(); // jam server − jam perangkat
   var deadline = state.deadline;
   var submitting = false;
+
+  // ---- Penyimpanan di perangkat (IndexedDB). ----
+  // outbox: satu baris per soal {q, v, f, s, ok}; ok = sudah diterima
+  // server. Baris yang sudah terkirim tetap disimpan agar muat ulang dari
+  // salinan halaman lama (offline) tetap menampilkan jawaban terakhir.
+  // meta: jam server, tenggat, dan posisi terakhir.
+  // Tanpa IndexedDB (mode privat lama) antrian hanya di memori.
+  var store = (function () {
+    var name = "akra-ujian-" + attemptID;
+    var db = null;
+    var ready = new Promise(function (resolve) {
+      var done = false;
+      function finish(d) { if (!done) { done = true; db = d; resolve(); } }
+      setTimeout(function () { finish(null); }, 3000);
+      try {
+        var r = window.indexedDB.open(name, 1);
+        r.onupgradeneeded = function () {
+          r.result.createObjectStore("outbox", { keyPath: "q" });
+          r.result.createObjectStore("meta");
+        };
+        r.onsuccess = function () { finish(r.result); };
+        r.onerror = function () { finish(null); };
+      } catch (e) { finish(null); }
+    });
+    function tx(names, mode, fn) {
+      return ready.then(function () {
+        if (!db) return null;
+        return new Promise(function (resolve) {
+          var out;
+          try {
+            var t = db.transaction(names, mode);
+            out = fn(t);
+            t.oncomplete = function () { resolve(out && out.result !== undefined ? out.result : out); };
+            t.onerror = t.onabort = function () { resolve(null); };
+          } catch (e) { resolve(null); }
+        });
+      });
+    }
+    return {
+      ready: ready,
+      persistent: function () { return !!db; },
+      put: function (q, a, ok) {
+        return tx(["outbox"], "readwrite", function (t) { t.objectStore("outbox").put({ q: q, v: a.v, f: a.f, s: a.s, ok: !!ok }); });
+      },
+      all: function () {
+        return tx(["outbox", "meta"], "readonly", function (t) {
+          var res = { items: null, meta: null };
+          t.objectStore("outbox").getAll().onsuccess = function (e) { res.items = e.target.result; };
+          t.objectStore("meta").get("m").onsuccess = function (e) { res.meta = e.target.result; };
+          return res;
+        });
+      },
+      // ack menandai baris batch dengan seq <= ack sebagai terkirim.
+      ack: function (keys, ack) {
+        return tx(["outbox"], "readwrite", function (t) {
+          var os = t.objectStore("outbox");
+          keys.forEach(function (k) {
+            os.get(k).onsuccess = function (e) {
+              var row = e.target.result;
+              if (row && !row.ok && row.s <= ack) { row.ok = true; os.put(row); }
+            };
+          });
+        });
+      },
+      meta: function (m) {
+        return tx(["meta"], "readwrite", function (t) { t.objectStore("meta").put(m, "m"); });
+      }
+    };
+  })();
 
   // ---- Urutan (seq) perubahan: selalu naik, juga setelah muat ulang. ----
   var lastSeq = 0;
@@ -109,6 +183,13 @@
     }
   }
 
+  // clearValue mengosongkan isian soal sebelum menerapkan jawaban lain.
+  function clearValue(el) {
+    el.querySelectorAll("input[type=radio], input[type=checkbox]").forEach(function (x) { x.checked = false; });
+    el.querySelectorAll("input.take-input, textarea").forEach(function (f) { f.value = ""; });
+    el.querySelectorAll("[data-left]").forEach(function (b) { setPair(el, b, ""); });
+  }
+
   // complete: jawaban lengkap (B/S dan menjodohkan: semua baris terisi).
   function complete(el, v) {
     if (v === null || v === undefined) return false;
@@ -185,10 +266,16 @@
     var id = el.getAttribute("data-q");
     var prev = answers[id] || { v: null, f: false, s: 0 };
     var a = { v: readValue(el), f: prev.f, s: nextSeq() };
-    answers[id] = a;
-    pending[id] = a;
+    record(id, a);
     paintCell(qIndex(el));
     schedule(1000);
+  }
+
+  // record mencatat perubahan: memori, perangkat, lalu antrian kirim.
+  function record(id, a) {
+    answers[id] = a;
+    pending[id] = a;
+    store.put(id, a, false);
   }
 
   qs.forEach(function (el) {
@@ -216,23 +303,41 @@
 
   var backoff = 0;
   var inflight = null;
+  var awaitSubmit = false; // waktu habis saat offline: kumpulkan begitu tersambung
+
+  function offlineText() {
+    return store.persistent() ? "Offline — jawaban aman di perangkat ini" : "Offline — jangan tutup halaman ini";
+  }
+
+  // remember menyimpan jam server terakhir, tenggat, dan posisi di
+  // perangkat. serverNow kosong: hanya posisi yang berubah.
+  var lastServerNow = state.now;
+  function remember(serverNow) {
+    if (serverNow) lastServerNow = serverNow;
+    store.meta({ offset: offset, deadline: deadline, serverNow: lastServerNow, pos: current });
+  }
 
   // flush mengirim antrian; mengembalikan Promise yang selesai saat antrian
-  // terkirim (true) atau gagal (false).
-  function flush() {
+  // terkirim (true) atau gagal (false). force: kirim walau antrian kosong
+  // (memastikan tersambung dan attempt masih terbuka sebelum kumpul).
+  function flush(force) {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    if (inflight) return inflight.then(function () { return hasPending() || posDirty ? flush() : true; });
-    if (!hasPending() && !posDirty) return Promise.resolve(true);
+    if (inflight) return inflight.then(function () { return hasPending() || posDirty || force ? flush(force) : true; });
+    if (!hasPending() && !posDirty && !force) return Promise.resolve(true);
     var batch = pending;
     pending = {};
     var sentPos = posDirty;
     posDirty = false;
-    var changes = Object.keys(batch).map(function (k) { return { q: k, v: batch[k].v, f: batch[k].f, s: batch[k].s }; });
-    setStatus("busy", "Menyimpan…");
+    var keys = Object.keys(batch);
+    var changes = keys.map(function (k) { return { q: k, v: batch[k].v, f: batch[k].f, s: batch[k].s }; });
+    if (keys.length) setStatus("busy", "Menyimpan…");
+    var headers = { "Content-Type": "application/json" };
+    headers["X-Attempt-Token"] = state.token;
     inflight = fetch(saveURL, {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+      cache: "no-store",
+      headers: headers,
       body: JSON.stringify({ changes: changes, pos: current })
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) { return { res: res, body: body }; });
@@ -244,28 +349,57 @@
         window.location.href = r.body.redirect;
         return false;
       }
+      if (r.res.status === 401) return tokenExpired(batch, sentPos);
       if (!r.res.ok) throw new Error("save " + r.res.status);
       if (r.body.deadline) deadline = r.body.deadline;
       backoff = 0;
+      if (keys.length) store.ack(keys, r.body.seq || 0);
+      remember(r.body.now);
       if (hasPending()) { schedule(300); return true; }
       setStatus("ok", "Tersimpan");
+      if (awaitSubmit) { awaitSubmit = false; setTimeout(function () { submit("waktu"); }, 0); }
       return true;
     }).catch(function () {
       inflight = null;
-      // Kembalikan ke antrian kecuali sudah ada perubahan lebih baru.
-      Object.keys(batch).forEach(function (k) { if (!pending[k] || pending[k].s < batch[k].s) pending[k] = batch[k]; });
-      if (sentPos) posDirty = true;
+      requeue(batch, sentPos);
       backoff = Math.min(backoff ? backoff * 2 : 2000, 30000);
-      setStatus("offline", "Offline — jawaban aman di perangkat ini");
+      setStatus("offline", offlineText());
       schedule(backoff);
       return false;
     });
     return inflight;
   }
 
-  window.addEventListener("online", function () { if (hasPending()) flush(); });
+  // requeue mengembalikan batch ke antrian kecuali sudah ada perubahan
+  // yang lebih baru.
+  function requeue(batch, sentPos) {
+    Object.keys(batch).forEach(function (k) { if (!pending[k] || pending[k].s < batch[k].s) pending[k] = batch[k]; });
+    if (sentPos) posDirty = true;
+  }
+
+  // tokenExpired: token attempt ditolak (kedaluwarsa atau kunci diganti).
+  // Muat ulang halaman memberi token baru lewat sesi peserta; jawaban yang
+  // belum terkirim aman di IndexedDB. Tanpa IndexedDB, jangan muat ulang.
+  function tokenExpired(batch, sentPos) {
+    requeue(batch, sentPos);
+    var last = 0;
+    try { last = parseInt(sessionStorage.getItem("akra-ujian-reload") || "0", 10); } catch (e) { /* diabaikan */ }
+    if (store.persistent() && Date.now() - last > 60000) {
+      try { sessionStorage.setItem("akra-ujian-reload", String(Date.now())); } catch (e) { /* diabaikan */ }
+      submitting = true;
+      window.location.reload();
+      return false;
+    }
+    setStatus("offline", "Gagal menyimpan — panggil pengawas");
+    return false;
+  }
+
+  window.addEventListener("online", function () { backoff = 0; if (hasPending() || awaitSubmit) flush(awaitSubmit); });
+  // Tetap mencoba berkala walau event online tidak muncul (WiFi lab).
+  setInterval(function () { if (!inflight && !saveTimer && (hasPending() || awaitSubmit)) flush(awaitSubmit); }, 10000);
   window.addEventListener("beforeunload", function (ev) {
-    if (!submitting && hasPending()) { ev.preventDefault(); ev.returnValue = ""; }
+    // Dengan IndexedDB jawaban aman walau halaman ditutup.
+    if (!submitting && hasPending() && !store.persistent()) { ev.preventDefault(); ev.returnValue = ""; }
   });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden" && hasPending()) flush(); });
 
@@ -321,6 +455,7 @@
       h.focus({ preventScroll: true });
     }
     posDirty = true;
+    if (merged) remember();
     schedule(hasPending() ? 1000 : 3000);
   }
 
@@ -396,8 +531,7 @@
     var id = qid(current);
     var a = answers[id] || { v: readValue(qs[current]), f: false, s: 0 };
     a = { v: a.v, f: !a.f, s: nextSeq() };
-    answers[id] = a;
-    pending[id] = a;
+    record(id, a);
     paintCell(current);
     schedule(1000);
   }
@@ -483,15 +617,27 @@
   });
   dialog.querySelector("[data-final-submit]").addEventListener("click", function () { submit("peserta"); });
 
-  // submit mengirim antrian dulu, lalu mengumpulkan. Saat offline peserta
-  // diberi tahu; waktu habis tetap mengumpulkan jawaban yang sudah sampai.
+  // submit mengirim antrian dulu (dan memastikan tersambung), lalu
+  // mengumpulkan. Saat offline peserta diberi tahu; bila waktu habis,
+  // pengumpulan diulang otomatis begitu tersambung. Bila tidak pernah
+  // tersambung lagi, server mengumpulkan jawaban yang sudah sampai (T140).
+  var submitBusy = false;
   function submit(reason) {
-    if (submitting) return;
+    if (submitting || submitBusy) return;
+    submitBusy = true;
     var btn = dialog.querySelector("[data-final-submit]");
     btn.disabled = true;
-    flush().then(function (ok) {
-      if (!ok && reason !== "waktu") {
+    flush(true).then(function (ok) {
+      submitBusy = false;
+      if (submitting) return;
+      if (!ok) {
         btn.disabled = false;
+        if (reason === "waktu") {
+          awaitSubmit = true;
+          banner.textContent = "Waktu habis. Hubungkan internet agar jawaban terkirim dan dikumpulkan. Jawaban tidak hilang.";
+          banner.hidden = false;
+          return;
+        }
         dialog.querySelector('[data-step="1"]').hidden = false;
         dialog.querySelector('[data-step="2"]').hidden = true;
         dialog.querySelector("[data-sum-offline]").hidden = false;
@@ -525,7 +671,7 @@
         setTimeout(function () { banner.hidden = true; }, 6000);
       }
     });
-    if (left === 0 && !submitting) {
+    if (left === 0 && !submitting && !submitBusy && !awaitSubmit) {
       banner.textContent = "Waktu habis — jawaban dikumpulkan.";
       banner.hidden = false;
       submit("waktu");
@@ -603,4 +749,68 @@
   show(start, false);
   posDirty = false;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+
+  // ---- Gabungkan salinan di perangkat. ----
+  // Baris dengan seq lebih baru dari halaman menang: jawaban yang belum
+  // terkirim masuk antrian lagi, dan jawaban yang sudah terkirim setelah
+  // halaman ini disalin (muat ulang dari salinan saat offline) tampil lagi.
+  var merged = false; // catatan posisi baru ditulis setelah salinan dibaca
+  var byID = {};
+  qs.forEach(function (el, i) { byID[qid(i)] = i; });
+  store.all().then(function (res) {
+    var m = res && res.meta;
+    // Halaman dari salinan lama (muat ulang saat offline): halaman baru dari
+    // server selalu membawa jam yang lebih baru dari catatan perangkat.
+    var stale = !!m && m.serverNow >= state.now;
+    if (stale) {
+      offset = m.offset;
+      deadline = m.deadline || deadline;
+      lastServerNow = m.serverNow;
+    }
+    (res && res.items || []).forEach(function (row) {
+      var i = byID[row.q];
+      if (i === undefined) return;
+      var cur = answers[row.q];
+      if (cur && cur.s >= row.s) return;
+      var a = { v: row.v, f: !!row.f, s: row.s };
+      answers[row.q] = a;
+      if (!row.ok) pending[row.q] = a;
+      if (row.s > lastSeq) lastSeq = row.s;
+      clearValue(qs[i]);
+      applyValue(qs[i], a.v);
+      paintCell(i);
+    });
+    if (stale && typeof m.pos === "number" && m.pos !== current && m.pos >= 0 && m.pos < qs.length) {
+      showAt(m.pos);
+    }
+    merged = true;
+    if (!stale) remember(state.now);
+    if (hasPending()) flush();
+  });
+
+  function showAt(i) {
+    var keep = state.back;
+    state.back = true; // posisi dari perangkat sendiri selalu boleh dipulihkan
+    show(i, false);
+    state.back = keep;
+    posDirty = false;
+  }
+
+  // ---- Service worker: salinan halaman, aset, dan gambar soal. ----
+  if ("serviceWorker" in navigator && window.caches) {
+    var controlled = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register("/u/sw.js", { scope: "/u/a/" }).then(function () {
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
+      var urls = [];
+      if (window.performance && performance.getEntriesByType) {
+        performance.getEntriesByType("resource").forEach(function (r) {
+          if (r.name.indexOf(location.origin + "/static/") === 0) urls.push(r.name);
+        });
+      }
+      root.querySelectorAll("img[src]").forEach(function (img) { urls.push(img.getAttribute("src")); });
+      var sw = reg.active || navigator.serviceWorker.controller;
+      if (sw) sw.postMessage({ type: "warm", attempt: attemptID, page: !controlled && navigator.onLine, urls: urls });
+    }).catch(function () { /* tanpa service worker: tetap jalan online */ });
+  }
 })();

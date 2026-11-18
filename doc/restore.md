@@ -64,6 +64,17 @@ Rotasi kunci (mis. setelah kunci mungkin bocor):
 2. Jalankan `akra-rotate-pii-key` di service `akra` (memakai `DATABASE_URL`, `PII_ENC_KEYS`, `PII_INDEX_KEY` yang sama). Aman diulang.
 3. Setelah selesai, hapus versi lama dari `PII_ENC_KEYS` dan deploy ulang. Backup yang dibuat sebelum rotasi masih butuh kunci lama; simpan kunci lama di password manager sampai backup tersebut melewati masa retensi (14 hari).
 
+## Kunci token ujian
+
+Sejak T139, perangkat peserta menyimpan jawaban dengan token attempt bertanda tangan HMAC. Kuncinya ada di `EXAM_TOKEN_KEYS`, wajib di staging dan production. Tanpa kunci ini aplikasi menolak start.
+
+| Variabel | Isi |
+|---|---|
+| `EXAM_TOKEN_KEYS` | kunci base64 ≥ 32 byte; saat rotasi `<baru>,<lama>` (kunci pertama aktif) |
+
+- Kunci ini **tidak** dibutuhkan untuk memulihkan data. Bila hilang, buat kunci baru (`openssl rand -base64 32`). Peserta yang sedang ujian cukup memuat ulang halaman; jawaban di perangkat tetap terkirim.
+- Rotasi tanpa mengganggu ujian yang berjalan: isi `<baru>,<lama>`, deploy, lalu hapus kunci lama setelah semua sesi hari itu selesai (token berlaku sampai 6 jam setelah tenggat).
+
 ## Menyiapkan backup harian di Railway
 
 Satu kali, di project `natural-compassion`:

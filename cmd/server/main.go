@@ -14,6 +14,7 @@ import (
 	"github.com/alexedwards/scs/pgxstore"
 
 	"akra/internal/auth"
+	"akra/internal/exam"
 	"akra/internal/platform/config"
 	"akra/internal/platform/database"
 	"akra/internal/platform/httpserver"
@@ -112,6 +113,15 @@ func run(logger *slog.Logger) error {
 	}
 	logger.Info("PII encryption configured", "active_key_version", keys.ActiveVersion())
 
+	examTokens := exam.DevTokenSigner()
+	if cfg.ExamTokenKeys != "" {
+		if examTokens, err = exam.ParseTokenSigner(cfg.ExamTokenKeys); err != nil {
+			return err
+		}
+	} else {
+		logger.Warn("using development exam token key; never use this outside development")
+	}
+
 	store, err := storage.New(cfg)
 	if err != nil {
 		return err
@@ -139,6 +149,7 @@ func run(logger *slog.Logger) error {
 		db: pool, pinger: pool, sessions: sessions, render: rd, static: static,
 		mailer: mailer, hasher: hasher, secure: secure, baseURL: cfg.BaseURL, logger: logger,
 		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment, store: store, pii: keys,
+		examTokens: examTokens,
 	})
 	if err != nil {
 		return err

@@ -14,10 +14,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"akra/internal/auth"
+	"akra/internal/platform/database"
 	"akra/internal/platform/render"
 	"akra/web"
 )
@@ -25,10 +29,59 @@ import (
 // takeEnv adalah examEnv dengan router peserta dan jam yang bisa diatur.
 type takeEnv struct {
 	*examEnv
-	router http.Handler
-	clock  time.Time
-	jar    map[string]map[string]*http.Cookie // per "perangkat"
-	extra  []string
+	router  http.Handler
+	clock   time.Time
+	jar     map[string]map[string]*http.Cookie // per "perangkat"
+	extra   []string
+	queries *countingDB    // query handler peserta
+	store2  *countingStore // akses penyimpanan sesi peserta
+}
+
+// countingDB menghitung query yang dijalankan handler.
+type countingDB struct {
+	database.DB
+	n int
+}
+
+func (c *countingDB) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	c.n++
+	return c.DB.Exec(ctx, sql, args...)
+}
+
+func (c *countingDB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	c.n++
+	return c.DB.Query(ctx, sql, args...)
+}
+
+func (c *countingDB) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	c.n++
+	return c.DB.QueryRow(ctx, sql, args...)
+}
+
+func (c *countingDB) Begin(ctx context.Context) (pgx.Tx, error) {
+	c.n++
+	return c.DB.Begin(ctx)
+}
+
+// countingStore menghitung akses ke penyimpanan sesi.
+type countingStore struct {
+	scs.Store
+	n int
+}
+
+func (c *countingStore) Find(token string) ([]byte, bool, error) {
+	c.n++
+	return c.Store.Find(token)
+}
+
+func (c *countingStore) Commit(token string, b []byte, expiry time.Time) error {
+	c.n++
+	return c.Store.Commit(token, b, expiry)
+}
+
+func (c *countingStore) Delete(token string) error {
+	c.n++
+	return c.Store.Delete(token)
 }
 
 func newTakeEnv(t *testing.T) *takeEnv {
@@ -41,12 +94,18 @@ func newTakeEnv(t *testing.T) *takeEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sm := auth.NewParticipantSessionManager(memstore.NewWithCleanupInterval(0), false, logger)
-	h := NewParticipantHandler(e.tx, sm, rd, logger, false).WithStorage(e.store)
+	e.store2 = &countingStore{Store: memstore.NewWithCleanupInterval(0)}
+	e.queries = &countingDB{DB: e.tx}
+	sm := auth.NewParticipantSessionManager(e.store2, false, logger)
+	h := NewParticipantHandler(e.queries, sm, rd, logger, false).WithStorage(e.store)
 	h.now = func() time.Time { return e.clock }
+	// Seperti cmd/server: route bertoken di luar sesi.
 	r := chi.NewRouter()
-	r.Use(sm.LoadAndSave)
-	h.Routes(r)
+	h.TokenRoutes(r)
+	r.Group(func(r chi.Router) {
+		r.Use(sm.LoadAndSave)
+		h.Routes(r)
+	})
 	e.router = r
 	return e
 }
@@ -75,6 +134,18 @@ func (e *takeEnv) do(dev, method, path, ctype, body string) *httptest.ResponseRe
 			jar[c.Name] = c
 		}
 	}
+	return rec
+}
+
+// saveAs mengirim simpan jawaban dengan token attempt, tanpa cookie.
+func (e *takeEnv) saveAs(path, token, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set(AttemptTokenHeader, token)
+	}
+	rec := httptest.NewRecorder()
+	e.router.ServeHTTP(rec, req)
 	return rec
 }
 
@@ -216,12 +287,33 @@ func TestTakeFlow(t *testing.T) {
 			mc = id
 		}
 	}
-	save := func(dev, body string) *httptest.ResponseRecorder {
-		return e.do(dev, http.MethodPost, loc+"/simpan", "application/json", body)
+	token, _ := pageState(t, body)["token"].(string)
+	if token == "" {
+		t.Fatal("take state lacks attempt token")
 	}
-	if rec := save("hp1", `{"changes":[{"q":"`+mc+`","v":"b","f":true,"s":10}],"pos":2}`); rec.Code != http.StatusOK ||
-		!strings.Contains(rec.Body.String(), `"ok":true`) {
+	save := func(_, body string) *httptest.ResponseRecorder {
+		return e.saveAs(loc+"/simpan", token, body)
+	}
+	// Simpan bertoken: satu query, tanpa sesi peserta, tanpa cookie.
+	q0, s0 := e.queries.n, e.store2.n
+	rec = save("hp1", `{"changes":[{"q":"`+mc+`","v":"b","f":true,"s":10}],"pos":2}`)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ok":true`) || !strings.Contains(rec.Body.String(), `"seq":10`) {
 		t.Fatalf("save = %d %s", rec.Code, rec.Body.String())
+	}
+	if q, sn := e.queries.n-q0, e.store2.n-s0; q != 1 || sn != 0 {
+		t.Errorf("save used %d queries and %d session store calls, want 1 and 0", q, sn)
+	}
+	if len(rec.Result().Cookies()) != 0 || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("save response headers = %v", rec.Header())
+	}
+	// Tanpa token, token rusak, atau token attempt lain: 401.
+	for name, tok := range map[string]string{"none": "", "garbage": "abc.def", "tampered": token[:10] + "A" + token[11:]} {
+		if tok == token {
+			continue
+		}
+		if rec := e.saveAs(loc+"/simpan", tok, `{"changes":[]}`); rec.Code != http.StatusUnauthorized {
+			t.Errorf("save with %s token = %d", name, rec.Code)
+		}
 	}
 	// Request lama (seq lebih kecil) tidak menimpa.
 	if rec := save("hp1", `{"changes":[{"q":"`+mc+`","v":"c","f":false,"s":5}]}`); rec.Code != http.StatusOK {
@@ -261,7 +353,10 @@ func TestTakeFlow(t *testing.T) {
 	if rec := e.do("hp2", http.MethodGet, loc, "", ""); rec.Code != http.StatusNotFound {
 		t.Errorf("other participant take = %d", rec.Code)
 	}
-	if rec := save("hp2", `{"changes":[{"q":"`+mc+`","v":"a","s":99}]}`); rec.Code != http.StatusNotFound {
+	// Peserta lain memakai token attempt-nya sendiri untuk attempt ini: 401.
+	rec2 := e.form("hp2", "/u/ujian/"+sess.ID+"/mulai", url.Values{})
+	other := pageState(t, e.do("hp2", http.MethodGet, rec2.Header().Get("Location"), "", "").Body.String())["token"].(string)
+	if rec := e.saveAs(loc+"/simpan", other, `{"changes":[{"q":"`+mc+`","v":"a","s":99}]}`); rec.Code != http.StatusUnauthorized {
 		t.Errorf("other participant save = %d", rec.Code)
 	}
 

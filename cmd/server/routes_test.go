@@ -277,6 +277,12 @@ func TestCSRF_CookieAttributes(t *testing.T) {
 	}
 }
 
+// headerTokenRoutes adalah route POST yang diautentikasi token di header,
+// bukan cookie, dan sengaja dipasang tanpa CSRF (ADR 0001 bagian 4).
+var headerTokenRoutes = map[string]bool{
+	"POST /u/a/{attempt}/simpan": true,
+}
+
 // TestCSRF_AllMutatingRoutesRequireToken menelusuri semua route dan
 // memastikan setiap POST/PUT/PATCH/DELETE ditolak tanpa token. Route baru
 // otomatis ikut diperiksa.
@@ -299,8 +305,14 @@ func TestCSRF_AllMutatingRoutesRequireToken(t *testing.T) {
 		req := httptest.NewRequest(method, path, strings.NewReader(""))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set("Origin", "http://example.com")
-		if rec := serve(h, req); rec.Code != http.StatusForbidden {
-			t.Errorf("%s %s without CSRF token: status = %d, want 403", method, route, rec.Code)
+		want := http.StatusForbidden
+		if headerTokenRoutes[method+" "+route] {
+			// Tanpa cookie: wajib token di header, yang tidak dikirim
+			// otomatis oleh browser, sehingga tidak butuh CSRF.
+			want = http.StatusUnauthorized
+		}
+		if rec := serve(h, req); rec.Code != want {
+			t.Errorf("%s %s without CSRF token: status = %d, want %d", method, route, rec.Code, want)
 		}
 		return nil
 	})

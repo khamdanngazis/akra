@@ -57,7 +57,10 @@ type appDeps struct {
 	jobs     *jobs.Client  // untuk memasukkan job latar belakang
 	store    storage.Store // file privat (bukti transfer)
 	pii      *pii.Keyring  // enkripsi data pribadi (T85b)
-	dev      bool          // APP_ENV=development: pasang route /dev
+	// examTokens menandatangani token attempt ujian (T139). Nil: kunci
+	// development (uji).
+	examTokens *exam.TokenSigner
+	dev        bool // APP_ENV=development: pasang route /dev
 }
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
@@ -74,6 +77,10 @@ func newApp(d appDeps) (http.Handler, error) {
 	documents := admission.NewDocumentService(d.db, d.store, d.pii)
 	activation := auth.NewActivationService(d.db, d.hasher, d.mailer, d.baseURL, d.logger)
 	// Satu handler laporan: juga jalur ekspor laporan kustom (T79).
+	examTokens := d.examTokens
+	if examTokens == nil {
+		examTokens = exam.DevTokenSigner()
+	}
 	participantSessions := auth.NewParticipantSessionManager(d.sessions.Store, d.secure, d.logger)
 	math, err := mathrender.New(d.static)
 	if err != nil {
@@ -95,7 +102,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		activation:          auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		duties:              duty.NewHandler(d.db, d.sessions, d.render, d.logger),
 		exam:                exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL),
-		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store),
+		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store).WithTokens(examTokens),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),

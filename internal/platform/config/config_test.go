@@ -37,6 +37,7 @@ func TestLoad_AllSet(t *testing.T) {
 		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
 		StorageDriver: "r2", R2AccountID: "acc", R2Bucket: "akra-private", R2AccessKeyID: "key", R2SecretAccessKey: "secret",
 		PIIEncKeys: os.Getenv("PII_ENC_KEYS"), PIIIndexKey: os.Getenv("PII_INDEX_KEY"),
+		ExamTokenKeys: os.Getenv("EXAM_TOKEN_KEYS"),
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -267,6 +268,24 @@ func setPII(t *testing.T) {
 	t.Helper()
 	t.Setenv("PII_ENC_KEYS", "1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=")
 	t.Setenv("PII_INDEX_KEY", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=")
+	t.Setenv("EXAM_TOKEN_KEYS", "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=")
+}
+
+func TestLoad_ExamTokenKeys(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "")
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("EXAM_TOKEN_KEYS", "")
+	if _, err := Load(); err != nil {
+		t.Fatalf("development without exam token keys: %v", err)
+	}
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
+	setPII(t)
+	t.Setenv("EXAM_TOKEN_KEYS", "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "EXAM_TOKEN_KEYS") {
+		t.Errorf("staging without exam token keys: error = %v, want error mentioning EXAM_TOKEN_KEYS", err)
+	}
 }
 
 func TestLoad_PIIKeys(t *testing.T) {
@@ -313,6 +332,7 @@ func TestLoad_PIIKeys(t *testing.T) {
 
 	t.Setenv("PII_ENC_KEYS", "1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=, 2:AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=")
 	t.Setenv("PII_INDEX_KEY", "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=")
+	t.Setenv("EXAM_TOKEN_KEYS", "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatalf("staging with keys: %v", err)

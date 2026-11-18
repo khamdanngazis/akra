@@ -69,6 +69,12 @@ type Config struct {
 	PIIEncKeys  string
 	PIIIndexKey string
 
+	// ExamTokenKeys adalah kunci HMAC token attempt ujian (T139): daftar
+	// kunci base64 (≥ 32 byte) dipisah koma; kunci pertama aktif, kunci
+	// berikutnya tetap diterima selama rotasi. Wajib di staging dan
+	// production; di development boleh kosong (kunci development).
+	ExamTokenKeys string
+
 	// Parameter biaya argon2id untuk hash password baru. Default mengikuti
 	// batas minimum OWASP (19 MiB, 2 iterasi, 1 lane).
 	Argon2MemoryKiB   uint32
@@ -198,6 +204,11 @@ func Load() (Config, error) {
 		}
 	} else if _, err := pii.ParseKeyring(cfg.PIIEncKeys, cfg.PIIIndexKey); err != nil {
 		return Config{}, fmt.Errorf("config: %w", err)
+	}
+
+	cfg.ExamTokenKeys = os.Getenv("EXAM_TOKEN_KEYS")
+	if cfg.ExamTokenKeys == "" && cfg.AppEnv != EnvDevelopment {
+		return Config{}, fmt.Errorf("config: environment variable EXAM_TOKEN_KEYS is required when APP_ENV=%s", cfg.AppEnv)
 	}
 
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {

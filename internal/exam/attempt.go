@@ -478,6 +478,9 @@ var ErrBadAnswer = errors.New("exam: invalid answer payload")
 // SaveResult adalah balasan simpan.
 type SaveResult struct {
 	Deadline time.Time
+	// Seq adalah seq tertinggi dalam batch. Semua perubahan sampai seq ini
+	// aman di server: tersimpan, atau tergantikan jawaban yang lebih baru.
+	Seq int64
 }
 
 // SaveAnswers menyimpan perubahan jawaban attempt dalam satu pernyataan
@@ -542,7 +545,11 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	if !found {
 		return SaveResult{}, ErrAttemptClosed
 	}
-	return SaveResult{Deadline: deadline}, nil
+	var maxSeq int64
+	for _, x := range ss {
+		maxSeq = max(maxSeq, x)
+	}
+	return SaveResult{Deadline: deadline, Seq: maxSeq}, nil
 }
 
 // SubmitAttempt mengumpulkan attempt. Jawaban yang sudah tersimpan
