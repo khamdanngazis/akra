@@ -27,7 +27,7 @@
         var gain = ctx.createGain();
         osc.type = "square";
         osc.frequency.value = i % 2 ? 660 : 990;
-        gain.gain.value = 0.25;
+        gain.gain.value = 0.5;
         osc.connect(gain).connect(ctx.destination);
         osc.start(ctx.currentTime + t);
         osc.stop(ctx.currentTime + t + 0.2);

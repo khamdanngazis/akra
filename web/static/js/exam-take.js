@@ -304,7 +304,7 @@
     s.querySelector("[data-save-text]").textContent = text;
   }
 
-  function hasPending() { return Object.keys(pending).length > 0; }
+  function hasPending() { return Object.keys(pending).length > 0 || events.length > 0; }
 
   function schedule(ms) {
     if (saveTimer) clearTimeout(saveTimer);
@@ -323,9 +323,13 @@
   // perangkat. now kosong: hanya posisi yang berubah. offset (jam server −
   // jam perangkat) dipakai bila halaman dimuat ulang dari salinan offline.
   var lastServerNow = state.now;
+  // Juga antrian kejadian dan awal keluar halaman (bila halaman dimatikan
+  // browser saat di latar belakang, lamanya dihitung saat dibuka lagi).
   function remember(now) {
     if (now) lastServerNow = now;
-    store.meta({ offset: serverNow() - Date.now(), deadline: deadline, paused: pausedAt, serverNow: lastServerNow, pos: current });
+    if (!merged) return; // catatan lama belum dibaca
+    store.meta({ offset: serverNow() - Date.now(), deadline: deadline, paused: pausedAt, serverNow: lastServerNow, pos: current,
+      events: events, away: awayStart });
   }
 
   // flush mengirim antrian; mengembalikan Promise yang selesai saat antrian
@@ -341,6 +345,7 @@
     posDirty = false;
     var keys = Object.keys(batch);
     var changes = keys.map(function (k) { return { q: k, v: batch[k].v, f: batch[k].f, s: batch[k].s }; });
+    var sentEvents = events.slice(0, 50);
     if (keys.length) setStatus("busy", "Menyimpan…");
     lastSent = mono();
     var headers = { "Content-Type": "application/json" };
@@ -350,7 +355,7 @@
       credentials: "same-origin",
       cache: "no-store",
       headers: headers,
-      body: JSON.stringify({ changes: changes, pos: current })
+      body: JSON.stringify({ changes: changes, events: sentEvents, pos: current })
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) { return { res: res, body: body }; });
     }).then(function (r) {
@@ -362,11 +367,28 @@
         return false;
       }
       if (r.res.status === 401) return tokenExpired(batch, sentPos);
+      if (r.res.status === 400 && sentEvents.length) {
+        // Kejadian tidak valid tidak boleh menahan simpan jawaban.
+        events = events.filter(function (e) { return sentEvents.indexOf(e) < 0; });
+        requeue(batch, sentPos);
+        schedule(300);
+        return false;
+      }
       if (!r.res.ok) throw new Error("save " + r.res.status);
       if (r.body.deadline) deadline = r.body.deadline;
       setPaused(r.body.paused || 0);
       backoff = 0;
       if (keys.length) store.ack(keys, r.body.seq || 0);
+      if (sentEvents.length) {
+        var eseq = r.body.eseq || 0;
+        events = events.filter(function (e) { return e.s > eseq; });
+      }
+      serverLocked(r.body.locked || 0);
+      if (offlineSince) {
+        var off = serverNow() - offlineSince;
+        if (off > 60000) addEvent("offline", offlineSince, off);
+        offlineSince = 0;
+      }
       remember(r.body.now);
       if (hasPending()) { schedule(300); return true; }
       setStatus("ok", "Tersimpan");
@@ -379,6 +401,7 @@
       return true;
     }).catch(function () {
       inflight = null;
+      if (!offlineSince) offlineSince = serverNow();
       requeue(batch, sentPos);
       backoff = Math.min(backoff ? backoff * 2 : 2000, 30000);
       setStatus("offline", offlineText());
@@ -427,6 +450,242 @@
     if (!submitting && hasPending() && !store.persistent()) { ev.preventDefault(); ev.returnValue = ""; }
   });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden" && hasPending()) flush(); });
+
+  // ---- Integritas (T141). ----
+  // Kejadian (keluar halaman, layar penuh, muat ulang, salin/tempel,
+  // offline lama) masuk antrian, disimpan di perangkat, dan dikirim
+  // bersama simpan jawaban. Sesi dengan bunyi tanda: nada peringatan
+  // berulang segera saat keluar (komputer; tetap terdengar dari tab latar
+  // belakang) dan saat kembali minimal 5 detik (HP menghentikan halaman di
+  // latar belakang), ditambah getar dan layar merah.
+  var events = [];
+  var awayStart = 0; // jam server saat mulai keluar halaman; 0 = di halaman
+  var offlineSince = 0;
+  var leaves = state.leaves || 0;
+  var lockLeft = state.lockAfter ? state.lockLeft : 0; // keluar lagi sebelum dikunci
+  var lockedAt = 0;
+  var lastOfKind = {};
+
+  function addEvent(kind, t, d) {
+    if (submitting) return;
+    events.push({ s: nextSeq(), k: kind, t: Math.max(1, Math.round(t)), d: Math.max(0, Math.round(d || 0)) });
+    if (events.length > 500) events = events.slice(-500);
+    remember();
+    schedule(300);
+  }
+  // Salin/tempel dan layar penuh: paling banyak sekali per 5 detik.
+  function addRare(kind) {
+    var now = mono();
+    if (lastOfKind[kind] && now - lastOfKind[kind] < 5000) return;
+    lastOfKind[kind] = now;
+    addEvent(kind, serverNow());
+  }
+
+  // ---- Bunyi tanda: satu oscillator dengan jadwal nada naik-turun. ----
+  var actx = null;
+  var alarm = null; // { osc, until }
+  function audioUnlock() {
+    if (!state.sound) return;
+    var C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return;
+    try {
+      if (!actx) actx = new C();
+      if (actx.state !== "running") actx.resume();
+    } catch (e) { actx = null; }
+  }
+  function alarmStart(minMs) {
+    if (!state.sound || !actx) return;
+    try { if (actx.state !== "running") actx.resume(); } catch (e) { /* diabaikan */ }
+    var until = mono() + (minMs || 0);
+    if (alarm) { alarm.until = Math.max(alarm.until, until); return; }
+    try {
+      var osc = actx.createOscillator();
+      var gain = actx.createGain();
+      osc.type = "square";
+      var t0 = actx.currentTime + 0.02;
+      gain.gain.setValueAtTime(0, t0);
+      // Pola khas 990-660-990 Hz tiap detik selama 10 menit (berhenti saat
+      // Lanjutkan); jadwal di audio thread tetap jalan di tab latar belakang.
+      for (var k = 0; k < 600; k++) {
+        for (var i = 0; i < 3; i++) {
+          var at = t0 + k + i * 0.25;
+          osc.frequency.setValueAtTime(i % 2 ? 660 : 990, at);
+          gain.gain.setValueAtTime(0.5, at);
+          gain.gain.setValueAtTime(0, at + 0.2);
+        }
+      }
+      osc.connect(gain).connect(actx.destination);
+      osc.start(t0);
+      alarm = { osc: osc, until: until };
+      root.setAttribute("data-alarm", "on");
+    } catch (e) { alarm = null; }
+  }
+  // alarmStopAfterMin menghentikan bunyi setelah durasi minimalnya.
+  function alarmStopAfterMin() {
+    if (!alarm) return;
+    setTimeout(function () { if (alarm && mono() >= alarm.until - 50) alarmStop(); }, Math.max(0, alarm.until - mono()));
+  }
+  function alarmStop() {
+    if (!alarm) return;
+    try { alarm.osc.stop(); alarm.osc.disconnect(); } catch (e) { /* sudah berhenti */ }
+    alarm = null;
+    root.removeAttribute("data-alarm");
+  }
+
+  // ---- Layar merah dan kunci. ----
+  var alarmBox = root.querySelector("[data-alarm-box]");
+  var alarmText = root.querySelector("[data-alarm-text]");
+  var alarmGo = root.querySelector("[data-alarm-go]");
+  var lockBox = root.querySelector("[data-lock]");
+  var goTimer = null;
+
+  // overlays mengatur layar penutup yang terbuka: isi ujian tidak bisa
+  // disentuh (inert) selama jeda, kunci, atau layar merah.
+  function overlays() {
+    var boxes = [pauseBox, lockBox, alarmBox];
+    var any = boxes.some(function (b) { return !b.hidden; });
+    if (any) {
+      if (dialog.open) dialog.close();
+      zoom.hidden = true;
+      panel.classList.remove("is-open");
+      if (document.activeElement && document.activeElement.blur && boxes.indexOf(document.activeElement.closest && document.activeElement.closest("[data-alarm-box]")) < 0) {
+        document.activeElement.blur();
+      }
+    }
+    Array.prototype.forEach.call(root.children, function (c) { c.inert = any && boxes.indexOf(c) < 0; });
+  }
+
+  function durationText(ms) {
+    var s = Math.max(1, Math.round(ms / 1000));
+    if (s < 60) return s + " detik";
+    var m = Math.floor(s / 60);
+    return m + " menit" + (s % 60 ? " " + (s % 60) + " detik" : "");
+  }
+
+  function showAlarm(ms) {
+    if (lockedAt) {
+      // Layar kunci menggantikan layar merah; bunyi tetap minimal 5 detik.
+      if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]);
+      alarmStart(5000);
+      alarmStopAfterMin();
+      return;
+    }
+    alarmText.textContent = "Anda keluar dari halaman ujian (ke-" + leaves + " kali, " + durationText(ms) + ").";
+    alarmBox.hidden = false;
+    overlays();
+    if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]);
+    if (state.sound) {
+      alarmStart(5000);
+      // Lanjutkan bisa ditekan setelah bunyi minimal 5 detik.
+      var left = 5;
+      alarmGo.disabled = true;
+      alarmGo.textContent = "Lanjutkan (" + left + ")";
+      if (goTimer) clearInterval(goTimer);
+      goTimer = setInterval(function () {
+        left--;
+        if (left > 0) { alarmGo.textContent = "Lanjutkan (" + left + ")"; return; }
+        clearInterval(goTimer);
+        goTimer = null;
+        alarmGo.disabled = false;
+        alarmGo.textContent = "Lanjutkan";
+        alarmGo.focus();
+      }, 1000);
+    } else {
+      alarmGo.disabled = false;
+      alarmGo.textContent = "Lanjutkan";
+      alarmGo.focus();
+    }
+  }
+  alarmGo.addEventListener("click", function () {
+    alarmStop();
+    alarmBox.hidden = true;
+    overlays();
+    enterFullscreen();
+  });
+
+  // setLocked menampilkan atau membuka kunci sementara (aturan kunci).
+  // Waktu tetap berjalan selama dikunci.
+  function setLocked(t) {
+    var was = !!lockedAt;
+    lockedAt = t || 0;
+    if (was === !!lockedAt) return;
+    lockBox.hidden = !lockedAt;
+    if (lockedAt) {
+      alarmBox.hidden = true;
+      if (goTimer) { clearInterval(goTimer); goTimer = null; }
+      alarmStopAfterMin();
+    } else {
+      lockLeft = state.lockAfter;
+      banner.textContent = "Kunci dibuka pengawas. Silakan lanjutkan.";
+      banner.hidden = false;
+      setTimeout(function () { banner.hidden = true; }, 4000);
+    }
+    overlays();
+  }
+  // serverLocked: status kunci dari balasan simpan. Kunci lokal (belum
+  // dikonfirmasi server) dipertahankan selama kejadiannya belum terkirim.
+  function serverLocked(t) {
+    if (t) { setLocked(t); return; }
+    if (lockedAt && events.some(function (e) { return e.k === "keluar"; })) return;
+    setLocked(0);
+  }
+
+  function isAway() { return document.visibilityState === "hidden" || !document.hasFocus(); }
+  function goAway() {
+    if (awayStart || submitting || pausedAt) return;
+    awayStart = serverNow();
+    alarmStart(0);
+    remember();
+    if (hasPending()) flush();
+  }
+  // comeBack: kembali ke halaman. Keluar kurang dari 1 detik diabaikan
+  // (mis. notifikasi sistem sekejap).
+  function comeBack() {
+    if (!awayStart) return;
+    var t = awayStart, d = serverNow() - awayStart;
+    awayStart = 0;
+    if (d < 1000 || submitting) {
+      if (alarmBox.hidden) alarmStop();
+      remember();
+      return;
+    }
+    leaves++;
+    addEvent("keluar", t, d);
+    showAlarm(d);
+    if (state.lockAfter && --lockLeft <= 0) setLocked(serverNow());
+  }
+  document.addEventListener("visibilitychange", function () { if (isAway()) goAway(); else comeBack(); });
+  window.addEventListener("blur", function () { setTimeout(function () { if (isAway()) goAway(); }, 0); });
+  window.addEventListener("focus", function () { if (!isAway()) comeBack(); });
+  window.addEventListener("pagehide", goAway);
+  window.addEventListener("pageshow", function () { if (!isAway()) comeBack(); });
+
+  // Layar penuh dimatikan (bukan karena keluar aplikasi): dicatat.
+  var wasFull = false;
+  function enterFullscreen() {
+    var d = document.documentElement;
+    var fs = d.requestFullscreen || d.webkitRequestFullscreen;
+    if (!fs || document.fullscreenElement || document.webkitFullscreenElement) return;
+    try { var p = fs.call(d); if (p && p.catch) p.catch(function () {}); } catch (e) { /* tidak didukung */ }
+  }
+  function onFullscreen() {
+    var full = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (wasFull && !full) {
+      setTimeout(function () { if (!awayStart && !isAway() && !submitting) addRare("layar_penuh"); }, 1500);
+    }
+    wasFull = full;
+  }
+  document.addEventListener("fullscreenchange", onFullscreen);
+  document.addEventListener("webkitfullscreenchange", onFullscreen);
+
+  // Penghalang ringan: klik kanan mati (kecuali kolom jawaban), salin dan
+  // tempel dicatat.
+  root.addEventListener("contextmenu", function (e) {
+    if (!(e.target.closest && e.target.closest("input, textarea"))) e.preventDefault();
+  });
+  document.addEventListener("copy", function () { addRare("salin"); });
+  document.addEventListener("cut", function () { addRare("salin"); });
+  document.addEventListener("paste", function () { addRare("tempel"); });
 
   // ---- Grid nomor dan tombol. ----
   function paintCell(i) {
@@ -702,16 +961,12 @@
     pausedAt = p || 0;
     if (was === !!pausedAt) return;
     if (pausedAt) {
-      if (dialog.open) dialog.close();
-      zoom.hidden = true;
-      panel.classList.remove("is-open");
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-      Array.prototype.forEach.call(root.children, function (c) { if (c !== pauseBox) c.inert = true; });
       pauseBox.hidden = false;
+      overlays();
       if (navigator.vibrate) navigator.vibrate(200);
     } else {
       pauseBox.hidden = true;
-      Array.prototype.forEach.call(root.children, function (c) { c.inert = false; });
+      overlays();
       banner.textContent = "Jeda selesai. Waktu berjalan lagi.";
       banner.hidden = false;
       setTimeout(function () { banner.hidden = true; }, 4000);
@@ -786,9 +1041,8 @@
   // ---- Layar awal: layar penuh (butuh sentuhan pengguna). ----
   var cover = root.querySelector("[data-cover]");
   root.querySelector("[data-cover-go]").addEventListener("click", function () {
-    var d = document.documentElement;
-    var fs = d.requestFullscreen || d.webkitRequestFullscreen;
-    if (fs) { try { var p = fs.call(d); if (p && p.catch) p.catch(function () {}); } catch (e) { /* tidak didukung */ } }
+    audioUnlock(); // browser mewajibkan sentuhan pengguna sebelum berbunyi
+    enterFullscreen();
     cover.hidden = true;
     var h = qs[current].querySelector(".take-qno");
     h.setAttribute("tabindex", "-1");
@@ -815,6 +1069,7 @@
   posDirty = false;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   setPaused(state.paused || 0);
+  setLocked(state.locked || 0);
 
   // ---- Gabungkan salinan di perangkat. ----
   // Baris dengan seq lebih baru dari halaman menang: jawaban yang belum
@@ -834,6 +1089,11 @@
       lastServerNow = m.serverNow;
       setPaused(m.paused || 0);
     }
+    // Kejadian yang belum terkirim; seq kejadian ikut menaikkan lastSeq.
+    if (m && m.events && m.events.length) {
+      m.events.forEach(function (e) { if (e.s > lastSeq) lastSeq = e.s; });
+      events = m.events.concat(events);
+    }
     (res && res.items || []).forEach(function (row) {
       var i = byID[row.q];
       if (i === undefined) return;
@@ -851,6 +1111,13 @@
       showAt(m.pos);
     }
     merged = true;
+    // Halaman ini pernah dibuka di perangkat ini: muat ulang atau dibuka
+    // lagi setelah ditutup. Bila ditutup browser saat di latar belakang,
+    // keluar halaman dihitung sampai sekarang.
+    if (m) {
+      addEvent("muat_ulang", serverNow());
+      if (m.away) { awayStart = m.away; comeBack(); }
+    }
     if (!stale) remember(state.now);
     if (hasPending()) flush();
   });

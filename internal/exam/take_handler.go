@@ -199,6 +199,12 @@ type takeState struct {
 	Key      string                 `json:"key"`              // kunci penyimpanan preferensi tampilan
 	Token    string                 `json:"token"`            // token attempt untuk simpan (T139)
 	Paused   int64                  `json:"paused,omitempty"` // dijeda sejak (ms Unix), T140
+	// Integritas (T141): dikunci sejak, jumlah keluar halaman, dan batas
+	// kunci (0 = hanya dicatat).
+	Locked    int64 `json:"locked,omitempty"`
+	Leaves    int   `json:"leaves"`
+	LockAfter int   `json:"lockAfter,omitempty"`
+	LockLeft  int   `json:"lockLeft,omitempty"`
 }
 
 // unixMilli mengembalikan t dalam milidetik Unix, atau 0 bila nil.
@@ -235,10 +241,29 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/u/a/"+a.ID+"/selesai", http.StatusSeeOther)
 		return
 	}
-	if a.DeviceID != h.deviceID(r) {
-		v := confirmView{Participant: p, Error: "Ujian ini sedang dikerjakan di perangkat lain. Minta pengawas mengizinkan pindah perangkat."}
-		h.render.Render(w, r, http.StatusConflict, "exam/take_device", v)
-		return
+	if dev := h.deviceID(r); a.DeviceID != dev {
+		// Pindah perangkat yang sudah diizinkan pengawas: perangkat ini
+		// menjadi perangkat aktif. Selain itu ditolak dan dicatat.
+		var claimed Attempt
+		var ok bool
+		var err error
+		if dev != "" {
+			claimed, ok, err = claimDevice(r.Context(), h.db, a, dev, now)
+		}
+		if err == nil && !ok && dev != "" {
+			err = recordEvent(r.Context(), h.db, a.SchoolID, a.ID, EventOtherDevice, now)
+		}
+		if err != nil {
+			page.ServerError(h.render, h.logger, w, r, nil, "attempt device", err)
+			return
+		}
+		if !ok {
+			v := confirmView{Participant: p, Error: "Ujian ini sedang dikerjakan di perangkat lain. Minta pengawas mengizinkan pindah perangkat."}
+			h.render.Render(w, r, http.StatusConflict, "exam/take_device", v)
+			return
+		}
+		h.logger.InfoContext(r.Context(), "attempt moved to new device", "school_id", a.SchoolID, "attempt_id", a.ID)
+		a = claimed
 	}
 	info, err := GetSessionInfo(r.Context(), h.db, p, a.SessionID)
 	if err != nil {
@@ -268,7 +293,8 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 	owner := p.StudentID + p.ApplicantID
 	v := takeView{Participant: p, Info: info, Attempt: a, Delivery: d, State: takeState{IDs: a.QuestionOrder, Answers: answers,
 		Pos: a.CurrentPosition, Deadline: a.DeadlineAt.UnixMilli(), Now: now.UnixMilli(), Back: e.AllowBack, Sound: info.AlertSound(),
-		Key: "akra-ujian-" + owner, Token: token, Paused: unixMilli(a.PausedAt)}}
+		Key: "akra-ujian-" + owner, Token: token, Paused: unixMilli(a.PausedAt), Locked: unixMilli(a.LockedAt),
+		Leaves: a.LeaveCount, LockAfter: e.IntegrityLimit, LockLeft: a.LeavesBeforeLock(e.IntegrityLimit)}}
 	// Halaman berisi soal: jangan disimpan cache bersama atau riwayat.
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
@@ -284,6 +310,7 @@ const maxSaveBody = 512 << 10
 
 type saveRequest struct {
 	Changes []AnswerChange `json:"changes"`
+	Events  []EventInput   `json:"events"`
 	Pos     *int           `json:"pos"`
 }
 
@@ -297,6 +324,10 @@ type saveResponse struct {
 	// Paused: attempt dijeda sejak waktu ini (ms Unix); layar dikunci dan
 	// hitung mundur berhenti. Kosong = tidak dijeda.
 	Paused int64 `json:"paused,omitempty"`
+	// Locked: dikunci sementara sejak waktu ini (ms Unix), T141.
+	Locked int64 `json:"locked,omitempty"`
+	// ESeq: seq kejadian tertinggi yang sudah tercatat.
+	ESeq int64 `json:"eseq,omitempty"`
 }
 
 // save menyimpan perubahan jawaban (T139). Hanya memverifikasi token
@@ -324,7 +355,8 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 	if req.Pos != nil {
 		pos = *req.Pos
 	}
-	res, err := SaveAnswers(r.Context(), h.db, c.SchoolID, c.AttemptID, c.DeviceID, req.Changes, pos, now)
+	res, err := SaveAnswers(r.Context(), h.db, c.SchoolID, c.AttemptID, c.DeviceID,
+		SaveRequest{Changes: req.Changes, Events: req.Events, Pos: pos}, now)
 	switch {
 	case errors.Is(err, ErrAttemptClosed):
 		writeJSON(w, http.StatusConflict, saveResponse{Closed: true, Redirect: "/u/a/" + id, Now: now.UnixMilli()})
@@ -335,7 +367,7 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
 	default:
 		writeJSON(w, http.StatusOK, saveResponse{OK: true, Seq: res.Seq, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli(),
-			Paused: unixMilli(res.PausedAt)})
+			Paused: unixMilli(res.PausedAt), Locked: unixMilli(res.LockedAt), ESeq: res.EventSeq})
 	}
 }
 

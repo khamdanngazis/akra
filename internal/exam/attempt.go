@@ -57,6 +57,22 @@ type Attempt struct {
 	// PausedAt: attempt sedang dijeda sejak waktu ini (T140).
 	PausedAt *time.Time
 	PausedMS int64 // total jeda yang sudah selesai
+	// Integritas (T141).
+	LeaveCount        int
+	AwayMS            int64
+	DeviceMoves       int
+	DeviceMoveAllowed bool
+	LockedAt          *time.Time // dikunci sementara sampai pengawas membuka
+	LockBase          int        // leave_count saat kunci terakhir dibuka
+}
+
+// LeavesBeforeLock mengembalikan sisa keluar halaman sebelum dikunci
+// menurut batas ujian limit (0 = aturan hanya catat).
+func (a Attempt) LeavesBeforeLock(limit int) int {
+	if limit <= 0 {
+		return 0
+	}
+	return max(0, limit-(a.LeaveCount-a.LockBase))
 }
 
 // Running melaporkan apakah attempt masih bisa dikerjakan.
@@ -224,13 +240,15 @@ func GetSessionInfo(ctx context.Context, q database.DBTX, p auth.Participant, se
 }
 
 const attemptCols = `id, school_id, exam_id, session_id, participant_id, attempt_no, variant_id, question_order::text[], option_order,
-	status, device_id::text, started_at, deadline_at, submitted_at, coalesce(submit_reason, ''), current_position, paused_at, paused_ms`
+	status, device_id::text, started_at, deadline_at, submitted_at, coalesce(submit_reason, ''), current_position, paused_at, paused_ms,
+	leave_count, away_ms, device_moves, device_move_allowed, locked_at, lock_base`
 
 func scanAttempt(r pgx.Row) (Attempt, error) {
 	var a Attempt
 	var opts []byte
 	err := r.Scan(&a.ID, &a.SchoolID, &a.ExamID, &a.SessionID, &a.ParticipantID, &a.No, &a.VariantID, &a.QuestionOrder, &opts,
-		&a.Status, &a.DeviceID, &a.StartedAt, &a.DeadlineAt, &a.SubmittedAt, &a.SubmitReason, &a.CurrentPosition, &a.PausedAt, &a.PausedMS)
+		&a.Status, &a.DeviceID, &a.StartedAt, &a.DeadlineAt, &a.SubmittedAt, &a.SubmitReason, &a.CurrentPosition, &a.PausedAt, &a.PausedMS,
+		&a.LeaveCount, &a.AwayMS, &a.DeviceMoves, &a.DeviceMoveAllowed, &a.LockedAt, &a.LockBase)
 	if err != nil {
 		return a, err
 	}
@@ -320,10 +338,17 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 			WHERE participant_id = $1 AND status = 'berjalan'`, info.ParticipantID))
 		switch {
 		case err == nil:
-			if running.DeviceID != req.DeviceID {
-				return ErrOtherDevice
-			}
 			out = running
+			if running.DeviceID != req.DeviceID {
+				claimed, ok, err := claimDevice(ctx, tx, running, req.DeviceID, req.Now)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return ErrOtherDevice
+				}
+				out = claimed
+			}
 			return nil
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("exam: running attempt: %w", err)
@@ -382,6 +407,13 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 		return audit.Record(ctx, tx, audit.Entry{SchoolID: p.SchoolID, Action: "exam.attempt_start", EntityType: "exam_attempt", EntityID: out.ID,
 			After: map[string]any{"student_id": p.StudentID, "applicant_id": p.ApplicantID, "session_id": info.SessionID, "attempt_no": out.No}})
 	})
+	if errors.Is(err, ErrOtherDevice) && out.ID != "" {
+		// Dicatat di luar transaksi yang dibatalkan.
+		if rerr := recordEvent(ctx, db, out.SchoolID, out.ID, EventOtherDevice, req.Now); rerr != nil {
+			return Attempt{}, rerr
+		}
+		return Attempt{}, err
+	}
 	return out, err
 }
 
@@ -507,17 +539,32 @@ type SaveResult struct {
 	Deadline time.Time
 	// PausedAt: attempt sedang dijeda (layar peserta dikunci).
 	PausedAt *time.Time
+	// LockedAt: attempt dikunci sementara (aturan kunci, T141).
+	LockedAt *time.Time
 	// Seq adalah seq tertinggi dalam batch. Semua perubahan sampai seq ini
 	// aman di server: tersimpan, atau tergantikan jawaban yang lebih baru.
 	Seq int64
+	// EventSeq adalah seq kejadian tertinggi yang sudah tercatat.
+	EventSeq int64
 }
 
-// SaveAnswers menyimpan perubahan jawaban attempt dalam satu pernyataan
-// SQL: attempt harus masih berjalan, dari perangkat yang sama, dan belum
-// lewat tenggat + tenggang (attempt yang dijeda tetap menerima antrian). Perubahan dengan seq tidak lebih besar dari
-// yang tersimpan diabaikan. pos (indeks soal terakhir dibuka) disimpan
-// bila >= 0. ErrAttemptClosed bila attempt tidak lagi menerima jawaban.
-func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, deviceID string, changes []AnswerChange, pos int, now time.Time) (SaveResult, error) {
+// SaveRequest adalah isi satu kirim simpan dari perangkat.
+type SaveRequest struct {
+	Changes []AnswerChange
+	Events  []EventInput
+	Pos     int // indeks soal terakhir dibuka; < 0 = tidak berubah
+}
+
+// SaveAnswers menyimpan perubahan jawaban dan kejadian integritas attempt
+// dalam satu pernyataan SQL. Attempt harus masih berjalan, dari perangkat
+// yang sama, dan belum lewat tenggat + tenggang (attempt yang dijeda tetap
+// menerima antrian). Perubahan dengan seq tidak lebih besar dari yang
+// tersimpan diabaikan; kejadian yang sudah tercatat (seq sama) diabaikan.
+// Keluar halaman menambah hitungan dan, bila aturan ujian kunci, mengunci
+// attempt setelah N kali. ErrAttemptClosed bila attempt tidak lagi
+// menerima jawaban.
+func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, deviceID string, req SaveRequest, now time.Time) (SaveResult, error) {
+	changes := req.Changes
 	if !database.IsUUID(attemptID) || !database.IsUUID(deviceID) || len(changes) > MaxChangesPerSave {
 		return SaveResult{}, ErrBadAnswer
 	}
@@ -547,14 +594,22 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 		seen[c.QuestionID] = len(qs)
 		qs, vs, fs, ss = append(qs, c.QuestionID), append(vs, v), append(fs, c.Flagged), append(ss, c.Seq)
 	}
+	es, ek, et, ed, maxEvent, err := eventArrays(req.Events)
+	if err != nil {
+		return SaveResult{}, err
+	}
 	var found bool
 	var deadline time.Time
-	var pausedAt *time.Time
-	err := q.QueryRow(ctx, `
+	var pausedAt, lockedAt *time.Time
+	// Catatan: pernyataan data-modifying dalam WITH tidak melihat perubahan
+	// satu sama lain pada tabel, sehingga posisi, hitungan keluar, dan
+	// kunci diubah dalam satu UPDATE (upd).
+	err = q.QueryRow(ctx, `
 		WITH a AS (
-			SELECT id, school_id, question_order, deadline_at, paused_at FROM exam_attempts
-			WHERE school_id = $1 AND id = $2 AND status = 'berjalan' AND device_id = $3
-			  AND (paused_at IS NOT NULL OR deadline_at + $4::interval > $5)),
+			SELECT t.id, t.school_id, t.question_order, t.deadline_at, t.paused_at, t.started_at, t.locked_at, e.integrity_limit
+			FROM exam_attempts t JOIN exams e ON e.id = t.exam_id
+			WHERE t.school_id = $1 AND t.id = $2 AND t.status = 'berjalan' AND t.device_id = $3
+			  AND (t.paused_at IS NOT NULL OR t.deadline_at + $4::interval > $5)),
 		ins AS (
 			INSERT INTO exam_answers (school_id, attempt_id, question_id, value, flagged, client_seq, saved_at)
 			SELECT a.school_id, a.id, u.q, u.v, u.f, u.s, $5
@@ -564,12 +619,34 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 			SET value = excluded.value, flagged = excluded.flagged, client_seq = excluded.client_seq, saved_at = excluded.saved_at
 			WHERE exam_answers.client_seq < excluded.client_seq
 			RETURNING 1),
-		pos AS (
-			UPDATE exam_attempts t SET current_position = least($10::int, cardinality(a.question_order) - 1)
-			FROM a WHERE t.id = a.id AND $10::int >= 0 AND t.current_position <> $10::int
+		ev AS (
+			INSERT INTO exam_attempt_events (school_id, attempt_id, kind, occurred_at, duration_ms, client_seq)
+			SELECT a.school_id, a.id, v.k, least(greatest(to_timestamp(v.t / 1000.0), a.started_at), $5),
+				CASE WHEN v.d > 0 THEN least(v.d, 86400000) END, v.s
+			FROM a, unnest($11::bigint[], $12::text[], $13::bigint[], $14::bigint[]) AS v(s, k, t, d)
+			ON CONFLICT (attempt_id, client_seq) WHERE client_seq IS NOT NULL DO NOTHING
+			RETURNING kind, coalesce(duration_ms, 0) AS d),
+		lv AS (
+			SELECT count(*) FILTER (WHERE kind = 'keluar') AS n, coalesce(sum(d) FILTER (WHERE kind = 'keluar'), 0) AS ms FROM ev),
+		upd AS (
+			UPDATE exam_attempts t SET
+				current_position = CASE WHEN $10::int >= 0 THEN least($10::int, cardinality(a.question_order) - 1) ELSE t.current_position END,
+				leave_count = t.leave_count + lv.n,
+				away_ms = t.away_ms + lv.ms,
+				locked_at = CASE WHEN t.locked_at IS NULL AND lv.n > 0 AND a.integrity_limit IS NOT NULL
+				                      AND t.leave_count + lv.n - t.lock_base >= a.integrity_limit THEN $5 ELSE t.locked_at END
+			FROM a, lv
+			WHERE t.id = a.id
+			  AND (lv.n > 0 OR ($10::int >= 0 AND t.current_position <> least($10::int, cardinality(a.question_order) - 1)))
+			RETURNING t.locked_at, t.locked_at IS NOT NULL AND a.locked_at IS NULL AS newly),
+		lk AS (
+			INSERT INTO exam_attempt_events (school_id, attempt_id, kind, occurred_at)
+			SELECT a.school_id, a.id, 'terkunci', $5 FROM a, upd WHERE upd.newly
 			RETURNING 1)
-		SELECT EXISTS (SELECT 1 FROM a), coalesce((SELECT deadline_at FROM a), $5), (SELECT paused_at FROM a)`,
-		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, pos).Scan(&found, &deadline, &pausedAt)
+		SELECT EXISTS (SELECT 1 FROM a), coalesce((SELECT deadline_at FROM a), $5), (SELECT paused_at FROM a),
+			coalesce((SELECT locked_at FROM upd), (SELECT locked_at FROM a)), (SELECT count(*) FROM lk)`,
+		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, req.Pos, es, ek, et, ed).
+		Scan(&found, &deadline, &pausedAt, &lockedAt, new(int64))
 	if err != nil {
 		return SaveResult{}, fmt.Errorf("exam: save answers: %w", err)
 	}
@@ -580,7 +657,7 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	for _, x := range ss {
 		maxSeq = max(maxSeq, x)
 	}
-	return SaveResult{Deadline: deadline, PausedAt: pausedAt, Seq: maxSeq}, nil
+	return SaveResult{Deadline: deadline, PausedAt: pausedAt, LockedAt: lockedAt, Seq: maxSeq, EventSeq: maxEvent}, nil
 }
 
 // SubmitAttempt mengumpulkan attempt. Jawaban yang sudah tersimpan

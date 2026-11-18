@@ -403,7 +403,9 @@ func Login(ctx context.Context, db database.DB, req LoginRequest) (auth.Particip
 				return ErrOtherDevice
 			}
 			if match.DeviceID != "" && match.DeviceID != req.DeviceID {
-				return ErrOtherDevice
+				// Dicatat untuk pengawas (T141); transaksi tetap di-commit.
+				failed = ErrOtherDevice
+				return recordOtherDeviceLogin(ctx, tx, req.SchoolID, match.ID, req.Now)
 			}
 			if match.DeviceID == "" {
 				if _, err := tx.Exec(ctx, `UPDATE student_credentials SET device_id = $2 WHERE id = $1`, match.ID, req.DeviceID); err != nil {
@@ -444,7 +446,10 @@ func Unlock(ctx context.Context, db database.DB, schoolID, actorID, credentialID
 }
 
 // ResetDevice melepas ikatan perangkat kode credentialID agar peserta bisa
-// masuk dari perangkat lain (mis. HP mati), dan mencatat audit.
+// masuk dari perangkat lain (mis. HP mati), dan mencatat audit. Attempt
+// yang sedang berjalan diizinkan pindah: perangkat berikutnya yang
+// membukanya menjadi perangkat aktif dan token perangkat lama tidak berlaku
+// lagi (T141).
 func ResetDevice(ctx context.Context, db database.DB, schoolID, actorID, credentialID string) error {
 	if !database.IsUUID(credentialID) {
 		return ErrBadLogin
@@ -458,8 +463,16 @@ func ResetDevice(ctx context.Context, db database.DB, schoolID, actorID, credent
 		if tag.RowsAffected() == 0 {
 			return ErrBadLogin
 		}
+		moved, err := tx.Exec(ctx, `UPDATE exam_attempts t SET device_move_allowed = true
+			FROM student_credentials c, exam_session_participants p
+			WHERE c.school_id = $1 AND c.id = $2 AND p.session_id = c.exam_session_id
+			  AND p.student_id IS NOT DISTINCT FROM c.student_id AND p.applicant_id IS NOT DISTINCT FROM c.applicant_id
+			  AND t.participant_id = p.id AND t.status = 'berjalan'`, schoolID, credentialID)
+		if err != nil {
+			return fmt.Errorf("exam: allow device move: %w", err)
+		}
 		return audit.Record(ctx, tx, audit.Entry{SchoolID: schoolID, UserID: actorID, Action: "participant.reset_device",
-			EntityType: "student_credential", EntityID: credentialID})
+			EntityType: "student_credential", EntityID: credentialID, After: map[string]any{"running_attempts": moved.RowsAffected()}})
 	})
 }
 
