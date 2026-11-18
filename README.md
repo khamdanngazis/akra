@@ -304,6 +304,10 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - Aturan ujian **kunci** (langkah Aturan di wizard): setelah N kali keluar, attempt dikunci sementara (`locked_at`) sampai pengawas membuka (`UnlockAttempt`); waktu tetap berjalan, simpan tetap diterima. Tidak ada diskualifikasi otomatis.
   - Satu perangkat: masuk dengan kartu dari perangkat lain ditolak dan dicatat. `ResetDevice` (pengawas, T143) melepas ikatan kartu dan mengizinkan attempt berjalan pindah: perangkat berikutnya yang membuka ujian menjadi perangkat aktif, token perangkat lama ditolak (409).
   - Penghalang ringan: teks soal tidak bisa diseleksi, klik kanan mati (kecuali kolom jawaban), layar penuh diminta lagi saat Lanjutkan. Safe Exam Browser tidak diimplementasikan. Keterbatasan bunyi: [doc/panduan-pengawas.md](doc/panduan-pengawas.md).
+- **Kompatibilitas dan hemat data** (T142, migrasi 000074):
+  - Gambar soal di halaman ujian disajikan sebagai **pratinjau** (sisi terpanjang 960 px, [internal/exam/preview.go](internal/exam/preview.go)), dibuat saat unggah atau saat pertama diminta untuk gambar lama. Gambar penuh hanya saat diperbesar (`/u/a/{attempt}/gambar/{aset}?penuh=1`). `srcset` sengaja tidak dipakai karena HP berlayar rapat akan memilih gambar penuh. Gambar dimuat lebih dulu oleh service worker hanya bila koneksi bukan 2G dan mode hemat data mati.
+  - Satu ujian 40 soal dengan 10 gambar ±0,8 MB (`TestExamDataBudget`, batas 2 MB). Perkiraan dan daftar browser yang didukung tampil di `/u/cek`; browser bawaan vendor (Mi Browser, Opera, dsb.) diberi saran memakai Chrome.
+  - URL pendek `/u` dengan isian kode sekolah. Batas login per IP 3.000 per 15 menit agar satu lab/WiFi (NAT) tidak terblokir (`TestLabLoginsBehindOneIP`). Mode kiosk, NAT, dan daftar uji perangkat nyata: [doc/panduan-lab.md](doc/panduan-lab.md).
 - Aset statis dan halaman peserta dikompresi gzip.
 
 ## Login Peserta Ujian

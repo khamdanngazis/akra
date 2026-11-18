@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,11 +26,13 @@ import (
 )
 
 // Percobaan login peserta dibatasi per IP dan per nomor peserta. Batas IP
-// longgar karena satu lab atau satu WiFi sekolah memakai satu IP publik.
+// longgar karena satu lab atau satu WiFi sekolah memakai satu IP publik
+// (NAT): ratusan siswa masuk bersamaan, sebagian salah ketik (T142). Tebak
+// kode tetap ditahan batas per nomor peserta.
 const attemptParticipantLogin = "exam_login"
 
 var participantLimits = map[string]ratelimit.Limit{
-	attemptParticipantLogin: {Window: 15 * time.Minute, PerIP: 1000, PerKey: 10},
+	attemptParticipantLogin: {Window: 15 * time.Minute, PerIP: 3000, PerKey: 10},
 }
 
 // DeviceCookieName adalah cookie penanda perangkat peserta. Kode ujian
@@ -90,8 +93,33 @@ func participantLoginPath(_ *http.Request, code string) string {
 	return "/u/" + url.PathEscape(code)
 }
 
+// indexView adalah halaman /u/: masuk lewat kode sekolah (URL pendek untuk
+// diketik di komputer lab, T142).
+type indexView struct {
+	Code, Error string
+}
+
+var schoolCodeRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,40}$`)
+
 func (h *ParticipantHandler) index(w http.ResponseWriter, r *http.Request) {
-	h.render.Render(w, r, http.StatusOK, "exam/participant_index", nil)
+	code := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sekolah")))
+	if code == "" {
+		h.render.Render(w, r, http.StatusOK, "exam/participant_index", nil)
+		return
+	}
+	if schoolCodeRe.MatchString(code) {
+		var ok bool
+		if err := h.db.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM schools WHERE code = $1)`, code).Scan(&ok); err != nil {
+			page.ServerError(h.render, h.logger, w, r, nil, "participant school code", err)
+			return
+		}
+		if ok {
+			http.Redirect(w, r, "/u/"+code, http.StatusSeeOther)
+			return
+		}
+	}
+	v := indexView{Code: code, Error: "Kode sekolah tidak ditemukan. Periksa tulisan di kartu ujian."}
+	h.render.Render(w, r, http.StatusNotFound, "exam/participant_index", v)
 }
 
 type participantSchool struct {

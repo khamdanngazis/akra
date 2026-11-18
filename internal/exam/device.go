@@ -48,6 +48,10 @@ var (
 	reAndroid  = regexp.MustCompile(`Android`)
 	reIPhone   = regexp.MustCompile(`iPhone|iPad|iPod`)
 	reOldStock = regexp.MustCompile(`Android [0-6]\.`)
+	// Browser bawaan vendor HP (berbasis Chromium, sering tertinggal versi
+	// atau menyisipkan iklan/hemat data sendiri): bisa dipakai, Chrome
+	// disarankan (T142).
+	reVendor = regexp.MustCompile(`MiuiBrowser|HeyTapBrowser|VivoBrowser|OppoBrowser|PHX/|OPR/|Opera|YaBrowser`)
 )
 
 func ver(re *regexp.Regexp, ua string) int {
@@ -89,6 +93,11 @@ func ClassifyUA(ua string) DeviceVerdict {
 			return DeviceVerdict{Level: DeviceWarn, Browser: "Edge " + strconv.Itoa(v), Message: "Perbarui Edge ke versi terbaru."}
 		}
 		return DeviceVerdict{Level: DeviceOK, Browser: "Edge " + strconv.Itoa(v), Message: "Siap dipakai."}
+	}
+	if m := reVendor.FindString(ua); m != "" {
+		name := map[string]string{"MiuiBrowser": "Mi Browser", "HeyTapBrowser": "Browser HeyTap", "VivoBrowser": "Browser Vivo",
+			"OppoBrowser": "Browser Oppo", "PHX/": "Phoenix", "OPR/": "Opera", "Opera": "Opera", "YaBrowser": "Yandex"}[m]
+		return DeviceVerdict{Level: DeviceWarn, Browser: name, Message: "Bisa dipakai, tetapi Chrome lebih disarankan."}
 	}
 	if v := ver(reSamsung, ua); v > 0 {
 		if v < minSamsung {

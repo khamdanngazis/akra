@@ -454,11 +454,20 @@ func (h *ParticipantHandler) image(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	// Bawaan pratinjau ringan (T142); ?penuh=1 untuk gambar yang diperbesar.
+	key, ct := asset.StorageKey, asset.ContentType
+	if r.URL.Query().Get("penuh") != "1" {
+		if asset, err = EnsurePreview(r.Context(), h.db, h.store, asset); err != nil {
+			h.logger.ErrorContext(r.Context(), "attempt image preview", "asset_id", asset.ID, "error", err)
+		} else {
+			key, ct = asset.PreviewKey, asset.PreviewType
+		}
+	}
 	ttl := a.DeadlineAt.Add(SaveGrace).Sub(now)
 	if ttl < time.Minute {
 		ttl = time.Minute
 	}
-	u, err := h.store.Presign(r.Context(), asset.StorageKey, ttl, storage.PresignOptions{ContentDisposition: "inline", ContentType: asset.ContentType})
+	u, err := h.store.Presign(r.Context(), key, ttl, storage.PresignOptions{ContentDisposition: "inline", ContentType: ct})
 	if err != nil {
 		h.logger.ErrorContext(r.Context(), "presign attempt image", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
