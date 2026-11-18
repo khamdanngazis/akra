@@ -146,9 +146,15 @@ func (s *TokenSigner) Verify(tok string, now time.Time) (AttemptClaims, error) {
 }
 
 // TokenFor membuat token untuk attempt yang berjalan di perangkatnya.
-func (s *TokenSigner) TokenFor(a Attempt) (string, error) {
+func (s *TokenSigner) TokenFor(a Attempt, now time.Time) (string, error) {
+	// Saat dijeda tenggat tidak bergerak; token tetap berlaku dihitung dari
+	// sekarang agar muat ulang setelah jeda panjang tetap mendapat token sah.
+	base := a.DeadlineAt
+	if now.After(base) {
+		base = now
+	}
 	return s.Sign(AttemptClaims{SchoolID: a.SchoolID, AttemptID: a.ID, DeviceID: a.DeviceID,
-		Expires: a.DeadlineAt.Add(SaveGrace + attemptTokenTTL)})
+		Expires: base.Add(SaveGrace + attemptTokenTTL)})
 }
 
 func mac(key, payload []byte) []byte {

@@ -132,6 +132,8 @@ func startMessage(err error) (string, int) {
 		return "Waktu sesi ujian sudah berakhir.", http.StatusUnprocessableEntity
 	case errors.Is(err, ErrNoAttemptsLeft):
 		return "Kesempatan mengerjakan ujian ini sudah habis.", http.StatusUnprocessableEntity
+	case errors.Is(err, ErrSessionPaused):
+		return "Ujian sedang dijeda pengawas. Tunggu instruksi pengawas lalu tekan Mulai lagi.", http.StatusUnprocessableEntity
 	case errors.Is(err, ErrOtherDevice):
 		return "Ujian ini sedang dikerjakan di perangkat lain. Minta pengawas mengizinkan pindah perangkat.", http.StatusConflict
 	}
@@ -194,8 +196,17 @@ type takeState struct {
 	Now      int64                  `json:"now"`
 	Back     bool                   `json:"back"`
 	Sound    bool                   `json:"sound"`
-	Key      string                 `json:"key"`   // kunci penyimpanan preferensi tampilan
-	Token    string                 `json:"token"` // token attempt untuk simpan (T139)
+	Key      string                 `json:"key"`              // kunci penyimpanan preferensi tampilan
+	Token    string                 `json:"token"`            // token attempt untuk simpan (T139)
+	Paused   int64                  `json:"paused,omitempty"` // dijeda sejak (ms Unix), T140
+}
+
+// unixMilli mengembalikan t dalam milidetik Unix, atau 0 bila nil.
+func unixMilli(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.UnixMilli()
 }
 
 type takeView struct {
@@ -212,7 +223,7 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now()
-	if a.Running() && !now.Before(a.DeadlineAt.Add(SaveGrace)) {
+	if a.Expired(now) {
 		// Waktu habis saat perangkat mati/tertutup: jawaban tersimpan dikumpulkan.
 		var err error
 		if a, err = SubmitAttempt(r.Context(), h.db, p, a, SubmitByTime, now); err != nil {
@@ -249,7 +260,7 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, nil, "attempt answers", err)
 		return
 	}
-	token, err := h.tokens.TokenFor(a)
+	token, err := h.tokens.TokenFor(a, now)
 	if err != nil {
 		page.ServerError(h.render, h.logger, w, r, nil, "attempt token", err)
 		return
@@ -257,7 +268,7 @@ func (h *ParticipantHandler) take(w http.ResponseWriter, r *http.Request) {
 	owner := p.StudentID + p.ApplicantID
 	v := takeView{Participant: p, Info: info, Attempt: a, Delivery: d, State: takeState{IDs: a.QuestionOrder, Answers: answers,
 		Pos: a.CurrentPosition, Deadline: a.DeadlineAt.UnixMilli(), Now: now.UnixMilli(), Back: e.AllowBack, Sound: info.AlertSound(),
-		Key: "akra-ujian-" + owner, Token: token}}
+		Key: "akra-ujian-" + owner, Token: token, Paused: unixMilli(a.PausedAt)}}
 	// Halaman berisi soal: jangan disimpan cache bersama atau riwayat.
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
@@ -283,6 +294,9 @@ type saveResponse struct {
 	Redirect string `json:"redirect,omitempty"`
 	Now      int64  `json:"now"`
 	Deadline int64  `json:"deadline,omitempty"`
+	// Paused: attempt dijeda sejak waktu ini (ms Unix); layar dikunci dan
+	// hitung mundur berhenti. Kosong = tidak dijeda.
+	Paused int64 `json:"paused,omitempty"`
 }
 
 // save menyimpan perubahan jawaban (T139). Hanya memverifikasi token
@@ -320,7 +334,8 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		h.logger.ErrorContext(r.Context(), "save answers", "attempt_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
 	default:
-		writeJSON(w, http.StatusOK, saveResponse{OK: true, Seq: res.Seq, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli()})
+		writeJSON(w, http.StatusOK, saveResponse{OK: true, Seq: res.Seq, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli(),
+			Paused: unixMilli(res.PausedAt)})
 	}
 }
 
@@ -375,7 +390,7 @@ func (h *ParticipantHandler) done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now()
-	v := doneView{Participant: p, Info: info, Attempt: a, ByTime: a.SubmitReason == SubmitByTime,
+	v := doneView{Participant: p, Info: info, Attempt: a, ByTime: a.SubmitReason == SubmitByTime || a.SubmitReason == SubmitBySystem,
 		CanRetry: !p.ReadOnly && info.Phase(now) == "buka"}
 	if a.SubmittedAt != nil {
 		v.Received = clockLabel(*a.SubmittedAt, now, p.Location())

@@ -27,9 +27,19 @@
   var answers = state.answers || {};
   var current = -1;
   var furthest = 0;
-  var offset = state.now - Date.now(); // jam server − jam perangkat
   var deadline = state.deadline;
+  var pausedAt = 0; // dijeda sejak (jam server, ms); 0 = tidak dijeda
   var submitting = false;
+
+  // ---- Jam server (T140). ----
+  // Waktu server = jam server saat sinkron terakhir + lama berlalu menurut
+  // jam monoton (performance.now), sehingga mengubah jam HP tidak mengubah
+  // sisa waktu. Disinkronkan ulang di setiap balasan simpan/ping.
+  function mono() { return window.performance && performance.now ? performance.now() : Date.now(); }
+  var sync = { server: state.now, mono: mono() };
+  function serverNow() { return sync.server + (mono() - sync.mono); }
+  function syncClock(now) { sync = { server: now, mono: mono() }; }
+  function remainingMs() { return deadline - (pausedAt || serverNow()); }
 
   // ---- Penyimpanan di perangkat (IndexedDB). ----
   // outbox: satu baris per soal {q, v, f, s, ok}; ok = sudah diterima
@@ -104,7 +114,7 @@
   var lastSeq = 0;
   Object.keys(answers).forEach(function (k) { if (answers[k].s > lastSeq) lastSeq = answers[k].s; });
   function nextSeq() {
-    var t = (Date.now() + offset) * 1000;
+    var t = serverNow() * 1000;
     lastSeq = Math.max(lastSeq + 1, t);
     return lastSeq;
   }
@@ -309,12 +319,13 @@
     return store.persistent() ? "Offline — jawaban aman di perangkat ini" : "Offline — jangan tutup halaman ini";
   }
 
-  // remember menyimpan jam server terakhir, tenggat, dan posisi di
-  // perangkat. serverNow kosong: hanya posisi yang berubah.
+  // remember menyimpan jam server terakhir, tenggat, jeda, dan posisi di
+  // perangkat. now kosong: hanya posisi yang berubah. offset (jam server −
+  // jam perangkat) dipakai bila halaman dimuat ulang dari salinan offline.
   var lastServerNow = state.now;
-  function remember(serverNow) {
-    if (serverNow) lastServerNow = serverNow;
-    store.meta({ offset: offset, deadline: deadline, serverNow: lastServerNow, pos: current });
+  function remember(now) {
+    if (now) lastServerNow = now;
+    store.meta({ offset: serverNow() - Date.now(), deadline: deadline, paused: pausedAt, serverNow: lastServerNow, pos: current });
   }
 
   // flush mengirim antrian; mengembalikan Promise yang selesai saat antrian
@@ -331,6 +342,7 @@
     var keys = Object.keys(batch);
     var changes = keys.map(function (k) { return { q: k, v: batch[k].v, f: batch[k].f, s: batch[k].s }; });
     if (keys.length) setStatus("busy", "Menyimpan…");
+    lastSent = mono();
     var headers = { "Content-Type": "application/json" };
     headers["X-Attempt-Token"] = state.token;
     inflight = fetch(saveURL, {
@@ -343,7 +355,7 @@
       return res.json().catch(function () { return {}; }).then(function (body) { return { res: res, body: body }; });
     }).then(function (r) {
       inflight = null;
-      if (r.body && r.body.now) offset = r.body.now - Date.now();
+      if (r.body && r.body.now) syncClock(r.body.now);
       if (r.res.status === 409 && r.body.closed) {
         submitting = true;
         window.location.href = r.body.redirect;
@@ -352,12 +364,18 @@
       if (r.res.status === 401) return tokenExpired(batch, sentPos);
       if (!r.res.ok) throw new Error("save " + r.res.status);
       if (r.body.deadline) deadline = r.body.deadline;
+      setPaused(r.body.paused || 0);
       backoff = 0;
       if (keys.length) store.ack(keys, r.body.seq || 0);
       remember(r.body.now);
       if (hasPending()) { schedule(300); return true; }
       setStatus("ok", "Tersimpan");
-      if (awaitSubmit) { awaitSubmit = false; setTimeout(function () { submit("waktu"); }, 0); }
+      if (awaitSubmit) {
+        awaitSubmit = false;
+        // Tenggat bisa sudah diperpanjang (tambah waktu, jeda) saat offline.
+        if (timeUp()) setTimeout(function () { submit("waktu"); }, 0);
+        else banner.hidden = true;
+      }
       return true;
     }).catch(function () {
       inflight = null;
@@ -395,8 +413,15 @@
   }
 
   window.addEventListener("online", function () { backoff = 0; if (hasPending() || awaitSubmit) flush(awaitSubmit); });
-  // Tetap mencoba berkala walau event online tidak muncul (WiFi lab).
-  setInterval(function () { if (!inflight && !saveTimer && (hasPending() || awaitSubmit)) flush(awaitSubmit); }, 10000);
+  // Ping ringan bila tidak ada simpan: tambah waktu dan jeda dari pengawas
+  // sampai ke perangkat paling lambat 10 detik (5 detik selama jeda, agar
+  // layar cepat terbuka lagi). Sekaligus mencoba ulang antrian walau event
+  // online tidak muncul (WiFi lab).
+  var lastSent = mono();
+  setInterval(function () {
+    if (submitting || inflight || saveTimer) return;
+    if (mono() - lastSent >= (pausedAt ? 5000 : 10000)) flush(true);
+  }, 1000);
   window.addEventListener("beforeunload", function (ev) {
     // Dengan IndexedDB jawaban aman walau halaman ditutup.
     if (!submitting && hasPending() && !store.persistent()) { ev.preventDefault(); ev.returnValue = ""; }
@@ -630,6 +655,12 @@
     flush(true).then(function (ok) {
       submitBusy = false;
       if (submitting) return;
+      if (ok && reason === "waktu" && !timeUp()) {
+        // Balasan server membawa tenggat baru atau jeda: lanjut mengerjakan.
+        btn.disabled = false;
+        banner.hidden = true;
+        return;
+      }
       if (!ok) {
         btn.disabled = false;
         if (reason === "waktu") {
@@ -654,16 +685,50 @@
   var timer = root.querySelector("[data-timer]");
   var timerText = root.querySelector("[data-timer-text]");
   var banner = root.querySelector("[data-banner]");
+  var pauseBox = root.querySelector("[data-pause]");
+  var pauseLeft = root.querySelector("[data-pause-left]");
   var warned = {};
   function pad(n) { return (n < 10 ? "0" : "") + n; }
-  function tick() {
-    var left = Math.max(0, Math.floor((deadline - (Date.now() + offset)) / 1000));
+  function clock(left) {
     var h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
-    timerText.textContent = (h ? h + ":" + pad(m) : pad(m)) + ":" + pad(s);
+    return (h ? h + ":" + pad(m) : pad(m)) + ":" + pad(s);
+  }
+  function timeUp() { return !pausedAt && remainingMs() <= 0; }
+
+  // setPaused mengunci atau membuka layar sesuai jeda dari server. Selama
+  // jeda hitung mundur berhenti; tenggat baru datang saat jeda selesai.
+  function setPaused(p) {
+    var was = !!pausedAt;
+    pausedAt = p || 0;
+    if (was === !!pausedAt) return;
+    if (pausedAt) {
+      if (dialog.open) dialog.close();
+      zoom.hidden = true;
+      panel.classList.remove("is-open");
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      Array.prototype.forEach.call(root.children, function (c) { if (c !== pauseBox) c.inert = true; });
+      pauseBox.hidden = false;
+      if (navigator.vibrate) navigator.vibrate(200);
+    } else {
+      pauseBox.hidden = true;
+      Array.prototype.forEach.call(root.children, function (c) { c.inert = false; });
+      banner.textContent = "Jeda selesai. Waktu berjalan lagi.";
+      banner.hidden = false;
+      setTimeout(function () { banner.hidden = true; }, 4000);
+    }
+    tick();
+  }
+
+  function tick() {
+    var left = Math.max(0, Math.floor(remainingMs() / 1000));
+    timerText.textContent = clock(left);
+    pauseLeft.textContent = clock(left);
     timer.classList.toggle("is-warn", left <= 600 && left > 60);
     timer.classList.toggle("is-danger", left <= 60);
     [[600, "Sisa waktu 10 menit."], [60, "Sisa waktu 1 menit. Periksa jawaban Anda."]].forEach(function (w) {
-      if (left <= w[0] && left > 0 && !warned[w[0]]) {
+      // Waktu ditambah setelah peringatan: peringatan bisa muncul lagi.
+      if (left > w[0] + 30) warned[w[0]] = false;
+      if (left <= w[0] && left > 0 && !warned[w[0]] && !pausedAt) {
         warned[w[0]] = true;
         banner.textContent = w[1];
         banner.hidden = false;
@@ -671,7 +736,7 @@
         setTimeout(function () { banner.hidden = true; }, 6000);
       }
     });
-    if (left === 0 && !submitting && !submitBusy && !awaitSubmit) {
+    if (timeUp() && !submitting && !submitBusy && !awaitSubmit) {
       banner.textContent = "Waktu habis — jawaban dikumpulkan.";
       banner.hidden = false;
       submit("waktu");
@@ -749,6 +814,7 @@
   show(start, false);
   posDirty = false;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  setPaused(state.paused || 0);
 
   // ---- Gabungkan salinan di perangkat. ----
   // Baris dengan seq lebih baru dari halaman menang: jawaban yang belum
@@ -763,9 +829,10 @@
     // server selalu membawa jam yang lebih baru dari catatan perangkat.
     var stale = !!m && m.serverNow >= state.now;
     if (stale) {
-      offset = m.offset;
+      sync = { server: Date.now() + m.offset, mono: mono() };
       deadline = m.deadline || deadline;
       lastServerNow = m.serverNow;
+      setPaused(m.paused || 0);
     }
     (res && res.items || []).forEach(function (row) {
       var i = byID[row.q];

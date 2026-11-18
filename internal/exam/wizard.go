@@ -217,6 +217,7 @@ func (h *Handler) examWizardRoutes(readers, writers chi.Router) {
 	writers.Post("/paket/{id}/varian", h.examSetVariants)
 	writers.Post("/paket/{id}/sesi", h.examCreateSessions)
 	writers.Post("/paket/{id}/sesi/{sid}/batal", h.examCancelSession)
+	writers.Post("/paket/{id}/sesi/{sid}/terlambat", h.examLatePolicy)
 	writers.Post("/paket/{id}/jadwalkan", h.examSchedule)
 }
 
@@ -890,6 +891,29 @@ func (h *Handler) examCancelSession(w http.ResponseWriter, r *http.Request) {
 	}
 	h.flash(r, "Sesi dibatalkan. Kode ujian sesi itu tidak berlaku lagi.")
 	http.Redirect(w, r, examStepPath(e.ID, stepSchedule), http.StatusSeeOther)
+}
+
+// examLatePolicy menyimpan aturan peserta terlambat masuk (T140).
+func (h *Handler) examLatePolicy(w http.ResponseWriter, r *http.Request) {
+	_, sa, e, ok := h.examWrite(w, r)
+	if !ok {
+		return
+	}
+	sid := chi.URLParam(r, "sid")
+	back := examPath(e.ID) + "?tab=sesi&sesi=" + url.QueryEscape(sid)
+	err := SetLatePolicy(r.Context(), h.db, sa, e.ID, sid, r.PostForm.Get("late_policy"), time.Now())
+	switch {
+	case errors.Is(err, ErrBadLatePolicy):
+		h.flash(r, "Pilih aturan peserta terlambat.")
+	case errors.Is(err, ErrSessionStarted):
+		h.flash(r, "Sesi sudah mulai sehingga aturan terlambat tidak bisa diubah.")
+	case err != nil:
+		h.examFail(w, r, e, back, "set late policy", err)
+		return
+	default:
+		h.flash(r, "Aturan peserta terlambat disimpan.")
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 func (h *Handler) examSchedule(w http.ResponseWriter, r *http.Request) {

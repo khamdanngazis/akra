@@ -80,14 +80,28 @@
 <section class="card stack mt-4">
 {{if .Sessions}}
 <div class="table-wrap"><table>
-<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Lokasi</th><th>Peserta</th><th>Pengawas</th></tr></thead>
+<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Lokasi</th><th>Terlambat masuk</th><th>Peserta</th><th>Pengawas</th></tr></thead>
 <tbody>
-{{range .Sessions}}<tr><td><a href="/ujian/paket/{{$.Exam.ID}}?tab=sesi&amp;sesi={{.ID}}">{{.Title}}</a>{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}</td><td>{{.When}}</td><td>{{.LocationLabel}}</td><td>{{.Participants}}</td><td>{{range $i, $p := .Proctors}}{{if $i}}, {{end}}{{$p}}{{else}}—{{end}}</td></tr>{{end}}
+{{range .Sessions}}<tr><td><a href="/ujian/paket/{{$.Exam.ID}}?tab=sesi&amp;sesi={{.ID}}">{{.Title}}</a>{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}{{if .PausedAt}} <span class="badge">Dijeda</span>{{end}}</td><td>{{.When}}{{if .ExtraMinutes}}<span class="block text-sm text-slate-500">+{{.ExtraMinutes}} menit</span>{{end}}</td><td>{{.LocationLabel}}</td><td>{{.LatePolicyLabel}}</td><td>{{.Participants}}</td><td>{{range $i, $p := .Proctors}}{{if $i}}, {{end}}{{$p}}{{else}}—{{end}}</td></tr>{{end}}
 </tbody>
 </table></div>
 {{else}}<p class="mb-0">Belum ada sesi.{{if and .CanWrite (not .Exam.Purpose.SchoolWide)}} <a href="/ujian/paket/{{.Exam.ID}}/atur/jadwal">Atur jadwal</a>.{{end}}</p>{{end}}
 </section>
 {{with .Session}}
+{{if .CanCancel}}
+<section class="card stack mt-4">
+<h2 class="card-title">Terlambat masuk · {{.Title}}</h2>
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/sesi/{{.ID}}/terlambat" class="stack" novalidate>
+{{ csrfField }}
+<fieldset class="stack"><legend class="sr-only">Aturan peserta terlambat</legend>
+<label class="choice"><input type="radio" name="late_policy" value="penuh"{{if ne .LatePolicy "potong"}} checked{{end}}> Durasi penuh <span class="muted small">— waktu dihitung sejak peserta menekan Mulai, tetap dibatasi akhir sesi</span></label>
+<label class="choice"><input type="radio" name="late_policy" value="potong"{{if eq .LatePolicy "potong"}} checked{{end}}> Dipotong sesuai keterlambatan <span class="muted small">— waktu dihitung sejak jam mulai sesi</span></label>
+</fieldset>
+<div class="action-row"><button type="submit" class="btn btn-ghost btn-sm">Simpan aturan</button></div>
+</form>
+<p class="hint mb-0">Bisa diubah sampai sesi mulai.</p>
+</section>
+{{end}}
 <section class="card stack mt-4">
 <h2 class="card-title">Peserta · {{.Title}}</h2>
 <div class="table-wrap"><table>

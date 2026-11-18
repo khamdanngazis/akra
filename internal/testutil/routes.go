@@ -564,6 +564,10 @@ var Routes = []Route{
 		})},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/isi/{item}/hapus", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/isi/" + o.ExamItemID + "/hapus" }, nil)},
+	// Sebelum batal: sesi yang dibatalkan tidak bisa diubah lagi.
+	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi/{sid}/terlambat", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/sesi/" + o.ExamSessionID + "/terlambat" },
+			func(*School) url.Values { return url.Values{"late_policy": {"potong"}} })},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/sesi/{sid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/sesi/" + o.ExamSessionID + "/batal" }, nil)},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/arsip", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},

@@ -16,11 +16,12 @@
 {{if .AttemptsAll}}<div><dt>Kesempatan</dt><dd>{{.Info.Attempts}} dari {{.Info.MaxAttempts}} kali dipakai</dd></div>{{end}}
 </dl>
 {{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+{{if and .Info.Paused (eq .Phase "buka")}}<div class="alert alert-warning" role="status">Ujian sedang dijeda pengawas. Tunggu instruksi pengawas, lalu muat ulang halaman ini.</div>{{end}}
 {{if eq .Phase "buka"}}
 <div>
 <h2 class="card-title">Aturan</h2>
 <ul class="take-rules">
-<li>Waktu mulai berjalan saat Anda menekan <strong>Mulai</strong> dan tidak berhenti walau halaman ditutup.</li>
+{{if eq .Info.LatePolicy "potong"}}<li>Waktu dihitung sejak sesi dimulai, pukul {{.Opens}}. Terlambat masuk mengurangi waktu mengerjakan. Waktu tidak berhenti walau halaman ditutup.</li>{{else}}<li>Waktu mulai berjalan saat Anda menekan <strong>Mulai</strong> dan tidak berhenti walau halaman ditutup.</li>{{end}}
 <li>Jawaban tersimpan otomatis. Tandai <strong>Ragu-ragu</strong> untuk soal yang ingin diperiksa lagi.</li>
 {{if .Info.AlertSound}}<li><strong>Jangan keluar dari halaman ujian.</strong> Perangkat akan berbunyi dan pengawas melihat tandanya.</li>{{else}}<li>Jangan keluar dari halaman ujian; setiap kali keluar dicatat.</li>{{end}}
 <li>Periksa ringkasan sebelum mengumpulkan. Setelah dikumpulkan, jawaban tidak bisa diubah.</li>

@@ -3035,6 +3035,7 @@
   .take-cover { @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4; }
   .take-cover[hidden] { display: none; }
   .take-cover-card { @apply grid w-full max-w-md gap-3; }
+  .take-pause { z-index: 60; }
   .take-banner { @apply fixed inset-x-3 top-16 z-40 rounded-xl bg-amber-300 px-4 py-3 text-center font-semibold text-amber-950 shadow-lg; }
   .take-banner[hidden] { display: none; }
   .take-zoom { @apply fixed inset-0 z-50 overflow-auto bg-black/90; touch-action: pinch-zoom pan-x pan-y; }

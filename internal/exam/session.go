@@ -49,7 +49,13 @@ type Session struct {
 	Proctors     []string // nama pengawas
 	ProctorIDs   []string
 	CancelledAt  *time.Time
+	LatePolicy   string // aturan terlambat masuk (T140)
+	ExtraMinutes int    // waktu tambahan sesi
+	PausedAt     *time.Time
 }
+
+// LatePolicyLabel mengembalikan nama aturan terlambat sesi.
+func (s Session) LatePolicyLabel() string { return LatePolicyLabel(s.LatePolicy) }
 
 // KindLabel mengembalikan nama jenis sesi.
 func (s Session) KindLabel() string { return sessionKindLabels[s.Kind] }
@@ -78,12 +84,12 @@ const sessionCols = `x.id, x.exam_id, x.kind, x.label, coalesce(x.class_id::text
 	(SELECT count(*) FROM exam_session_participants p WHERE p.session_id = x.id),
 	coalesce((SELECT array_agg(u.full_name ORDER BY u.full_name) FROM exam_session_proctors sp JOIN users u ON u.id = sp.user_id WHERE sp.session_id = x.id), '{}'),
 	coalesce((SELECT array_agg(sp.user_id::text ORDER BY sp.user_id) FROM exam_session_proctors sp WHERE sp.session_id = x.id), '{}'),
-	x.cancelled_at`
+	x.cancelled_at, x.late_policy, x.extra_minutes, x.paused_at`
 
 func scanSession(r pgx.Row) (Session, error) {
 	var s Session
 	err := r.Scan(&s.ID, &s.ExamID, &s.Kind, &s.Label, &s.ClassID, &s.ClassName, &s.PeriodID, &s.TrackID, &s.Location, &s.StartsAt,
-		&s.EndsAt, &s.Participants, &s.Proctors, &s.ProctorIDs, &s.CancelledAt)
+		&s.EndsAt, &s.Participants, &s.Proctors, &s.ProctorIDs, &s.CancelledAt, &s.LatePolicy, &s.ExtraMinutes, &s.PausedAt)
 	return s, err
 }
 
