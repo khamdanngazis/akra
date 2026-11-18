@@ -135,6 +135,20 @@
 <p class="mb-0">Sisa waktu <strong data-pause-left>--:--</strong>, tidak berkurang selama jeda.</p>
 </div>
 </div>
+<div class="take-cover take-lock" data-lock role="alertdialog" aria-modal="true" aria-labelledby="take-lock-title" aria-describedby="take-lock-text" hidden>
+<div class="card take-cover-card">
+<h2 class="text-lg font-bold" id="take-lock-title">Ujian dikunci sementara</h2>
+<p class="mb-0" id="take-lock-text">Anda terlalu sering keluar dari halaman ujian. Panggil pengawas untuk membuka kunci. Waktu tetap berjalan.</p>
+</div>
+</div>
+<div class="take-cover take-alarm" data-alarm-box role="alertdialog" aria-modal="true" aria-labelledby="take-alarm-title" aria-describedby="take-alarm-text" hidden>
+<div class="card take-cover-card">
+<h2 class="text-lg font-bold" id="take-alarm-title">Kembali ke ujian</h2>
+<p class="mb-0" id="take-alarm-text" data-alarm-text></p>
+<p class="mb-0">Kejadian ini dicatat dan terlihat oleh pengawas.</p>
+<button type="button" class="btn btn-primary btn-lg w-full" data-alarm-go>Lanjutkan</button>
+</div>
+</div>
 <div class="take-banner" data-banner role="alert" hidden></div>
 <div class="take-zoom" data-zoom hidden><img alt="" data-zoom-img><button type="button" class="take-icon-btn" data-zoom-close aria-label="Tutup gambar">✕</button></div>
 <form method="post" action="/u/a/{{.Attempt.ID}}/kumpul" data-submit-form hidden>{{ csrfField }}<input type="hidden" name="alasan" value="peserta"></form>

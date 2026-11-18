@@ -433,14 +433,14 @@ func TestStartAttemptRules(t *testing.T) {
 	}
 	// Simpan setelah tenggat + tenggang ditolak; sebelum itu diterima.
 	ch := []AnswerChange{{QuestionID: a.QuestionOrder[0], Value: json.RawMessage(`"x"`), Seq: 1}}
-	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, ch, -1, a.DeadlineAt.Add(time.Minute)); err != nil {
+	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, SaveRequest{Changes: ch, Pos: -1}, a.DeadlineAt.Add(time.Minute)); err != nil {
 		t.Errorf("save within grace: %v", err)
 	}
 	ch[0].Seq = 2
-	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, ch, -1, a.DeadlineAt.Add(SaveGrace+time.Second)); !errors.Is(err, ErrAttemptClosed) {
+	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, SaveRequest{Changes: ch, Pos: -1}, a.DeadlineAt.Add(SaveGrace+time.Second)); !errors.Is(err, ErrAttemptClosed) {
 		t.Errorf("save after grace: %v", err)
 	}
-	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev2, ch, -1, a.DeadlineAt); !errors.Is(err, ErrAttemptClosed) {
+	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev2, SaveRequest{Changes: ch, Pos: -1}, a.DeadlineAt); !errors.Is(err, ErrAttemptClosed) {
 		t.Errorf("save from other device: %v", err)
 	}
 	// Kumpul lalu habis kesempatan.

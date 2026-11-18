@@ -82,7 +82,7 @@ func TestPauseAndExtraTime(t *testing.T) {
 	}
 	// Antrian dari perangkat tetap diterima selama jeda; balasan membawa jeda.
 	ch := []AnswerChange{{QuestionID: a.QuestionOrder[0], Value: json.RawMessage(`"x"`), Seq: 1}}
-	res, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, ch, -1, m(15))
+	res, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, SaveRequest{Changes: ch, Pos: -1}, m(15))
 	if err != nil || res.PausedAt == nil || !res.PausedAt.Equal(m(11)) {
 		t.Errorf("save during pause = %+v, %v", res, err)
 	}
@@ -110,7 +110,7 @@ func TestPauseAndExtraTime(t *testing.T) {
 		t.Errorf("paused attempt closed: %+v", got)
 	}
 	ch[0].Seq = 2
-	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, ch, -1, late); err != nil {
+	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, a.ID, dev1, SaveRequest{Changes: ch, Pos: -1}, late); err != nil {
 		t.Errorf("save while paused past old deadline: %v", err)
 	}
 	if err := ResumeAttempt(ctx, e.tx, e.owner, a.ID, late.Add(30*time.Second)); err != nil {
@@ -235,7 +235,7 @@ func TestAutoSubmitExpired(t *testing.T) {
 		as = append(as, a)
 	}
 	ch := []AnswerChange{{QuestionID: as[0].QuestionOrder[0], Value: json.RawMessage(`"jawaban"`), Seq: 1}}
-	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, as[0].ID, dev1, ch, -1, s.Add(10*time.Minute)); err != nil {
+	if _, err := SaveAnswers(ctx, e.tx, e.a.ID, as[0].ID, dev1, SaveRequest{Changes: ch, Pos: -1}, s.Add(10*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	status := func(id string) (st, reason string) {
