@@ -1,0 +1,56 @@
+{{define "title"}}{{.Info.ExamName}}{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-confirm.js" }}"></script>{{end}}
+{{define "header"}}{{template "participant_bar" .Participant}}{{end}}
+{{define "content"}}
+<div class="adm-shell take-confirm">
+<p class="mb-2"><a href="/u/beranda" class="text-sm">← Beranda</a></p>
+<section class="card stack">
+<div>
+<h1 class="text-xl font-bold">{{.Info.ExamName}}</h1>
+<p class="text-slate-600 mb-0">{{with .Info.Subject}}{{.}} · {{end}}{{.Window}}</p>
+</div>
+<dl class="take-facts">
+<div><dt>Nama</dt><dd>{{.Participant.Name}}</dd></div>
+<div><dt>Durasi</dt><dd>{{.Info.Duration}} menit{{if .Info.ExtraMinutes}} <span class="text-sm text-slate-500">(termasuk tambahan {{.Info.ExtraMinutes}} menit)</span>{{end}}</dd></div>
+<div><dt>Jumlah soal</dt><dd>{{.Info.Questions}}</dd></div>
+{{if .AttemptsAll}}<div><dt>Kesempatan</dt><dd>{{.Info.Attempts}} dari {{.Info.MaxAttempts}} kali dipakai</dd></div>{{end}}
+</dl>
+{{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
+{{if eq .Phase "buka"}}
+<div>
+<h2 class="card-title">Aturan</h2>
+<ul class="take-rules">
+<li>Waktu mulai berjalan saat Anda menekan <strong>Mulai</strong> dan tidak berhenti walau halaman ditutup.</li>
+<li>Jawaban tersimpan otomatis. Tandai <strong>Ragu-ragu</strong> untuk soal yang ingin diperiksa lagi.</li>
+{{if .Info.AlertSound}}<li><strong>Jangan keluar dari halaman ujian.</strong> Perangkat akan berbunyi dan pengawas melihat tandanya.</li>{{else}}<li>Jangan keluar dari halaman ujian; setiap kali keluar dicatat.</li>{{end}}
+<li>Periksa ringkasan sebelum mengumpulkan. Setelah dikumpulkan, jawaban tidak bisa diubah.</li>
+</ul>
+</div>
+<form method="post" action="/u/ujian/{{.Info.SessionID}}/mulai" class="stack" data-start-form{{if .Info.AlertSound}} data-need-sound{{end}}>
+{{ csrfField }}
+{{if .Info.AlertSound}}
+<div class="take-sound" data-sound>
+<p class="mb-2"><strong>Tes suara.</strong> Naikkan volume, tekan Tes, lalu pastikan bunyinya terdengar.</p>
+<div class="action-row"><button type="button" class="btn btn-ghost" data-sound-play>🔊 Tes bunyi</button>
+<button type="button" class="btn btn-ghost" data-sound-yes hidden>Terdengar</button>
+<button type="button" class="btn btn-ghost" data-sound-no hidden>Tidak terdengar</button></div>
+<p class="hint mb-0" data-sound-note role="status" aria-live="polite"></p>
+</div>
+{{end}}
+{{if .Info.TokenRequired}}
+<div class="field"><label for="token">Token dari pengawas</label>
+<input id="token" name="token" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" required class="take-token"></div>
+{{end}}
+<button type="submit" class="btn btn-primary btn-lg w-full" data-start>Mulai mengerjakan</button>
+</form>
+{{else if eq .Phase "belum"}}
+<div class="alert alert-info" role="status">Ujian bisa dimulai pukul {{.Opens}}. Muat ulang halaman ini saat waktunya tiba.</div>
+{{else if eq .Phase "terlewat"}}
+<div class="alert alert-warning" role="status">Waktu sesi ujian sudah berakhir dan ujian ini tidak dikerjakan. Hubungi guru untuk ujian susulan.</div>
+{{else}}
+<div class="alert alert-warning" role="status">Ujian ini tidak bisa dikerjakan sekarang.</div>
+{{end}}
+</section>
+<p class="hint mt-3">Belum pernah ujian di perangkat ini? <a href="/u/cek">Cek perangkat</a> dulu.</p>
+</div>
+{{end}}

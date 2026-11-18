@@ -1,0 +1,139 @@
+{{/* Halaman mengerjakan ujian (T138). Dokumen sendiri tanpa layout staf:
+     hanya app.css, exam-take.js, dan CSS KaTeX bila ada rumus. */}}
+{{define "title"}}{{.Info.ExamName}}{{end}}
+{{define "content"}}{{end}}
+{{define "take" -}}
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="csrf-token" content="{{ csrfToken }}">
+<meta name="robots" content="noindex">
+<title>{{.Info.ExamName}} · AKRA</title>
+<link rel="icon" href="{{ asset "img/favicon.png" }}" type="image/png">
+<link rel="stylesheet" href="{{ asset "css/app.css" }}">
+{{if .Delivery.HasMath}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+<script defer src="{{ asset "js/exam-take.js" }}"></script>
+</head>
+<body class="take-body">
+<div class="take" data-take data-size="m" data-save-url="/u/a/{{.Attempt.ID}}/simpan">
+<header class="take-head">
+<div class="take-who min-w-0"><strong>{{.Participant.Name}}</strong><span>{{.Info.ExamName}}{{with .Info.Subject}} · {{.}}{{end}}</span></div>
+<div class="take-timer" data-timer><span class="sr-only">Sisa waktu </span><span data-timer-text>--:--</span></div>
+<div class="take-save is-ok" data-save-status role="status" aria-live="polite"><span class="take-save-dot" aria-hidden="true"></span><span data-save-text>Tersimpan</span></div>
+<button type="button" class="take-icon-btn" data-settings-btn aria-expanded="false" aria-controls="take-settings" title="Ukuran huruf dan kontras">Aa</button>
+</header>
+<div class="take-settings" id="take-settings" data-settings hidden>
+<span class="text-sm font-semibold">Ukuran huruf</span>
+<div class="take-seg" role="group" aria-label="Ukuran huruf">
+<button type="button" data-size-btn="s" aria-pressed="false">A−</button><button type="button" data-size-btn="m" aria-pressed="true">A</button><button type="button" data-size-btn="l" aria-pressed="false">A+</button>
+</div>
+<label class="take-switch"><input type="checkbox" data-contrast> Kontras tinggi</label>
+<p class="hint m-0 hidden lg:block">Keyboard: 1–6 pilih jawaban · ← → pindah soal · R ragu-ragu</p>
+</div>
+
+<div class="take-main">
+<div class="take-stage" data-stage>
+<aside class="take-stim-col" data-stim-col hidden aria-label="Teks bacaan">
+{{range .Delivery.Stimuli}}
+<section class="take-stim" data-stim="{{.Index}}" hidden>
+<button type="button" class="take-stim-toggle" data-stim-toggle aria-expanded="false">📄 Teks bacaan{{with .Title}}: {{.}}{{end}} · <span data-stim-toggle-text>ketuk untuk membaca</span></button>
+<div class="take-stim-body" data-stim-body>
+<div class="take-stim-top"><h2>{{if .Title}}{{.Title}}{{else}}Teks bacaan{{end}}</h2><button type="button" class="take-icon-btn take-stim-close" data-stim-close aria-label="Tutup teks">✕</button></div>
+<p class="hint">Untuk soal {{.First}}{{if ne .First .Last}}–{{.Last}}{{end}}</p>
+<div class="exam-content take-text{{if .Numbered}} numbered{{end}}">{{.Body}}</div>
+</div>
+</section>
+{{end}}
+</aside>
+<div class="take-divider" data-divider role="separator" aria-orientation="vertical" aria-label="Geser untuk mengubah lebar teks bacaan" tabindex="0" hidden></div>
+<div class="take-qcol" data-qcol>
+{{range .Delivery.Questions}}{{$q := .View}}{{$sec := index $.Delivery.Sections .Section}}
+<article class="take-q" data-q="{{$q.ID}}" data-kind="{{$q.Kind}}" data-stim="{{.Stimulus}}"{{if $q.Statements}} data-need="{{len $q.Statements}}"{{else if $q.Left}} data-need="{{len $q.Left}}"{{end}} aria-labelledby="qn-{{$q.Number}}" hidden>
+{{if or $sec.Title $sec.Instructions}}
+<details class="take-section"{{if .NewSection}} open{{end}}><summary>{{if $sec.Title}}{{$sec.Title}}{{else}}Petunjuk{{end}}</summary>{{with $sec.Instructions}}<div class="exam-content take-text">{{.}}</div>{{end}}</details>
+{{end}}
+<div class="take-q-head"><span class="take-qno" id="qn-{{$q.Number}}">Soal {{$q.Number}}</span><span class="take-q-kind">{{$q.Kind.Label}}</span><span class="take-flag-badge" data-flag-badge hidden>Ragu-ragu</span></div>
+<div class="exam-content take-text">{{$q.Body}}</div>
+{{if $q.Choices}}
+{{if $q.Multiple}}<p class="hint">Pilih semua jawaban yang benar.</p>{{end}}
+<div class="take-options" role="{{if $q.Multiple}}group{{else}}radiogroup{{end}}" aria-labelledby="qn-{{$q.Number}}"{{if .RTL}} dir="rtl"{{end}}>
+{{range $q.Choices}}<label class="take-opt"><input type="{{if $q.Multiple}}checkbox{{else}}radio{{end}}" name="a-{{$q.ID}}" value="{{.ID}}"><span class="take-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content take-text min-w-0 flex-1">{{.HTML}}</span><span class="take-tick" aria-hidden="true">✓</span></label>
+{{end}}</div>
+{{end}}
+{{if $q.Statements}}
+<ol class="take-tf"{{if .RTL}} dir="rtl"{{end}}>
+{{range $i, $s := $q.Statements}}<li class="take-tf-row" data-stmt="{{$s.ID}}"><div class="exam-content take-text min-w-0 flex-1">{{$s.HTML}}</div>
+<div class="take-tf-pick" role="radiogroup" aria-label="Pernyataan {{inc $i}}"><label class="take-tf-opt"><input type="radio" name="a-{{$q.ID}}-{{$s.ID}}" value="B"><span>Benar</span></label><label class="take-tf-opt"><input type="radio" name="a-{{$q.ID}}-{{$s.ID}}" value="S"><span>Salah</span></label></div></li>
+{{end}}</ol>
+{{end}}
+{{if $q.Left}}
+<p class="hint">Ketuk item di kiri, lalu ketuk pasangannya di kanan. Ketuk lagi pasangan yang sama untuk membatalkan.</p>
+<div class="take-match"{{if .RTL}} dir="rtl"{{end}}>
+<ol class="take-match-left">{{range $q.Left}}<li><button type="button" class="take-left" data-left="{{.ID}}" aria-pressed="false"><span class="exam-content take-text min-w-0 flex-1">{{.HTML}}</span><span class="take-pair" data-pair aria-label="Pasangan">–</span></button></li>{{end}}</ol>
+<ol class="take-match-right">{{range $q.Right}}<li><button type="button" class="take-right" data-right="{{.ID}}" data-letter="{{.Letter}}"><span class="take-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content take-text min-w-0 flex-1">{{.HTML}}</span></button></li>{{end}}</ol>
+</div>
+{{end}}
+{{if eq $q.Kind "isian"}}<div class="field mt-3"><label for="a-{{$q.ID}}">Jawaban</label><input id="a-{{$q.ID}}" class="take-input" dir="auto" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="200"{{if eq $q.Input "angka"}} inputmode="decimal"{{end}}></div>{{end}}
+{{if eq $q.Kind "esai"}}<div class="field mt-3"><label for="a-{{$q.ID}}">Jawaban</label><textarea id="a-{{$q.ID}}" class="take-essay" dir="auto" rows="5" maxlength="20000"></textarea><p class="hint m-0" data-words>0 kata</p></div>{{end}}
+</article>
+{{end}}
+</div>
+</div>
+
+<nav class="take-panel" data-panel aria-label="Daftar soal">
+<div class="take-panel-head"><strong>Daftar soal</strong><button type="button" class="take-icon-btn lg:hidden" data-panel-close aria-label="Tutup daftar soal">✕</button></div>
+<ol class="take-grid">
+{{range .Delivery.Questions}}<li><button type="button" class="take-cell{{if .Stimulus}} in-group{{end}}" data-goto="{{.Index}}"{{if .Stimulus}} data-group="{{.Stimulus}}" style="--g: {{.Stimulus}}"{{end}} aria-label="Soal {{.View.Number}}"><span>{{.View.Number}}</span><i aria-hidden="true"></i></button></li>
+{{end}}</ol>
+<ul class="take-legend">
+<li><span class="take-cell is-answered" aria-hidden="true"><i></i></span> Terjawab</li>
+<li><span class="take-cell is-flagged" aria-hidden="true"><i></i></span> Ragu-ragu</li>
+<li><span class="take-cell" aria-hidden="true"><i></i></span> Kosong</li>
+{{if .Delivery.Stimuli}}<li><span class="take-cell in-group" style="--g: 1" aria-hidden="true"><i></i></span> Satu teks bacaan</li>{{end}}
+</ul>
+<button type="button" class="btn btn-primary w-full" data-open-summary>Kumpulkan</button>
+</nav>
+</div>
+
+<footer class="take-foot">
+<button type="button" class="btn btn-ghost take-nav" data-prev>← <span>Sebelumnya</span></button>
+<button type="button" class="btn take-flag" data-flag aria-pressed="false">Ragu-ragu</button>
+<button type="button" class="btn btn-ghost take-grid-btn lg:hidden" data-panel-open aria-controls="take-panel">Daftar soal</button>
+<button type="button" class="btn btn-primary take-nav" data-next><span>Berikutnya</span> →</button>
+</footer>
+<button type="button" class="take-text-fab" data-text-fab hidden>📄 Teks</button>
+
+<dialog class="take-dialog" data-summary aria-labelledby="sum-title">
+<div data-step="1">
+<h2 id="sum-title" class="card-title">Periksa sebelum mengumpulkan</h2>
+<p class="take-sum-line" data-sum-line></p>
+<div data-sum-lists></div>
+<p class="hint" data-sum-offline hidden>Belum semua jawaban terkirim. Hubungkan internet untuk mengumpulkan; jawaban tidak hilang dan waktu tetap berjalan.</p>
+<div class="action-row mt-3"><button type="button" class="btn btn-ghost" data-close>Kembali mengerjakan</button><button type="button" class="btn btn-primary" data-to-step2>Kumpulkan</button></div>
+</div>
+<div data-step="2" hidden>
+<h2 class="card-title">Yakin mengumpulkan?</h2>
+<p>Setelah dikumpulkan, jawaban <strong>tidak bisa diubah</strong> lagi.</p>
+<div class="action-row mt-3"><button type="button" class="btn btn-ghost" data-close>Batal</button><button type="button" class="btn btn-danger" data-final-submit>Ya, kumpulkan sekarang</button></div>
+</div>
+</dialog>
+
+<div class="take-cover" data-cover>
+<div class="card take-cover-card">
+<h1 class="text-lg font-bold">{{.Info.ExamName}}</h1>
+<p class="mb-0" data-cover-text>{{len .Delivery.Questions}} soal. Waktu sudah berjalan sejak Anda menekan Mulai.</p>
+<button type="button" class="btn btn-primary btn-lg w-full" data-cover-go>{{if or .State.Answers .State.Pos}}Lanjutkan mengerjakan{{else}}Mulai mengerjakan{{end}}</button>
+<p class="hint m-0">Layar penuh akan dinyalakan.</p>
+</div>
+</div>
+<div class="take-banner" data-banner role="alert" hidden></div>
+<div class="take-zoom" data-zoom hidden><img alt="" data-zoom-img><button type="button" class="take-icon-btn" data-zoom-close aria-label="Tutup gambar">✕</button></div>
+<form method="post" action="/u/a/{{.Attempt.ID}}/kumpul" data-submit-form hidden>{{ csrfField }}<input type="hidden" name="alasan" value="peserta"></form>
+<script type="application/json" id="take-state">{{.State}}</script>
+<noscript><div class="take-cover"><div class="card take-cover-card"><p>Halaman ujian membutuhkan JavaScript. Gunakan Chrome versi terbaru.</p></div></div></noscript>
+</div>
+</body>
+</html>
+{{- end}}

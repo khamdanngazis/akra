@@ -111,7 +111,9 @@ func TestParticipantLoginFlow(t *testing.T) {
 		t.Fatalf("login = %d %s\n%s", rec.Code, rec.Header().Get("Location"), rec.Body.String())
 	}
 	rec = e.do(http.MethodGet, "/u/beranda", nil)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Bisa dikerjakan") {
+	// Kode tanpa sesi ujian: beranda terbuka, belum ada ujian (daftar ujian
+	// dari sesi diuji di TestTakeFlow).
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Belum ada ujian untuk Anda") {
 		t.Errorf("home = %d\n%s", rec.Code, rec.Body.String())
 	}
 

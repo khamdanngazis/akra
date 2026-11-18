@@ -1,0 +1,12 @@
+{{define "title"}}Perangkat Lain{{end}}
+{{define "header"}}{{template "participant_bar" .Participant}}{{end}}
+{{define "content"}}
+<div class="adm-shell">
+<section class="card stack">
+<h1 class="text-xl font-bold">Ujian terbuka di perangkat lain</h1>
+<div class="alert alert-warning" role="alert">{{.Error}}</div>
+<p class="mb-0">Jawaban yang sudah tersimpan tidak hilang. Setelah pengawas mengizinkan, buka lagi ujian dari perangkat ini.</p>
+<a class="btn btn-ghost" href="/u/beranda">← Beranda</a>
+</section>
+</div>
+{{end}}

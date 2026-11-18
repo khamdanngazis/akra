@@ -6,6 +6,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"akra/internal/academic"
 	"akra/internal/admission"
@@ -103,7 +104,10 @@ func newRouter(d routerDeps) http.Handler {
 	// Tanpa sesi dan tanpa CSRF.
 	r.Get("/healthz", health.Handler)
 	r.Get("/healthz/db", health.DBHandler(d.pinger))
-	static := http.StripPrefix("/static/", httpserver.Static(d.static))
+	// Aset teks dan halaman peserta dikompresi: halaman ujian di HP dengan
+	// kuota terbatas (T138: transfer awal < 150 KB di luar gambar).
+	compress := middleware.Compress(5, "text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml")
+	static := compress(http.StripPrefix("/static/", httpserver.Static(d.static)))
 	r.Get("/static/*", static.ServeHTTP)
 	r.Head("/static/*", static.ServeHTTP)
 
@@ -124,6 +128,7 @@ func newRouter(d routerDeps) http.Handler {
 	if d.participant != nil {
 		r.Group(func(r chi.Router) {
 			r.Use(httpserver.LimitBody(httpserver.MaxRequestBody))
+			r.Use(compress)
 			r.Use(d.csrf)
 			r.Use(d.participantSessions.LoadAndSave)
 			d.participant.Routes(r)

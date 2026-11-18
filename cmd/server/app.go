@@ -95,7 +95,7 @@ func newApp(d appDeps) (http.Handler, error) {
 		activation:          auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		duties:              duty.NewHandler(d.db, d.sessions, d.render, d.logger),
 		exam:                exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL),
-		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math),
+		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),

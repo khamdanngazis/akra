@@ -220,3 +220,13 @@
 {{if eq .Kind "esai"}}<div class="paper-essay"></div>{{end}}
 </div>
 {{end}}
+
+{{/* participant_bar: header halaman peserta. Argumen: auth.Participant. */}}
+{{define "participant_bar"}}
+<header class="adm-bar">
+<div class="adm-bar-inner">
+<a href="/u/beranda" class="min-w-0"><span class="adm-school-name">{{.SchoolName}}</span><span class="adm-school-sub">{{.Name}}</span></a>
+<form method="post" action="/u/keluar" class="ml-auto">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Keluar</button></form>
+</div>
+</header>
+{{end}}
