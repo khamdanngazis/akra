@@ -307,6 +307,15 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/u/{code}", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/beranda", Kind: KindPublic},
 	{Method: "POST", Pattern: "/u/keluar", Kind: KindPublic},
+	// Mengerjakan ujian (T138): hanya sesi peserta; kepemilikan attempt
+	// diuji di paket exam (TestTake*).
+	{Method: "GET", Pattern: "/u/ujian/{session}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/ujian/{session}/mulai", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/a/{attempt}", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/a/{attempt}/simpan", Kind: KindPublic},
+	{Method: "POST", Pattern: "/u/a/{attempt}/kumpul", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/a/{attempt}/selesai", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/a/{attempt}/gambar/{asset}", Kind: KindPublic},
 	// Cek perangkat (T136): publik, tanpa data sekolah.
 	{Method: "GET", Pattern: "/u/cek", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/cek/ping", Kind: KindPublic},

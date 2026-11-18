@@ -21,6 +21,7 @@ import (
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
 	"akra/internal/platform/ratelimit"
+	"akra/internal/platform/storage"
 )
 
 // Percobaan login peserta dibatasi per IP dan per nomor peserta. Batas IP
@@ -45,6 +46,7 @@ type ParticipantHandler struct {
 	secure   bool
 	now      func() time.Time
 	math     *mathrender.Renderer // contoh rumus di cek perangkat
+	store    storage.Store        // gambar soal di halaman ujian
 }
 
 // NewParticipantHandler mengembalikan ParticipantHandler. sessions harus
@@ -62,6 +64,8 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 			r.Use(auth.RequireParticipant(h.sessions, participantLoginPath))
 			// Peserta: siswa dan pendaftar.
 			r.Get("/beranda", h.home)
+			// Peserta: konfirmasi, mengerjakan, dan mengumpulkan ujian (T138).
+			h.takeRoutes(r)
 		})
 		// Peserta (atau tanpa sesi): keluar.
 		r.Post("/keluar", h.logout)
@@ -239,16 +243,9 @@ func loginMessage(err error, loc *time.Location, now time.Time) (string, int) {
 	return "", http.StatusInternalServerError
 }
 
-type participantExam struct {
-	Date   string // "17 November 2026"
-	Time   string // "08.00–09.30 WIB"
-	Status string // "Belum dimulai", "Bisa dikerjakan", "Selesai"
-	Tone   string
-}
-
 type participantHomeView struct {
 	Participant auth.Participant
-	Exams       []participantExam
+	Exams       []homeExam
 	// Schedule adalah jadwal PTS/PAS yang sudah diumumkan (T134).
 	Schedule []scheduleRow
 }
@@ -260,40 +257,13 @@ type scheduleRow struct {
 func (h *ParticipantHandler) home(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.CurrentParticipant(r.Context())
 	now := h.now()
-	rows, err := h.db.Query(r.Context(), `
-		SELECT valid_from, valid_until FROM student_credentials
-		WHERE `+ownerWhere+` AND coalesce(results_until, valid_until) > $4
-		ORDER BY valid_from`, p.SchoolID, nilIfEmpty(p.StudentID), nilIfEmpty(p.ApplicantID), now.Add(-recentWindow))
+	loc := p.Location()
+	sessions, err := ParticipantSessions(r.Context(), h.db, p, now)
 	if err != nil {
 		page.ServerError(h.render, h.logger, w, r, nil, "participant home", err)
 		return
 	}
-	v := participantHomeView{Participant: p}
-	loc := p.Location()
-	for rows.Next() {
-		var from, until time.Time
-		if err := rows.Scan(&from, &until); err != nil {
-			rows.Close()
-			page.ServerError(h.render, h.logger, w, r, nil, "participant home", err)
-			return
-		}
-		begin := from.Add(CodeEarly).In(loc)
-		e := participantExam{Date: clock.FormatDateID(begin),
-			Time: begin.Format("15.04") + "–" + until.In(loc).Format("15.04") + " " + clock.ZoneLabel(loc)}
-		switch {
-		case now.Before(from):
-			e.Status, e.Tone = "Belum dimulai", "info"
-		case !now.After(until):
-			e.Status, e.Tone = "Bisa dikerjakan", "success"
-		default:
-			e.Status, e.Tone = "Selesai", ""
-		}
-		v.Exams = append(v.Exams, e)
-	}
-	if err := rows.Err(); err != nil {
-		page.ServerError(h.render, h.logger, w, r, nil, "participant home", err)
-		return
-	}
+	v := participantHomeView{Participant: p, Exams: homeExams(sessions, now, loc, p.ReadOnly)}
 	if p.StudentID != "" {
 		items, err := StudentSchedule(r.Context(), h.db, p.SchoolID, p.StudentID, now)
 		if err != nil {
