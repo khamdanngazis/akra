@@ -42,6 +42,10 @@ type Asset struct {
 	Width       int
 	Height      int
 	Size        int
+	// Pratinjau ringan untuk halaman ujian (T142); kosong = belum dibuat.
+	PreviewKey  string
+	PreviewType string
+	PreviewSize int
 }
 
 // ErrAssetType: bukan PNG, JPEG, WebP, atau GIF, atau ukurannya tidak wajar.
@@ -118,6 +122,10 @@ func SaveAsset(ctx context.Context, db database.DBTX, store storage.Store, sa St
 		_ = store.Delete(ctx, key)
 		return Asset{}, fmt.Errorf("exam: save asset: %w", err)
 	}
+	// Pratinjau dibuat sekarang; bila gagal, dibuat saat pertama diminta.
+	if p, err := storePreview(ctx, db, store, a, data); err == nil {
+		a = p
+	}
 	return a, nil
 }
 
@@ -127,8 +135,11 @@ func GetAsset(ctx context.Context, q database.DBTX, schoolID, id string) (Asset,
 		return Asset{}, ErrNotFound
 	}
 	var a Asset
-	err := q.QueryRow(ctx, `SELECT id, bank_id, storage_key, content_type, width, height, size_bytes FROM exam_assets WHERE school_id = $1 AND id = $2`,
-		schoolID, id).Scan(&a.ID, &a.BankID, &a.StorageKey, &a.ContentType, &a.Width, &a.Height, &a.Size)
+	err := q.QueryRow(ctx, `SELECT id, bank_id, storage_key, content_type, width, height, size_bytes,
+			coalesce(preview_key, ''), coalesce(preview_type, ''), coalesce(preview_bytes, 0)
+		FROM exam_assets WHERE school_id = $1 AND id = $2`,
+		schoolID, id).Scan(&a.ID, &a.BankID, &a.StorageKey, &a.ContentType, &a.Width, &a.Height, &a.Size,
+		&a.PreviewKey, &a.PreviewType, &a.PreviewSize)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Asset{}, ErrNotFound
 	}

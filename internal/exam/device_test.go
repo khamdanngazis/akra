@@ -20,6 +20,8 @@ func TestClassifyUA(t *testing.T) {
 		{"Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36", DeviceWarn},
 		{"Mozilla/5.0 (Linux; Android 5.1; Lenovo A6000) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/39.0.0.0 Mobile Safari/537.36", DeviceFail},
 		{"", DeviceWarn},
+		{"Mozilla/5.0 (Linux; U; Android 12; id-id; Redmi Note 11 Build/SKQ1) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/112.0.5615.136 Mobile Safari/537.36 XiaoMi/MiuiBrowser/14.5.11-gn", DeviceWarn},
+		{"Mozilla/5.0 (Linux; Android 13; CPH2387) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36 OPR/78.1.4143.75935", DeviceWarn},
 	}
 	for _, c := range cases {
 		if got := ClassifyUA(c.ua); got.Level != c.level {

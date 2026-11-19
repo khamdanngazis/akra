@@ -1032,7 +1032,18 @@
   root.addEventListener("click", function (e) {
     var img = e.target.closest && e.target.closest(".exam-content img");
     if (!img || img.closest(".take-opt, .take-left, .take-right")) return;
-    zoom.querySelector("[data-zoom-img]").src = img.currentSrc || img.src;
+    // Pratinjau ringan dulu; gambar penuh (T142) menggantikannya setelah
+    // termuat. Saat offline gambar penuh mungkin tidak ada: tetap pratinjau.
+    var zi = zoom.querySelector("[data-zoom-img]");
+    var src = img.getAttribute("src") || "";
+    zi.src = img.currentSrc || img.src;
+    if (/\/gambar\/[0-9a-f-]{36}$/.test(src)) {
+      var full = src + "?penuh=1";
+      zi.setAttribute("data-full", full);
+      var pre = new Image();
+      pre.onload = function () { if (!zoom.hidden && zi.getAttribute("data-full") === full) zi.src = full; };
+      pre.src = full;
+    }
     zoom.hidden = false;
     zoom.querySelector("[data-zoom-close]").focus();
   });
@@ -1142,7 +1153,11 @@
           if (r.name.indexOf(location.origin + "/static/") === 0) urls.push(r.name);
         });
       }
-      root.querySelectorAll("img[src]").forEach(function (img) { urls.push(img.getAttribute("src")); });
+      // Gambar soal dimuat lebih dulu hanya saat koneksi baik; di koneksi
+      // lambat atau mode hemat data, gambar dimuat saat soalnya dibuka.
+      var c = navigator.connection;
+      var slow = c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""));
+      if (!slow) root.querySelectorAll("img[src]").forEach(function (img) { urls.push(img.getAttribute("src")); });
       var sw = reg.active || navigator.serviceWorker.controller;
       if (sw) sw.postMessage({ type: "warm", attempt: attemptID, page: !controlled && navigator.onLine, urls: urls });
     }).catch(function () { /* tanpa service worker: tetap jalan online */ });
