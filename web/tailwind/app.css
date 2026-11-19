@@ -3086,3 +3086,64 @@
   .take.is-contrast .take-tf-opt input:checked + span { @apply border-black bg-black; }
   .take.is-contrast .hint, .take.is-contrast .take-q-kind, .take.is-contrast .take-who span { @apply text-black; }
 }
+
+/* Layar pengawas (T143): HP lebih dulu. */
+@layer components {
+  .proctor { @apply mx-auto grid max-w-3xl gap-3; }
+  .proctor-head { @apply grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center; }
+  .proctor-title { @apply text-xl font-bold; }
+  .proctor-token { @apply grid justify-items-center gap-1 rounded-xl bg-slate-900 px-4 py-3 text-center text-white; }
+  .proctor-token .muted { @apply text-slate-300; }
+  .proctor-token .btn { @apply mt-1 bg-white; }
+  .proctor-token-code { @apply font-mono text-4xl tracking-[0.2em]; }
+  .proctor-code { @apply border-2 border-blue-600 text-center; }
+  .proctor-code-value { @apply my-2 font-mono text-4xl font-bold tracking-[0.2em]; }
+  .proctor-status { @apply flex flex-wrap items-center gap-2; }
+  .proctor-counts { @apply mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6; }
+  .proctor-count { @apply grid min-h-16 place-items-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-center; }
+  .proctor-count strong { @apply text-2xl leading-none; }
+  .proctor-count span { @apply text-xs text-slate-600; }
+  .proctor-count[aria-pressed="true"] { @apply border-blue-600 bg-blue-50 ring-2 ring-blue-600; }
+  .proctor-count.is-warn strong { @apply text-amber-700; }
+  .proctor-count.is-alert strong { @apply text-red-700; }
+  .proctor-list { @apply mt-3 grid list-none gap-2 p-0; }
+  .proctor-row[hidden] { display: none; }
+  .proctor-row-btn { @apply flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-start; min-height: 3.5rem; }
+  .proctor-row-btn:disabled { @apply cursor-default; }
+  .proctor-row.is-alert .proctor-row-btn { @apply border-red-300 bg-red-50; }
+  .proctor-row.is-new .proctor-row-btn { @apply ring-2 ring-amber-400; }
+  .proctor-row-main { @apply grid min-w-0 flex-1 gap-0.5; }
+  .proctor-name { @apply truncate font-semibold; }
+  .proctor-meta { @apply text-sm text-slate-600; }
+  .proctor-tags { @apply flex flex-wrap items-center gap-1; }
+  .proctor-state { @apply size-3 shrink-0 rounded-full bg-slate-300; }
+  .proctor-state.is-mengerjakan { @apply bg-emerald-500; }
+  .proctor-state.is-offline { @apply bg-amber-500; }
+  .proctor-state.is-selesai { @apply bg-blue-600; }
+  .proctor-new[hidden] { display: none; }
+  .is-stale { @apply text-amber-700; }
+  .proctor-actions { @apply grid gap-2 sm:grid-cols-2; }
+  .proctor-inline { @apply flex gap-2; }
+  .proctor-inline select { @apply w-auto; }
+  .proctor-minutes { @apply grid grid-cols-2 gap-2; }
+  .proctor-minutes dt { @apply text-sm text-slate-600; }
+  .proctor-minutes dd { @apply text-xl font-bold; }
+  .proctor-incidents { @apply ms-5 list-disc text-sm; }
+  .proctor-sheet { @apply m-0 mt-auto w-full max-w-none rounded-t-2xl border-0 p-4 shadow-2xl sm:m-auto sm:max-w-lg sm:rounded-2xl; max-height: 90vh; }
+  .proctor-sheet::backdrop { @apply bg-slate-900/50; }
+  .proctor-sheet-head { @apply mb-3 flex items-start justify-between gap-3; }
+  .proctor-sheet-actions { @apply grid gap-2; }
+  .proctor-sheet form[hidden] { display: none; }
+  .session-cards { @apply grid gap-3 sm:grid-cols-2; }
+  .session-card { @apply grid gap-1 no-underline; color: inherit; }
+  .session-card:hover { @apply border-blue-400; }
+  .session-card-room { @apply text-xl font-bold; }
+  .session-card-time { @apply text-lg; }
+  .session-card-foot { @apply mt-2 flex items-center justify-between text-sm; }
+  .page-token { @apply bg-slate-950; }
+  .token-screen { @apply grid min-h-[80vh] place-content-center justify-items-center gap-4 text-center text-white; }
+  .token-screen-title { @apply text-lg text-slate-300; }
+  .token-screen-label { @apply text-2xl text-slate-300; }
+  .token-screen-code { @apply font-mono font-bold tracking-[0.15em]; font-size: clamp(4rem, 18vw, 14rem); line-height: 1; }
+  .token-screen-left { @apply text-2xl text-slate-300; }
+}

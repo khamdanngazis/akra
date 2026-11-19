@@ -1,0 +1,148 @@
+{{define "title"}}Awasi · {{.S.Title}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-proctor.js" }}"></script>{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" "/ujian/sesi-saya" .S.Title ""}}
+<div class="proctor" data-proctor data-data-url="/ujian/sesi/{{.S.ID}}/awasi/data" data-action-url="/ujian/sesi/{{.S.ID}}/awasi/peserta/">
+<header class="proctor-head card">
+<div class="min-w-0">
+<h1 class="proctor-title">{{.S.Title}}</h1>
+<p class="muted text-sm">{{.S.ExamName}}{{with .S.Subject}} · {{.}}{{end}} · {{.When}}{{if .S.ExtraMinutes}} · +{{.S.ExtraMinutes}} menit{{end}}</p>
+</div>
+{{if .Token.Required}}
+<div class="proctor-token" data-token data-next="{{.Token.NextAt.UnixMilli}}">
+<span class="text-sm muted">Token</span>
+<strong class="proctor-token-code" data-token-code>{{.Token.Token}}</strong>
+<span class="text-sm muted">berganti dalam <span data-token-left>--:--</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/sesi/{{.S.ID}}/token" target="_blank" rel="noopener">Tampilkan layar penuh</a>
+</div>
+{{end}}
+</header>
+
+{{template "flash" .}}
+{{with .NewCode}}
+<div class="proctor-code card" role="status">
+<p class="mb-0">Kode baru untuk <strong>{{.Name}}</strong> (hanya untuk sesi ini). Diktekan kepada peserta:</p>
+<p class="proctor-code-value" aria-label="Kode baru">{{.Code}}</p>
+<p class="hint mb-0">Kode ini tidak ditampilkan lagi. Kartu lama tidak berlaku untuk sesi ini.</p>
+</div>
+{{end}}
+{{if not .CanWrite}}<p class="alert alert-info">Anda hanya bisa melihat. Aksi pengawas tersedia untuk pengawas sesi dari 30 menit sebelum sampai 2 jam sesudah sesi, koordinator, dan admin TU.</p>{{end}}
+
+{{if .Ended}}
+<section class="card stack mt-4" id="berita-acara">
+<h2 class="card-title">Berita acara</h2>
+<dl class="proctor-minutes">
+<div><dt>Hadir</dt><dd>{{.Minutes.Present}}</dd></div>
+<div><dt>Tidak hadir</dt><dd>{{.Minutes.Absent}}{{with .Minutes.AbsentNumbers}} <span class="muted text-sm">({{range $i, $n := .}}{{if $i}}, {{end}}{{$n}}{{end}})</span>{{end}}</dd></div>
+</dl>
+<div><h3 class="text-sm font-semibold">Kejadian</h3>
+{{with .Minutes.Incidents}}<ul class="proctor-incidents">{{range .}}<li>{{.}}</li>{{end}}</ul>{{else}}<p class="muted text-sm mb-0">Tidak ada kejadian tercatat.</p>{{end}}</div>
+{{if .Minutes.SignedAt}}<p class="alert alert-success mb-0">Ditandatangani {{.Minutes.SignedBy}}.</p>{{end}}
+{{if .CanWrite}}
+<form method="post" action="/ujian/sesi/{{.S.ID}}/berita-acara" class="stack" novalidate>{{ csrfField }}
+<div class="field"><label for="minutes-notes">Catatan pengawas</label>
+<textarea id="minutes-notes" name="catatan" rows="3" maxlength="4000">{{.Minutes.Notes}}</textarea></div>
+<div class="field"><label for="minutes-pw">Sandi akun Anda</label>
+<input id="minutes-pw" name="sandi" type="password" autocomplete="current-password" required aria-describedby="minutes-pw-hint">
+<p class="hint" id="minutes-pw-hint">Sebagai tanda tangan: berita acara tercatat atas nama {{.User.FullName}}.</p></div>
+<button type="submit" class="btn btn-primary">{{if .Minutes.SignedAt}}Tandatangani ulang{{else}}Tandatangani berita acara{{end}}</button>
+</form>
+{{end}}
+<a class="btn btn-ghost" href="/ujian/sesi/{{.S.ID}}/berita-acara.pdf">Unduh PDF</a>
+</section>
+{{end}}
+<div data-live>{{template "proctor_live" .}}</div>
+<p class="hint text-right mt-2" aria-live="off"><span data-updated>Diperbarui baru saja</span></p>
+
+{{if .CanWrite}}{{if not .Ended}}
+<section class="card stack mt-4">
+<h2 class="card-title">Aksi sesi</h2>
+<div class="proctor-actions">
+{{if .S.PausedAt}}
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi">{{ csrfField }}<input type="hidden" name="aksi" value="lanjut"><button type="submit" class="btn btn-primary w-full">Lanjutkan semua</button></form>
+{{else}}
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi" data-confirm="Jeda semua peserta? Layar mereka terkunci dan waktu berhenti sampai dilanjutkan.">{{ csrfField }}<input type="hidden" name="aksi" value="jeda"><button type="submit" class="btn btn-ghost w-full">Jeda semua</button></form>
+{{end}}
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi" class="proctor-inline">{{ csrfField }}<input type="hidden" name="aksi" value="waktu">
+<label class="sr-only" for="all-mins">Menit</label>
+<select id="all-mins" name="menit"><option value="5">+5 menit</option><option value="10" selected>+10 menit</option><option value="15">+15 menit</option><option value="30">+30 menit</option></select>
+<button type="submit" class="btn btn-ghost">Tambah waktu semua</button></form>
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi">{{ csrfField }}
+{{if .S.TokenReq}}<input type="hidden" name="aksi" value="token_off"><button type="submit" class="btn btn-ghost w-full">Lepas token</button>
+{{else}}<input type="hidden" name="aksi" value="token_on"><button type="submit" class="btn btn-ghost w-full">Wajibkan token</button>{{end}}</form>
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi" data-confirm="Tutup sesi? Peserta yang masih mengerjakan langsung dikumpulkan dan tidak ada yang bisa mulai lagi.">{{ csrfField }}<input type="hidden" name="aksi" value="tutup"><button type="submit" class="btn btn-danger w-full">Tutup sesi</button></form>
+</div>
+<form method="post" action="/ujian/sesi/{{.S.ID}}/awasi/aksi" class="stack">{{ csrfField }}<input type="hidden" name="aksi" value="catat">
+<label for="session-note">Catatan kejadian sesi (masuk berita acara)</label>
+<textarea id="session-note" name="catatan" rows="2" maxlength="500" placeholder="Mis. listrik padam 10.15–10.25, semua peserta dijeda."></textarea>
+<button type="submit" class="btn btn-ghost">Simpan catatan</button></form>
+</section>
+{{end}}{{end}}
+
+
+{{if .CanWrite}}
+<dialog class="proctor-sheet" data-sheet aria-labelledby="sheet-name">
+<div class="proctor-sheet-head">
+<div class="min-w-0"><h2 class="text-lg font-bold" id="sheet-name" data-sheet-name></h2><p class="muted text-sm mb-0" data-sheet-status></p></div>
+<button type="button" class="btn btn-ghost btn-sm" data-sheet-close aria-label="Tutup">✕</button>
+</div>
+<div class="proctor-sheet-actions">
+{{template "proctor_act" (dict "Aksi" "pindah" "Label" "Izinkan pindah perangkat" "Show" "notdone")}}
+{{template "proctor_act" (dict "Aksi" "buka" "Label" "Buka kunci" "Show" "locked")}}
+{{template "proctor_act" (dict "Aksi" "reset" "Label" "Reset login (kode baru)" "Show" "notdone")}}
+{{template "proctor_act" (dict "Aksi" "jeda" "Label" "Jeda" "Show" "running-unpaused")}}
+{{template "proctor_act" (dict "Aksi" "lanjut" "Label" "Lanjutkan" "Show" "paused")}}
+<form method="post" class="proctor-inline" data-act data-show="notdone">{{ csrfField }}<input type="hidden" name="aksi" value="waktu"><input type="hidden" name="alasan" data-reason>
+<label class="sr-only" for="one-mins">Menit</label>
+<select id="one-mins" name="menit"><option value="5">+5 menit</option><option value="10" selected>+10 menit</option><option value="15">+15 menit</option></select>
+<button type="submit" class="btn btn-ghost">Tambah waktu</button></form>
+<form method="post" data-act data-show="running" data-confirm="Kumpulkan jawaban peserta ini sekarang? Peserta tidak bisa melanjutkan.">{{ csrfField }}<input type="hidden" name="aksi" value="kumpul"><input type="hidden" name="alasan" data-reason><button type="submit" class="btn btn-danger w-full">Kumpulkan paksa</button></form>
+</div>
+<div class="field mt-3"><label for="sheet-reason">Alasan (opsional, masuk berita acara)</label>
+<input id="sheet-reason" data-reason-input maxlength="300" placeholder="Mis. HP mati, pindah ke HP cadangan"></div>
+<form method="post" class="stack mt-3" data-act data-show="all">{{ csrfField }}<input type="hidden" name="aksi" value="catat">
+<label for="sheet-note">Catat kejadian</label>
+<textarea id="sheet-note" name="catatan" rows="2" maxlength="500"></textarea>
+<button type="submit" class="btn btn-ghost">Simpan catatan</button></form>
+</dialog>
+{{end}}
+</div>
+{{end}}
+
+{{define "proctor_act"}}<form method="post" data-act data-show="{{.Show}}">{{ csrfField }}<input type="hidden" name="aksi" value="{{.Aksi}}"><input type="hidden" name="alasan" data-reason><button type="submit" class="btn btn-ghost w-full">{{.Label}}</button></form>{{end}}
+
+{{define "proctor_live"}}
+{{$l := .Live}}
+<div class="proctor-status" data-phase="{{$l.Phase}}">
+<span class="badge">{{if eq $l.Phase "belum"}}Belum mulai{{else if eq $l.Phase "berlangsung"}}Berlangsung{{else}}Selesai{{end}}</span>
+{{with $l.Remaining}}<span class="text-sm">Sesi berakhir dalam <strong>{{.}}</strong></span>{{end}}
+{{if $l.Paused}}<span class="badge badge-warning">Sesi dijeda</span>{{end}}
+</div>
+<div class="proctor-counts" role="group" aria-label="Saring peserta">
+<button type="button" class="proctor-count" data-filter="" aria-pressed="true"><strong>{{$l.Total}}</strong><span>Semua</span></button>
+<button type="button" class="proctor-count" data-filter="belum" aria-pressed="false"><strong>{{index $l.Counts "belum"}}</strong><span>Belum mulai</span></button>
+<button type="button" class="proctor-count" data-filter="mengerjakan" aria-pressed="false"><strong>{{index $l.Counts "mengerjakan"}}</strong><span>Mengerjakan</span></button>
+<button type="button" class="proctor-count is-warn" data-filter="offline" aria-pressed="false"><strong>{{index $l.Counts "offline"}}</strong><span>Offline</span></button>
+<button type="button" class="proctor-count is-alert" data-filter="perhatian" aria-pressed="false"><strong>{{index $l.Counts "perhatian"}}</strong><span>Perlu perhatian</span></button>
+<button type="button" class="proctor-count" data-filter="selesai" aria-pressed="false"><strong>{{index $l.Counts "selesai"}}</strong><span>Selesai</span></button>
+</div>
+<ul class="proctor-list" data-list>
+{{range $l.Rows}}
+<li class="proctor-row{{if .NeedsAttention}} is-alert{{end}}" data-row data-filters="{{.Filters}}" data-pid="{{.ParticipantID}}" data-event="{{.LastEvent}}">
+<button type="button" class="proctor-row-btn"{{if $l.CanWrite}} data-open{{else}} disabled{{end}} data-name="{{.Name}}" data-state="{{.State}}"
+ data-locked="{{.Locked}}" data-paused="{{.Paused}}" data-status="{{if .NeedsAttention}}{{range $i, $a := .Attention}}{{if $i}} · {{end}}{{$a}}{{end}}{{else if eq .State "belum"}}Belum mulai{{else if eq .State "mengerjakan"}}Mengerjakan{{if .Paused}} (dijeda){{end}}{{else if eq .State "offline"}}Offline{{else}}Selesai{{end}}">
+<span class="proctor-row-main">
+<span class="proctor-name">{{.Name}}</span>
+<span class="proctor-meta">{{with .Number}}{{.}} · {{end}}{{if eq .State "belum"}}{{if .LoggedIn}}Sudah login, belum mulai{{else}}Belum login{{end}}{{else}}{{.Answered}}/{{.Questions}} terjawab{{with .Left}} · sisa {{.}}{{end}}{{end}}{{if .Leaves}} · keluar {{.Leaves}}×{{end}}</span>
+{{if .Attention}}<span class="proctor-tags">{{range .Attention}}<span class="badge badge-danger">{{.}}</span>{{end}}{{with .Seen}}<span class="text-xs muted">terakhir {{.}}</span>{{end}}</span>{{end}}
+</span>
+<span class="proctor-state is-{{.State}}" aria-hidden="true"></span>
+<span class="proctor-new badge badge-warning" hidden>Baru</span>
+</button>
+</li>
+{{else}}<li class="muted">Belum ada peserta di sesi ini.</li>{{end}}
+</ul>
+<p class="muted text-sm" data-empty hidden>Tidak ada peserta dengan status ini.</p>
+<span hidden data-updated-at="{{$l.UpdatedAt}}"></span>
+{{end}}

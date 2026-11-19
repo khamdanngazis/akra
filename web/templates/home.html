@@ -18,6 +18,13 @@
 <div class="alert alert-info" role="note">Belum ada tahun ajaran aktif. Kelas, absensi, dan tagihan memakai tahun ajaran aktif.{{if .CanSetYear}} <a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a>.{{else}} Hubungi admin/TU.{{end}}</div>
 {{end}}
 
+{{with .Proctor}}
+<section class="mb-6" aria-labelledby="my-sessions">
+<div class="card-head"><h2 class="card-title" id="my-sessions">Sesi saya hari ini</h2><a class="link-more" href="/ujian/sesi-saya">Semua{{template "icon" "arrow-right"}}</a></div>
+{{template "my_session_cards" .}}
+</section>
+{{end}}
+
 {{with .KPIs}}
 <section class="kpi-grid" aria-label="Ringkasan">
 {{range .}}{{if .Href}}<a class="kpi-card" href="{{.Href}}">{{else}}<div class="kpi-card">{{end}}

@@ -2,7 +2,6 @@ package exam
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -323,15 +322,18 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 		var variantID *string
 		var cancelled bool
 		var startsAt, endsAt time.Time
-		var token *string
-		var tokenRequired, paused bool
+		var token, tokenPrev *string
+		var tokenRotated *time.Time
+		var tokenRequired, paused, closed bool
 		var latePolicy string
 		var participantExtra, sessionExtra int
 		if err := tx.QueryRow(ctx, `SELECT p.variant_id, x.cancelled_at IS NOT NULL, x.starts_at, x.ends_at, x.token_required, x.token,
-				x.paused_at IS NOT NULL, x.late_policy, p.extra_minutes, x.extra_minutes
+				x.paused_at IS NOT NULL, x.late_policy, p.extra_minutes, x.extra_minutes, x.token_prev, x.token_rotated_at,
+				x.closed_at IS NOT NULL
 			FROM exam_session_participants p JOIN exam_sessions x ON x.id = p.session_id
 			WHERE p.school_id = $1 AND p.id = $2 FOR UPDATE OF p`, p.SchoolID, info.ParticipantID).
-			Scan(&variantID, &cancelled, &startsAt, &endsAt, &tokenRequired, &token, &paused, &latePolicy, &participantExtra, &sessionExtra); err != nil {
+			Scan(&variantID, &cancelled, &startsAt, &endsAt, &tokenRequired, &token, &paused, &latePolicy, &participantExtra, &sessionExtra,
+				&tokenPrev, &tokenRotated, &closed); err != nil {
 			return fmt.Errorf("exam: lock participant: %w", err)
 		}
 		running, err := scanAttempt(tx.QueryRow(ctx, `SELECT `+attemptCols+` FROM exam_attempts
@@ -363,7 +365,7 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 			return ErrNotFound
 		case req.Now.Before(startsAt):
 			return ErrNotOpen
-		case !req.Now.Before(endsAt):
+		case !req.Now.Before(endsAt), closed:
 			return ErrSessionOver
 		case used >= e.MaxAttempts:
 			return ErrNoAttemptsLeft
@@ -372,11 +374,8 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 		case paused:
 			return ErrSessionPaused
 		}
-		if tokenRequired {
-			given := NormalizeToken(req.Token)
-			if token == nil || given == "" || subtle.ConstantTimeCompare([]byte(given), []byte(*token)) != 1 {
-				return ErrBadToken
-			}
+		if tokenRequired && !tokenMatches(NormalizeToken(req.Token), token, tokenPrev, tokenRotated, req.Now) {
+			return ErrBadToken
 		}
 		paper, err := LoadPaper(ctx, tx, e, *variantID)
 		if err != nil {
@@ -398,8 +397,8 @@ func StartAttempt(ctx context.Context, db database.DB, p auth.Participant, req S
 			return err
 		}
 		out, err = scanAttempt(tx.QueryRow(ctx, `INSERT INTO exam_attempts (school_id, exam_id, session_id, participant_id, attempt_no,
-				variant_id, seed, question_order, option_order, device_id, started_at, deadline_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING `+attemptCols,
+				variant_id, seed, question_order, option_order, device_id, started_at, deadline_at, last_seen_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $11) RETURNING `+attemptCols,
 			p.SchoolID, e.ID, info.SessionID, info.ParticipantID, used+1, *variantID, seed, order, optJSON, req.DeviceID, req.Now, deadline))
 		if err != nil {
 			return fmt.Errorf("exam: start attempt: %w", err)
@@ -633,11 +632,13 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 				current_position = CASE WHEN $10::int >= 0 THEN least($10::int, cardinality(a.question_order) - 1) ELSE t.current_position END,
 				leave_count = t.leave_count + lv.n,
 				away_ms = t.away_ms + lv.ms,
+				last_seen_at = $5,
 				locked_at = CASE WHEN t.locked_at IS NULL AND lv.n > 0 AND a.integrity_limit IS NOT NULL
 				                      AND t.leave_count + lv.n - t.lock_base >= a.integrity_limit THEN $5 ELSE t.locked_at END
 			FROM a, lv
 			WHERE t.id = a.id
-			  AND (lv.n > 0 OR ($10::int >= 0 AND t.current_position <> least($10::int, cardinality(a.question_order) - 1)))
+			  AND (lv.n > 0 OR ($10::int >= 0 AND t.current_position <> least($10::int, cardinality(a.question_order) - 1))
+			       OR t.last_seen_at < $5::timestamptz - interval '30 seconds')
 			RETURNING t.locked_at, t.locked_at IS NOT NULL AND a.locked_at IS NULL AS newly),
 		lk AS (
 			INSERT INTO exam_attempt_events (school_id, attempt_id, kind, occurred_at)

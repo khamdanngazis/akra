@@ -310,6 +310,18 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - URL pendek `/u` dengan isian kode sekolah. Batas login per IP 3.000 per 15 menit agar satu lab/WiFi (NAT) tidak terblokir (`TestLabLoginsBehindOneIP`). Mode kiosk, NAT, dan daftar uji perangkat nyata: [doc/panduan-lab.md](doc/panduan-lab.md).
 - Aset statis dan halaman peserta dikompresi gzip.
 
+## Hari-H Ujian (MVP 4, T143–T145)
+
+- **Layar pengawas** (T143, migrasi 000075, `/ujian/sesi/{sesi}/awasi`, [internal/exam/proctor.go](internal/exam/proctor.go)): HP lebih dulu.
+  - Masuk dari kartu **Sesi saya hari ini** di beranda (atau `/ujian/sesi-saya`, tautan *Awasi* di tab sesi ujian).
+  - Header: token besar dengan hitung mundur rotasi (15 menit; token sebelumnya diterima 2 menit) dan halaman layar penuh untuk proyektor, status sesi, dan sisa waktu.
+  - Ringkasan *belum mulai · mengerjakan · offline · perlu perhatian · selesai* yang bisa diketuk untuk menyaring. Daftar peserta: yang terkunci, mencoba masuk dari perangkat lain, keluar halaman ≥ 3 kali, dan offline di atas; progres, sisa waktu, jumlah keluar. Kejadian baru ditandai lencana *Baru* dan getar.
+  - Diperbarui tiap 10 detik dengan satu query agregat (500 peserta ±20 ms, `TestProctorMonitorQuery500`). Offline = perangkat tidak menghubungi server 75 detik; `last_seen_at` ditulis di pernyataan simpan paling sering sekali per 30 detik.
+  - Aksi per peserta lewat lembar bawah (2 ketukan): izinkan pindah perangkat, buka kunci, reset login (kode baru hanya untuk sesi ini, tampil untuk didiktekan), tambah waktu, jeda/lanjut, kumpulkan paksa, catat kejadian. Alasan opsional masuk berita acara.
+  - Aksi sesi: jeda/lanjut semua, tambah waktu semua, wajibkan token, catatan, tutup sesi (yang masih mengerjakan dikumpulkan).
+  - Akhir sesi: berita acara terisi otomatis (hadir, tidak hadir, kejadian, catatan), ditandatangani pengawas dengan konfirmasi sandi akun, PDF di layar pengawas dan di dokumen ujian/agenda.
+  - Akses: pengawas sesi dalam jendela waktu, koordinator, dan admin_tu menulis; kepala sekolah dan pengawas di luar jendela hanya membaca; selain itu 404. Semua aksi tercatat di audit.
+
 ## Login Peserta Ujian
 
 - Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.

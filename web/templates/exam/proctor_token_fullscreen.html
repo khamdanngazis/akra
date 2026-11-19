@@ -1,0 +1,17 @@
+{{define "title"}}Token · {{.S.Title}}{{end}}
+{{define "bodyClass"}}page-token{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-proctor.js" }}"></script>{{end}}
+{{define "content"}}
+<div class="token-screen" data-token-screen data-json="/ujian/sesi/{{.S.ID}}/token.json" data-next="{{.Token.NextAt.UnixMilli}}">
+<p class="token-screen-title">{{.S.ExamName}}{{with .S.Subject}} · {{.}}{{end}} · {{.S.Title}}</p>
+{{if .Token.Required}}
+<p class="token-screen-label">Token ujian</p>
+<p class="token-screen-code" data-token-code>{{.Token.Token}}</p>
+<p class="token-screen-left">Berganti dalam <span data-token-left>--:--</span></p>
+{{else}}
+<p class="token-screen-code">Tanpa token</p>
+<p class="token-screen-left">Sesi ini tidak mewajibkan token.</p>
+{{end}}
+<button type="button" class="btn btn-ghost" data-fullscreen>Layar penuh</button>
+</div>
+{{end}}

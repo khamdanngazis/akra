@@ -17,6 +17,7 @@ import (
 	"akra/internal/attendance"
 	"akra/internal/auth"
 	"akra/internal/billing"
+	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/platform/money"
@@ -107,8 +108,10 @@ type view struct {
 	KPIs       []KPI
 	Payments   []RecentPayment
 	News       []RecentAnnouncement
-	Flash      string
-	Error      string
+	// Proctor adalah sesi ujian yang diawasi pengguna hari ini (T143).
+	Proctor []exam.MySessionCard
+	Flash   string
+	Error   string
 }
 
 // ServeHTTP merender beranda. Peran: semua staf; orang tua dialihkan ke
@@ -141,6 +144,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.AcademicYear, noYear bool, today time.Time, v *view) error {
+	// Pengawas ujian bisa guru atau staf TU.
+	now := time.Now()
+	from, to := exam.DayBounds(now, id.Location())
+	ps, err := exam.MyProctorSessions(ctx, h.db, id.SchoolID, id.UserID, from, to)
+	if err != nil {
+		return err
+	}
+	v.Proctor = exam.MySessionCards(ps, id.Location(), now)
 	if id.HasRole(auth.RoleBendahara) {
 		s, err := TreasurerFor(ctx, h.db, id.SchoolID, today)
 		if err != nil {
