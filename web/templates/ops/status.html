@@ -1,0 +1,16 @@
+{{define "title"}}Status Layanan{{end}}
+{{define "bodyClass"}}page-auth{{end}}
+{{define "content"}}
+{{template "auth_logo"}}
+<section class="card auth-card stack">
+<h1>Status layanan AKRA</h1>
+<div class="ops-status is-{{.State}}" role="status">
+<strong class="ops-status-title">{{if eq .State "normal"}}Semua layanan berjalan normal{{else if eq .State "gangguan"}}Sedang ada gangguan{{else}}Sedang pemeliharaan terjadwal{{end}}</strong>
+{{if eq .State "gangguan"}}<span>Tim AKRA sudah menerima tanda dan sedang menangani. Jawaban ujian tetap tersimpan di perangkat peserta dan terkirim otomatis begitu layanan pulih; jangan tutup halaman ujian.</span>
+<ul class="mb-0 ms-5 list-disc">{{range .Incidents}}<li>{{.Title}}</li>{{end}}</ul>{{end}}
+</div>
+{{with .Windows}}<div><h2 class="text-base font-semibold">Pemeliharaan terjadwal</h2>
+<ul class="mb-0 ms-5 list-disc">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<p class="hint mb-0">Diperbarui {{.Updated}}. Halaman ini memuat ulang sendiri tiap menit.</p>
+</section>
+{{end}}

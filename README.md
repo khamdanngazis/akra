@@ -331,6 +331,14 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - Rekap hari ini: kehadiran per mapel/tingkat, berita acara yang belum ditandatangani (seluruh agenda), dan jawaban esai yang menunggu koreksi.
   - Akses: koordinator ujian dan admin_tu (aksi), kepala sekolah (baca); selain itu 403, agenda sekolah lain 404.
 
+- **Keandalan dan observabilitas** (T145, migrasi 000077, [internal/ops](internal/ops), [doc/runbook-ujian.md](doc/runbook-ujian.md)):
+  - Metrik per endpoint peserta (login, buka, mulai, simpan, kumpul) di [internal/platform/metrics](internal/platform/metrics): `/metrics` format Prometheus dengan gauge pool database, attempt berjalan per sekolah, dan tunggakan kumpul otomatis. `/metrics` dan `/internal/` dijaga `OPS_TOKEN` (Basic auth atau Bearer; kosong = 404).
+  - Alert tiap 30 detik di setiap replika: simpan gagal > 1% atau p95 > 1 detik (2 menit, ≥ 30 simpan), kumpul otomatis tertunda > 3 menit, koneksi database > 80%. Kejadian di `ops_incidents` (satu terbuka per jenis, alert sekali walau banyak replika), pulih setelah 5 menit baik. Kanal: Telegram (`ALERT_TELEGRAM_TOKEN`, `ALERT_TELEGRAM_CHAT_ID`) dan/atau email (`ALERT_EMAIL`); uji dengan `POST /internal/alert-test`.
+  - Halaman status publik `/status`: normal / gangguan (kejadian terbuka) / pemeliharaan (`akra-ops maintenance add`, tampil 24 jam sebelumnya).
+  - Jendela deploy: `/internal/active-exams` (JSON), `akra-ops guard` dijalankan `akra-migrate up` (pre-deploy Railway) dan menolak deploy bila ada sesi di ruang berlangsung, sesi mulai dalam 30 menit, atau peserta mengerjakan. Deploy darurat: `DEPLOY_EMERGENCY_UNTIL` (≤ 6 jam). Cek dari luar: `scripts/deploy-guard.sh`. Dasbor `/internal/` berisi ujian aktif, kejadian, dan jadwal musim ujian 60 hari.
+  - Berhenti bertahap: SIGTERM → `/healthz` 503, tunggu `SHUTDOWN_DRAIN_SECONDS`, lalu menunggu request berjalan sampai `SHUTDOWN_TIMEOUT_SECONDS` (default 25).
+  - Uji keandalan: `go run ./cmd/savesim` (klien simulasi dengan antrian seperti halaman ujian, verifikasi 0 jawaban hilang) dan `-lb` (load balancer round-robin untuk 2 replika lokal). Simulasi gangguan di staging: `EXAM_FAULT_SAVE_PERCENT` (ditolak di production).
+
 ## Login Peserta Ujian
 
 - Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.

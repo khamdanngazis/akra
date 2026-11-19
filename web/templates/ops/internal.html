@@ -1,0 +1,39 @@
+{{define "title"}}Dasbor Internal{{end}}
+{{define "content"}}
+<div class="stack ops-internal">
+<header><h1 class="text-2xl font-bold">Dasbor internal AKRA</h1><p class="muted mb-0">{{.Env}} · {{.Now}}</p></header>
+
+<section class="card stack" aria-labelledby="deploy-title">
+<h2 class="card-title" id="deploy-title">Jendela deploy</h2>
+{{if .Active.Blocking}}<p class="alert alert-error mb-0"><strong>Jangan deploy.</strong> {{.Active.Active}} sesi berlangsung, {{.Active.Upcoming}} sesi mulai dalam 30 menit, {{.Active.RunningAttempts}} peserta sedang mengerjakan.</p>
+{{else}}<p class="alert alert-success mb-0"><strong>Aman untuk deploy.</strong> Tidak ada sesi ujian berlangsung atau mulai dalam 30 menit.</p>{{end}}
+{{with .ActiveRow}}<div class="table-wrap"><table><thead><tr><th>Sekolah</th><th>Ujian</th><th>Waktu (WIB)</th><th>Lokasi</th><th class="text-right">Mengerjakan</th></tr></thead>
+<tbody>{{range .}}<tr><td>{{.SchoolCode}}</td><td>{{.ExamName}}</td><td>{{.When}}{{if .Upcoming}} <span class="badge">segera</span>{{end}}</td><td>{{.Location}}</td><td class="text-right">{{.Running}}</td></tr>{{end}}</tbody></table></div>{{end}}
+</section>
+
+<section class="card stack" aria-labelledby="health-title">
+<h2 class="card-title" id="health-title">Kesehatan (replika ini, 10 menit)</h2>
+<div class="table-wrap"><table><thead><tr><th>Endpoint</th><th class="text-right">Request</th><th class="text-right">Error</th><th class="text-right">p95</th></tr></thead>
+<tbody>
+<tr><td>Simpan jawaban</td><td class="text-right">{{.Save.Count}}</td><td class="text-right">{{.Save.Errors}}</td><td class="text-right">{{.Save.P95}}</td></tr>
+<tr><td>Login peserta</td><td class="text-right">{{.Login.Count}}</td><td class="text-right">{{.Login.Errors}}</td><td class="text-right">{{.Login.P95}}</td></tr>
+<tr><td>Kumpul</td><td class="text-right">{{.Submit.Count}}</td><td class="text-right">{{.Submit.Errors}}</td><td class="text-right">{{.Submit.P95}}</td></tr>
+</tbody></table></div>
+<p class="mb-0">Kumpul otomatis: {{if .Backlog}}<strong>{{.Backlog}} attempt tertunda, tertua {{.Oldest}}</strong>{{else}}tidak ada tunggakan{{end}}. Metrik lengkap: <a href="/metrics">/metrics</a>.</p>
+</section>
+
+<section class="card stack" aria-labelledby="inc-title">
+<h2 class="card-title" id="inc-title">Kejadian 7 hari terakhir · status publik: {{.Status.State}}</h2>
+{{with .Incidents}}<ul class="ms-5 list-disc mb-0">{{range .}}<li><strong>{{.Title}}</strong> — {{.Detail}} <span class="muted text-sm">dibuka {{.OpenedAt.Format "02/01 15:04 MST"}}{{with .ResolvedAt}}, pulih {{.Format "02/01 15:04 MST"}}{{else}}, <strong>masih terbuka</strong>{{end}}</span></li>{{end}}</ul>
+{{else}}<p class="muted mb-0">Tidak ada kejadian.</p>{{end}}
+</section>
+
+<section class="card stack" aria-labelledby="season-title">
+<h2 class="card-title" id="season-title">Musim ujian 60 hari ke depan</h2>
+<p class="hint mb-0">Rencanakan rilis di luar jam-jam ini. Sesi di ruang (PTS/PAS, ulangan kelas) selalu menahan deploy; sesi jarak jauh hanya saat ada yang mengerjakan.</p>
+{{with .Season}}<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Sekolah</th><th class="text-right">Sesi</th><th class="text-right">Di ruang</th><th>Jam (WIB)</th></tr></thead>
+<tbody>{{range .}}<tr><td>{{.DayLabel}}</td><td>{{.SchoolCode}} <span class="muted text-sm">{{.SchoolName}}</span></td><td class="text-right">{{.Sessions}}</td><td class="text-right">{{.InRoom}}</td><td>{{.Window}}</td></tr>{{end}}</tbody></table></div>
+{{else}}<p class="muted mb-0">Belum ada ujian terjadwal.</p>{{end}}
+</section>
+</div>
+{{end}}

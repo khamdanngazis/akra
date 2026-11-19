@@ -25,9 +25,9 @@ func (h *ParticipantHandler) WithStorage(s storage.Store) *ParticipantHandler {
 
 func (h *ParticipantHandler) takeRoutes(r chi.Router) {
 	r.Get("/ujian/{session}", h.confirm)
-	r.Post("/ujian/{session}/mulai", h.start)
-	r.Get("/a/{attempt}", h.take)
-	r.Post("/a/{attempt}/kumpul", h.submit)
+	r.Post("/ujian/{session}/mulai", h.track(EndpointStart, h.start))
+	r.Get("/a/{attempt}", h.track(EndpointOpen, h.take))
+	r.Post("/a/{attempt}/kumpul", h.track(EndpointSubmit, h.submit))
 	r.Get("/a/{attempt}/selesai", h.done)
 	r.Get("/a/{attempt}/gambar/{asset}", h.image)
 }
@@ -43,7 +43,7 @@ func (h *ParticipantHandler) WithTokens(t *TokenSigner) *ParticipantHandler {
 // dan membaca sesi di setiap simpan tidak layak (ADR 0001 bagian 4).
 func (h *ParticipantHandler) TokenRoutes(r chi.Router) {
 	// Peserta (token attempt di header): simpan jawaban.
-	r.Post("/u/a/{attempt}/simpan", h.save)
+	r.Post("/u/a/{attempt}/simpan", h.track(EndpointSave, h.save))
 }
 
 func (h *ParticipantHandler) deviceID(r *http.Request) string {
@@ -351,6 +351,14 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		// Token kedaluwarsa/salah: halaman dimuat ulang untuk token baru
 		// (lewat sesi peserta); jawaban tetap di antrian perangkat.
 		writeJSON(w, http.StatusUnauthorized, saveResponse{Redirect: "/u/a/" + id, Now: now.UnixMilli()})
+		return
+	}
+	if h.faultPct > 0 && h.randPct() < h.faultPct {
+		// Simulasi gangguan (EXAM_FAULT_SAVE_PERCENT, staging): klien
+		// mengulang dari antrian perangkat, jawaban tidak hilang.
+		h.logger.WarnContext(r.Context(), "simulated save failure", "attempt_id", id)
+		SaveHealth.Record(c.SchoolID, time.Since(start), true, 0, now)
+		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
 		return
 	}
 	var req saveRequest

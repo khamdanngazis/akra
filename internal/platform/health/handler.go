@@ -19,6 +19,18 @@ func Handler(w http.ResponseWriter, _ *http.Request) {
 	writeText(w, http.StatusOK, "ok")
 }
 
+// ReadyHandler membalas 200 "ok", atau 503 "draining" setelah server
+// mulai berhenti (load balancer berhenti mengirim request baru).
+func ReadyHandler(draining func() bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if draining() {
+			writeText(w, http.StatusServiceUnavailable, "draining")
+			return
+		}
+		writeText(w, http.StatusOK, "ok")
+	}
+}
+
 // DBHandler membalas 200 jika db bisa di-ping, dan 503 jika tidak.
 func DBHandler(db Pinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

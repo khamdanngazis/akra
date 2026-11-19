@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"akra/internal/platform/pii"
 )
@@ -74,6 +75,23 @@ type Config struct {
 	// berikutnya tetap diterima selama rotasi. Wajib di staging dan
 	// production; di development boleh kosong (kunci development).
 	ExamTokenKeys string
+
+	// Keandalan (T145). OpsToken melindungi /metrics dan /internal (kosong:
+	// route itu 404). Alert ke Telegram (AlertTelegramToken + ChatID)
+	// dan/atau email AlertEmail; tanpa keduanya alert hanya ditulis ke log.
+	OpsToken            string
+	AlertTelegramToken  string
+	AlertTelegramChatID string
+	AlertEmail          string
+	// ExamFaultSavePercent (0–100, hanya di luar production) membuat
+	// sebagian simpan jawaban gagal 500 untuk menguji alert di staging.
+	ExamFaultSavePercent int
+	// ShutdownDrain: lama server tetap menerima request setelah SIGTERM
+	// sambil /healthz menjawab 503, agar load balancer berhenti mengirim
+	// request sebelum server berhenti. ShutdownTimeout: batas menunggu
+	// request yang sedang berjalan selesai.
+	ShutdownDrain   time.Duration
+	ShutdownTimeout time.Duration
 
 	// Parameter biaya argon2id untuk hash password baru. Default mengikuti
 	// batas minimum OWASP (19 MiB, 2 iterasi, 1 lane).
@@ -211,6 +229,44 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("config: environment variable EXAM_TOKEN_KEYS is required when APP_ENV=%s", cfg.AppEnv)
 	}
 
+	cfg.OpsToken = os.Getenv("OPS_TOKEN")
+	if cfg.OpsToken != "" && len(cfg.OpsToken) < 24 {
+		return Config{}, fmt.Errorf("config: OPS_TOKEN must be at least 24 characters")
+	}
+	cfg.AlertTelegramToken = os.Getenv("ALERT_TELEGRAM_TOKEN")
+	cfg.AlertTelegramChatID = os.Getenv("ALERT_TELEGRAM_CHAT_ID")
+	if (cfg.AlertTelegramToken == "") != (cfg.AlertTelegramChatID == "") {
+		return Config{}, fmt.Errorf("config: ALERT_TELEGRAM_TOKEN and ALERT_TELEGRAM_CHAT_ID must be set together")
+	}
+	cfg.AlertEmail = os.Getenv("ALERT_EMAIL")
+	if cfg.AlertEmail != "" {
+		if _, err := mail.ParseAddress(cfg.AlertEmail); err != nil {
+			return Config{}, fmt.Errorf("config: invalid ALERT_EMAIL %q", cfg.AlertEmail)
+		}
+	}
+	if raw := os.Getenv("EXAM_FAULT_SAVE_PERCENT"); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 0 || v > 100 {
+			return Config{}, fmt.Errorf("config: EXAM_FAULT_SAVE_PERCENT must be 0-100, got %q", raw)
+		}
+		if v > 0 && cfg.AppEnv == EnvProduction {
+			return Config{}, fmt.Errorf("config: EXAM_FAULT_SAVE_PERCENT is not allowed in production")
+		}
+		cfg.ExamFaultSavePercent = v
+	}
+	drain, err := seconds("SHUTDOWN_DRAIN_SECONDS", 0, 60)
+	if err != nil {
+		return Config{}, err
+	}
+	timeout, err := seconds("SHUTDOWN_TIMEOUT_SECONDS", 25, 120)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.ShutdownDrain, cfg.ShutdownTimeout = drain, timeout
+	if timeout == 0 {
+		cfg.ShutdownTimeout = 25 * time.Second
+	}
+
 	if cfg.WebDir != "" && cfg.AppEnv != EnvDevelopment {
 		return Config{}, fmt.Errorf("config: WEB_DIR is only allowed when APP_ENV=development")
 	}
@@ -240,6 +296,19 @@ func positiveInt(key string, fallback int64, bitSize int) (int64, error) {
 		return 0, fmt.Errorf("config: %s must be a positive integer, got %q", key, raw)
 	}
 	return v, nil
+}
+
+// seconds membaca key sebagai jumlah detik 0..maxSec.
+func seconds(key string, fallback, maxSec int) (time.Duration, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return time.Duration(fallback) * time.Second, nil
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < 0 || v > maxSec {
+		return 0, fmt.Errorf("config: %s must be 0-%d seconds, got %q", key, maxSec, raw)
+	}
+	return time.Duration(v) * time.Second, nil
 }
 
 func getEnv(key, fallback string) string {

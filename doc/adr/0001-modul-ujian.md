@@ -196,6 +196,32 @@ Bukti: [`shot-naskh.png`](../../spike/mvp4/arabic/shot-naskh.png) (360 px, Chrom
 
 ---
 
+## 8. Pemantauan, alert, dan jendela deploy (T145)
+
+### Pilihan
+- (a) Layanan pemantau luar (Grafana Cloud/Prometheus + Alertmanager, atau APM berbayar).
+- (b) **Di dalam aplikasi**: metrik per endpoint di memori proses, `/metrics` berformat Prometheus yang dilindungi token, penilai aturan alert di setiap replika, kejadian dan halaman status di Postgres, notifikasi ke **Telegram** (utama) dan **email** lewat Resend (cadangan).
+
+### Keputusan: (b)
+- Tim kecil tanpa infrastruktur pemantau. Tidak ada biaya atau layanan baru yang harus dijaga saat musim ujian; kanal Telegram sudah dibaca tim di HP.
+- `/metrics` tetap berformat Prometheus, jadi bisa di-*scrape* layanan pemantau luar nanti tanpa mengubah aplikasi.
+- Kejadian dibuka dengan indeks unik parsial (`ops_incidents`, satu kejadian terbuka per jenis): replika yang pertama membuka yang mengirim alert, sehingga beberapa replika tidak mengirim alert ganda. Pulih setelah kondisi baik 5 menit di semua replika.
+- Keterbatasan: angka latensi dan error per replika (tidak digabung). Aturan dinilai per replika; dengan load balancer pembagian beban rata, sehingga gangguan terlihat di semua replika. Bila aplikasi mati total, alert tidak terkirim dari aplikasi; health check Railway dan pemantau uptime luar (mis. ping `/healthz` tiap menit dari layanan uptime gratis) menutup celah itu.
+
+### Jendela deploy
+- Gerbangnya pre-deploy Railway (`akra-migrate up` → `akra-ops guard`), bukan CI: deploy Railway dipicu push ke `main` dan perubahan variabel, bukan workflow CI. Pre-deploy yang gagal membuat Railway tetap memakai deployment lama.
+- Sesi di ruang selalu menahan deploy selama berlangsung; sesi jarak jauh (jendela bisa berhari-hari) hanya saat ada peserta yang mengerjakan; sesi apa pun yang mulai dalam 30 menit menahan deploy.
+- Deploy darurat: `DEPLOY_EMERGENCY_UNTIL` (RFC 3339, paling lama 6 jam ke depan), berlaku sendiri sampai lewat.
+
+### Siap replika
+- State antar-request di Postgres: sesi staf dan peserta (scs pgxstore), rate limit, kejadian, job River (periodik hanya oleh leader). Token attempt cukup kunci bersama `EXAM_TOKEN_KEYS`.
+- State di memori yang hanya mempercepat atau menampilkan (boleh berbeda antar-replika): metrik, indikator kesehatan pusat kendali, pool VM KaTeX, singleflight pratinjau gambar.
+- Diuji dengan 2 replika lokal di belakang load balancer round-robin (`go run ./cmd/savesim -lb`): sesi staf berlaku di kedua replika, job kumpul otomatis tidak ganda, replika di-restart bergantian dan satu di-crash saat 200 klien menyimpan tanpa jawaban hilang.
+
+### Berhenti bertahap
+- SIGTERM: `/healthz` menjawab 503 (load balancer berhenti mengirim), tunggu `SHUTDOWN_DRAIN_SECONDS`, matikan keep-alive, lalu `http.Server.Shutdown` menunggu request berjalan sampai `SHUTDOWN_TIMEOUT_SECONDS` (default 25 detik). Klien yang terputus mengulang dari antrian perangkat.
+- Railway: set `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` ≥ batas shutdown agar container lama tidak dimatikan paksa sebelum request selesai.
+
 ## Konsekuensi
 - **Dependensi baru di T128:** `github.com/dop251/goja` (versi dikunci) dan `katex.min.js` 0.19.1 yang di-embed. Binary bertambah **± 7 MB** (diukur dengan `-ldflags="-s -w"`; produksi 11,7 MB → ± 19 MB). Masih wajar untuk image Railway.
 - **Aset statis baru:** CSS + font KaTeX (± 280 KB total, diunduh sesuai kebutuhan) dan Noto Naskh Arabic (52 KB, hanya bila ada teks Arab).
