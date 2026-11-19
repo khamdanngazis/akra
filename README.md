@@ -321,6 +321,15 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - Aksi sesi: jeda/lanjut semua, tambah waktu semua, wajibkan token, catatan, tutup sesi (yang masih mengerjakan dikumpulkan).
   - Akhir sesi: berita acara terisi otomatis (hadir, tidak hadir, kejadian, catatan), ditandatangani pengawas dengan konfirmasi sandi akun, PDF di layar pengawas dan di dokumen ujian/agenda.
   - Akses: pengawas sesi dalam jendela waktu, koordinator, dan admin_tu menulis; kepala sekolah dan pengawas di luar jendela hanya membaca; selain itu 404. Semua aksi tercatat di audit.
+- **Pusat kendali koordinator** (T144, migrasi 000076, `/ujian/agenda/{agenda}/kendali`, [internal/exam/control.go](internal/exam/control.go)): tab *Pusat kendali* di halaman agenda.
+  - Kartu per ruang (ruang × jam × gelombang) untuk hari ini: pengawas (sedang membuka layar pengawas = layarnya menghubungi server ≤ 3 menit), hadir/total, offline, perlu perhatian, sisa waktu. Satu query agregat, diperbarui tiap 10 detik.
+  - Warna: **merah** bila belum ada pengawas, sesi berlangsung tetapi pengawas tidak membuka layar, atau offline > 20%; **kuning** bila ada offline/perlu perhatian, dijeda, atau berita acara belum ditandatangani; **hijau** normal; abu-abu belum mulai/selesai.
+  - Indikator kesehatan simpan jawaban 5 menit terakhir untuk sekolah ini: p95 respons server, error rate, dan waktu tempuh perangkat (RTT yang dilaporkan perangkat di simpan berikutnya). Kesimpulan: *server normal*, *server bermasalah*, atau *jaringan sekolah lambat*. Data di memori proses ([internal/exam/health.go](internal/exam/health.go)); metrik gabungan antar-replika di T145.
+  - Aksi lintas ruang (kartu dicentang atau semua sesi berlangsung): jeda, lanjutkan, tambah waktu, dan **pesan ke layar peserta**. Pesan (tabel `exam_broadcasts`) ikut balasan simpan/ping berikutnya (≤ 10 detik), tampil sebagai banner sampai peserta menekan *Mengerti*, dan tercatat di berita acara.
+  - **Pindahkan peserta** ke sesi lain ujian yang sama: attempt, jawaban, dan kode kartu ikut pindah; sisa waktu tetap (`exam_attempts.shift_ms` menggeser tenggat bila aturan waktu sesi tujuan berbeda); perangkat baru diizinkan sekali. **Ganti pengawas** satu ruang (sesi dan penugasan agenda).
+  - **Ralat soal** di tab Soal ujian (pembuat ujian, koordinator, admin_tu): batalkan soal (`exam_voided_questions`; poinnya dikeluarkan dari total di penilaian T146) dengan pemberitahuan opsional berisi kutipan soal, pulihkan, atau kirim pesan ralat ke semua sesi ujian yang berlangsung.
+  - Rekap hari ini: kehadiran per mapel/tingkat, berita acara yang belum ditandatangani (seluruh agenda), dan jawaban esai yang menunggu koreksi.
+  - Akses: koordinator ujian dan admin_tu (aksi), kepala sekolah (baca); selain itu 403, agenda sekolah lain 404.
 
 ## Login Peserta Ujian
 

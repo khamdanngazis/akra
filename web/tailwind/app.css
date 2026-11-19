@@ -3146,4 +3146,40 @@
   .token-screen-label { @apply text-2xl text-slate-300; }
   .token-screen-code { @apply font-mono font-bold tracking-[0.15em]; font-size: clamp(4rem, 18vw, 14rem); line-height: 1; }
   .token-screen-left { @apply text-2xl text-slate-300; }
+  /* Pusat kendali koordinator (T144). */
+  .control-head { @apply mb-3 flex flex-wrap items-end justify-between gap-3; }
+  .control-summary { @apply grid grid-cols-3 gap-2 sm:grid-cols-6; }
+  .control-stat { @apply grid min-h-16 place-items-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-center; }
+  .control-stat strong { @apply text-2xl leading-none; }
+  .control-stat span { @apply text-xs text-slate-600; }
+  .control-stat.is-red strong { @apply text-red-700; }
+  .control-stat.is-yellow strong { @apply text-amber-700; }
+  .control-health { @apply mt-3 grid gap-1 rounded-xl border px-4 py-3; }
+  .control-health.is-normal { @apply border-emerald-300 bg-emerald-50 text-emerald-950; }
+  .control-health.is-server { @apply border-red-300 bg-red-50 text-red-950; }
+  .control-health.is-jaringan { @apply border-amber-300 bg-amber-50 text-amber-950; }
+  .control-health.is-tenang { @apply border-slate-200 bg-slate-50 text-slate-700; }
+  .control-cards { @apply mt-3 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3; }
+  .control-card { @apply grid gap-2 rounded-xl border border-l-8 border-slate-200 bg-white p-3; }
+  .control-card.is-hijau { @apply border-l-emerald-500; }
+  .control-card.is-kuning { @apply border-amber-300 border-l-amber-500 bg-amber-50; }
+  .control-card.is-merah { @apply border-red-300 border-l-red-600 bg-red-50; }
+  .control-card.is-abu { @apply border-l-slate-300; }
+  .control-card-head { @apply flex items-start gap-2; }
+  .control-pick { @apply grid size-11 shrink-0 cursor-pointer place-items-center rounded-lg; margin: -0.5rem 0 -0.5rem -0.5rem; }
+  .control-pick input { @apply size-5; }
+  .control-room { @apply truncate text-lg font-bold; }
+  .control-nums { @apply grid grid-cols-4 gap-1 text-center; }
+  .control-nums dt { @apply text-xs text-slate-600; }
+  .control-nums dd { @apply whitespace-nowrap text-base font-bold tabular-nums sm:text-lg; }
+  .control-nums { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+  .control-problems { @apply flex flex-wrap gap-1; }
+  .control-target { @apply grid gap-1 border-0 p-0; }
+  .control-actions { @apply flex flex-wrap gap-2; }
+  .control-grid { @apply grid gap-4 lg:grid-cols-2; }
+  .control-links { @apply ms-5 grid list-disc gap-1; }
+  /* Pesan koordinator di layar peserta. */
+  .take-message { @apply fixed inset-x-0 top-0 z-40 mx-auto flex max-w-2xl items-start gap-3 rounded-b-xl border-2 border-blue-700 bg-blue-50 px-4 py-3 text-blue-950 shadow-lg; }
+  .take-message[hidden] { display: none; }
+  .take-message-body { @apply min-w-0 flex-1; }
 }

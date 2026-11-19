@@ -29,6 +29,8 @@ func (h *Handler) examRoutes(r chi.Router) {
 			h.examWizardRoutes(readers, r)
 			h.examDocsRoutes(readers, r)
 			h.followUpRoutes(r)
+			r.Post("/paket/{id}/soal/{qid}/batal", h.examVoidQuestion)
+			r.Post("/paket/{id}/ralat", h.examCorrection)
 			r.Post("/paket/{id}/salin", h.examCopy)
 			r.Post("/paket/{id}/arsip", h.examArchive)
 		})
@@ -181,6 +183,8 @@ type examDetailView struct {
 	DocSessions  []docSession
 	Follow       followView
 	DefaultDate  string
+	Voided       map[string]VoidInfo // soal dibatalkan (T144)
+	Running      int                 // sesi berlangsung, untuk ralat
 	Flash        string
 	Error        string
 	Zone         string
@@ -253,6 +257,18 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 				h.fail(w, r, "load paper", err)
 				return
 			}
+		}
+		if e.Locked() {
+			if v.Voided, err = VoidedQuestions(ctx, h.db, sa.SchoolID, e.ID); err != nil {
+				h.fail(w, r, "voided questions", err)
+				return
+			}
+			running, err := RunningExamSessions(ctx, h.db, sa.SchoolID, e.ID, now)
+			if err != nil {
+				h.fail(w, r, "running sessions", err)
+				return
+			}
+			v.Running = len(running)
 		}
 	case "dokumen":
 		v.DocSessions = h.examDocSessions(r, v.Sessions, loc, now)

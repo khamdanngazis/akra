@@ -312,6 +312,11 @@ type saveRequest struct {
 	Changes []AnswerChange `json:"changes"`
 	Events  []EventInput   `json:"events"`
 	Pos     *int           `json:"pos"`
+	// Msg: id pesan koordinator terakhir yang sudah diterima perangkat.
+	Msg int64 `json:"msg"`
+	// RTT: waktu pulang-pergi simpan sebelumnya menurut perangkat (ms),
+	// untuk indikator kesehatan di pusat kendali.
+	RTT int `json:"rtt"`
 }
 
 type saveResponse struct {
@@ -328,6 +333,8 @@ type saveResponse struct {
 	Locked int64 `json:"locked,omitempty"`
 	// ESeq: seq kejadian tertinggi yang sudah tercatat.
 	ESeq int64 `json:"eseq,omitempty"`
+	// Msgs: pesan koordinator baru (T144).
+	Msgs []Broadcast `json:"msgs,omitempty"`
 }
 
 // save menyimpan perubahan jawaban (T139). Hanya memverifikasi token
@@ -335,6 +342,7 @@ type saveResponse struct {
 // peserta. Attempt yang sudah dikumpulkan, dipindah perangkat, atau lewat
 // tenggat + tenggang dijawab 409.
 func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	now := h.now()
 	w.Header().Set("Cache-Control", "no-store")
 	id := chi.URLParam(r, "attempt")
@@ -356,7 +364,10 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		pos = *req.Pos
 	}
 	res, err := SaveAnswers(r.Context(), h.db, c.SchoolID, c.AttemptID, c.DeviceID,
-		SaveRequest{Changes: req.Changes, Events: req.Events, Pos: pos}, now)
+		SaveRequest{Changes: req.Changes, Events: req.Events, Pos: pos, MsgAfter: req.Msg}, now)
+	defer func() {
+		SaveHealth.Record(c.SchoolID, time.Since(start), err != nil && !errors.Is(err, ErrAttemptClosed) && !errors.Is(err, ErrBadAnswer), req.RTT, now)
+	}()
 	switch {
 	case errors.Is(err, ErrAttemptClosed):
 		writeJSON(w, http.StatusConflict, saveResponse{Closed: true, Redirect: "/u/a/" + id, Now: now.UnixMilli()})
@@ -367,7 +378,7 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, saveResponse{Now: now.UnixMilli()})
 	default:
 		writeJSON(w, http.StatusOK, saveResponse{OK: true, Seq: res.Seq, Now: now.UnixMilli(), Deadline: res.Deadline.UnixMilli(),
-			Paused: unixMilli(res.PausedAt), Locked: unixMilli(res.LockedAt), ESeq: res.EventSeq})
+			Paused: unixMilli(res.PausedAt), Locked: unixMilli(res.LockedAt), ESeq: res.EventSeq, Msgs: res.Messages})
 	}
 }
 
