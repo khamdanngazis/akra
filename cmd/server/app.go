@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/alexedwards/scs/v2"
 
@@ -23,12 +24,14 @@ import (
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
+	"akra/internal/ops"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/database"
 	"akra/internal/platform/health"
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/metrics"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
@@ -61,6 +64,19 @@ type appDeps struct {
 	// development (uji).
 	examTokens *exam.TokenSigner
 	dev        bool // APP_ENV=development: pasang route /dev
+
+	// Keandalan (T145). metrics nil: registry baru (uji).
+	metrics   *metrics.Registry
+	ops       opsDeps
+	saveFault int          // EXAM_FAULT_SAVE_PERCENT (bukan production)
+	draining  *atomic.Bool // true setelah SIGTERM: /healthz 503
+}
+
+// opsDeps adalah setelan halaman status, /metrics, dan /internal.
+type opsDeps struct {
+	token    string
+	env      string
+	notifier ops.Notifier
 }
 
 // newApp menyusun semua service dan handler lalu mengembalikan router.
@@ -86,10 +102,21 @@ func newApp(d appDeps) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	reg := d.metrics
+	if reg == nil {
+		reg = metrics.New()
+	}
+	draining := d.draining
+	if draining == nil {
+		draining = new(atomic.Bool)
+	}
 	reportsHandler := reports.NewHandler(d.db, reportJobs(d.jobs), d.store, d.render, d.logger)
 
 	return newRouter(routerDeps{
-		pinger:      d.pinger,
+		pinger:   d.pinger,
+		draining: draining,
+		ops: &ops.Handler{DB: d.db, Metrics: reg, Render: d.render, Logger: d.logger, Notifier: d.ops.notifier,
+			Token: d.ops.token, Env: d.ops.env},
 		csrf:        csrf.Middleware(d.secure, d.logger),
 		sessions:    d.sessions,
 		render:      d.render,
@@ -99,10 +126,11 @@ func newApp(d appDeps) (http.Handler, error) {
 			auth.NewResetService(auth.NewRepository(d.db), d.hasher, d.mailer,
 				auth.NewSessionRevoker(d.sessions), d.baseURL, d.logger),
 			d.sessions, d.render, d.logger),
-		activation:          auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
-		duties:              duty.NewHandler(d.db, d.sessions, d.render, d.logger),
-		exam:                exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL),
-		participant:         exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store).WithTokens(examTokens),
+		activation: auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
+		duties:     duty.NewHandler(d.db, d.sessions, d.render, d.logger),
+		exam:       exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL),
+		participant: exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store).WithTokens(examTokens).
+			WithMetrics(reg).WithSaveFault(d.saveFault),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),

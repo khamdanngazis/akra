@@ -3178,6 +3178,13 @@
   .control-actions { @apply flex flex-wrap gap-2; }
   .control-grid { @apply grid gap-4 lg:grid-cols-2; }
   .control-links { @apply ms-5 grid list-disc gap-1; }
+  /* Halaman status dan dasbor internal (T145). */
+  .ops-status { @apply grid gap-1 rounded-xl border px-4 py-3; }
+  .ops-status.is-normal { @apply border-emerald-300 bg-emerald-50 text-emerald-950; }
+  .ops-status.is-gangguan { @apply border-red-300 bg-red-50 text-red-950; }
+  .ops-status.is-pemeliharaan { @apply border-amber-300 bg-amber-50 text-amber-950; }
+  .ops-status-title { @apply text-lg; }
+  .ops-internal { @apply mx-auto max-w-5xl p-4; }
   /* Pesan koordinator di layar peserta. */
   .take-message { @apply fixed inset-x-0 top-0 z-40 mx-auto flex max-w-2xl items-start gap-3 rounded-b-xl border-2 border-blue-700 bg-blue-50 px-4 py-3 text-blue-950 shadow-lg; }
   .take-message[hidden] { display: none; }

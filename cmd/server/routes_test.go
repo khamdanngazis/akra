@@ -31,9 +31,11 @@ import (
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
+	"akra/internal/ops"
 	"akra/internal/payments"
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/mail"
+	"akra/internal/platform/metrics"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/portal"
@@ -83,6 +85,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		t.Fatal(err)
 	}
 	return newRouter(routerDeps{
+		ops:         &ops.Handler{Metrics: metrics.New(), Render: rd, Logger: logger, Token: "token-uji-tim-akra-panjang"},
 		csrf:        csrf.Middleware(false, logger),
 		sessions:    sessions,
 		render:      rd,
@@ -281,6 +284,8 @@ func TestCSRF_CookieAttributes(t *testing.T) {
 // bukan cookie, dan sengaja dipasang tanpa CSRF (ADR 0001 bagian 4).
 var headerTokenRoutes = map[string]bool{
 	"POST /u/a/{attempt}/simpan": true,
+	// Uji kanal alert (T145): hanya Authorization: Bearer token tim.
+	"POST /internal/alert-test": true,
 }
 
 // TestCSRF_AllMutatingRoutesRequireToken menelusuri semua route dan

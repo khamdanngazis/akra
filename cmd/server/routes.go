@@ -3,6 +3,7 @@ package main
 import (
 	"io/fs"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,7 @@ import (
 	"akra/internal/grades"
 	"akra/internal/home"
 	"akra/internal/importer"
+	"akra/internal/ops"
 	"akra/internal/payments"
 	"akra/internal/platform/health"
 	"akra/internal/platform/httpserver"
@@ -37,7 +39,11 @@ import (
 )
 
 type routerDeps struct {
-	pinger       health.Pinger
+	pinger health.Pinger
+	// draining: server sedang berhenti; /healthz menjawab 503 (T145).
+	draining *atomic.Bool
+	// ops: halaman status publik, /metrics, dan /internal (T145).
+	ops          *ops.Handler
 	csrf         func(http.Handler) http.Handler
 	sessions     *scs.SessionManager
 	render       page.Renderer
@@ -102,8 +108,16 @@ func newRouter(d routerDeps) http.Handler {
 	r := chi.NewRouter()
 
 	// Tanpa sesi dan tanpa CSRF.
-	r.Get("/healthz", health.Handler)
+	draining := d.draining
+	if draining == nil {
+		draining = new(atomic.Bool)
+	}
+	r.Get("/healthz", health.ReadyHandler(draining.Load))
 	r.Get("/healthz/db", health.DBHandler(d.pinger))
+	// Status layanan publik, metrics, dan dasbor internal (token tim).
+	if d.ops != nil {
+		d.ops.Routes(r)
+	}
 	// Aset teks dan halaman peserta dikompresi: halaman ujian di HP dengan
 	// kuota terbatas (T138: transfer awal < 150 KB di luar gambar).
 	compress := middleware.Compress(5, "text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml")

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	mrand "math/rand/v2"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -20,6 +21,7 @@ import (
 	"akra/internal/exam/mathrender"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/metrics"
 	"akra/internal/platform/page"
 	"akra/internal/platform/ratelimit"
 	"akra/internal/platform/storage"
@@ -51,6 +53,31 @@ type ParticipantHandler struct {
 	math     *mathrender.Renderer // contoh rumus di cek perangkat
 	store    storage.Store        // gambar soal di halaman ujian
 	tokens   *TokenSigner         // token attempt untuk simpan jawaban (T139)
+	metrics  *metrics.Registry    // latensi dan error endpoint peserta (T145)
+	// faultPct: persen simpan yang sengaja digagalkan untuk menguji alert
+	// (hanya di luar production, dicegah config).
+	faultPct int
+	rand     func() int // 0..99
+}
+
+// WithMetrics memasang pencatat latensi endpoint peserta.
+func (h *ParticipantHandler) WithMetrics(m *metrics.Registry) *ParticipantHandler {
+	h.metrics = m
+	return h
+}
+
+// WithSaveFault membuat pct persen simpan jawaban gagal 500 (uji alert).
+func (h *ParticipantHandler) WithSaveFault(pct int) *ParticipantHandler {
+	h.faultPct = pct
+	return h
+}
+
+// track membungkus handler dengan pencatat metrics bila terpasang.
+func (h *ParticipantHandler) track(name string, fn http.HandlerFunc) http.HandlerFunc {
+	if h.metrics == nil {
+		return fn
+	}
+	return h.metrics.TrackFunc(name, fn)
 }
 
 // NewParticipantHandler mengembalikan ParticipantHandler. sessions harus
@@ -82,7 +109,7 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 		// Publik: login peserta per sekolah.
 		r.Get("/{code}", h.loginForm)
 		// Publik: login peserta per sekolah.
-		r.Post("/{code}", h.login)
+		r.Post("/{code}", h.track(EndpointLogin, h.login))
 	})
 }
 
@@ -316,4 +343,11 @@ func (h *ParticipantHandler) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, participantLoginPath(r, code), http.StatusSeeOther)
+}
+
+func (h *ParticipantHandler) randPct() int {
+	if h.rand != nil {
+		return h.rand()
+	}
+	return mrand.IntN(100)
 }

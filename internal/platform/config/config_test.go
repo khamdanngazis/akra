@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoad_AllSet(t *testing.T) {
@@ -37,7 +38,7 @@ func TestLoad_AllSet(t *testing.T) {
 		MailDriver: "resend", MailFrom: "AKRA <no-reply@akra.id>", ResendAPIKey: "re_test",
 		StorageDriver: "r2", R2AccountID: "acc", R2Bucket: "akra-private", R2AccessKeyID: "key", R2SecretAccessKey: "secret",
 		PIIEncKeys: os.Getenv("PII_ENC_KEYS"), PIIIndexKey: os.Getenv("PII_INDEX_KEY"),
-		ExamTokenKeys: os.Getenv("EXAM_TOKEN_KEYS"),
+		ExamTokenKeys: os.Getenv("EXAM_TOKEN_KEYS"), ShutdownTimeout: 25 * time.Second,
 	}
 	if cfg != want {
 		t.Errorf("Load() = %+v, want %+v", cfg, want)
@@ -340,5 +341,55 @@ func TestLoad_PIIKeys(t *testing.T) {
 	k, err := cfg.Keyring()
 	if err != nil || k.ActiveVersion() != 2 {
 		t.Errorf("Keyring() active = %v, %v; want version 2", k, err)
+	}
+}
+
+func TestLoad_Ops(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/akra")
+	t.Setenv("WEB_DIR", "")
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv("APP_BASE_URL", "https://app.akra.id")
+	setPII(t)
+	t.Setenv("OPS_TOKEN", "rahasia-tim-akra-yang-panjang")
+	t.Setenv("ALERT_TELEGRAM_TOKEN", "123:abc")
+	t.Setenv("ALERT_TELEGRAM_CHAT_ID", "-100")
+	t.Setenv("ALERT_EMAIL", "tim@akra.id")
+	t.Setenv("EXAM_FAULT_SAVE_PERCENT", "20")
+	t.Setenv("SHUTDOWN_DRAIN_SECONDS", "5")
+	t.Setenv("SHUTDOWN_TIMEOUT_SECONDS", "30")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.OpsToken == "" || cfg.AlertTelegramChatID != "-100" || cfg.AlertEmail != "tim@akra.id" || cfg.ExamFaultSavePercent != 20 ||
+		cfg.ShutdownDrain != 5*time.Second || cfg.ShutdownTimeout != 30*time.Second {
+		t.Errorf("ops config = %+v", cfg)
+	}
+	for _, c := range []struct{ key, val, want string }{
+		{"OPS_TOKEN", "pendek", "OPS_TOKEN"},
+		{"ALERT_TELEGRAM_CHAT_ID", "", "ALERT_TELEGRAM"},
+		{"ALERT_EMAIL", "bukan email", "ALERT_EMAIL"},
+		{"EXAM_FAULT_SAVE_PERCENT", "101", "EXAM_FAULT_SAVE_PERCENT"},
+		{"SHUTDOWN_DRAIN_SECONDS", "61", "SHUTDOWN_DRAIN_SECONDS"},
+	} {
+		old := os.Getenv(c.key)
+		t.Setenv(c.key, c.val)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s=%q: error = %v", c.key, c.val, err)
+		}
+		t.Setenv(c.key, old)
+	}
+	// Simulasi gangguan tidak boleh di production.
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("MAIL_DRIVER", "resend")
+	t.Setenv("MAIL_FROM", "AKRA <no-reply@akra.id>")
+	t.Setenv("RESEND_API_KEY", "re_test")
+	t.Setenv("STORAGE_DRIVER", "r2")
+	t.Setenv("R2_ACCOUNT_ID", "acc")
+	t.Setenv("R2_BUCKET", "b")
+	t.Setenv("R2_ACCESS_KEY_ID", "k")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "s")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "not allowed in production") {
+		t.Errorf("fault injection in production: %v", err)
 	}
 }

@@ -110,6 +110,13 @@ var Routes = []Route{
 	// Publik.
 	{Method: "GET", Pattern: "/healthz", Kind: KindPublic},
 	{Method: "GET", Pattern: "/healthz/db", Kind: KindPublic},
+	// Halaman status layanan (T145) publik; /metrics dan /internal dijaga
+	// token tim (OPS_TOKEN, bukan sesi), diuji di paket ops.
+	{Method: "GET", Pattern: "/status", Kind: KindPublic},
+	{Method: "GET", Pattern: "/metrics", Kind: KindPublic},
+	{Method: "GET", Pattern: "/internal/", Kind: KindPublic},
+	{Method: "GET", Pattern: "/internal/active-exams", Kind: KindPublic},
+	{Method: "POST", Pattern: "/internal/alert-test", Kind: KindPublic},
 	{Method: "GET", Pattern: "/static/*", Kind: KindPublic},
 	// Formulir pendaftaran publik (T90). Akses draf dibatasi sesi; diuji di
 	// paket admission (TestPublicFlow).

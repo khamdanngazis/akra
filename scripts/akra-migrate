@@ -1,7 +1,15 @@
 #!/bin/sh
 # Menjalankan golang-migrate terhadap $DATABASE_URL dengan migrasi di image.
 # Contoh: akra-migrate up | akra-migrate down 1 | akra-migrate version
+#
+# "up" adalah pre-deploy command Railway. Sebelum migrasi, akra-ops guard
+# menolak deploy bila ada ujian aktif (T145): pre-deploy gagal, deployment
+# lama tetap melayani. Deploy darurat: DEPLOY_EMERGENCY_UNTIL (lihat
+# doc/runbook-ujian.md).
 set -eu
 : "${DATABASE_URL:?DATABASE_URL is not set}"
 [ "$#" -gt 0 ] || set -- up
+if [ "$1" = "up" ] && command -v akra-ops >/dev/null 2>&1; then
+	akra-ops guard
+fi
 exec migrate -path "${MIGRATIONS_DIR:-/app/db/migrations}" -database "$DATABASE_URL" "$@"

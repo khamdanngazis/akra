@@ -11,7 +11,8 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/akra ./cmd/server && \
     go build -trimpath -ldflags="-s -w" -o /out/akra-seed ./cmd/seed && \
     go build -trimpath -ldflags="-s -w" -o /out/akra-demoseed ./cmd/demoseed && \
     go build -trimpath -ldflags="-s -w" -o /out/akra-rotate-pii-key ./cmd/rotate-pii-key && \
-    go build -trimpath -ldflags="-s -w" -o /out/akra-modul ./cmd/modul
+    go build -trimpath -ldflags="-s -w" -o /out/akra-modul ./cmd/modul && \
+    go build -trimpath -ldflags="-s -w" -o /out/akra-ops ./cmd/ops
 
 # ---- CLI golang-migrate (versi sama dengan README) ----
 FROM alpine:3.20 AS migrate
@@ -28,7 +29,7 @@ RUN wget -q -O /tmp/migrate.tar.gz \
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata && \
     adduser -D -H -u 10001 akra
-COPY --from=build /out/akra /out/akra-seed /out/akra-demoseed /out/akra-rotate-pii-key /out/akra-modul /usr/local/bin/
+COPY --from=build /out/akra /out/akra-seed /out/akra-demoseed /out/akra-rotate-pii-key /out/akra-modul /out/akra-ops /usr/local/bin/
 COPY --from=migrate /usr/local/bin/migrate /usr/local/bin/migrate
 COPY --chmod=0755 scripts/akra-migrate /usr/local/bin/akra-migrate
 COPY db/migrations /app/db/migrations
