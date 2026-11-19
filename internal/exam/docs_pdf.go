@@ -191,7 +191,17 @@ func WriteMinutesPDF(w io.Writer, lh Letterhead, docs []SessionDoc, attendance m
 				pdf.CellFormat(width, 7, "", "B", 1, "L", false, 0, "")
 			}
 		}
-		signBlock(pdf, tr, "", "Pengawas", proctorNames(d))
+		signer := proctorNames(d)
+		if ok && at.SignedAt != nil {
+			signer = at.SignedBy
+		}
+		signBlock(pdf, tr, "", "Pengawas", signer)
+		if ok && at.SignedAt != nil {
+			pdf.SetFont("Helvetica", "I", 8)
+			pdf.MultiCell(width, 4.5, tr("Ditandatangani secara elektronik oleh "+at.SignedBy+" pada "+
+				clock.FormatDateID(at.SignedAt.In(lh.Loc))+" pukul "+at.SignedAt.In(lh.Loc).Format("15.04")+" "+clock.ZoneLabel(lh.Loc)+
+				" (dikonfirmasi dengan sandi akun)."), "", "R", false)
+		}
 	}
 	if len(docs) == 0 {
 		pdf.AddPage()
@@ -205,6 +215,9 @@ type SessionAttendance struct {
 	Present, Absent int
 	AbsentNumbers   []string
 	Notes           []string
+	// Ditandatangani pengawas di layar pengawas (konfirmasi sandi).
+	SignedBy string
+	SignedAt *time.Time
 }
 
 // WriteSeatingPDF menulis denah tempat duduk: satu halaman per ruang+

@@ -103,6 +103,29 @@ func (h *Handler) sessionDocs(w http.ResponseWriter, r *http.Request, examID, ev
 	return docs, lh, true
 }
 
+// minutesFor mengisi berita acara sesi yang sudah mulai dari data
+// pelaksanaan (T143); sesi yang belum mulai tetap berkolom kosong untuk
+// diisi tangan.
+func (h *Handler) minutesFor(w http.ResponseWriter, r *http.Request, docs []SessionDoc, lh Letterhead) (map[string]SessionAttendance, bool) {
+	_, sa := h.staff(r)
+	now := time.Now()
+	out := map[string]SessionAttendance{}
+	for _, d := range docs {
+		if now.Before(d.Session.StartsAt) {
+			continue
+		}
+		m, err := LoadMinutes(r.Context(), h.db, sa.SchoolID, d.Session.ID, lh.Loc)
+		if err != nil {
+			h.fail(w, r, "load minutes", err)
+			return nil, false
+		}
+		at := m.SessionAttendance
+		at.SignedBy, at.SignedAt = m.SignedBy, m.SignedAt
+		out[d.Session.ID] = at
+	}
+	return out, true
+}
+
 func (h *Handler) examAttendancePDF(w http.ResponseWriter, r *http.Request) {
 	_, sa := h.staff(r)
 	e, ok := h.loadExam(w, r, sa, Read)
@@ -126,7 +149,11 @@ func (h *Handler) examMinutesPDF(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	h.writePDF(w, r, "berita-acara-"+e.Name, func(b *bytes.Buffer) error { return WriteMinutesPDF(b, lh, docs, nil, time.Now(), true) })
+	att, ok := h.minutesFor(w, r, docs, lh)
+	if !ok {
+		return
+	}
+	h.writePDF(w, r, "berita-acara-"+e.Name, func(b *bytes.Buffer) error { return WriteMinutesPDF(b, lh, docs, att, time.Now(), true) })
 }
 
 // paperQuestion adalah satu soal di naskah cetak.
@@ -316,7 +343,11 @@ func (h *Handler) eventMinutesPDF(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	h.writePDF(w, r, "berita-acara-"+ev.Name, func(b *bytes.Buffer) error { return WriteMinutesPDF(b, lh, docs, nil, time.Now(), true) })
+	att, ok := h.minutesFor(w, r, docs, lh)
+	if !ok {
+		return
+	}
+	h.writePDF(w, r, "berita-acara-"+ev.Name, func(b *bytes.Buffer) error { return WriteMinutesPDF(b, lh, docs, att, time.Now(), true) })
 }
 
 func (h *Handler) roomPlans(w http.ResponseWriter, r *http.Request) (Event, []RoomPlan, Letterhead, bool) {

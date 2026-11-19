@@ -45,6 +45,7 @@ func (h *Handler) Routes(r chi.Router) {
 		h.eventRoutes(r)
 		h.practiceRoutes(r)
 		h.settingsRoutes(r)
+		h.proctorRoutes(r)
 	})
 }
 

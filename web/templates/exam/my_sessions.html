@@ -1,0 +1,8 @@
+{{define "title"}}Sesi saya hari ini{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" ""}}
+<div class="page-header"><div><h1>Sesi saya hari ini</h1><p class="muted">Sesi ujian yang Anda awasi. Waktu dalam {{.Zone}}.</p></div></div>
+{{template "my_session_cards" .Sessions}}
+{{if not .Sessions}}<section class="card"><p class="muted mb-0">Tidak ada sesi yang Anda awasi hari ini.</p></section>{{end}}
+{{end}}
