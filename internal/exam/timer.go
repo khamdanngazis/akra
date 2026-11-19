@@ -59,6 +59,9 @@ type DeadlineInput struct {
 	ParticipantExtra int // menit, peserta berkebutuhan khusus atau tambahan pengawas
 	SessionExtra     int // menit, untuk semua peserta sesi
 	Paused           time.Duration
+	// Shift: pergeseran tenggat agar sisa waktu tetap saat peserta dipindah
+	// ke sesi lain (T144). Bisa negatif.
+	Shift time.Duration
 }
 
 // ComputeDeadline menghitung tenggat:
@@ -77,7 +80,7 @@ func ComputeDeadline(in DeadlineInput) time.Time {
 	if d.After(in.SessionEnd) {
 		d = in.SessionEnd
 	}
-	return d.Add(time.Duration(in.SessionExtra) * time.Minute).Add(in.Paused)
+	return d.Add(time.Duration(in.SessionExtra) * time.Minute).Add(in.Paused).Add(in.Shift)
 }
 
 // adjustAttempts menghitung ulang tenggat attempt berjalan di sesi
@@ -86,7 +89,7 @@ func ComputeDeadline(in DeadlineInput) time.Time {
 // Mengembalikan jumlah attempt yang berubah.
 func adjustAttempts(ctx context.Context, tx pgx.Tx, schoolID, sessionID, attemptID string, resume bool, now time.Time) (int, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT t.id, t.started_at, t.deadline_at, t.paused_at, t.paused_ms, x.starts_at, x.ends_at, x.late_policy, x.extra_minutes,
+		SELECT t.id, t.started_at, t.deadline_at, t.paused_at, t.paused_ms, t.shift_ms, x.starts_at, x.ends_at, x.late_policy, x.extra_minutes,
 			e.duration_minutes, p.extra_minutes
 		FROM exam_attempts t
 		JOIN exam_sessions x ON x.id = t.session_id
@@ -111,8 +114,8 @@ func adjustAttempts(ctx context.Context, tx pgx.Tx, schoolID, sessionID, attempt
 		var in DeadlineInput
 		var deadline time.Time
 		var pausedAt *time.Time
-		var pausedMS int64
-		if err := rows.Scan(&id, &in.StartedAt, &deadline, &pausedAt, &pausedMS, &in.SessionStart, &in.SessionEnd, &in.LatePolicy,
+		var pausedMS, shiftMS int64
+		if err := rows.Scan(&id, &in.StartedAt, &deadline, &pausedAt, &pausedMS, &shiftMS, &in.SessionStart, &in.SessionEnd, &in.LatePolicy,
 			&in.SessionExtra, &in.DurationMinutes, &in.ParticipantExtra); err != nil {
 			rows.Close()
 			return 0, fmt.Errorf("exam: scan running attempt: %w", err)
@@ -124,6 +127,7 @@ func adjustAttempts(ctx context.Context, tx pgx.Tx, schoolID, sessionID, attempt
 			pausedAt = nil
 		}
 		in.Paused = time.Duration(pausedMS) * time.Millisecond
+		in.Shift = time.Duration(shiftMS) * time.Millisecond
 		d := ComputeDeadline(in)
 		if !d.Equal(deadline) || resume {
 			changes = append(changes, change{id, d, pausedAt, pausedMS})

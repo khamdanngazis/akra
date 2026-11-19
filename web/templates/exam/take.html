@@ -149,6 +149,10 @@
 <button type="button" class="btn btn-primary btn-lg w-full" data-alarm-go>Lanjutkan</button>
 </div>
 </div>
+<div class="take-message" data-message role="alert" hidden>
+<div class="take-message-body"><strong class="block text-sm">Pesan dari koordinator ujian</strong><ul class="mb-0 list-none p-0" data-message-list></ul></div>
+<button type="button" class="btn btn-primary btn-sm" data-message-ok>Mengerti</button>
+</div>
 <div class="take-banner" data-banner role="alert" hidden></div>
 <div class="take-zoom" data-zoom hidden><img alt="" data-zoom-img><button type="button" class="take-icon-btn" data-zoom-close aria-label="Tutup gambar">✕</button></div>
 <form method="post" action="/u/a/{{.Attempt.ID}}/kumpul" data-submit-form hidden>{{ csrfField }}<input type="hidden" name="alasan" value="peserta"></form>

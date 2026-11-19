@@ -545,6 +545,9 @@ type SaveResult struct {
 	Seq int64
 	// EventSeq adalah seq kejadian tertinggi yang sudah tercatat.
 	EventSeq int64
+	// Messages: pesan koordinator untuk sesi attempt dengan id lebih besar
+	// dari SaveRequest.MsgAfter (paling banyak BroadcastsPerSave, urut id).
+	Messages []Broadcast
 }
 
 // SaveRequest adalah isi satu kirim simpan dari perangkat.
@@ -552,6 +555,8 @@ type SaveRequest struct {
 	Changes []AnswerChange
 	Events  []EventInput
 	Pos     int // indeks soal terakhir dibuka; < 0 = tidak berubah
+	// MsgAfter: id pesan koordinator terakhir yang sudah diterima perangkat.
+	MsgAfter int64
 }
 
 // SaveAnswers menyimpan perubahan jawaban dan kejadian integritas attempt
@@ -600,12 +605,13 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	var found bool
 	var deadline time.Time
 	var pausedAt, lockedAt *time.Time
+	var msgs []Broadcast
 	// Catatan: pernyataan data-modifying dalam WITH tidak melihat perubahan
 	// satu sama lain pada tabel, sehingga posisi, hitungan keluar, dan
 	// kunci diubah dalam satu UPDATE (upd).
 	err = q.QueryRow(ctx, `
 		WITH a AS (
-			SELECT t.id, t.school_id, t.question_order, t.deadline_at, t.paused_at, t.started_at, t.locked_at, e.integrity_limit
+			SELECT t.id, t.school_id, t.session_id, t.question_order, t.deadline_at, t.paused_at, t.started_at, t.locked_at, e.integrity_limit
 			FROM exam_attempts t JOIN exams e ON e.id = t.exam_id
 			WHERE t.school_id = $1 AND t.id = $2 AND t.status = 'berjalan' AND t.device_id = $3
 			  AND (t.paused_at IS NOT NULL OR t.deadline_at + $4::interval > $5)),
@@ -645,9 +651,13 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 			SELECT a.school_id, a.id, 'terkunci', $5 FROM a, upd WHERE upd.newly
 			RETURNING 1)
 		SELECT EXISTS (SELECT 1 FROM a), coalesce((SELECT deadline_at FROM a), $5), (SELECT paused_at FROM a),
-			coalesce((SELECT locked_at FROM upd), (SELECT locked_at FROM a)), (SELECT count(*) FROM lk)`,
-		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, req.Pos, es, ek, et, ed).
-		Scan(&found, &deadline, &pausedAt, &lockedAt, new(int64))
+			coalesce((SELECT locked_at FROM upd), (SELECT locked_at FROM a)), (SELECT count(*) FROM lk),
+			(SELECT coalesce(json_agg(json_build_object('id', m.id, 'body', m.body, 'at', (extract(epoch FROM m.created_at) * 1000)::bigint)
+			                          ORDER BY m.id), '[]')
+			 FROM (SELECT b.id, b.body, b.created_at FROM exam_broadcasts b, a
+			       WHERE b.session_id = a.session_id AND b.id > $15 ORDER BY b.id DESC LIMIT $16) m)`,
+		schoolID, attemptID, deviceID, SaveGrace.String(), now, qs, vs, fs, ss, req.Pos, es, ek, et, ed, req.MsgAfter, BroadcastsPerSave).
+		Scan(&found, &deadline, &pausedAt, &lockedAt, new(int64), &msgs)
 	if err != nil {
 		return SaveResult{}, fmt.Errorf("exam: save answers: %w", err)
 	}
@@ -658,7 +668,7 @@ func SaveAnswers(ctx context.Context, q database.DBTX, schoolID, attemptID, devi
 	for _, x := range ss {
 		maxSeq = max(maxSeq, x)
 	}
-	return SaveResult{Deadline: deadline, PausedAt: pausedAt, LockedAt: lockedAt, Seq: maxSeq, EventSeq: maxEvent}, nil
+	return SaveResult{Deadline: deadline, PausedAt: pausedAt, LockedAt: lockedAt, Seq: maxSeq, EventSeq: maxEvent, Messages: msgs}, nil
 }
 
 // SubmitAttempt mengumpulkan attempt. Jawaban yang sudah tersimpan

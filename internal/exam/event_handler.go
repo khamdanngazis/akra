@@ -32,6 +32,7 @@ func (h *Handler) eventRoutes(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(RequireAccess(h.db, h.render, h.logger, ActAgenda, Write))
 			h.eventDocsRoutes(readers, r)
+			h.controlRoutes(readers, r)
 			r.Get("/agenda/baru", h.eventNew)
 			r.Post("/agenda/", h.eventCreate)
 			r.Post("/agenda/{id}", h.eventUpdate)

@@ -1,0 +1,156 @@
+{{define "title"}}Pusat kendali · {{.Event.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-control.js" }}"></script>{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" .Event.Name (printf "/ujian/agenda/%s" .Event.ID) "Pusat kendali" ""}}
+<div class="control" data-control data-data-url="/ujian/agenda/{{.Event.ID}}/kendali/data">
+<header class="control-head">
+<div class="min-w-0">
+<h1 class="text-2xl font-bold">Pusat kendali</h1>
+<p class="muted mb-0">{{.Event.Name}} · {{.Day}} · waktu {{.Zone}}</p>
+</div>
+</header>
+
+{{template "flash" .}}
+{{if not .Today}}<p class="alert alert-info">Agenda ini tidak berlangsung hari ini ({{.Event.DatesLabel}}). Kartu ruang tampil pada hari ujian.</p>{{end}}
+{{if not .CanWrite}}<p class="alert alert-info">Anda hanya bisa melihat. Aksi tersedia untuk koordinator ujian dan admin TU.</p>{{end}}
+
+<div data-live>{{template "control_live" .}}</div>
+<p class="hint text-right mt-2" aria-live="off"><span data-updated>Diperbarui baru saja</span></p>
+
+{{if .CanWrite}}
+<section class="card stack mt-4" aria-labelledby="bulk-title">
+<h2 class="card-title" id="bulk-title">Aksi untuk beberapa ruang</h2>
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/kendali/aksi" id="bulk" class="stack" data-bulk novalidate>{{ csrfField }}
+<fieldset class="control-target">
+<legend class="text-sm font-semibold">Untuk</legend>
+<label class="choice"><input type="radio" name="target" value="pilih" checked> Ruang yang dicentang <span class="muted text-sm" data-picked>(belum ada)</span></label>
+<label class="choice"><input type="radio" name="target" value="semua"> Semua sesi yang sedang berlangsung</label>
+</fieldset>
+<div class="control-actions">
+<button type="submit" name="aksi" value="jeda" class="btn btn-ghost" data-confirm="Jeda semua peserta di ruang terpilih? Layar mereka terkunci dan waktu berhenti sampai dilanjutkan.">Jeda</button>
+<button type="submit" name="aksi" value="lanjut" class="btn btn-ghost">Lanjutkan</button>
+<span class="proctor-inline">
+<label class="sr-only" for="bulk-mins">Menit</label>
+<select id="bulk-mins" name="menit"><option value="5">+5 menit</option><option value="10" selected>+10 menit</option><option value="15">+15 menit</option><option value="30">+30 menit</option></select>
+<button type="submit" name="aksi" value="waktu" class="btn btn-ghost">Tambah waktu</button>
+</span>
+</div>
+<div class="field"><label for="bulk-reason">Alasan <span class="muted text-sm">(opsional, masuk berita acara)</span></label>
+<input id="bulk-reason" name="alasan" maxlength="200" placeholder="Mis. listrik padam di gedung B"></div>
+<div class="field"><label for="bulk-msg">Pesan ke layar peserta</label>
+<textarea id="bulk-msg" name="pesan" rows="2" maxlength="{{.MaxMessage}}" aria-describedby="bulk-msg-hint" placeholder="Mis. Soal no. 12 opsi C dibaca &quot;hasil&quot;."></textarea>
+<p class="hint" id="bulk-msg-hint">Muncul sebagai banner di layar peserta dalam ±10 detik dan tercatat di berita acara. Nomor soal bisa berbeda antarpeserta bila urutan diacak; sebutkan juga kutipan soalnya.</p></div>
+<button type="submit" name="aksi" value="pesan" class="btn btn-primary">Kirim pesan</button>
+</form>
+</section>
+
+<div class="control-grid mt-4">
+<section class="card stack" aria-labelledby="move-title">
+<h2 class="card-title" id="move-title">Pindahkan peserta</h2>
+{{if .Participants}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/kendali/pindah" class="stack" data-move novalidate>{{ csrfField }}
+<div class="field"><label for="move-who">Peserta</label>
+<select id="move-who" name="peserta" required><option value="">Pilih peserta…</option>
+{{range .Participants}}<option value="{{.ID}}" data-exam="{{.ExamID}}" data-session="{{.SessionID}}">{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="move-to">Ke ruang/sesi</label>
+<select id="move-to" name="tujuan" required><option value="">Pilih tujuan…</option>
+{{range .Targets}}<option value="{{.SessionID}}" data-exam="{{.ExamID}}">{{.Label}}</option>{{end}}</select>
+<p class="hint">Hanya sesi ujian yang sama. Jawaban dan sisa waktunya tetap; peserta masuk lagi dari perangkat baru dengan kode yang sama.</p></div>
+<div class="field"><label for="move-reason">Alasan</label><input id="move-reason" name="alasan" maxlength="200" placeholder="Mis. komputer rusak"></div>
+<button type="submit" class="btn btn-primary">Pindahkan</button>
+</form>
+{{else}}<p class="muted mb-0">Tidak ada sesi yang belum selesai hari ini.</p>{{end}}
+</section>
+
+<section class="card stack" aria-labelledby="swap-title">
+<h2 class="card-title" id="swap-title">Ganti pengawas</h2>
+{{if .Live.Cards}}
+<form method="post" action="/ujian/agenda/{{.Event.ID}}/kendali/pengawas" class="stack" novalidate>{{ csrfField }}
+<div class="field"><label for="swap-room">Ruang</label>
+<select id="swap-room" name="sid" required><option value="">Pilih ruang…</option>
+{{range .Live.Cards}}{{if ne .Phase "selesai"}}<option value="{{.SessionIDs}}">{{.Room}} · {{.When}} — {{.Proctor}}</option>{{end}}{{end}}</select></div>
+<div class="field"><label for="swap-user">Pengawas pengganti</label>
+<select id="swap-user" name="user_id" required><option value="">Pilih guru…</option>
+{{range .Teachers}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="swap-reason">Alasan</label><input id="swap-reason" name="alasan" maxlength="200" placeholder="Mis. pengawas sakit"></div>
+<button type="submit" class="btn btn-primary">Ganti pengawas</button>
+</form>
+{{else}}<p class="muted mb-0">Belum ada ruang hari ini.</p>{{end}}
+</section>
+</div>
+{{end}}
+
+{{with .Exams}}
+<section class="card stack mt-4" aria-labelledby="fix-title">
+<h2 class="card-title" id="fix-title">Ralat soal</h2>
+<p class="hint mb-0">Batalkan soal (poinnya tidak dihitung untuk semua peserta) atau kirim ralat ke semua sesi ujian yang berlangsung. Kunci yang salah dibetulkan lewat nilai ulang setelah ujian.</p>
+<ul class="control-links">{{range .}}<li><a href="/ujian/paket/{{.Value}}?tab=soal">{{.Label}}</a></li>{{end}}</ul>
+</section>
+{{end}}
+
+<section class="card stack mt-4" aria-labelledby="recap-title">
+<h2 class="card-title" id="recap-title">Rekap hari ini</h2>
+{{if .Recap.Attendance}}
+<div class="table-wrap"><table>
+<caption class="sr-only">Kehadiran per mapel dan tingkat</caption>
+<thead><tr><th>Mapel</th><th>Tingkat</th><th class="text-right">Hadir</th><th class="text-right">Tidak hadir</th><th class="text-right">Selesai</th></tr></thead>
+<tbody>{{range .Recap.Attendance}}<tr><td>{{.Subject}}</td><td>{{.Grade}}</td><td class="text-right">{{.Present}}/{{.Total}}</td><td class="text-right">{{.Absent}}</td><td class="text-right">{{.Done}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="muted mb-0">Belum ada sesi hari ini.</p>{{end}}
+<h3 class="font-semibold">Berita acara belum ditandatangani</h3>
+{{with .Recap.Unsigned}}<ul class="control-links">{{range .}}<li><a href="/ujian/sesi/{{.SessionID}}/awasi#berita-acara">{{.Room}} · {{.Subject}}{{if .Grade}} ({{.Grade}}){{end}}</a> <span class="muted text-sm">{{.When}} · {{with .Proctors}}{{.}}{{else}}tanpa pengawas{{end}}</span></li>{{end}}</ul>
+{{else}}<p class="muted mb-0">Semua berita acara sesi yang selesai sudah ditandatangani.</p>{{end}}
+<h3 class="font-semibold">Belum selesai dikoreksi</h3>
+{{with .Recap.Grading}}<ul class="control-links">{{range .}}<li><a href="/ujian/paket/{{.ExamID}}">{{.ExamName}}</a> <span class="muted text-sm">{{.Answers}} jawaban esai menunggu koreksi</span></li>{{end}}</ul>
+{{else}}<p class="muted mb-0">Tidak ada jawaban esai yang menunggu koreksi.</p>{{end}}
+</section>
+</div>
+{{end}}
+
+{{define "control_live"}}
+{{$l := .Live}}
+<div class="control-summary" role="group" aria-label="Ringkasan hari ini">
+<div class="control-stat"><strong>{{$l.Counts.Running}}/{{$l.Counts.Rooms}}</strong><span>Ruang berlangsung</span></div>
+<div class="control-stat{{if $l.Counts.Red}} is-red{{end}}"><strong>{{$l.Counts.Red}}</strong><span>Ruang merah</span></div>
+<div class="control-stat{{if $l.Counts.Yellow}} is-yellow{{end}}"><strong>{{$l.Counts.Yellow}}</strong><span>Ruang kuning</span></div>
+<div class="control-stat"><strong>{{$l.Counts.Present}}/{{$l.Counts.Total}}</strong><span>Hadir</span></div>
+<div class="control-stat{{if $l.Counts.Offline}} is-yellow{{end}}"><strong>{{$l.Counts.Offline}}</strong><span>Offline</span></div>
+<div class="control-stat{{if $l.Counts.Attention}} is-yellow{{end}}"><strong>{{$l.Counts.Attention}}</strong><span>Perlu perhatian</span></div>
+</div>
+
+{{$h := $l.Health}}{{$v := $h.Verdict}}
+<div class="control-health is-{{$v}}" role="status">
+<strong class="control-health-title">{{if eq $v "normal"}}Server normal{{else if eq $v "server"}}Server lambat atau bermasalah{{else if eq $v "jaringan"}}Server normal, jaringan sekolah lambat{{else}}Belum ada simpan jawaban{{end}}</strong>
+<span class="text-sm">{{if eq $v "tenang"}}Tidak ada simpan jawaban dalam 5 menit terakhir.{{else}}{{$h.Saves}} simpan dalam 5 menit · respons server p95 {{$h.ServerP95MS}} ms · error {{$h.ErrorPercent}}%{{if $h.RTTCount}} · waktu tempuh perangkat p95 {{$h.RTTP95MS}} ms{{end}}{{end}}</span>
+{{if eq $v "server"}}<span class="text-sm">Masalah ada di server AKRA, bukan jaringan sekolah. Tim AKRA sudah menerima tanda yang sama; jeda ruang bila peserta tidak bisa menyimpan.</span>
+{{else if eq $v "jaringan"}}<span class="text-sm">Server menjawab cepat tetapi perangkat lama menjangkaunya. Periksa Wi-Fi/akses internet sekolah. Jawaban tetap aman di perangkat dan terkirim saat tersambung.</span>{{end}}
+</div>
+
+{{if $l.Cards}}
+<ul class="control-cards">
+{{range $l.Cards}}
+{{$c := .}}<li class="control-card is-{{.Color}}">
+<div class="control-card-head">
+{{if $l.CanWrite}}{{if ne .Phase "selesai"}}<label class="control-pick"><input type="checkbox" name="sid" value="{{.SessionIDs}}" form="bulk" data-pick><span class="sr-only">Pilih {{.Room}}</span></label>{{end}}{{end}}
+<div class="min-w-0 flex-1">
+<h3 class="control-room">{{.Room}}</h3>
+<p class="muted text-sm mb-0">{{.When}} · {{.Subjects}}</p>
+</div>
+<span class="badge">{{if eq .Phase "belum"}}Belum mulai{{else if eq .Phase "berlangsung"}}{{if .Paused}}Dijeda{{else}}Berlangsung{{end}}{{else}}Selesai{{end}}</span>
+</div>
+<p class="control-proctor text-sm mb-0">Pengawas: <strong>{{.Proctor}}</strong>{{if .ProctorIDs}} · {{if .ProctorOpen}}<span class="text-emerald-700">membuka layar</span>{{else if .ProctorEver}}layar tidak dibuka{{else}}belum membuka layar{{end}}{{end}}</p>
+<dl class="control-nums">
+<div><dt>Hadir</dt><dd>{{.Present}}/{{.Total}}</dd></div>
+<div><dt>Offline</dt><dd>{{.Offline}}</dd></div>
+<div><dt>Perhatian</dt><dd>{{.Attention}}</dd></div>
+<div><dt>Sisa</dt><dd>{{with .Remaining}}{{.}}{{else}}—{{end}}</dd></div>
+</dl>
+{{with .Problems}}<p class="control-problems mb-0">{{range .}}<span class="badge badge-danger">{{.}}</span>{{end}}</p>{{end}}
+<p class="control-open text-sm mb-0">{{range $i, $s := .Sessions}}{{if $i}} · {{end}}<a href="/ujian/sesi/{{$s.ID}}/awasi">Layar pengawas{{if gt (len $c.Sessions) 1}} {{$s.Grade}}{{end}}</a>{{end}}</p>
+</li>
+{{end}}
+</ul>
+{{else}}<p class="card muted mt-3">Tidak ada sesi agenda hari ini.</p>{{end}}
+<span hidden data-updated-at="{{$l.UpdatedAt}}"></span>
+{{end}}

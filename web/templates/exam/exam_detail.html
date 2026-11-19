@@ -62,6 +62,14 @@
 <section class="card stack mt-4">
 {{if gt (len .Variants) 1}}<nav class="tabs" aria-label="Paket">{{range .Variants}}<a href="/ujian/paket/{{$.Exam.ID}}?tab=soal&amp;paket={{.Label}}"{{if eq .Label $.Variant.Label}} aria-current="page"{{end}}>Paket {{.Label}}</a>{{end}}</nav>{{end}}
 <p class="hint">{{if .Exam.Locked}}Soal saat ujian dibekukan.{{else}}Hasil rakit saat ini; aturan acak dirakit ulang setiap isi ujian berubah. Urutan per peserta diacak saat mengerjakan bila diatur.{{end}}</p>
+{{if and .CanWrite .Running}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/ralat" class="card stack exam-fix" novalidate>{{ csrfField }}
+<label for="fix-msg" class="font-semibold">Kirim ralat ke {{.Running}} sesi yang sedang berlangsung</label>
+<textarea id="fix-msg" name="pesan" rows="2" maxlength="290" required placeholder="Mis. Soal tentang fotosintesis, opsi C dibaca &quot;hasil&quot;."></textarea>
+<p class="hint mb-0">Muncul sebagai banner di layar peserta dan tercatat di berita acara. Nomor soal bisa berbeda antarpeserta bila urutan diacak; sebutkan kutipan soalnya.</p>
+<button type="submit" class="btn btn-primary">Kirim ralat</button>
+</form>
+{{end}}
 {{if .Paper}}
 <ol class="paper-list">
 {{range .Paper}}
@@ -69,7 +77,18 @@
 <li>
 {{if and .Stimulus .FirstOfStimulus}}<div class="paper-stimulus"><strong>{{.Stimulus.Title}}</strong></div>{{end}}
 <span class="paper-no">{{.Number}}.</span>
-<span class="min-w-0 flex-1"><span dir="auto">{{.Question.Excerpt}}</span><span class="block text-sm text-slate-500">{{.Question.Kind.Label}}{{with .Question.Difficulty}} · {{.}}{{end}} · {{.Points}} poin · v{{.Question.Version}}{{with $sec.Title}} · {{.}}{{end}}</span></span>
+<span class="min-w-0 flex-1"><span dir="auto">{{.Question.Excerpt}}</span><span class="block text-sm text-slate-500">{{.Question.Kind.Label}}{{with .Question.Difficulty}} · {{.}}{{end}} · {{.Points}} poin · v{{.Question.Version}}{{with $sec.Title}} · {{.}}{{end}}</span>
+{{with index $.Voided .Question.ID}}<span class="block text-sm"><span class="badge badge-danger">Dibatalkan</span> tidak dinilai{{with .Reason}} — {{.}}{{end}} <span class="text-slate-500">({{.By}})</span></span>{{end}}
+{{if and $.CanWrite $.Exam.Locked}}{{if index $.Voided .Question.ID}}
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/soal/{{.Question.ID}}/batal" class="mt-1">{{ csrfField }}<input type="hidden" name="aksi" value="pulihkan"><input type="hidden" name="paket" value="{{$.Variant.Label}}"><button type="submit" class="btn btn-ghost btn-sm">Pulihkan soal</button></form>
+{{else}}
+<details class="exam-void mt-1"><summary class="text-sm">Batalkan soal</summary>
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/soal/{{.Question.ID}}/batal" class="stack mt-2">{{ csrfField }}<input type="hidden" name="paket" value="{{$.Variant.Label}}">
+<label class="sr-only" for="void-{{.Question.ID}}">Alasan</label><input id="void-{{.Question.ID}}" name="alasan" maxlength="300" placeholder="Alasan, mis. kunci jawaban ganda">
+{{if $.Running}}<label class="choice"><input type="checkbox" name="umumkan" value="1" checked> Beri tahu peserta di {{$.Running}} sesi yang berlangsung</label>{{end}}
+<button type="submit" class="btn btn-danger btn-sm">Batalkan soal</button></form>
+</details>
+{{end}}{{end}}</span>
 </li>
 {{end}}
 </ol>

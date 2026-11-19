@@ -332,6 +332,47 @@
       events: events, away: awayStart });
   }
 
+  // ---- Pesan koordinator (T144). ----
+  // Server mengirim pesan dengan id > acked di setiap balasan simpan/ping
+  // sampai peserta menekan "Mengerti"; acked disimpan di perangkat.
+  var lastRTT = 0;
+  var messages = (function () {
+    var box = document.querySelector("[data-message]");
+    var list = box && box.querySelector("[data-message-list]");
+    var key = "akra-pesan-" + attemptID;
+    var acked = 0;
+    try { acked = parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { /* penyimpanan dimatikan */ }
+    var shown = {};
+    var maxShown = 0;
+    function receive(msgs) {
+      var fresh = false;
+      msgs.forEach(function (m) {
+        if (m.id <= acked || shown[m.id]) return;
+        shown[m.id] = true;
+        maxShown = Math.max(maxShown, m.id);
+        var li = document.createElement("li");
+        li.textContent = m.body;
+        list.appendChild(li);
+        fresh = true;
+      });
+      if (fresh) {
+        box.hidden = false;
+        if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+      }
+    }
+    if (box) box.querySelector("[data-message-ok]").addEventListener("click", function () {
+      acked = Math.max(acked, maxShown);
+      try { localStorage.setItem(key, String(acked)); } catch (e) { /* penyimpanan dimatikan */ }
+      list.textContent = "";
+      shown = {};
+      box.hidden = true;
+    });
+    return {
+      get acked() { return acked; },
+      receive: box ? receive : function () {}
+    };
+  })();
+
   // flush mengirim antrian; mengembalikan Promise yang selesai saat antrian
   // terkirim (true) atau gagal (false). force: kirim walau antrian kosong
   // (memastikan tersambung dan attempt masih terbuka sebelum kumpul).
@@ -355,8 +396,9 @@
       credentials: "same-origin",
       cache: "no-store",
       headers: headers,
-      body: JSON.stringify({ changes: changes, events: sentEvents, pos: current })
+      body: JSON.stringify({ changes: changes, events: sentEvents, pos: current, msg: messages.acked, rtt: lastRTT })
     }).then(function (res) {
+      lastRTT = Math.round(mono() - lastSent);
       return res.json().catch(function () { return {}; }).then(function (body) { return { res: res, body: body }; });
     }).then(function (r) {
       inflight = null;
@@ -384,6 +426,7 @@
         events = events.filter(function (e) { return e.s > eseq; });
       }
       serverLocked(r.body.locked || 0);
+      if (r.body.msgs) messages.receive(r.body.msgs);
       if (offlineSince) {
         var off = serverNow() - offlineSince;
         if (off > 60000) addEvent("offline", offlineSince, off);
