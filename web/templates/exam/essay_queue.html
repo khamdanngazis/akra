@@ -1,7 +1,7 @@
 {{define "title"}}Koreksi esai · {{.Exam.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{if .Full}}{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=hasil" .Exam.ID) "Koreksi esai" ""}}
+{{if .Full}}{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s/hasil" .Exam.ID) "Koreksi esai" ""}}
 {{else}}{{template "back_nav" crumbs "Beranda" "/" "Koreksi esai" ""}}{{end}}
 <h1 class="text-2xl font-bold">Koreksi esai</h1>
 <p class="muted">{{.Exam.Name}} · {{.Graded}}/{{.Total}} jawaban dikoreksi</p>

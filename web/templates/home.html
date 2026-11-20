@@ -21,7 +21,7 @@
 {{with .Essay}}
 <section class="card stack mb-6" aria-labelledby="essay-work">
 <h2 class="card-title" id="essay-work">Koreksi esai</h2>
-<ul class="essay-work">{{range .}}<li>{{if .Pending}}<a href="/ujian/paket/{{.ExamID}}/esai"><strong>{{.ExamName}}</strong></a> · {{.Pending}} jawaban esai menunggu koreksi{{else}}<a href="/ujian/paket/{{.ExamID}}?tab=hasil"><strong>{{.ExamName}}</strong></a> · semua esai sudah dikoreksi; nilai final dan siap dikirim ke rapor{{end}}</li>{{end}}</ul>
+<ul class="essay-work">{{range .}}<li>{{if .Pending}}<a href="/ujian/paket/{{.ExamID}}/esai"><strong>{{.ExamName}}</strong></a> · {{.Pending}} jawaban esai menunggu koreksi{{else}}<a href="/ujian/paket/{{.ExamID}}/hasil"><strong>{{.ExamName}}</strong></a> · semua esai sudah dikoreksi; nilai final dan siap dikirim ke rapor{{end}}</li>{{end}}</ul>
 </section>
 {{end}}
 

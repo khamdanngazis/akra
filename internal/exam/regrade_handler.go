@@ -205,7 +205,7 @@ func (h *Handler) keyFixPost(w http.ResponseWriter, r *http.Request) {
 	case apply:
 		h.flash(r, "Kunci dibetulkan. "+strconv.Itoa(imp.Attempts)+" attempt dinilai ulang: "+strconv.Itoa(imp.Raised)+" naik, "+
 			strconv.Itoa(imp.Lowered)+" turun.")
-		http.Redirect(w, r, "/ujian/paket/"+e.ID+"?tab=hasil", http.StatusSeeOther)
+		http.Redirect(w, r, resultsPath(e.ID), http.StatusSeeOther)
 		return
 	default:
 		v.Impact = &imp
@@ -215,22 +215,4 @@ func (h *Handler) keyFixPost(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusUnprocessableEntity
 	}
 	h.render.Render(w, r, status, "exam/key_fix", v)
-}
-
-// ResultRow adalah nilai satu peserta di tab Hasil.
-type ResultRow struct {
-	Name      string
-	Number    string
-	Session   string
-	Status    string // status attempt terakhir: kosong = belum mulai
-	ScoreX100 *int
-	ScoreStat string
-}
-
-// Score menampilkan nilai.
-func (r ResultRow) Score() string {
-	if r.ScoreX100 == nil {
-		return ""
-	}
-	return ScoreLabel(*r.ScoreX100)
 }

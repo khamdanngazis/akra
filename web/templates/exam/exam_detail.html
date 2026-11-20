@@ -34,7 +34,7 @@
 <a href="/ujian/paket/{{.Exam.ID}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
 <a href="/ujian/paket/{{.Exam.ID}}?tab=lanjut"{{if eq .Tab "lanjut"}} aria-current="page"{{end}}>Tindak lanjut</a>
-<a href="/ujian/paket/{{.Exam.ID}}?tab=hasil"{{if eq .Tab "hasil"}} aria-current="page"{{end}}>Hasil</a>
+<a href="/ujian/paket/{{.Exam.ID}}/hasil">Hasil</a>
 </nav>
 
 {{if eq .Tab "ringkasan"}}
@@ -193,18 +193,19 @@
 {{else}}<p class="mb-0">Belum ada peserta yang perlu susulan.</p>{{end}}
 </section>
 
-<section class="card stack mt-4">
+<section class="card stack mt-4" id="tindak-lanjut">
 <h2 class="card-title">Remedial dan pengayaan</h2>
-<p class="hint">Remedial untuk siswa yang belum tuntas{{with .Rules.PassScore}} (KKTP {{.}}){{end}}: soal diambil acak dari bank untuk TP yang dipilih, satu bagian per TP. Pengayaan untuk siswa yang sudah tuntas; nilainya tidak menurunkan nilai rapor. Daftar siswa belum tuntas terisi otomatis setelah penilaian tersedia.</p>
+<p class="hint">Remedial untuk siswa yang belum tuntas{{with .Rules.PassScore}} (KKTP {{.}}){{end}}: soal diambil acak dari bank untuk TP yang dipilih, satu bagian per TP. Pengayaan untuk siswa yang sudah tuntas; nilainya tidak menurunkan nilai rapor. Tombol <a href="/ujian/paket/{{.Exam.ID}}/hasil/tp#remedial">Buat remedial di halaman hasil</a> mencentang siswa belum tuntas dan TP-nya.</p>
+{{if $f.Prefilled}}<p class="alert alert-info mb-0">{{if eq $f.Kind "pengayaan"}}Siswa yang sudah tuntas sudah dicentang.{{else}}Siswa di bawah KKTP dan TP yang belum tuntas sudah dicentang dari hasil analisis.{{end}} Periksa lalu atur jadwalnya.</p>{{end}}
 {{if $f.Students}}
-<form method="post" action="/ujian/paket/{{.Exam.ID}}/tindak-lanjut" class="stack" novalidate x-data="{ kind: 'remedial' }">
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/tindak-lanjut" class="stack" novalidate x-data="{ kind: '{{$f.Kind}}' }">
 {{ csrfField }}
 <div class="option-cards">
-<label class="option-card"><input type="radio" name="kind" value="remedial" x-model="kind" checked><span><strong>Remedial</strong><span class="block text-sm text-slate-600">Fokus pada TP yang belum tuntas.</span></span></label>
-<label class="option-card"><input type="radio" name="kind" value="pengayaan" x-model="kind"><span><strong>Pengayaan</strong><span class="block text-sm text-slate-600">Paket tambahan yang Anda susun sendiri.</span></span></label>
+<label class="option-card"><input type="radio" name="kind" value="remedial" x-model="kind"{{if ne $f.Kind "pengayaan"}} checked{{end}}><span><strong>Remedial</strong><span class="block text-sm text-slate-600">Fokus pada TP yang belum tuntas.</span></span></label>
+<label class="option-card"><input type="radio" name="kind" value="pengayaan" x-model="kind"{{if eq $f.Kind "pengayaan"}} checked{{end}}><span><strong>Pengayaan</strong><span class="block text-sm text-slate-600">Paket tambahan yang Anda susun sendiri.</span></span></label>
 </div>
-<fieldset class="field"><legend>Siswa</legend><div class="check-grid">{{range $f.Students}}<label class="choice"><input type="checkbox" name="student" value="{{.Value}}"> {{.Label}}</label>{{end}}</div></fieldset>
-{{if $f.Objectives}}<fieldset class="field" x-show="kind === 'remedial'"><legend>TP yang belum tuntas</legend><div class="check-grid">{{range $f.Objectives}}<label class="choice"><input type="checkbox" name="objective" value="{{.Value}}"> {{.Label}}</label>{{end}}</div>
+<fieldset class="field"><legend>Siswa</legend><div class="check-grid">{{range $f.Students}}<label class="choice"><input type="checkbox" name="student" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}</label>{{end}}</div></fieldset>
+{{if $f.Objectives}}<fieldset class="field" x-show="kind === 'remedial'"><legend>TP yang belum tuntas</legend><div class="check-grid">{{range $f.Objectives}}<label class="choice"><input type="checkbox" name="objective" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}</label>{{end}}</div>
 <p class="hint">Kosongkan untuk semua TP di ujian ini.</p></fieldset>{{end}}
 <div class="field-grid">
 <div class="field"><label for="fu-date">Mulai</label><span class="flex gap-2"><input id="fu-date" type="date" name="date" value="{{.DefaultDate}}"><input type="time" name="start" value="07:30" aria-label="Jam mulai"></span></div>
@@ -235,25 +236,5 @@
 {{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}
 </section>
 
-{{else}}
-<section class="card stack mt-4" aria-labelledby="results-title">
-<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="card-title" id="results-title">Nilai peserta</h2>
-{{if or .AwaitEssay .CanWrite}}<a class="btn {{if .AwaitEssay}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai{{if .AwaitEssay}} ({{.AwaitEssay}} peserta menunggu){{end}}</a>{{end}}</div>
-{{if .Results}}
-<p class="mb-0">{{.Graded}} peserta bernilai final{{if .AwaitEssay}}, <strong>{{.AwaitEssay}} menunggu koreksi esai</strong> (belum dikirim ke modul lain){{end}}. Soal objektif dinilai otomatis saat dikumpulkan; soal yang dibatalkan tidak dihitung.</p>
-<div class="table-wrap"><table>
-<thead><tr><th>Peserta</th><th>Sesi</th><th>Status</th><th class="text-right">Nilai</th></tr></thead>
-<tbody>{{range .Results}}<tr><td>{{.Name}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td>{{.Session}}</td>
-<td>{{if eq .Status ""}}Belum mulai{{else if eq .Status "berjalan"}}Mengerjakan{{else if eq .ScoreStat "menunggu_esai"}}<span class="badge badge-warning">Menunggu koreksi esai</span>{{else if eq .ScoreStat "final"}}Selesai{{else}}Dikumpulkan, belum dinilai{{end}}</td>
-<td class="text-right">{{with .Score}}<strong>{{.}}</strong>{{else}}—{{end}}{{if eq .ScoreStat "menunggu_esai"}}<span class="block text-xs text-slate-500">sementara</span>{{end}}</td></tr>{{end}}</tbody>
-</table></div>
-{{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}
-</section>
-{{with .Regrades}}
-<section class="card stack mt-4" aria-labelledby="regrade-title">
-<h2 class="card-title" id="regrade-title">Riwayat nilai ulang</h2>
-<ul class="ms-5 list-disc mb-0">{{range .}}<li><strong>{{.CauseLabel}}</strong>{{with .Question}} — <span dir="auto">{{.}}</span>{{end}}: {{.Attempts}} attempt dinilai ulang, {{.Raised}} naik, {{.Lowered}} turun.{{with .Reason}} Alasan: {{.}}.{{end}} <span class="muted text-sm">{{.By}}, {{.At.Format "02/01/2006 15.04"}}</span></li>{{end}}</ul>
-</section>
-{{end}}
 {{end}}
 {{end}}

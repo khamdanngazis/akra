@@ -1,0 +1,43 @@
+{{define "title"}}Hasil · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "results_head" .}}
+{{$s := .A.Summary}}{{$k := .A.KKTP.Value}}
+<section class="card stack mt-4" aria-labelledby="sum-title">
+<h2 class="card-title" id="sum-title">Ringkasan</h2>
+<div class="stat-grid">
+<div><span class="stat-value">{{if $s.Final}}{{$s.MeanText}}{{else}}—{{end}}</span><span class="stat-label">Rata-rata</span></div>
+<div><span class="stat-value">{{if $s.Final}}{{$s.MaxText}}{{else}}—{{end}}</span><span class="stat-label">Tertinggi</span></div>
+<div><span class="stat-value">{{if $s.Final}}{{$s.MinText}}{{else}}—{{end}}</span><span class="stat-label">Terendah</span></div>
+<div><span class="stat-value">{{$s.Pass}}<span class="text-base font-semibold text-slate-500">/{{$s.Final}}</span></span><span class="stat-label">Tuntas ({{$s.PassPercent}}%) · {{$s.Fail}} belum</span></div>
+<div><span class="stat-value">{{$s.Present}}<span class="text-base font-semibold text-slate-500">/{{$s.Registered}}</span></span><span class="stat-label">Hadir · {{$s.Absent}} tidak hadir</span></div>
+</div>
+{{if $s.Final}}{{template "results_histogram" .}}{{else}}<p class="mb-0">Belum ada nilai final.</p>{{end}}
+</section>
+
+<section class="card stack mt-4" aria-labelledby="rows-title">
+<h2 class="card-title" id="rows-title">Peserta</h2>
+{{if .A.Rows}}
+<div class="table-wrap"><table>
+<thead><tr><th>Peserta</th><th>Kelas</th><th>Sesi</th><th>Paket</th><th>Status</th><th class="text-right">Nilai</th><th>Durasi</th><th>Integritas</th></tr></thead>
+<tbody>{{range .A.Rows}}<tr>
+<td>{{if .AttemptID}}<a href="/ujian/paket/{{$.Exam.ID}}/hasil/peserta/{{.AttemptID}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td>
+<td>{{.ClassName}}</td>
+<td>{{.SessionTitle}}{{with .KindLabel}} <span class="badge">{{.}}</span>{{end}}</td>
+<td>{{.VariantLabel}}</td>
+<td>{{if eq .ScoreStat "menunggu_esai"}}<span class="badge badge-warning">{{.StatusLabel}}</span>{{else if eq .Status ""}}<span class="muted">{{.StatusLabel}}</span>{{else}}{{.StatusLabel}}{{end}}</td>
+<td class="text-right">{{with .Score}}<strong>{{.}}</strong>{{else}}—{{end}}{{if .Final}}<span class="block text-xs {{if .Passed $k}}text-emerald-700{{else}}text-red-700{{end}}">{{if .Passed $k}}tuntas{{else}}belum tuntas{{end}}</span>{{else if eq .ScoreStat "menunggu_esai"}}<span class="block text-xs text-slate-500">sementara</span>{{end}}</td>
+<td>{{.Duration}}</td>
+<td class="text-sm">{{with .IntegrityText}}<span class="text-amber-800">{{.}}</span>{{else}}{{if .AttemptID}}<span class="muted">—</span>{{end}}{{end}}</td>
+</tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="mb-0">Belum ada peserta{{if .Query}} untuk saringan ini{{end}}.</p>{{end}}
+</section>
+
+{{with .Regrades}}
+<section class="card stack mt-4" aria-labelledby="regrade-title">
+<h2 class="card-title" id="regrade-title">Riwayat nilai ulang</h2>
+<ul class="ms-5 list-disc mb-0">{{range .}}<li><strong>{{.CauseLabel}}</strong>{{with .Question}} — <span dir="auto">{{.}}</span>{{end}}: {{.Attempts}} attempt dinilai ulang, {{.Raised}} naik, {{.Lowered}} turun.{{with .Reason}} Alasan: {{.}}.{{end}} <span class="muted text-sm">{{.By}}, {{.At.Format "02/01/2006 15.04"}}</span></li>{{end}}</ul>
+</section>
+{{end}}
+{{end}}

@@ -1,0 +1,55 @@
+{{define "title"}}Analisis TP · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "results_head" .}}
+{{$o := .A.Objectives}}{{$f := .A.Follow}}
+<section class="card stack mt-4" aria-labelledby="tp-title">
+<h2 class="card-title" id="tp-title">Ketuntasan per TP</h2>
+{{if $o.Objectives}}
+<p class="hint">Siswa tuntas suatu TP bila capaiannya (poin diperoleh ÷ poin maksimum soal TP itu yang ia kerjakan) ≥ {{.A.KKTP.Label}} {{.A.KKTP.Value}}%.{{with $o.Untagged}} {{.}} soal tanpa TP tidak dihitung.{{end}}</p>
+<div class="table-wrap"><table>
+<thead><tr><th>TP</th><th class="text-right">Soal</th><th class="text-right">Siswa tuntas</th><th class="min-w-40">% tuntas</th><th class="text-right">Rata-rata capaian</th></tr></thead>
+<tbody>{{range $o.Objectives}}<tr><td><strong>{{.Code}}</strong> <span class="text-sm" dir="auto">{{.Description}}</span></td><td class="text-right">{{.Questions}}</td><td class="text-right">{{.Mastered}}/{{.Students}}</td>
+<td><span class="tp-meter"><progress max="100" value="{{.Percent}}" class="{{if lt .Percent 60}}is-low{{end}}" aria-label="{{.Code}} tuntas {{.Percent}}%"></progress> <strong>{{.Percent}}%</strong></span></td><td class="text-right">{{.Average}}%</td></tr>{{end}}</tbody>
+</table></div>
+{{else if .A.Summary.Final}}<p class="mb-0">Soal ujian ini belum ditandai TP. Tandai TP soal di bank soal agar analisis TP dan remedial terfokus tersedia.</p>
+{{else}}<p class="mb-0">Belum ada nilai final untuk dianalisis.</p>{{end}}
+</section>
+
+{{if and $o.Objectives $o.Students}}
+<section class="card stack mt-4" aria-labelledby="map-title">
+<h2 class="card-title" id="map-title">Peta TP siswa</h2>
+<div class="table-wrap"><table class="tp-map">
+<thead><tr><th>Siswa</th><th class="text-right">Nilai</th>{{range $o.Objectives}}<th class="text-center" title="{{.Description}}">{{.Code}}</th>{{end}}</tr></thead>
+<tbody>{{range $o.Students}}<tr><td>{{.Name}}{{with .ClassName}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td class="text-right">{{.Score}}</td>
+{{range .Cells}}<td class="text-center">{{if .Has}}<span class="tp-cell{{if .Mastered}} is-ok{{else}} is-low{{end}}">{{.Percent}}{{if not .Mastered}}<span class="visually-hidden"> belum tuntas</span>{{end}}</span>{{else}}<span class="muted">·</span>{{end}}</td>{{end}}</tr>{{end}}</tbody>
+</table></div>
+<p class="hint mb-0">Angka = capaian (%). Merah = belum tuntas; titik = siswa tidak mendapat soal TP itu (paket berbeda).</p>
+</section>
+{{end}}
+
+{{if .A.Summary.Final}}
+<section class="card stack mt-4" aria-labelledby="follow-title" id="remedial">
+<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="card-title" id="follow-title">Daftar remedial dan pengayaan</h2>
+{{if and .CanWrite (not .Exam.FollowUp)}}<div class="action-row">
+{{if $f.Remedial}}<a class="btn btn-primary btn-sm" href="/ujian/paket/{{.Exam.ID}}?tab=lanjut&amp;untuk=remedial#tindak-lanjut">Buat remedial</a>{{end}}
+{{if $f.Enrichment}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}?tab=lanjut&amp;untuk=pengayaan#tindak-lanjut">Buat pengayaan</a>{{end}}
+</div>{{end}}</div>
+<h3 class="font-semibold">Remedial · {{len $f.Remedial}} siswa di bawah {{.A.KKTP.Label}} {{.A.KKTP.Value}}</h3>
+{{if $f.Remedial}}
+{{with $f.Focus}}<p class="mb-0 text-sm">TP fokus: {{range $i, $t := .}}{{if $i}}, {{end}}<strong>{{$t.Code}}</strong>{{end}}</p>{{end}}
+<div class="table-wrap"><table>
+<thead><tr><th>Siswa</th><th>Kelas</th><th class="text-right">Nilai</th><th>TP belum tuntas</th></tr></thead>
+<tbody>{{range $f.Remedial}}<tr><td>{{.Name}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td>{{.ClassName}}</td><td class="text-right">{{.Score}}</td><td>{{with .WeakCodes}}{{.}}{{else}}<span class="muted">—</span>{{end}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="mb-0">Semua siswa tuntas.</p>{{end}}
+<h3 class="font-semibold mt-2">Pengayaan · {{len $f.Enrichment}} siswa tuntas</h3>
+{{if $f.Enrichment}}
+<div class="table-wrap"><table>
+<thead><tr><th>Siswa</th><th>Kelas</th><th class="text-right">Nilai</th><th>TP belum tuntas</th></tr></thead>
+<tbody>{{range $f.Enrichment}}<tr><td>{{.Name}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td>{{.ClassName}}</td><td class="text-right">{{.Score}}</td><td>{{with .WeakCodes}}{{.}}{{else}}<span class="muted">—</span>{{end}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="mb-0">Belum ada siswa yang tuntas.</p>{{end}}
+</section>
+{{end}}
+{{end}}

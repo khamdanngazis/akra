@@ -1,0 +1,60 @@
+{{define "title"}}Analisis Hasil Ulangan · {{.Exam.Name}}{{end}}
+{{define "bodyClass"}}page-print{{end}}
+{{define "content"}}{{$s := .A.Summary}}{{$k := .A.KKTP}}
+<div class="no-print action-row mb-4">
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/hasil{{with .Query}}?{{.}}{{end}}">← Kembali</a>
+<button type="button" class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button>
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/hasil/analisis.xlsx{{with .Query}}?{{.}}{{end}}">Unduh Excel</a>
+</div>
+<header class="print-head">
+<p class="font-semibold">{{.Head.School}}</p>{{with .Head.Address}}<p class="text-sm">{{.}}</p>{{end}}
+<h1>ANALISIS HASIL ULANGAN</h1>
+</header>
+<table class="print-meta">
+<tr><th>Ujian</th><td>{{.Exam.Name}}</td><th>{{$k.Label}}</th><td>{{$k.Value}}</td></tr>
+<tr><th>Mata pelajaran</th><td>{{or .Exam.SubjectName "—"}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}}</td><th>Peserta</th><td>{{$s.Present}} hadir dari {{$s.Registered}}</td></tr>
+<tr><th>Cakupan</th><td>{{.Scope}}</td><th>Jumlah soal</th><td>{{len .A.Items}}</td></tr>
+</table>
+
+<h2 class="print-h2">A. Ringkasan nilai</h2>
+<table class="print-table">
+<thead><tr><th>Rata-rata</th><th>Tertinggi</th><th>Terendah</th><th>Tuntas</th><th>Belum tuntas</th><th>% tuntas</th></tr></thead>
+<tbody><tr class="text-center"><td>{{if $s.Final}}{{$s.MeanText}}{{else}}—{{end}}</td><td>{{if $s.Final}}{{$s.MaxText}}{{else}}—{{end}}</td><td>{{if $s.Final}}{{$s.MinText}}{{else}}—{{end}}</td><td>{{$s.Pass}}</td><td>{{$s.Fail}}</td><td>{{$s.PassPercent}}%</td></tr></tbody>
+</table>
+<table class="print-table mt-2">
+<thead><tr><th>Nilai</th>{{range $s.Bins}}<th>{{.Label}}</th>{{end}}</tr></thead>
+<tbody><tr class="text-center"><td>Peserta</td>{{range $s.Bins}}<td>{{.Count}}</td>{{end}}</tr></tbody>
+</table>
+{{if $s.Awaiting}}<p class="text-sm">{{$s.Awaiting}} peserta menunggu koreksi esai dan belum dihitung.</p>{{end}}
+
+<h2 class="print-h2">B. Analisis butir soal</h2>
+<table class="print-table">
+<thead><tr><th>No</th><th>TP</th><th>p</th><th>Kesukaran</th><th>D</th><th>Daya beda</th><th>Sebaran opsi</th><th>Keputusan</th></tr></thead>
+<tbody>{{range .A.Items}}<tr><td class="text-center">{{.Number}}</td><td>{{.ObjectiveCode}}</td>
+{{if .Voided}}<td colspan="6">Dibatalkan</td>{{else}}<td class="text-center">{{if .N}}{{.PText}}{{else}}—{{end}}</td><td>{{.PLabel}}</td><td class="text-center">{{.DText}}</td><td>{{.DLabel}}</td><td>{{.OptionsText}}</td><td>{{.Decision}}</td>{{end}}</tr>{{end}}</tbody>
+</table>
+<p class="text-xs">p: &lt; 0,30 sukar, 0,30–0,70 sedang, &gt; 0,70 mudah. D (27% atas − 27% bawah): ≥ 0,40 sangat baik, 0,30–0,39 baik, 0,20–0,29 cukup, &lt; 0,20 jelek. * kunci; ! pengecoh dipilih &lt; 5% peserta.</p>
+
+{{with .A.Objectives.Objectives}}
+<h2 class="print-h2">C. Ketuntasan tujuan pembelajaran</h2>
+<table class="print-table">
+<thead><tr><th>TP</th><th>Deskripsi</th><th>Soal</th><th>Siswa tuntas</th><th>% tuntas</th><th>Rata-rata capaian</th></tr></thead>
+<tbody>{{range .}}<tr><td>{{.Code}}</td><td dir="auto">{{.Description}}</td><td class="text-center">{{.Questions}}</td><td class="text-center">{{.Mastered}}/{{.Students}}</td><td class="text-center">{{.Percent}}%</td><td class="text-center">{{.Average}}%</td></tr>{{end}}</tbody>
+</table>
+{{end}}
+
+<h2 class="print-h2">{{if .A.Objectives.Objectives}}D{{else}}C{{end}}. Tindak lanjut</h2>
+<div class="grid gap-4 sm:grid-cols-2 print-cols">
+<div><p class="font-semibold">Remedial ({{len .A.Follow.Remedial}} siswa)</p>
+<table class="print-table"><thead><tr><th>No</th><th>Nama</th><th>Nilai</th><th>TP belum tuntas</th></tr></thead>
+<tbody>{{range $i, $r := .A.Follow.Remedial}}<tr><td class="text-center">{{inc $i}}</td><td>{{$r.Name}}</td><td class="text-center">{{$r.Score}}</td><td>{{$r.WeakCodes}}</td></tr>{{else}}<tr><td colspan="4">—</td></tr>{{end}}</tbody></table></div>
+<div><p class="font-semibold">Pengayaan ({{len .A.Follow.Enrichment}} siswa)</p>
+<table class="print-table"><thead><tr><th>No</th><th>Nama</th><th>Nilai</th></tr></thead>
+<tbody>{{range $i, $r := .A.Follow.Enrichment}}<tr><td class="text-center">{{inc $i}}</td><td>{{$r.Name}}</td><td class="text-center">{{$r.Score}}</td></tr>{{else}}<tr><td colspan="3">—</td></tr>{{end}}</tbody></table></div>
+</div>
+
+<div class="print-sign-2">
+<div><p>Mengetahui,</p><p>Wakil Kepala Sekolah Bidang Kurikulum</p><p class="mt-16">....................................</p></div>
+<div><p>{{.PrintedAt}}</p><p>Guru Mata Pelajaran</p><p class="mt-16">{{or .Teacher "...................................."}}</p></div>
+</div>
+{{end}}

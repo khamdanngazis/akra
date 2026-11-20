@@ -29,6 +29,7 @@ func (h *Handler) examRoutes(r chi.Router) {
 			h.examWizardRoutes(readers, r)
 			h.examDocsRoutes(readers, r)
 			h.followUpRoutes(r)
+			h.resultRoutes(readers, r)
 			r.Post("/paket/{id}/soal/{qid}/batal", h.examVoidQuestion)
 			r.Get("/paket/{id}/soal/{qid}/kunci", h.keyFixForm)
 			r.Post("/paket/{id}/soal/{qid}/kunci", h.keyFixPost)
@@ -161,7 +162,7 @@ func examNextStep(e Exam, rd Readiness, sessions []Session, canWrite bool, now t
 		}
 	default:
 		n.Tone, n.Title = "muted", "Ujian selesai"
-		n.Hint = "Soal objektif sudah dinilai otomatis; lihat tab Hasil. Koreksi esai, analisis butir, dan kirim ke rapor menyusul."
+		n.Hint = "Soal objektif sudah dinilai otomatis. Lihat tab Hasil untuk nilai, koreksi esai, analisis butir, dan analisis TP."
 	}
 	return n
 }
@@ -187,11 +188,7 @@ type examDetailView struct {
 	DefaultDate  string
 	Voided       map[string]VoidInfo // soal dibatalkan (T144)
 	Overrides    map[string]bool     // soal dengan kunci dibetulkan (T146)
-	Results      []ResultRow         // tab Hasil (T146)
-	Regrades     []Regrade
-	Graded       int // peserta bernilai final
-	AwaitEssay   int
-	Running      int // sesi berlangsung, untuk ralat
+	Running      int                 // sesi berlangsung, untuk ralat
 	Flash        string
 	Error        string
 	Zone         string
@@ -207,8 +204,13 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	loc := id.Location()
 	tab := r.URL.Query().Get("tab")
+	if tab == "hasil" {
+		// Hasil pindah ke halaman sendiri (T148).
+		http.Redirect(w, r, resultsPath(e.ID), http.StatusSeeOther)
+		return
+	}
 	switch tab {
-	case "soal", "sesi", "hasil", "dokumen", "lanjut":
+	case "soal", "sesi", "dokumen", "lanjut":
 	default:
 		tab = "ringkasan"
 	}
@@ -285,26 +287,6 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 			for id := range ov {
 				v.Overrides[id] = true
 			}
-		}
-	case "hasil":
-		if v.Results, err = LoadResults(ctx, h.db, sa.SchoolID, e.ID); err != nil {
-			h.fail(w, r, "results", err)
-			return
-		}
-		for _, x := range v.Results {
-			switch x.ScoreStat {
-			case ScoreFinal:
-				v.Graded++
-			case ScoreAwaitEssay:
-				v.AwaitEssay++
-			}
-		}
-		if v.Regrades, err = ListRegrades(ctx, h.db, sa.SchoolID, e.ID); err != nil {
-			h.fail(w, r, "regrades", err)
-			return
-		}
-		for i := range v.Regrades {
-			v.Regrades[i].At = v.Regrades[i].At.In(loc)
 		}
 	case "dokumen":
 		v.DocSessions = h.examDocSessions(r, v.Sessions, loc, now)
