@@ -290,6 +290,9 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 type BasicsForm struct {
 	Name, Purpose, SubjectID, GradeLevel, Duration string
 	OwnerID                                        string // PTS/PAS: guru pemegang soal
+	// AdmissionTestID: tes gelombang yang langsung memakai ujian seleksi
+	// baru ini (dibuat dari tab Tes seleksi, T149).
+	AdmissionTestID string
 }
 
 // validateBasics memeriksa isian Dasar dan mengisi e.

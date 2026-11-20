@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
 )
@@ -19,6 +20,8 @@ type testRow struct {
 	Schedule string
 	Form     TestForm
 	Errors   map[string]string
+	// Online: ringkasan ujian online (T149).
+	Online *onlineTestRow
 }
 
 type testsView struct {
@@ -33,6 +36,11 @@ type testsView struct {
 	Flash, Error string
 	// Zone adalah singkatan zona waktu sekolah untuk label jadwal (T126).
 	Zone string
+	// Exams: ujian seleksi yang bisa dipilih untuk tes online (T149).
+	Exams []exam.AdmissionExam
+	// Practice: sesi latihan pendaftar yang masih buka.
+	Practice  *sessionRow
+	HasOnline bool
 }
 
 func (h *Handler) selection() *SelectionService { return NewSelectionService(h.db) }
@@ -64,8 +72,24 @@ func (h *Handler) renderTests(w http.ResponseWriter, r *http.Request, id auth.Id
 	for _, t := range p.Tracks {
 		view.UsesTest = view.UsesTest || t.UsesTest
 	}
+	if view.Exams, err = exam.AdmissionExams(r.Context(), h.db, id.SchoolID); err != nil {
+		h.serverError(w, r, "admission exams", err)
+		return
+	}
 	for _, t := range tests {
-		row := testRow{SelectionTest: t, Form: TestForm{Name: t.Name, Weight: strconv.Itoa(t.Weight), MaxScore: strconv.Itoa(t.MaxScore), Location: t.Location, Rubric: t.Rubric}}
+		row := testRow{SelectionTest: t, Form: TestForm{Name: t.Name, Weight: strconv.Itoa(t.Weight), MaxScore: strconv.Itoa(t.MaxScore), Location: t.Location, Rubric: t.Rubric,
+			Method: TestMethodPaper, ExamID: t.ExamID}}
+		if t.Online() {
+			row.Form.Method = TestMethodOnline
+			if row.Online, err = h.loadOnlineTest(r.Context(), id.SchoolID, t.ExamID, p.ID, id.Location()); err != nil {
+				h.serverError(w, r, "online test", err)
+				return
+			}
+			view.HasOnline = true
+			if pr := row.Online.Practice; pr != nil && view.Practice == nil {
+				view.Practice = &sessionRow{AdmissionSession: *pr, When: sessionWhen(*pr, id.Location())}
+			}
+		}
 		if t.PassScore > 0 {
 			row.Form.PassScore = strconv.Itoa(t.PassScore)
 		}
@@ -92,7 +116,7 @@ func parseTestForm(w http.ResponseWriter, r *http.Request) (TestForm, bool) {
 	}
 	p := r.PostForm
 	return TestForm{Name: p.Get("test_name"), Weight: p.Get("weight"), MaxScore: p.Get("max_score"), ScheduledAt: p.Get("scheduled_at"), Location: p.Get("location"),
-		Rubric: p.Get("rubric"), PassScore: p.Get("pass_score")}, true
+		Rubric: p.Get("rubric"), PassScore: p.Get("pass_score"), Method: p.Get("method"), ExamID: p.Get("exam_id")}, true
 }
 
 // saveTest menambah atau mengubah tes. Peran: admin_tu.
@@ -224,6 +248,9 @@ func (h *Handler) saveScores(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, periodsPath+"/"+periodID+"/tes/"+testID+"/nilai", http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
 		page.NotFound(h.render, w, r, id, "Tes atau pendaftar tidak ditemukan.")
+	case errors.Is(err, ErrOnlineScores):
+		auth.SetFlash(r.Context(), h.sessions, "Nilai tes online masuk otomatis dari ujian dan tidak bisa diketik. Koreksi lewat nilai ulang di hasil ujian.")
+		http.Redirect(w, r, periodsPath+"/"+periodID+"/tes/"+testID+"/nilai", http.StatusSeeOther)
 	case errors.As(err, &ve):
 		h.renderScores(w, r, id, http.StatusBadRequest, scores, ve.Fields)
 	default:

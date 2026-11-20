@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"akra/internal/audit"
+	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
 	"akra/internal/school"
@@ -46,7 +47,23 @@ type SelectionTest struct {
 	// tanpa batas) (T119).
 	Rubric    string
 	PassScore int
+	// ExamID: ujian seleksi online (T149); kosong = di kertas/wawancara.
+	ExamID   string
+	ExamName string
 }
+
+// Online melaporkan tes dikerjakan sebagai ujian online.
+func (t SelectionTest) Online() bool { return t.ExamID != "" }
+
+// Cara tes (T149).
+const (
+	TestMethodPaper  = "kertas"
+	TestMethodOnline = "online"
+)
+
+// ErrOnlineScores: nilai tes online tidak bisa diketik; koreksi lewat
+// nilai ulang ujian.
+var ErrOnlineScores = errors.New("admission: online test scores are read-only")
 
 // TestForm adalah isian form tes apa adanya.
 type TestForm struct {
@@ -57,6 +74,8 @@ type TestForm struct {
 	Location    string
 	Rubric      string
 	PassScore   string // kosong = tanpa nilai minimal
+	Method      string // kertas atau online (T149)
+	ExamID      string
 }
 
 // SelectionService mengelola tes seleksi dan nilainya.
@@ -74,16 +93,17 @@ func (s *SelectionService) Tests(ctx context.Context, schoolID, periodID string)
 	if !database.IsUUID(periodID) {
 		return nil, ErrNotFound
 	}
-	rows, err := s.db.Query(ctx, `SELECT id, period_id, name, weight, max_score, scheduled_at, coalesce(location, ''), sort_order,
-		       coalesce(rubric, ''), coalesce(pass_score, 0)
-		FROM admission_tests WHERE school_id = $1 AND period_id = $2 ORDER BY sort_order, name`, schoolID, periodID)
+	rows, err := s.db.Query(ctx, `SELECT t.id, t.period_id, t.name, t.weight, t.max_score, t.scheduled_at, coalesce(t.location, ''), t.sort_order,
+		       coalesce(t.rubric, ''), coalesce(t.pass_score, 0), coalesce(t.exam_id::text, ''), coalesce(e.name, '')
+		FROM admission_tests t LEFT JOIN exams e ON e.id = t.exam_id AND e.school_id = t.school_id
+		WHERE t.school_id = $1 AND t.period_id = $2 ORDER BY t.sort_order, t.name`, schoolID, periodID)
 	if err != nil {
 		return nil, mapError("list tests", err)
 	}
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (SelectionTest, error) {
 		var t SelectionTest
 		var w, m int16
-		err := r.Scan(&t.ID, &t.PeriodID, &t.Name, &w, &m, &t.ScheduledAt, &t.Location, &t.SortOrder, &t.Rubric, &t.PassScore)
+		err := r.Scan(&t.ID, &t.PeriodID, &t.Name, &w, &m, &t.ScheduledAt, &t.Location, &t.SortOrder, &t.Rubric, &t.PassScore, &t.ExamID, &t.ExamName)
 		t.Weight, t.MaxScore = int(w), int(m)
 		return t, err
 	})
@@ -110,6 +130,7 @@ type testInput struct {
 	Location    *string
 	Rubric      *string
 	PassScore   *int
+	ExamID      *string
 }
 
 // validateTest memvalidasi form tes. Jadwal dibaca di zona waktu sekolah
@@ -163,10 +184,54 @@ func validateTest(f TestForm, loc *time.Location) (testInput, error) {
 			in.PassScore = &n
 		}
 	}
+	switch f.Method {
+	case TestMethodOnline:
+		if id := strings.TrimSpace(f.ExamID); id == "" {
+			fields["exam_id"] = "Pilih ujian seleksi online, atau buat ujian baru."
+		} else {
+			in.ExamID = &id
+		}
+	case "", TestMethodPaper:
+	default:
+		fields["method"] = "Pilih cara tes."
+	}
 	if len(fields) > 0 {
 		return testInput{}, &ValidationError{Fields: fields}
 	}
 	return in, nil
+}
+
+// linkExam memeriksa dan menautkan ujian online ke tes (T149): ujian harus
+// ujian seleksi sekolah ini; tes yang sudah punya nilai ketikan tidak bisa
+// diubah menjadi online. Nilai online lama dihapus lalu ditulis ulang dari
+// ujian yang ditautkan (juga saat nilai maksimal berubah).
+func linkExam(ctx context.Context, tx pgx.Tx, schoolID, testID string, examID *string) error {
+	if examID != nil {
+		if err := exam.CheckAdmissionExam(ctx, tx, schoolID, *examID); errors.Is(err, exam.ErrNotFound) {
+			return fieldErr("exam_id", "Ujian tidak ditemukan. Pilih ujian seleksi sekolah ini.")
+		} else if err != nil {
+			return err
+		}
+		var typed bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM applicant_test_scores WHERE test_id = $1 AND source = 'manual' AND score IS NOT NULL)`,
+			testID).Scan(&typed); err != nil {
+			return mapError("check typed scores", err)
+		}
+		if typed {
+			return fieldErr("method", "Tes ini sudah punya nilai yang diketik. Kosongkan nilainya di Isi nilai dulu sebelum memakai ujian online.")
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM applicant_test_scores WHERE test_id = $1 AND (source = 'ujian_online' OR score IS NULL)`, testID); err != nil {
+		return mapError("clear online scores", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE admission_tests SET exam_id = $3 WHERE school_id = $1 AND id = $2`, schoolID, testID, examID); err != nil {
+		return mapError("link exam", err)
+	}
+	if examID == nil {
+		return nil
+	}
+	_, err := exam.SyncAdmissionExam(ctx, tx, schoolID, *examID)
+	return err
 }
 
 // AddTest menambah tes ke periode.
@@ -191,7 +256,14 @@ func (s *SelectionService) AddTest(ctx context.Context, actor school.Actor, peri
 			return mapError("add test", err)
 		}
 		t = SelectionTest{ID: t.ID, PeriodID: periodID, Name: in.Name, Weight: in.Weight, MaxScore: in.MaxScore, ScheduledAt: in.ScheduledAt}
-		return audit.Record(ctx, tx, periodAudit(actor, ActionTestCreate, periodID, nil, map[string]any{"test_id": t.ID, "name": t.Name, "weight": t.Weight, "max_score": t.MaxScore}))
+		if in.ExamID != nil {
+			if err := linkExam(ctx, tx, actor.SchoolID, t.ID, in.ExamID); err != nil {
+				return err
+			}
+			t.ExamID = *in.ExamID
+		}
+		return audit.Record(ctx, tx, periodAudit(actor, ActionTestCreate, periodID, nil, map[string]any{"test_id": t.ID, "name": t.Name, "weight": t.Weight,
+			"max_score": t.MaxScore, "exam_id": in.ExamID}))
 	})
 	if err != nil {
 		return SelectionTest{}, testFieldError(err)
@@ -218,7 +290,7 @@ func (s *SelectionService) UpdateTest(ctx context.Context, actor school.Actor, p
 			return err
 		}
 		var top *float64
-		if err := tx.QueryRow(ctx, `SELECT max(score)::float8 FROM applicant_test_scores WHERE test_id = $1`, testID).Scan(&top); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT max(score)::float8 FROM applicant_test_scores WHERE test_id = $1 AND source = 'manual'`, testID).Scan(&top); err != nil {
 			return err
 		}
 		if top != nil && *top > float64(in.MaxScore) {
@@ -233,7 +305,11 @@ func (s *SelectionService) UpdateTest(ctx context.Context, actor school.Actor, p
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		return audit.Record(ctx, tx, periodAudit(actor, ActionTestUpdate, periodID, nil, map[string]any{"test_id": testID, "name": in.Name, "weight": in.Weight, "max_score": in.MaxScore}))
+		if err := linkExam(ctx, tx, actor.SchoolID, testID, in.ExamID); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, periodAudit(actor, ActionTestUpdate, periodID, nil, map[string]any{"test_id": testID, "name": in.Name, "weight": in.Weight,
+			"max_score": in.MaxScore, "exam_id": in.ExamID}))
 	})
 	return testFieldError(err)
 }
@@ -267,6 +343,9 @@ func testFieldError(err error) error {
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == "admission_tests_name_key" {
 		return fieldErr("test_name", "Nama tes sudah dipakai di gelombang ini.")
 	}
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == "admission_tests_exam_key" {
+		return fieldErr("exam_id", "Ujian ini sudah dipakai tes lain. Satu ujian online untuk satu tes.")
+	}
 	return err
 }
 
@@ -277,6 +356,10 @@ type ScoreRow struct {
 	FullName           string
 	TrackName          string
 	Score              string // "" = belum dinilai
+	// Online: nilai dari ujian online (T149), tidak bisa disunting;
+	// AttemptID untuk tautan ke detail hasil.
+	Online    bool
+	AttemptID string
 }
 
 // Grid mengembalikan pendaftar yang bisa dinilai untuk tes testID:
@@ -286,7 +369,8 @@ func (s *SelectionService) Grid(ctx context.Context, schoolID, periodID, testID 
 		return nil, ErrNotFound
 	}
 	rows, err := s.db.Query(ctx, `
-		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, t.name, coalesce(sc.score::text, '')
+		SELECT a.id, coalesce(a.registration_number, ''), a.full_name, t.name, coalesce(sc.score::text, ''),
+		       coalesce(sc.source = 'ujian_online', false), coalesce(sc.attempt_id::text, '')
 		FROM applicants a
 		JOIN admission_tracks t ON t.id = a.track_id AND t.uses_test
 		LEFT JOIN applicant_test_scores sc ON sc.applicant_id = a.id AND sc.test_id = $3
@@ -298,7 +382,7 @@ func (s *SelectionService) Grid(ctx context.Context, schoolID, periodID, testID 
 	}
 	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (ScoreRow, error) {
 		var x ScoreRow
-		err := r.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.TrackName, &x.Score)
+		err := r.Scan(&x.ApplicantID, &x.RegistrationNumber, &x.FullName, &x.TrackName, &x.Score, &x.Online, &x.AttemptID)
 		x.Score = trimScore(x.Score)
 		return x, err
 	})
@@ -333,6 +417,9 @@ func (s *SelectionService) SaveScores(ctx context.Context, actor school.Actor, p
 		}
 		if test == nil {
 			return ErrNotFound
+		}
+		if test.Online() {
+			return ErrOnlineScores
 		}
 		grid, err := (&SelectionService{db: tx}).Grid(ctx, actor.SchoolID, periodID, testID)
 		if err != nil {

@@ -33,13 +33,14 @@ type Handler struct {
 	sessions   *scs.SessionManager
 	render     page.Renderer
 	logger     *slog.Logger
+	exam       examLink // tes seleksi online (T149)
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
 	return &Handler{db: db, periods: periods, applicants: applicants, documents: documents, logos: logoServiceFor(db, documents),
-		sessions: sessions, render: render, logger: logger}
+		sessions: sessions, render: render, logger: logger, exam: defaultExamLink()}
 }
 
 // Routes mendaftarkan route pendaftaran staf ke r.
@@ -169,6 +170,11 @@ func (h *Handler) periodRoutes(r chi.Router) {
 		r.Post("/{id}/tes/{testID}/hapus", h.deleteTest)
 		// Peran: admin_tu.
 		r.Post("/{id}/tes/{testID}/nilai", h.saveScores)
+		// Peran: admin_tu. Pendaftar terverifikasi belakangan masuk sesi
+		// tes online (T149).
+		r.Post("/{id}/tes/{testID}/peserta", h.addApplicantsToSession)
+		// Peran: admin_tu. Ujian latihan untuk pendaftar (T149).
+		r.Post("/{id}/latihan", h.openPractice)
 		// Peran: admin_tu.
 		r.Post("/{id}/hasil", h.applyResults)
 	})

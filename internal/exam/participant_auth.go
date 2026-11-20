@@ -101,6 +101,8 @@ type IssueRequest struct {
 // Issuer membuat kode ujian.
 type Issuer struct {
 	hasher *auth.Hasher
+	// codes: kunci kode kartu pendaftar (T149); nil = kode acak.
+	codes *TokenSigner
 }
 
 // NewIssuer mengembalikan Issuer dengan CodeParams.
@@ -166,6 +168,16 @@ func (is *Issuer) IssueCard(ctx context.Context, q database.DBTX, schoolID, acto
 	if err != nil {
 		return "", err
 	}
+	// Kartu pendaftar: kode diturunkan dari kunci dan nonce (T149) agar
+	// bisa ditampilkan ulang di halaman status pendaftaran.
+	var nonce any
+	if is.codes != nil && owner.ApplicantID != "" {
+		n, err := newNonce()
+		if err != nil {
+			return "", err
+		}
+		nonce, code = n, is.codes.cardCode(0, n)
+	}
 	hash, err := is.hasher.HashPassword(code)
 	if err != nil {
 		return "", err
@@ -181,9 +193,9 @@ func (is *Issuer) IssueCard(ctx context.Context, q database.DBTX, schoolID, acto
 			return "", fmt.Errorf("exam: revoke old code: %w", err)
 		}
 		if _, err := q.Exec(ctx, `
-			INSERT INTO student_credentials (school_id, student_id, applicant_id, kind, secret_hash, valid_from, valid_until, exam_session_id, created_by)
-			VALUES ($1, $2, $3, 'kode_ujian', $4, $5, $6, $7, $8)`,
-			schoolID, sid, aid, hash, w.Start.Add(-CodeEarly), w.End, w.SessionID, actorID); err != nil {
+			INSERT INTO student_credentials (school_id, student_id, applicant_id, kind, secret_hash, valid_from, valid_until, exam_session_id, created_by, code_nonce)
+			VALUES ($1, $2, $3, 'kode_ujian', $4, $5, $6, $7, $8, $9)`,
+			schoolID, sid, aid, hash, w.Start.Add(-CodeEarly), w.End, w.SessionID, actorID, nonce); err != nil {
 			return "", fmt.Errorf("exam: issue code: %w", err)
 		}
 	}

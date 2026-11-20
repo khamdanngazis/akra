@@ -21,10 +21,22 @@
 <li x-data="{ editing: {{if .Errors}}true{{else}}false{{end}} }">
 <div x-show="!editing">
 <strong>{{.Name}}</strong> <span class="muted">· Bobot {{.Weight}}% · Nilai maks {{.MaxScore}}{{if .PassScore}} · Minimal lulus {{.PassScore}}{{end}}{{with .Schedule}} · {{.}}{{end}}{{with .Location}} · {{.}}{{end}}</span>
-{{with .Rubric}}<p class="rubric">{{.}}</p>{{else}}{{if $.CanEdit}}<p class="hint mb-0">Belum ada acuan penilaian. Klik Ubah untuk menambahkannya.</p>{{end}}{{end}}
+{{if .Online}}{{$o := .Online}}{{$t := .}}
+<div class="online-test">
+<p class="mb-0"><span class="badge badge-info">Ujian online</span> <a href="/ujian/paket/{{$o.ExamID}}">{{$o.ExamName}}</a> <span class="muted">· {{$o.StatusLabel}}</span></p>
+{{if $o.Sessions}}<ul class="online-sessions">{{range $o.Sessions}}<li><strong>{{.Title}}</strong> · {{.When}} · {{if .Remote}}dari rumah{{else}}di sekolah{{end}} · {{.Participants}} peserta{{if .Submitted}}, {{.Submitted}} selesai{{end}}{{if .Ended}} <span class="badge">Selesai</span>{{end}}</li>{{end}}</ul>
+{{else}}<p class="hint mb-0">Belum ada sesi. {{if $.CanEdit}}<a href="/ujian/paket/{{$o.ExamID}}/atur/jadwal">Buat sesi di ujiannya</a>: peserta otomatis dari pendaftar terverifikasi di jalur bertes.{{end}}</p>{{end}}
+{{if and $o.Missing $o.Sessions}}<div class="alert alert-warning online-missing" role="status"><p class="mb-0"><strong>{{$o.Missing}} pendaftar terverifikasi belum masuk sesi tes ini</strong> (mis. diverifikasi setelah sesi dibuat).</p>
+{{if and $.CanEdit $o.Open}}<form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{$t.ID}}/peserta" class="flex flex-wrap items-end gap-2 mt-2">{{ csrfField }}
+<div class="field mb-0"><label for="sess-{{$t.ID}}">Masukkan ke sesi</label><select id="sess-{{$t.ID}}" name="session_id">{{range $o.Open}}<option value="{{.ID}}">{{.Title}} · {{.When}}</option>{{end}}</select></div>
+<button type="submit" class="btn btn-primary btn-sm">Masukkan</button></form>
+{{else if $.CanEdit}}<p class="mb-0 text-sm">Semua sesi sudah berakhir. <a href="/ujian/paket/{{$o.ExamID}}/atur/jadwal">Buat sesi susulan di ujiannya</a>.</p>{{end}}</div>{{end}}
+</div>
+{{else}}{{with .Rubric}}<p class="rubric">{{.}}</p>{{else}}{{if $.CanEdit}}<p class="hint mb-0">Belum ada acuan penilaian. Klik Ubah untuk menambahkannya.</p>{{end}}{{end}}{{end}}
 <div class="action-row">
-<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if $.CanEdit}}Isi nilai{{else}}Lihat nilai{{end}}</a>
-<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/lembar.pdf">{{template "icon" "download"}}Lembar penilaian (PDF)</a>
+<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if and $.CanEdit (not .Online)}}Isi nilai{{else}}Lihat nilai{{end}}</a>
+{{if .Online}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.ExamID}}/hasil">Hasil ujian</a>{{end}}
+{{if not .Online}}<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/lembar.pdf">{{template "icon" "download"}}Lembar penilaian (PDF)</a>{{end}}
 {{if $.CanEdit}}
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
@@ -34,7 +46,7 @@
 {{if $.CanEdit}}
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}" class="stack" x-show="editing" x-cloak novalidate>
 {{ csrfField }}
-{{template "admission_test_fields" dict "Form" .Form "Errors" .Errors "ID" .ID "Zone" $.Zone}}
+{{template "admission_test_fields" dict "Form" .Form "Errors" .Errors "ID" .ID "Zone" $.Zone "Exams" $.Exams "PeriodID" $.Period.ID}}
 <div class="action-row">
 <button type="submit" class="btn btn-primary btn-sm">Simpan tes</button>
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Batal</button>
@@ -49,9 +61,17 @@
 <form method="post" action="/pendaftaran/periode/{{.Period.ID}}/tes" class="stack" novalidate>
 {{ csrfField }}
 <h3>Tambah tes</h3>
-{{template "admission_test_fields" dict "Form" .NewTest "Errors" .NewErrors "ID" "baru" "Zone" .Zone}}
+{{template "admission_test_fields" dict "Form" .NewTest "Errors" .NewErrors "ID" "baru" "Zone" .Zone "Exams" .Exams "PeriodID" .Period.ID}}
 <div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Tambah tes</button></div>
 </form>
 {{end}}
 </section>
+{{if .HasOnline}}
+<section class="card stack mt-4" aria-labelledby="practice-title">
+<h2 id="practice-title">Ujian latihan untuk calon siswa</h2>
+<p class="mb-0">Calon siswa bisa mencoba tampilan ujian dari rumah dengan kode di kartu tesnya, sebelum tes sebenarnya. Nilainya tidak dipakai.</p>
+{{with .Practice}}<p class="mb-0"><span class="badge badge-success">Dibuka</span> sampai {{.When}} · {{.Participants}} pendaftar, {{.Submitted}} sudah mencoba.</p>{{end}}
+{{if .CanEdit}}<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/latihan">{{ csrfField }}<button type="submit" class="btn {{if .Practice}}btn-ghost{{else}}btn-primary{{end}} btn-sm">{{if .Practice}}Masukkan pendaftar baru ke latihan{{else}}Buka ujian latihan{{end}}</button></form>{{end}}
+</section>
+{{end}}
 {{end}}

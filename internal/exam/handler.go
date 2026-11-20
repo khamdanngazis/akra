@@ -30,7 +30,16 @@ type Handler struct {
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
 // RequireLogin.
 func NewHandler(db database.DB, store storage.Store, math *mathrender.Renderer, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *Handler {
-	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger, issuer: NewIssuer()}
+	return &Handler{db: db, store: store, math: math, sessions: sessions, render: render, logger: logger,
+		issuer: NewIssuer().WithCardCodes(DevTokenSigner())}
+}
+
+// WithCardCodes memakai kunci t untuk kode kartu pendaftar (T149); harus
+// sama dengan kunci halaman status pendaftaran agar kode kartu cetak dan
+// kartu di halaman status sama.
+func (h *Handler) WithCardCodes(t *TokenSigner) *Handler {
+	h.issuer = NewIssuer().WithCardCodes(t)
+	return h
 }
 
 // Routes mendaftarkan route modul ujian. Semua route menjawab 404 bila
