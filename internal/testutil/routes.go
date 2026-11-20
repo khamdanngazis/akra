@@ -598,6 +598,13 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/ujian/paket/{id}/soal/{qid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/batal" },
 			func(*School) url.Values { return url.Values{"alasan": {"Uji lintas sekolah"}} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/soal/{qid}/kunci", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/kunci"}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/soal/{qid}/kunci", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/kunci" },
+			func(*School) url.Values { return url.Values{"aksi": {"pratinjau"}} })},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/ralat", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/ralat" },
 			func(*School) url.Values { return url.Values{"pesan": {"Uji lintas sekolah"}} })},

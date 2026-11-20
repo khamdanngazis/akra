@@ -149,6 +149,7 @@ func ForceSubmit(ctx context.Context, db database.DB, sa StaffActor, attemptID s
 			WHERE id = $1`, a.ID, now); err != nil {
 			return fmt.Errorf("exam: force submit: %w", err)
 		}
+		gradeSafely(ctx, tx, newGradeCache(), sa.SchoolID, a.ID, now)
 		return recordAudit(ctx, tx, sa, "exam.attempt_submit", "exam_attempt", a.ID, nil,
 			map[string]any{"reason": SubmitByProctor, "session_id": a.SessionID})
 	})
@@ -167,12 +168,20 @@ func CloseSession(ctx context.Context, db database.DB, sa StaffActor, sessionID 
 			paused_at = NULL WHERE id = $1`, sessionID, now, sa.UserID); err != nil {
 			return fmt.Errorf("exam: close session: %w", err)
 		}
-		tag, err := tx.Exec(ctx, `UPDATE exam_attempts SET status = 'dikumpulkan', submitted_at = $3, submit_reason = 'pengawas', paused_at = NULL
-			WHERE school_id = $1 AND session_id = $2 AND status = 'berjalan'`, sa.SchoolID, sessionID, now)
+		rows, err := tx.Query(ctx, `UPDATE exam_attempts SET status = 'dikumpulkan', submitted_at = $3, submit_reason = 'pengawas', paused_at = NULL
+			WHERE school_id = $1 AND session_id = $2 AND status = 'berjalan' RETURNING id::text`, sa.SchoolID, sessionID, now)
 		if err != nil {
 			return fmt.Errorf("exam: submit running attempts: %w", err)
 		}
-		n = int(tag.RowsAffected())
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return fmt.Errorf("exam: submit running attempts: %w", err)
+		}
+		cache := newGradeCache()
+		for _, id := range ids {
+			gradeSafely(ctx, tx, cache, sa.SchoolID, id, now)
+		}
+		n = len(ids)
 		return recordAudit(ctx, tx, sa, "exam.session_close", "exam_session", sessionID, nil, map[string]any{"submitted": n})
 	})
 	return n, err

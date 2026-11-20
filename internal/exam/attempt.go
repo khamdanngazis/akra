@@ -691,6 +691,7 @@ func SubmitAttempt(ctx context.Context, db database.DB, p auth.Participant, a At
 		if err != nil {
 			return fmt.Errorf("exam: submit attempt: %w", err)
 		}
+		gradeSafely(ctx, tx, newGradeCache(), a.SchoolID, a.ID, now)
 		var answered int
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM exam_answers WHERE attempt_id = $1 AND value <> 'null'::jsonb`, a.ID).Scan(&answered); err != nil {
 			return fmt.Errorf("exam: count answers: %w", err)

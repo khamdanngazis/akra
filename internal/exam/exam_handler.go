@@ -30,6 +30,8 @@ func (h *Handler) examRoutes(r chi.Router) {
 			h.examDocsRoutes(readers, r)
 			h.followUpRoutes(r)
 			r.Post("/paket/{id}/soal/{qid}/batal", h.examVoidQuestion)
+			r.Get("/paket/{id}/soal/{qid}/kunci", h.keyFixForm)
+			r.Post("/paket/{id}/soal/{qid}/kunci", h.keyFixPost)
 			r.Post("/paket/{id}/ralat", h.examCorrection)
 			r.Post("/paket/{id}/salin", h.examCopy)
 			r.Post("/paket/{id}/arsip", h.examArchive)
@@ -159,7 +161,7 @@ func examNextStep(e Exam, rd Readiness, sessions []Session, canWrite bool, now t
 		}
 	default:
 		n.Tone, n.Title = "muted", "Ujian selesai"
-		n.Hint = "Koreksi, analisis, dan kirim ke rapor tersedia setelah modul penilaian aktif."
+		n.Hint = "Soal objektif sudah dinilai otomatis; lihat tab Hasil. Koreksi esai, analisis butir, dan kirim ke rapor menyusul."
 	}
 	return n
 }
@@ -184,7 +186,12 @@ type examDetailView struct {
 	Follow       followView
 	DefaultDate  string
 	Voided       map[string]VoidInfo // soal dibatalkan (T144)
-	Running      int                 // sesi berlangsung, untuk ralat
+	Overrides    map[string]bool     // soal dengan kunci dibetulkan (T146)
+	Results      []ResultRow         // tab Hasil (T146)
+	Regrades     []Regrade
+	Graded       int // peserta bernilai final
+	AwaitEssay   int
+	Running      int // sesi berlangsung, untuk ralat
 	Flash        string
 	Error        string
 	Zone         string
@@ -269,6 +276,35 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			v.Running = len(running)
+			ov, err := keyOverrides(ctx, h.db, sa.SchoolID, e.ID)
+			if err != nil {
+				h.fail(w, r, "key overrides", err)
+				return
+			}
+			v.Overrides = map[string]bool{}
+			for id := range ov {
+				v.Overrides[id] = true
+			}
+		}
+	case "hasil":
+		if v.Results, err = LoadResults(ctx, h.db, sa.SchoolID, e.ID); err != nil {
+			h.fail(w, r, "results", err)
+			return
+		}
+		for _, x := range v.Results {
+			switch x.ScoreStat {
+			case ScoreFinal:
+				v.Graded++
+			case ScoreAwaitEssay:
+				v.AwaitEssay++
+			}
+		}
+		if v.Regrades, err = ListRegrades(ctx, h.db, sa.SchoolID, e.ID); err != nil {
+			h.fail(w, r, "regrades", err)
+			return
+		}
+		for i := range v.Regrades {
+			v.Regrades[i].At = v.Regrades[i].At.In(loc)
 		}
 	case "dokumen":
 		v.DocSessions = h.examDocSessions(r, v.Sessions, loc, now)
