@@ -16,6 +16,7 @@ import (
 	"akra/internal/attendance"
 	"akra/internal/auth"
 	"akra/internal/billing"
+	"akra/internal/exam"
 	"akra/internal/payments"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/money"
@@ -58,6 +59,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/siswa/{id}/jadwal", h.childSchedule)
 		// Peran: orang_tua (hanya anak sendiri; selain itu 404).
 		r.Get("/siswa/{id}/nilai", h.childGrades)
+		// Peran: orang tua (anak sendiri). Ujian anak (T151).
+		r.Get("/siswa/{id}/ujian", h.childExams)
 		// Peran: orang_tua (hanya anak sendiri, dan hanya jika semua nilai lengkap).
 		r.Get("/siswa/{id}/rapor.pdf", h.childReportCard)
 		// Peran: orang_tua (hanya pembayaran anak sendiri; selain itu 404).
@@ -110,6 +113,8 @@ type childDetailView struct {
 	Percent   string
 	Flash     string
 	Error     string
+	// ExamModule: modul ujian aktif, tautan Ujian ditampilkan (T151).
+	ExamModule bool
 }
 
 func (h *Handler) childDetail(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +134,9 @@ func (h *Handler) childDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	if d.HasRecap {
 		v.Range = clock.FormatDateID(d.RecapFrom) + " – " + clock.FormatDateID(d.RecapTo)
+	}
+	if m, err := exam.LoadModule(r.Context(), h.svc.db, id.SchoolID); err == nil {
+		v.ExamModule = m.Enabled
 	}
 	h.render.Render(w, r, http.StatusOK, pageChildDetail, v)
 }

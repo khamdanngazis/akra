@@ -258,6 +258,15 @@
 <div class="action-row"><button type="submit" class="btn btn-ghost">Saring</button>{{if $q}}<a class="btn btn-ghost" href="?">Hapus saringan</a>{{end}}</div>
 </form>
 {{end}}
+{{with .Release}}{{if not .Never}}<div class="release-card" aria-label="Hasil untuk siswa dan orang tua">
+<p class="mb-0 text-sm">{{if .Instant}}<strong>Hasil untuk siswa</strong> terbuka langsung setelah mengumpulkan ({{if eq .Mode "nilai_dan_pembahasan"}}nilai dan pembahasan{{else}}nilai{{end}}).
+{{else if .Open}}<span class="badge badge-success">Hasil dibuka</span> sejak {{$.ReleasedAt}}: siswa melihat {{if eq .Mode "nilai_dan_pembahasan"}}nilai dan pembahasan{{else}}nilai{{end}}, orang tua melihat nilai.
+{{else if .Released}}<span class="badge badge-warning">Hasil tertahan</span> ada sesi (susulan) yang belum berakhir; hasil tampil lagi setelah semua sesi selesai.
+{{else}}<strong>Hasil belum dibuka</strong> untuk siswa dan orang tua.{{if not .Ended}} Bisa dibuka setelah semua sesi, termasuk susulan, berakhir.{{end}}{{end}}</p>
+{{if and $.CanWrite (not .Instant)}}<form method="post" action="/ujian/paket/{{$.Exam.ID}}/hasil/buka">{{ csrfField }}
+{{if .Released}}<button type="submit" name="aksi" value="tutup" class="btn btn-ghost btn-sm">Tutup hasil</button>
+{{else}}<button type="submit" name="aksi" value="buka" class="btn btn-primary btn-sm"{{if not .Ended}} disabled{{end}}>Buka hasil untuk siswa &amp; orang tua</button>{{end}}</form>{{end}}
+</div>{{end}}{{end}}
 {{if .GradesStale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.GradesStale}} siswa). <a href="/ujian/paket/{{.Exam.ID}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
 {{if .A.Summary.Awaiting}}<p class="alert alert-warning mt-3">{{.A.Summary.Awaiting}} peserta menunggu koreksi esai. Nilai mereka belum masuk statistik dan analisis di bawah.</p>{{end}}
 {{end}}

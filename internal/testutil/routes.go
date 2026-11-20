@@ -326,6 +326,9 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/u/a/{attempt}/kumpul", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/a/{attempt}/selesai", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/a/{attempt}/gambar/{asset}", Kind: KindPublic},
+	// Pembahasan siswa (T151): hanya sesi peserta; kepemilikan dan aturan
+	// buka hasil diuji di paket exam (TestStudentReview*).
+	{Method: "GET", Pattern: "/u/hasil/{attempt}", Kind: KindPublic},
 	// Cek perangkat (T136): publik, tanpa data sekolah.
 	{Method: "GET", Pattern: "/u/cek", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/cek/ping", Kind: KindPublic},
@@ -622,6 +625,10 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/ujian/paket/{id}/rapor", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/rapor" }, func(*School) url.Values {
 			return url.Values{"aksi": {"kirim"}}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/hasil/buka", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/hasil/buka" }, func(*School) url.Values {
+			return url.Values{"aksi": {"buka"}}
 		})},
 	// Hasil dan analisis (T148): staf ujian membaca; nilai manual hanya
 	// penulis. Fixture tanpa attempt, jadi route per attempt tanpa kontrol
@@ -967,6 +974,11 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/jadwal"} })},
 	{Method: "GET", Pattern: "/portal/siswa/{id}/nilai", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/nilai"} })},
+	// Ujian anak (T151): fixture sekolah tanpa modul ujian aktif, jadi
+	// tanpa kontrol positif (diuji di paket portal: TestChildExams).
+	{Method: "GET", Pattern: "/portal/siswa/{id}/ujian", Kind: KindByID, Roles: parent, ControlRoles: []string{},
+		Requests: paths(func(o *School) []string { return []string{"/portal/siswa/" + o.StudentIDs[0] + "/ujian"} })},
+	// Hasil untuk siswa dan orang tua (T151).
 	{Method: "GET", Pattern: "/portal/siswa/{id}/rapor.pdf", Kind: KindByID, Roles: parent,
 		Requests: paths(func(o *School) []string {
 			return []string{"/portal/siswa/" + o.StudentIDs[0] + "/rapor.pdf?semester=1"}

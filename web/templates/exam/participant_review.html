@@ -1,0 +1,34 @@
+{{define "title"}}Pembahasan · {{.Review.Exam.Name}}{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "header"}}{{template "participant_bar" .Participant}}{{end}}
+{{define "content"}}{{$rv := .Review}}
+<div class="adm-shell review-shell">
+<p class="mb-2"><a href="/u/beranda">← Beranda</a></p>
+<div class="adm-title"><h1>Pembahasan</h1><p>{{$rv.Exam.Name}}{{with $rv.Exam.SubjectName}} · {{.}}{{end}}</p></div>
+<section class="card stack">
+<p class="mb-0 text-lg">Nilai: {{with $rv.Result.Score}}<strong class="result-score">{{.}}</strong>{{else}}menunggu koreksi esai{{end}}</p>
+{{if $rv.Objectives}}
+<h2 class="card-title">Tujuan pembelajaran</h2>
+<ul class="review-tps">{{range $rv.Objectives}}<li><span class="review-tp-mark {{if .Mastered}}is-ok{{else}}is-low{{end}}" aria-hidden="true">{{if .Mastered}}✓{{else}}!{{end}}</span>
+<span><strong>{{.Code}}</strong> <span dir="auto">{{.Description}}</span><span class="block text-sm {{if .Mastered}}text-emerald-800{{else}}text-amber-800{{end}}">{{if .Mastered}}Sudah dikuasai{{else}}Perlu belajar lagi{{end}} · {{.Percent}}%</span></span></li>{{end}}</ul>
+{{end}}
+</section>
+{{range $rv.Answers}}{{if not .Item.Voided}}{{$q := .Item.Question}}
+<article class="card stack mt-4 review-q">
+<div class="result-q-head"><span class="exam-q-number">{{.Number}}</span><span class="text-sm text-slate-500">{{$q.Kind.Label}} · {{.Item.Points}} poin</span>
+<span class="result-points">{{if .Pending}}<span class="badge badge-warning">Menunggu koreksi</span>{{else}}<strong>{{with .EarnedText}}{{.}}{{else}}0{{end}}</strong>/{{.Item.Points}}{{end}}</span></div>
+<div class="exam-content">{{.View.Body}}</div>
+{{if .View.Choices}}<ol class="result-options">{{range .View.Choices}}<li><span class="exam-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol>{{end}}
+{{if .View.Statements}}<ol class="ms-5 list-decimal">{{range .View.Statements}}<li class="exam-content">{{.HTML}}</li>{{end}}</ol>{{end}}
+{{if .View.Left}}<div class="grid gap-2 sm:grid-cols-2"><ol class="ms-5 list-decimal">{{range .View.Left}}<li class="exam-content">{{.HTML}}</li>{{end}}</ol>
+<ol class="result-options">{{range .View.Right}}<li><span class="exam-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol></div>{{end}}
+<div class="result-answer-grid">
+<div><p class="result-label">Jawaban Anda</p>{{if .Answer}}<p class="result-answer{{if eq $q.Kind "esai"}} is-essay{{end}}" dir="auto">{{range $i, $l := .Answer}}{{if $i}}<br>{{end}}{{$l}}{{end}}</p>{{else}}<p class="muted mb-0">Tidak dijawab</p>{{end}}</div>
+<div><p class="result-label">Kunci</p><p class="mb-0" dir="auto">{{range $i, $l := .Key}}{{if $i}}<br>{{end}}{{$l}}{{end}}</p></div>
+</div>
+{{with .Comment}}<p class="mb-0 text-sm"><strong>Komentar guru:</strong> {{.}}</p>{{end}}
+{{with .Explanation}}<div class="review-explain"><p class="result-label">Pembahasan</p><div class="exam-content">{{.}}</div></div>{{end}}
+</article>
+{{end}}{{end}}
+</div>
+{{end}}
