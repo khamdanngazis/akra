@@ -78,7 +78,9 @@
 {{if and .Stimulus .FirstOfStimulus}}<div class="paper-stimulus"><strong>{{.Stimulus.Title}}</strong></div>{{end}}
 <span class="paper-no">{{.Number}}.</span>
 <span class="min-w-0 flex-1"><span dir="auto">{{.Question.Excerpt}}</span><span class="block text-sm text-slate-500">{{.Question.Kind.Label}}{{with .Question.Difficulty}} · {{.}}{{end}} · {{.Points}} poin · v{{.Question.Version}}{{with $sec.Title}} · {{.}}{{end}}</span>
+{{if index $.Overrides .Question.ID}}<span class="block text-sm"><span class="badge">Kunci dibetulkan</span></span>{{end}}
 {{with index $.Voided .Question.ID}}<span class="block text-sm"><span class="badge badge-danger">Dibatalkan</span> tidak dinilai{{with .Reason}} — {{.}}{{end}} <span class="text-slate-500">({{.By}})</span></span>{{end}}
+{{if and $.CanWrite $.Exam.Locked (ne .Question.Kind "esai")}}<a class="text-sm" href="/ujian/paket/{{$.Exam.ID}}/soal/{{.Question.ID}}/kunci">Betulkan kunci</a>{{end}}
 {{if and $.CanWrite $.Exam.Locked}}{{if index $.Voided .Question.ID}}
 <form method="post" action="/ujian/paket/{{$.Exam.ID}}/soal/{{.Question.ID}}/batal" class="mt-1">{{ csrfField }}<input type="hidden" name="aksi" value="pulihkan"><input type="hidden" name="paket" value="{{$.Variant.Label}}"><button type="submit" class="btn btn-ghost btn-sm">Pulihkan soal</button></form>
 {{else}}
@@ -234,6 +236,23 @@
 </section>
 
 {{else}}
-<section class="card mt-4"><p class="mb-0">Hasil, koreksi esai, dan analisis butir tampil di sini setelah peserta mengumpulkan.</p></section>
+<section class="card stack mt-4" aria-labelledby="results-title">
+<h2 class="card-title" id="results-title">Nilai peserta</h2>
+{{if .Results}}
+<p class="mb-0">{{.Graded}} peserta bernilai final{{if .AwaitEssay}}, <strong>{{.AwaitEssay}} menunggu koreksi esai</strong> (belum dikirim ke modul lain){{end}}. Soal objektif dinilai otomatis saat dikumpulkan; soal yang dibatalkan tidak dihitung.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Peserta</th><th>Sesi</th><th>Status</th><th class="text-right">Nilai</th></tr></thead>
+<tbody>{{range .Results}}<tr><td>{{.Name}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td>{{.Session}}</td>
+<td>{{if eq .Status ""}}Belum mulai{{else if eq .Status "berjalan"}}Mengerjakan{{else if eq .ScoreStat "menunggu_esai"}}<span class="badge badge-warning">Menunggu koreksi esai</span>{{else if eq .ScoreStat "final"}}Selesai{{else}}Dikumpulkan, belum dinilai{{end}}</td>
+<td class="text-right">{{with .Score}}<strong>{{.}}</strong>{{else}}—{{end}}{{if eq .ScoreStat "menunggu_esai"}}<span class="block text-xs text-slate-500">sementara</span>{{end}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}
+</section>
+{{with .Regrades}}
+<section class="card stack mt-4" aria-labelledby="regrade-title">
+<h2 class="card-title" id="regrade-title">Riwayat nilai ulang</h2>
+<ul class="ms-5 list-disc mb-0">{{range .}}<li><strong>{{.CauseLabel}}</strong>{{with .Question}} — <span dir="auto">{{.}}</span>{{end}}: {{.Attempts}} attempt dinilai ulang, {{.Raised}} naik, {{.Lowered}} turun.{{with .Reason}} Alasan: {{.}}.{{end}} <span class="muted text-sm">{{.By}}, {{.At.Format "02/01/2006 15.04"}}</span></li>{{end}}</ul>
+</section>
+{{end}}
 {{end}}
 {{end}}

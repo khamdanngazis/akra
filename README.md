@@ -339,6 +339,16 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - Berhenti bertahap: SIGTERM → `/healthz` 503, tunggu `SHUTDOWN_DRAIN_SECONDS`, lalu menunggu request berjalan sampai `SHUTDOWN_TIMEOUT_SECONDS` (default 25).
   - Uji keandalan: `go run ./cmd/savesim` (klien simulasi dengan antrian seperti halaman ujian, verifikasi 0 jawaban hilang) dan `-lb` (load balancer round-robin untuk 2 replika lokal). Simulasi gangguan di staging: `EXAM_FAULT_SAVE_PERCENT` (ditolak di production).
 
+## Penilaian Ujian (MVP 4, T146–T151)
+
+- **Penilaian otomatis** (T146, migrasi 000078, [internal/exam/grading.go](internal/exam/grading.go)): saat attempt dikumpulkan (peserta, pengawas, tutup sesi, atau job kumpul otomatis), soal objektif dinilai dari snapshot soal saat ujian terkunci.
+  - Aturan per jenis (`ScoreAnswer`): PG penuh/0; PG kompleks "semua benar" atau proporsional `max(0, (benar dipilih − salah dipilih) / jumlah kunci)`; benar/salah proporsional per pernyataan; isian teks/angka (koma/titik desimal, toleransi); menjodohkan proporsional per item kiri. Esai berisi menunggu koreksi (T147); esai kosong bernilai 0.
+  - Poin per jawaban di `exam_answers.points_x10000` (integer, satuan 1/10.000 poin: ⅔ poin = 6667; tidak ada kolom pecahan). Nilai attempt `score_x100` = Σ poin / total × 100 sebagai integer seperseratus (8750 = 87,50); soal dibatalkan (T144) tidak dihitung di total.
+  - `score_status`: `final` atau `menunggu_esai`. Modul lain hanya membaca `exam.FinalScores` (attempt terakhir per peserta yang final), sehingga nilai menunggu esai tidak bocor ke seleksi atau rapor.
+  - Error penilaian tidak menggagalkan pengumpulan (savepoint); job kumpul otomatis menilai susulan attempt yang belum bernilai, termasuk yang dikumpulkan sebelum T146.
+- **Nilai ulang** ([internal/exam/regrade.go](internal/exam/regrade.go)): tab Soal → *Betulkan kunci* (soal objektif, setelah ujian terkunci). Form kunci per jenis → *Lihat dampak* ("N peserta naik, M turun" dengan daftar perubahan) → *Terapkan* dengan alasan wajib. Kunci koreksi disimpan di `exam_key_overrides` (snapshot tetap append-only), semua attempt dinilai ulang, dicatat di audit (`exam.regrade`) dan riwayat `exam_regrades` (tab Hasil). Membatalkan/memulihkan soal juga menilai ulang. Penilaian idempoten: baris hanya ditulis bila nilainya berubah.
+- Tab **Hasil**: nilai peserta (final / menunggu koreksi esai) dan riwayat nilai ulang.
+
 ## Login Peserta Ujian
 
 - Siswa dan calon siswa masuk di `/u/{kode-sekolah}` dengan **NIS atau nomor pendaftaran** dan **kode di kartu ujian**. QR di kartu berisi `/u/{kode-sekolah}?nis=...`, sehingga peserta cukup mengetik kode.

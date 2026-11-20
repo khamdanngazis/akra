@@ -766,6 +766,10 @@ func VoidQuestion(ctx context.Context, db database.DB, sa StaffActor, e Exam, qu
 		if err != nil {
 			return fmt.Errorf("exam: void question: %w", err)
 		}
+		// Nilai attempt yang sudah dikumpulkan ikut berubah (T146).
+		if err := regradeAfterVoid(ctx, tx, sa, e, questionID, void, reason, now); err != nil {
+			return err
+		}
 		if void && notify {
 			ids, err := RunningExamSessions(ctx, tx, sa.SchoolID, e.ID, now)
 			if err != nil {

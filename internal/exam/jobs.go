@@ -72,7 +72,9 @@ func autoSubmitBatchOnce(ctx context.Context, db database.DB, now time.Time) (in
 		if err != nil {
 			return fmt.Errorf("exam: auto submit: %w", err)
 		}
+		cache := newGradeCache()
 		for _, d := range list {
+			gradeSafely(ctx, tx, cache, d.school, d.id, now)
 			if err := audit.Record(ctx, tx, audit.Entry{SchoolID: d.school, Action: "exam.attempt_submit", EntityType: "exam_attempt",
 				EntityID: d.id, After: map[string]any{"reason": SubmitBySystem, "session_id": d.session, "answered": d.answered,
 					"questions": d.questions}}); err != nil {
@@ -109,8 +111,19 @@ func (w *AutoSubmitWorker) Work(ctx context.Context, _ *river.Job[AutoSubmitArgs
 	if n > 0 {
 		w.Logger.InfoContext(ctx, "expired attempts submitted", "count", n)
 	}
+	if err != nil {
+		return err
+	}
+	// Penilaian susulan (T146): attempt yang belum bernilai.
+	g, err := GradePending(ctx, w.DB, gradePendingBatch, now())
+	if g > 0 {
+		w.Logger.InfoContext(ctx, "pending attempts graded", "count", g)
+	}
 	return err
 }
+
+// gradePendingBatch: attempt yang dinilai susulan per putaran job.
+const gradePendingBatch = 500
 
 // AutoSubmitPeriodicJob menjalankan AutoSubmitWorker setiap menit.
 func AutoSubmitPeriodicJob() *river.PeriodicJob {

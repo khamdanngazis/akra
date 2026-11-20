@@ -1,0 +1,58 @@
+{{define "title"}}Betulkan kunci · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=soal" .Exam.ID) "Betulkan kunci" ""}}
+<h1 class="text-2xl font-bold">Betulkan kunci</h1>
+<p class="muted">{{.Question.Kind.Label}} · <span dir="auto">{{.Excerpt}}</span></p>
+{{template "flash" .}}
+<p class="hint">Kunci baru dipakai untuk menilai ulang semua peserta yang sudah mengumpulkan; peserta yang masih mengerjakan dinilai dengan kunci baru saat mengumpulkan. Soal di bank tidak berubah.{{if .Overridden}} Kunci soal ini sudah pernah dibetulkan.{{end}}</p>
+
+<form method="post" class="card stack" novalidate>{{ csrfField }}
+{{if eq .Kind "pg"}}
+<fieldset class="stack"><legend class="font-semibold">Jawaban benar</legend>
+{{range .Choices}}<label class="choice"><input type="radio" name="correct" value="{{.ID}}"{{if .On}} checked{{end}}> {{.Label}}</label>{{end}}
+</fieldset>
+{{else if eq .Kind "pg_kompleks"}}
+<fieldset class="stack"><legend class="font-semibold">Jawaban benar (boleh lebih dari satu)</legend>
+{{range .Choices}}<label class="choice"><input type="checkbox" name="correct" value="{{.ID}}"{{if .On}} checked{{end}}> {{.Label}}</label>{{end}}
+</fieldset>
+<fieldset class="stack"><legend class="font-semibold">Penilaian</legend>
+<label class="choice"><input type="radio" name="scoring" value="semua"{{if ne .Scoring "proporsional"}} checked{{end}}> Semua benar = poin penuh</label>
+<label class="choice"><input type="radio" name="scoring" value="proporsional"{{if eq .Scoring "proporsional"}} checked{{end}}> Proporsional (tanpa nilai negatif)</label>
+</fieldset>
+{{else if eq .Kind "benar_salah"}}
+<fieldset class="stack"><legend class="font-semibold">Kunci tiap pernyataan</legend>
+{{range .Rows}}<div class="key-row"><span class="min-w-0 flex-1" dir="auto">{{.Label}}</span>
+<label class="choice"><input type="radio" name="truth_{{.ID}}" value="B"{{if eq .Value "B"}} checked{{end}}> Benar</label>
+<label class="choice"><input type="radio" name="truth_{{.ID}}" value="S"{{if eq .Value "S"}} checked{{end}}> Salah</label></div>{{end}}
+</fieldset>
+{{else if eq .Kind "isian"}}
+<div class="field"><label for="key-accepted">Jawaban yang diterima (satu per baris)</label>
+<textarea id="key-accepted" name="accepted" rows="4" dir="auto">{{.Accepted}}</textarea>
+<p class="hint">{{if .Numeric}}Angka; koma atau titik desimal sama saja.{{else}}Besar/kecil huruf, spasi, dan tanda baca diabaikan.{{end}}</p></div>
+{{if .Numeric}}<div class="field"><label for="key-tol">Toleransi (±)</label><input id="key-tol" name="tolerance" inputmode="decimal" value="{{.Tolerance}}" placeholder="0"></div>{{end}}
+{{else if eq .Kind "menjodohkan"}}
+<fieldset class="stack"><legend class="font-semibold">Pasangan yang benar</legend>
+{{range $r := .Rows}}<div class="field"><label for="pair-{{$r.ID}}" dir="auto">{{$r.Label}}</label>
+<select id="pair-{{$r.ID}}" name="pair_{{$r.ID}}"><option value="">Pilih…</option>{{range $.Right}}<option value="{{.ID}}"{{if eq .ID $r.Value}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+</fieldset>
+{{end}}
+
+{{with .Impact}}
+<section class="key-impact" aria-labelledby="impact-title" role="status">
+<h2 class="font-semibold" id="impact-title">Dampak bila diterapkan</h2>
+<p class="mb-0 text-lg"><strong>{{.Raised}} peserta naik</strong>, <strong>{{.Lowered}} turun</strong>, dari {{.Attempts}} yang sudah mengumpulkan.</p>
+{{with .Rows}}<div class="table-wrap"><table><thead><tr><th>Peserta</th><th class="text-right">Sebelum</th><th class="text-right">Sesudah</th></tr></thead>
+<tbody>{{range .}}<tr><td>{{.Name}}{{with .Number}} <span class="muted text-sm">{{.}}</span>{{end}}</td><td class="text-right">{{.BeforeLabel}}</td><td class="text-right"><strong>{{.AfterLabel}}</strong></td></tr>{{end}}</tbody></table></div>{{end}}
+</section>
+<div class="field"><label for="key-reason">Alasan pembetulan (wajib, tercatat di audit)</label>
+<input id="key-reason" name="alasan" maxlength="300" required value="{{$.Reason}}" placeholder="Mis. kunci tertukar dengan opsi B"></div>
+{{end}}
+{{if .Error}}<p class="alert alert-error mb-0" role="alert">{{.Error}}</p>{{end}}
+<div class="flex flex-wrap gap-2">
+<button type="submit" name="aksi" value="pratinjau" class="btn {{if .Impact}}btn-ghost{{else}}btn-primary{{end}}">Lihat dampak</button>
+{{if .Impact}}<button type="submit" name="aksi" value="terapkan" class="btn btn-primary">Terapkan dan nilai ulang</button>{{end}}
+<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}?tab=soal">Batal</a>
+</div>
+</form>
+{{end}}
