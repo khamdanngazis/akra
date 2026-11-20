@@ -30,6 +30,7 @@ func (h *Handler) examRoutes(r chi.Router) {
 			h.examDocsRoutes(readers, r)
 			h.followUpRoutes(r)
 			h.resultRoutes(readers, r)
+			h.syncRoutes(r)
 			r.Post("/paket/{id}/soal/{qid}/batal", h.examVoidQuestion)
 			r.Get("/paket/{id}/soal/{qid}/kunci", h.keyFixForm)
 			r.Post("/paket/{id}/soal/{qid}/kunci", h.keyFixPost)
@@ -168,11 +169,15 @@ func examNextStep(e Exam, rd Readiness, sessions []Session, canWrite bool, now t
 }
 
 type examDetailView struct {
-	User         auth.Identity
-	Exam         Exam
-	Tab          string
-	CanWrite     bool
-	Next         nextStep
+	User     auth.Identity
+	Exam     Exam
+	Tab      string
+	CanWrite bool
+	Next     nextStep
+	// Rapor (T150): ujian bisa dikirim ke rapor dan jumlah siswa yang
+	// nilainya berubah sejak dikirim.
+	ToReport     bool
+	GradesStale  int
 	Readiness    Readiness
 	Comp         compView
 	Variants     []Variant
@@ -253,6 +258,13 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 		v.Sections[s.ID] = s
 	}
 	v.Next = examNextStep(e, v.Readiness, sessions, v.CanWrite, now)
+	if v.CanWrite && e.Locked() && (e.FeedsGrades() || e.FollowUp != "") {
+		v.ToReport = true
+		if v.GradesStale, err = GradesStale(ctx, h.db, sa.SchoolID, e.ID); err != nil {
+			h.fail(w, r, "grades stale", err)
+			return
+		}
+	}
 	switch tab {
 	case "soal":
 		if len(v.Variants) > 0 {

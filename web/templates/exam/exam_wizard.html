@@ -240,6 +240,11 @@
 <input id="pass_score" name="pass_score" value="{{.Rules.PassScore}}" inputmode="numeric" maxlength="3" placeholder="mis. 75">
 {{with .Errors.pass_score}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dipakai untuk daftar remedial.</p>{{end}}
 </div>
+{{if .GradeComponents}}<div class="field{{if .Errors.grade_component_id}} has-error{{end}}">
+<label for="grade_component_id">Komponen nilai rapor <span class="muted">(opsional)</span></label>
+<select id="grade_component_id" name="grade_component_id"{{if .ReadOnly}} disabled{{end}}><option value="">Belum dikirim ke rapor</option>{{range .GradeComponents}}<option value="{{.ID}}"{{if eq .ID $.Rules.GradeComponentID}} selected{{end}}>{{.Name}} ({{.Weight}}%)</option>{{end}}</select>
+{{with .Errors.grade_component_id}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Nilai final dikirim ke komponen ini setelah Anda konfirmasi di halaman Kirim ke rapor. Beberapa ulangan ke komponen yang sama dirata-rata.</p>{{end}}
+</div>{{end}}
 <div class="field{{if or .Errors.integrity_mode .Errors.integrity_limit}} has-error{{end}}">
 <label for="integrity_mode">Saat peserta keluar halaman</label>
 <select id="integrity_mode" name="integrity_mode" x-model="integrity">

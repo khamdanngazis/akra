@@ -239,6 +239,7 @@
 <p class="muted mb-0">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · {{.A.KKTP.Label}} {{.A.KKTP.Value}} <span class="text-sm">({{.A.KKTP.Source}})</span></p></div>
 <div class="action-row">
 {{if .A.Summary.Awaiting}}<a class="btn btn-primary btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai ({{.A.Summary.Awaiting}} menunggu)</a>{{else if .CanWrite}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai</a>{{end}}
+{{if .ToReport}}<a class="btn {{if .GradesStale}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/ujian/paket/{{.Exam.ID}}/rapor">Kirim ke rapor</a>{{end}}
 <a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/analisis.xlsx{{with $q}}?{{.}}{{end}}">Unduh Excel</a>
 <a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/cetak{{with $q}}?{{.}}{{end}}">Cetak analisis</a>
 </div>
@@ -257,6 +258,7 @@
 <div class="action-row"><button type="submit" class="btn btn-ghost">Saring</button>{{if $q}}<a class="btn btn-ghost" href="?">Hapus saringan</a>{{end}}</div>
 </form>
 {{end}}
+{{if .GradesStale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.GradesStale}} siswa). <a href="/ujian/paket/{{.Exam.ID}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
 {{if .A.Summary.Awaiting}}<p class="alert alert-warning mt-3">{{.A.Summary.Awaiting}} peserta menunggu koreksi esai. Nilai mereka belum masuk statistik dan analisis di bawah.</p>{{end}}
 {{end}}
 
@@ -272,4 +274,14 @@
 <table class="visually-hidden"><caption>Jumlah peserta per rentang nilai</caption><thead><tr><th>Nilai</th><th>Peserta</th></tr></thead>
 <tbody>{{range .A.Summary.Bins}}<tr><td>{{.Label}}</td><td>{{.Count}}</td></tr>{{end}}</tbody></table>
 </figure>
+{{end}}
+
+{{/* exam_grade_component_form: pilih komponen nilai rapor tujuan ujian (T150). Argumen: gradeSyncView. */}}
+{{define "exam_grade_component_form"}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/rapor" class="flex flex-wrap items-end gap-2 mt-2">
+{{ csrfField }}<input type="hidden" name="aksi" value="komponen">
+<div class="field mb-0"><label for="grade_component_id">Komponen nilai</label>
+<select id="grade_component_id" name="grade_component_id"><option value="">Pilih komponen</option>{{range .Components}}<option value="{{.ID}}"{{if eq .ID $.Exam.GradeComponentID}} selected{{end}}>{{.Name}} ({{.Weight}}%)</option>{{end}}</select></div>
+<button type="submit" class="btn btn-ghost btn-sm">Simpan komponen</button>
+</form>
 {{end}}

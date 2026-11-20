@@ -42,6 +42,9 @@ type resultsView struct {
 	KKTPLine int    // posisi garis KKTP di histogram (0–100)
 	Flash    string
 	Error    string
+	// Rapor (T150).
+	ToReport    bool
+	GradesStale int
 }
 
 // filterOf membaca saringan dari query string.
@@ -74,6 +77,14 @@ func (h *Handler) resultsPage(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	v := resultsView{User: id, Exam: e, Tab: "nilai", A: a, CanWrite: e.Access(sa.Actor, now) >= Write, Query: a.Filter.Query(),
 		KKTPLine: a.KKTP.Value, Flash: auth.PopFlash(ctx, h.sessions)}
+	if v.CanWrite && (e.FeedsGrades() || e.FollowUp != "") {
+		v.ToReport = true
+		var err error
+		if v.GradesStale, err = GradesStale(ctx, h.db, sa.SchoolID, e.ID); err != nil {
+			h.fail(w, r, "grades stale", err)
+			return
+		}
+	}
 	switch path := r.URL.Path; {
 	case strings.HasSuffix(path, "/butir"):
 		v.Tab = "butir"

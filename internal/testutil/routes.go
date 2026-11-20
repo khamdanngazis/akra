@@ -615,6 +615,14 @@ var Routes = []Route{
 			func(o *School) url.Values { return url.Values{"user_id": {o.Teacher.ID}} })},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/esai/tugas/{aid}/hapus", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/esai/tugas/0/hapus" }, nil)},
+	// Kirim nilai ke rapor (T150): pemegang ujian; fixture tanpa komponen
+	// tujuan sehingga pratinjau menampilkan pemilih komponen.
+	{Method: "GET", Pattern: "/ujian/paket/{id}/rapor", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/rapor"} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/rapor", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/rapor" }, func(*School) url.Values {
+			return url.Values{"aksi": {"kirim"}}
+		})},
 	// Hasil dan analisis (T148): staf ujian membaca; nilai manual hanya
 	// penulis. Fixture tanpa attempt, jadi route per attempt tanpa kontrol
 	// positif (diuji di paket exam: TestResultDetailAndManualScore).

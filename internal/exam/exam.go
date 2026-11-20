@@ -118,6 +118,8 @@ type Exam struct {
 	// tindak lanjut (T137).
 	ParentExamID string
 	FollowUp     string
+	// GradeComponentID: komponen nilai rapor tujuan kirim nilai (T150).
+	GradeComponentID string
 }
 
 // StatusLabel mengembalikan nama status untuk tampilan.
@@ -197,7 +199,8 @@ const examCols = `e.id, e.school_id, coalesce(e.academic_year_id::text, ''), e.n
 	coalesce(s.name, ''), coalesce(e.grade_level, 0), e.duration_minutes, e.shuffle_questions, e.shuffle_options, e.shuffle_in_stimulus,
 	e.results_mode, e.results_after_all, e.max_attempts, e.pass_score, e.integrity_mode, coalesce(e.integrity_limit, 0), e.allow_back,
 	e.variant_count, e.status, e.wizard_step, e.owner_id, ou.full_name, coalesce(e.copied_from::text, ''), e.scheduled_at, e.locked_at,
-	e.created_by, e.created_at, e.updated_at, e.archived_at, e.builtin, coalesce(e.parent_exam_id::text, ''), coalesce(e.followup, '')`
+	e.created_by, e.created_at, e.updated_at, e.archived_at, e.builtin, coalesce(e.parent_exam_id::text, ''), coalesce(e.followup, ''),
+	coalesce(e.grade_component_id::text, '')`
 
 const examFrom = ` FROM exams e
 	LEFT JOIN subjects s ON s.id = e.subject_id AND s.school_id = e.school_id
@@ -210,7 +213,8 @@ func scanExam(r pgx.Row) (Exam, error) {
 	err := r.Scan(&e.ID, &e.SchoolID, &e.AcademicYearID, &e.Name, &e.Purpose, &e.SubjectID, &e.SubjectName, &grade, &dur,
 		&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 		&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
-		&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp)
+		&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
+		&e.GradeComponentID)
 	e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 	if pass != nil {
 		v := int(*pass)
@@ -276,7 +280,7 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 			&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 			&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
 			&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
-			&x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
+			&e.GradeComponentID, &x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
 		e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 		if pass != nil {
 			v := int(*pass)
@@ -497,13 +501,15 @@ type RulesForm struct {
 	MaxAttempts, PassScore                              string
 	IntegrityMode, IntegrityLimit                       string
 	AllowBack                                           bool
+	// GradeComponentID: komponen nilai rapor tujuan (T150), opsional.
+	GradeComponentID string
 }
 
 // RulesFormOf mengubah ujian menjadi isian Aturan.
 func RulesFormOf(e Exam) RulesForm {
 	f := RulesForm{ShuffleQuestions: e.ShuffleQuestions, ShuffleOptions: e.ShuffleOptions, ShuffleInStimulus: e.ShuffleInStimulus,
 		ResultsMode: e.ResultsMode, ResultsAfterAll: e.ResultsAfterAll, MaxAttempts: strconv.Itoa(e.MaxAttempts),
-		IntegrityMode: e.IntegrityMode, AllowBack: e.AllowBack}
+		IntegrityMode: e.IntegrityMode, AllowBack: e.AllowBack, GradeComponentID: e.GradeComponentID}
 	if e.PassScore != nil {
 		f.PassScore = strconv.Itoa(*e.PassScore)
 	}
@@ -552,8 +558,19 @@ func UpdateRules(ctx context.Context, db database.DB, sa StaffActor, id string, 
 		default:
 			errs["integrity_mode"] = "Pilih aturan integritas."
 		}
+		if err := checkGradeComponent(ctx, tx, e, f.GradeComponentID); err != nil {
+			var fe *FieldError
+			if !errors.As(err, &fe) && !errors.Is(err, ErrGradePurpose) {
+				return err
+			}
+			errs["grade_component_id"] = ErrBadGradeComponent.Fields["grade_component_id"]
+		}
 		if len(errs) > 0 {
 			return &FieldError{Fields: errs}
+		}
+		if _, err := tx.Exec(ctx, `UPDATE exams SET grade_component_id = $3 WHERE school_id = $1 AND id = $2`, sa.SchoolID, e.ID,
+			nullable(f.GradeComponentID)); err != nil {
+			return fmt.Errorf("exam: update grade component: %w", err)
 		}
 		_, err = tx.Exec(ctx, `UPDATE exams SET shuffle_questions = $3, shuffle_options = $4, shuffle_in_stimulus = $5, results_mode = $6,
 			results_after_all = $7, max_attempts = $8, pass_score = $9, integrity_mode = $10, integrity_limit = $11, allow_back = $12,
