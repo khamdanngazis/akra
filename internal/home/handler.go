@@ -110,8 +110,11 @@ type view struct {
 	News       []RecentAnnouncement
 	// Proctor adalah sesi ujian yang diawasi pengguna hari ini (T143).
 	Proctor []exam.MySessionCard
-	Flash   string
-	Error   string
+	// Essay adalah koreksi esai yang menunggu dan nilai yang siap dikirim
+	// ke rapor (T147).
+	Essay []exam.EssayWork
+	Flash string
+	Error string
 }
 
 // ServeHTTP merender beranda. Peran: semua staf; orang tua dialihkan ke
@@ -158,6 +161,12 @@ func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.Academ
 			return err
 		}
 		v.Treasurer = &s
+	}
+	// Pemegang ujian bisa guru atau admin TU; korektor yang ditugaskan guru.
+	if id.HasRole(auth.RoleGuru) || id.HasRole(auth.RoleAdminTU) {
+		if v.Essay, err = exam.MyEssayWork(ctx, h.db, id.SchoolID, id.UserID, now); err != nil {
+			return err
+		}
 	}
 	if id.HasRole(auth.RoleGuru) {
 		v.IsTeacher = true

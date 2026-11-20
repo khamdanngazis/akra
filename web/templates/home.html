@@ -18,6 +18,13 @@
 <div class="alert alert-info" role="note">Belum ada tahun ajaran aktif. Kelas, absensi, dan tagihan memakai tahun ajaran aktif.{{if .CanSetYear}} <a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a>.{{else}} Hubungi admin/TU.{{end}}</div>
 {{end}}
 
+{{with .Essay}}
+<section class="card stack mb-6" aria-labelledby="essay-work">
+<h2 class="card-title" id="essay-work">Koreksi esai</h2>
+<ul class="essay-work">{{range .}}<li>{{if .Pending}}<a href="/ujian/paket/{{.ExamID}}/esai"><strong>{{.ExamName}}</strong></a> · {{.Pending}} jawaban esai menunggu koreksi{{else}}<a href="/ujian/paket/{{.ExamID}}?tab=hasil"><strong>{{.ExamName}}</strong></a> · semua esai sudah dikoreksi; nilai final dan siap dikirim ke rapor{{end}}</li>{{end}}</ul>
+</section>
+{{end}}
+
 {{with .Proctor}}
 <section class="mb-6" aria-labelledby="my-sessions">
 <div class="card-head"><h2 class="card-title" id="my-sessions">Sesi saya hari ini</h2><a class="link-more" href="/ujian/sesi-saya">Semua{{template "icon" "arrow-right"}}</a></div>

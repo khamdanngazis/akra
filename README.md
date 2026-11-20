@@ -348,6 +348,12 @@ railway ssh --service akra -- akra-modul -school <kode> -exam off
   - Error penilaian tidak menggagalkan pengumpulan (savepoint); job kumpul otomatis menilai susulan attempt yang belum bernilai, termasuk yang dikumpulkan sebelum T146.
 - **Nilai ulang** ([internal/exam/regrade.go](internal/exam/regrade.go)): tab Soal → *Betulkan kunci* (soal objektif, setelah ujian terkunci). Form kunci per jenis → *Lihat dampak* ("N peserta naik, M turun" dengan daftar perubahan) → *Terapkan* dengan alasan wajib. Kunci koreksi disimpan di `exam_key_overrides` (snapshot tetap append-only), semua attempt dinilai ulang, dicatat di audit (`exam.regrade`) dan riwayat `exam_regrades` (tab Hasil). Membatalkan/memulihkan soal juga menilai ulang. Penilaian idempoten: baris hanya ditulis bila nilainya berubah.
 - Tab **Hasil**: nilai peserta (final / menunggu koreksi esai) dan riwayat nilai ulang.
+- **Koreksi esai** (T147, migrasi 000079, [internal/exam/essay.go](internal/exam/essay.go), `/ujian/paket/{id}/esai`):
+  - Antrian per soal (bukan per siswa) dengan progres; layar koreksi berisi soal dan rubrik di samping, jawaban berhuruf besar, tombol skor cepat 0..maks atau ketik (boleh desimal, mis. 2,5), komentar opsional, *Simpan & berikutnya*, pintasan keyboard (angka, Enter, ← →). Di HP ditumpuk.
+  - Anonim secara bawaan (nama bisa ditampilkan per jawaban).
+  - **Bagi koreksi**: pemegang ujian, koordinator, atau admin_tu menugaskan guru lain untuk satu soal esai dan/atau satu sesi/ruang (`exam_grader_assignments`). Guru yang ditugaskan hanya melihat bagian itu dan tidak mendapat akses halaman ujian; selain itu 404.
+  - **Kemiripan jawaban** ([internal/exam/similarity.go](internal/exam/similarity.go)): shingle 3 kata + indeks Jaccard ≥ 50% antar-jawaban soal yang sama (jawaban < 8 kata tidak dibandingkan), ditandai sebagai bahan pertimbangan.
+  - Skor esai menilai ulang attempt; nilai menjadi `final` saat semua esainya dikoreksi. Beranda pemegang ujian/korektor menampilkan esai yang menunggu dan kabar "nilai final, siap dikirim ke rapor" (14 hari). Setiap skor tercatat di audit (`exam.essay_grade`).
 
 ## Login Peserta Ujian
 

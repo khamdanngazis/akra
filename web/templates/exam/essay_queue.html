@@ -1,0 +1,45 @@
+{{define "title"}}Koreksi esai · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{if .Full}}{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=hasil" .Exam.ID) "Koreksi esai" ""}}
+{{else}}{{template "back_nav" crumbs "Beranda" "/" "Koreksi esai" ""}}{{end}}
+<h1 class="text-2xl font-bold">Koreksi esai</h1>
+<p class="muted">{{.Exam.Name}} · {{.Graded}}/{{.Total}} jawaban dikoreksi</p>
+{{template "flash" .}}
+{{if not .Full}}<p class="alert alert-info">Anda ditugaskan mengoreksi bagian ujian ini. Hanya soal dan peserta yang ditugaskan yang tampil.</p>{{end}}
+
+<section class="card stack" aria-labelledby="queue-title">
+<h2 class="card-title" id="queue-title">Antrian per soal</h2>
+<p class="hint mb-0">Koreksi satu soal untuk semua peserta dulu agar standarnya sama. Nama peserta disembunyikan saat koreksi.</p>
+{{if .Questions}}
+<ul class="essay-queue">
+{{range .Questions}}
+<li class="essay-queue-item">
+<div class="min-w-0 flex-1">
+<p class="mb-0 font-semibold">Soal {{.Number}} · {{.Points}} poin</p>
+<p class="mb-0 text-sm muted" dir="auto">{{.Question.Excerpt}}</p>
+<progress class="essay-progress" max="{{.Total}}" value="{{.Graded}}" aria-label="Soal {{.Number}}: {{.Graded}} dari {{.Total}} dikoreksi"></progress>
+<p class="mb-0 text-sm">{{.Graded}}/{{.Total}} dikoreksi{{if .Pending}} · <strong>{{.Pending}} menunggu</strong>{{end}}</p>
+</div>
+{{if .Total}}<a class="btn {{if .Pending}}btn-primary{{else}}btn-ghost{{end}}" href="/ujian/paket/{{$.Exam.ID}}/esai/{{.Question.ID}}">{{if .Pending}}Koreksi{{else}}Tinjau{{end}}</a>{{end}}
+</li>
+{{end}}
+</ul>
+{{else}}<p class="mb-0">Tidak ada soal esai{{if not .Full}} yang ditugaskan kepada Anda{{end}}.</p>{{end}}
+</section>
+
+{{if .Full}}
+<section class="card stack mt-4" aria-labelledby="assign-title">
+<h2 class="card-title" id="assign-title">Bagi koreksi</h2>
+<p class="hint mb-0">Tugaskan soal atau sesi/ruang ke guru lain (mis. tim mapel PAS). Penugasan hanya memberi akses koreksi, bukan akses ujian.</p>
+{{with .Assignments}}<ul class="ms-5 list-disc">{{range .}}<li><strong>{{.UserName}}</strong> · {{with .Question}}soal "{{.}}"{{else}}semua soal esai{{end}} · {{with .Session}}{{.}}{{else}}semua sesi{{end}}
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/esai/tugas/{{.ID}}/hapus" class="inline">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form></li>{{end}}</ul>{{end}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/esai/tugas" class="essay-assign" novalidate>{{ csrfField }}
+<div class="field"><label for="assign-user">Guru</label><select id="assign-user" name="user_id" required><option value="">Pilih guru…</option>{{range .Teachers}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="assign-q">Soal</label><select id="assign-q" name="question_id"><option value="">Semua soal esai</option>{{range .Questions}}<option value="{{.Question.ID}}">Soal {{.Number}}: {{.Question.Excerpt}}</option>{{end}}</select></div>
+<div class="field"><label for="assign-s">Sesi/ruang</label><select id="assign-s" name="session_id"><option value="">Semua sesi</option>{{range .Sessions}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
+<button type="submit" class="btn btn-primary">Tugaskan</button>
+</form>
+</section>
+{{end}}
+{{end}}
