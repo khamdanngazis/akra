@@ -214,7 +214,7 @@ func TestRegradeKeyFix(t *testing.T) {
 		t.Errorf("audit %d regrade log %d", auditN, regradeN)
 	}
 	// Tab Hasil dan Soal menampilkan nilai dan riwayat.
-	hasil := e.staffDo(http.MethodGet, "/ujian/paket/"+e.ex.ID+"?tab=hasil", e.a.Admin, nil).Body.String()
+	hasil := e.staffDo(http.MethodGet, "/ujian/paket/"+e.ex.ID+"/hasil", e.a.Admin, nil).Body.String()
 	if !strings.Contains(hasil, "33,33") || !strings.Contains(hasil, "Kunci dibetulkan") || !strings.Contains(hasil, "kunci tertukar") {
 		t.Errorf("results tab missing score or regrade history")
 	}

@@ -1,0 +1,62 @@
+{{define "title"}}{{.P.Name}} · Hasil {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" (printf "/ujian/paket/%s/hasil" .Exam.ID) .P.Name ""}}
+<div class="flex flex-wrap items-start justify-between gap-3">
+<div><h1 class="text-2xl font-bold">{{.P.Name}}</h1>
+<p class="muted mb-0">{{with .P.Number}}{{.}} · {{end}}{{with .P.ClassName}}{{.}} · {{end}}{{.P.SessionTitle}}{{with .P.KindLabel}} ({{.}}){{end}}{{with .P.VariantLabel}} · Paket {{.}}{{end}}{{if gt .P.AttemptNo 1}} · percobaan ke-{{.P.AttemptNo}}{{end}}</p></div>
+<div class="text-right"><span class="stat-value">{{with .P.Score}}{{.}}{{else}}—{{end}}</span><span class="stat-label block">{{.P.StatusLabel}}</span></div>
+</div>
+{{template "flash" .}}
+<div class="stat-grid mt-4">
+<div><span class="stat-value text-lg">{{with .P.Duration}}{{.}}{{else}}—{{end}}</span><span class="stat-label">Lama mengerjakan</span></div>
+<div><span class="stat-value text-lg">{{with .P.IntegrityText}}{{.}}{{else}}Bersih{{end}}</span><span class="stat-label">Integritas</span></div>
+</div>
+
+<div class="result-grid mt-4">
+<div class="stack min-w-0">
+{{range .Answers}}{{$d := .}}{{$q := .Item.Question}}
+<article class="card stack result-q{{if .Item.Voided}} is-voided{{end}}" id="soal-{{$q.ID}}">
+<div class="result-q-head"><span class="exam-q-number">{{.Number}}</span>
+<span class="text-sm text-slate-500">{{$q.Kind.Label}} · {{.Item.Points}} poin</span>
+{{if .Item.Voided}}<span class="badge">Dibatalkan</span>{{end}}
+{{if .Override}}<span class="badge badge-info">Nilai manual</span>{{end}}
+<span class="result-points">{{if .Pending}}<span class="badge badge-warning">Menunggu koreksi</span>{{else}}<strong>{{with .EarnedText}}{{.}}{{else}}0{{end}}</strong>/{{.Item.Points}}{{end}}</span></div>
+<div class="exam-content">{{.View.Body}}</div>
+{{if .View.Choices}}<ol class="result-options">{{range .View.Choices}}<li><span class="exam-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol>{{end}}
+{{if .View.Statements}}<ol class="ms-5 list-decimal">{{range .View.Statements}}<li class="exam-content">{{.HTML}}</li>{{end}}</ol>{{end}}
+{{if .View.Left}}<div class="grid gap-2 sm:grid-cols-2"><ol class="ms-5 list-decimal">{{range .View.Left}}<li class="exam-content">{{.HTML}}</li>{{end}}</ol>
+<ol class="result-options">{{range .View.Right}}<li><span class="exam-letter" aria-hidden="true">{{.Letter}}</span><span class="exam-content min-w-0">{{.HTML}}</span></li>{{end}}</ol></div>{{end}}
+<div class="result-answer-grid">
+<div><p class="result-label">Jawaban peserta</p>{{if .Answer}}<p class="result-answer{{if eq $q.Kind "esai"}} is-essay{{end}}" dir="auto">{{range $i, $l := .Answer}}{{if $i}}<br>{{end}}{{$l}}{{end}}</p>{{else}}<p class="muted mb-0">Tidak dijawab</p>{{end}}</div>
+<div><p class="result-label">Kunci</p><p class="mb-0" dir="auto">{{range $i, $l := .Key}}{{if $i}}<br>{{end}}{{$l}}{{end}}</p></div>
+</div>
+{{with .Comment}}<p class="mb-0 text-sm"><strong>Komentar guru:</strong> {{.}}</p>{{end}}
+{{if .Override}}<p class="mb-0 text-sm text-slate-600">Nilai manual oleh {{.OverrideBy}}, {{.OverrideAt.Format "02/01/2006 15.04"}}: {{.OverrideReason}}</p>{{end}}
+{{if and $.CanWrite (eq $.P.Status "dikumpulkan") (not .Item.Voided)}}
+{{if eq $q.Kind "esai"}}{{if .Answer}}<p class="mb-0 text-sm"><a href="/ujian/paket/{{$.Exam.ID}}/esai/{{$q.ID}}?a={{$.P.AttemptID}}">{{if .Pending}}Koreksi esai ini{{else}}Ubah nilai esai{{end}}</a></p>{{end}}
+{{else}}
+<details class="result-manual"{{if eq $.Edit $q.ID}} open{{end}}><summary>Nilai manual (koreksi khusus)</summary>
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/hasil/peserta/{{$.P.AttemptID}}/nilai" class="stack mt-2" novalidate>
+{{ csrfField }}<input type="hidden" name="qid" value="{{$q.ID}}">
+<p class="hint mb-0">Untuk kasus khusus, mis. jawaban hilang karena kendala teknis. Poin ini tetap dipakai saat nilai ulang dan tercatat di audit.</p>
+<div class="field"><label for="skor-{{$q.ID}}">Poin (0–{{.Item.Points}})</label><input id="skor-{{$q.ID}}" name="skor" inputmode="decimal" class="max-w-40" value="{{if eq $.Edit $q.ID}}{{$.Form.Get "skor"}}{{else}}{{.EarnedText}}{{end}}"{{if and (eq $.Edit $q.ID) $.Errors.skor}} aria-invalid="true" aria-describedby="skor-err-{{$q.ID}}"{{end}}>
+{{if eq $.Edit $q.ID}}{{with $.Errors.skor}}<p class="field-error" id="skor-err-{{$q.ID}}">{{.}}</p>{{end}}{{end}}</div>
+<div class="field"><label for="alasan-{{$q.ID}}">Alasan</label><textarea id="alasan-{{$q.ID}}" name="alasan" rows="2" maxlength="500"{{if and (eq $.Edit $q.ID) $.Errors.alasan}} aria-invalid="true" aria-describedby="alasan-err-{{$q.ID}}"{{end}}>{{if eq $.Edit $q.ID}}{{$.Form.Get "alasan"}}{{end}}</textarea>
+{{if eq $.Edit $q.ID}}{{with $.Errors.alasan}}<p class="field-error" id="alasan-err-{{$q.ID}}">{{.}}</p>{{end}}{{end}}</div>
+<div class="action-row"><button type="submit" class="btn btn-primary btn-sm">Simpan nilai manual</button>
+{{if .Override}}<button type="submit" name="aksi" value="hapus" class="btn btn-ghost btn-sm">Hapus nilai manual</button>{{end}}</div>
+</form></details>
+{{end}}{{end}}
+</article>
+{{end}}
+</div>
+<aside class="card stack result-side" aria-labelledby="log-title">
+<h2 class="card-title" id="log-title">Log kejadian</h2>
+{{if .Events}}<ol class="result-log">{{range .Events}}<li><span class="muted text-sm">{{.OccurredAt.Format "15.04.05"}}</span> {{.Label}}{{with .DurationText}} <span class="muted text-sm">({{.}})</span>{{end}}</li>{{end}}</ol>
+<p class="hint mb-0">Waktu {{.Zone}}, terbaru di atas.</p>
+{{else}}<p class="mb-0">Tidak ada kejadian tercatat.</p>{{end}}
+</aside>
+</div>
+{{end}}

@@ -180,6 +180,15 @@ type AttemptEvent struct {
 // Label mengembalikan nama kejadian.
 func (e AttemptEvent) Label() string { return EventLabel(e.Kind) }
 
+// DurationText menampilkan lama kejadian (mis. lama di luar halaman),
+// kosong bila tidak ada.
+func (e AttemptEvent) DurationText() string {
+	if e.Duration < time.Second {
+		return ""
+	}
+	return awayLabel(e.Duration)
+}
+
 // ListAttemptEvents mengembalikan kejadian attempt, terbaru dulu (paling
 // banyak limit), untuk layar pengawas (T143) dan hasil (T148).
 func ListAttemptEvents(ctx context.Context, q database.DBTX, schoolID, attemptID string, limit int) ([]AttemptEvent, error) {

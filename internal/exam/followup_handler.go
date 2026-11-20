@@ -24,6 +24,10 @@ type followView struct {
 	FollowUps  []Exam
 	History    []StudentHistory
 	Parent     *Exam
+	// Kind: jenis terpilih; dari tombol Buat remedial/pengayaan di hasil
+	// (T148) siswa dan TP fokus sudah dicentang.
+	Kind      string
+	Prefilled bool
 }
 
 func (h *Handler) loadFollowView(r *http.Request, e Exam, codes map[string]string, comp Composition, now time.Time) (followView, error) {
@@ -57,6 +61,12 @@ func (h *Handler) loadFollowView(r *http.Request, e Exam, codes map[string]strin
 			v.Objectives = append(v.Objectives, optionItem{Value: id, Label: codes[id]})
 		}
 	}
+	v.Kind = FollowRemedial
+	if untuk := r.URL.Query().Get("untuk"); untuk == FollowRemedial || untuk == FollowEnrichment {
+		if err := h.prefillFollow(r, e, &v, untuk); err != nil {
+			return v, err
+		}
+	}
 	if v.FollowUps, err = ListFollowUps(ctx, h.db, e.SchoolID, e.ID); err != nil {
 		return v, err
 	}
@@ -69,6 +79,41 @@ func (h *Handler) loadFollowView(r *http.Request, e Exam, codes map[string]strin
 	}
 	v.History, err = FollowUpHistory(ctx, h.db, e.SchoolID, root)
 	return v, err
+}
+
+// prefillFollow mencentang siswa dan TP dari analisis hasil (T148):
+// remedial = siswa di bawah KKTP dengan TP fokus gabungan; pengayaan =
+// siswa tuntas. Nilai siswa ditampilkan di label.
+func (h *Handler) prefillFollow(r *http.Request, e Exam, v *followView, kind string) error {
+	a, err := LoadExamAnalysis(r.Context(), h.db, e, ResultFilter{})
+	if err != nil {
+		return err
+	}
+	v.Kind, v.Prefilled = kind, true
+	list := a.Follow.Enrichment
+	if kind == FollowRemedial {
+		list = a.Follow.Remedial
+	}
+	pick := map[string]string{}
+	for _, s := range list {
+		pick[s.StudentID] = s.Score()
+	}
+	for i, o := range v.Students {
+		if sc, ok := pick[o.Value]; ok {
+			v.Students[i].Selected = true
+			v.Students[i].Label += " · " + sc
+		}
+	}
+	if kind == FollowRemedial {
+		focus := map[string]bool{}
+		for _, o := range a.Follow.Focus {
+			focus[o.ID] = true
+		}
+		for i, o := range v.Objectives {
+			v.Objectives[i].Selected = focus[o.Value]
+		}
+	}
+	return nil
 }
 
 func (h *Handler) examMakeup(w http.ResponseWriter, r *http.Request) {

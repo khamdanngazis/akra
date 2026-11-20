@@ -230,3 +230,46 @@
 </div>
 </header>
 {{end}}
+
+{{/* results_head: judul, sub-tab, tombol, dan saringan halaman hasil (T148). Argumen: resultsView. */}}
+{{define "results_head"}}{{$q := .Query}}
+{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" ""}}
+<div class="flex flex-wrap items-start justify-between gap-3">
+<div><h1 class="text-2xl font-bold">Hasil ujian</h1>
+<p class="muted mb-0">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · {{.A.KKTP.Label}} {{.A.KKTP.Value}} <span class="text-sm">({{.A.KKTP.Source}})</span></p></div>
+<div class="action-row">
+{{if .A.Summary.Awaiting}}<a class="btn btn-primary btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai ({{.A.Summary.Awaiting}} menunggu)</a>{{else if .CanWrite}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai</a>{{end}}
+<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/analisis.xlsx{{with $q}}?{{.}}{{end}}">Unduh Excel</a>
+<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/cetak{{with $q}}?{{.}}{{end}}">Cetak analisis</a>
+</div>
+</div>
+{{template "flash" .}}
+<nav class="tabs mt-4" aria-label="Bagian hasil">
+<a href="/ujian/paket/{{.Exam.ID}}/hasil{{with $q}}?{{.}}{{end}}"{{if eq .Tab "nilai"}} aria-current="page"{{end}}>Nilai</a>
+<a href="/ujian/paket/{{.Exam.ID}}/hasil/butir{{with $q}}?{{.}}{{end}}"{{if eq .Tab "butir"}} aria-current="page"{{end}}>Analisis butir</a>
+<a href="/ujian/paket/{{.Exam.ID}}/hasil/tp{{with $q}}?{{.}}{{end}}"{{if eq .Tab "tp"}} aria-current="page"{{end}}>Analisis TP &amp; remedial</a>
+</nav>
+{{if or (gt (len .A.Classes) 1) (gt (len .A.Sessions) 1) (gt (len .A.Variants) 1)}}
+<form method="get" class="results-filter" aria-label="Saring hasil">
+{{if gt (len .A.Classes) 1}}<div class="field"><label for="f-kelas">Kelas</label><select id="f-kelas" name="kelas"><option value="">Semua kelas</option>{{range .A.Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+{{if gt (len .A.Sessions) 1}}<div class="field"><label for="f-sesi">Sesi</label><select id="f-sesi" name="sesi"><option value="">Semua sesi</option>{{range .A.Sessions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+{{if gt (len .A.Variants) 1}}<div class="field"><label for="f-paket">Paket</label><select id="f-paket" name="paket"><option value="">Semua paket</option>{{range .A.Variants}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+<div class="action-row"><button type="submit" class="btn btn-ghost">Saring</button>{{if $q}}<a class="btn btn-ghost" href="?">Hapus saringan</a>{{end}}</div>
+</form>
+{{end}}
+{{if .A.Summary.Awaiting}}<p class="alert alert-warning mt-3">{{.A.Summary.Awaiting}} peserta menunggu koreksi esai. Nilai mereka belum masuk statistik dan analisis di bawah.</p>{{end}}
+{{end}}
+
+{{/* results_histogram: sebaran nilai final dengan garis KKTP. Argumen: resultsView. */}}
+{{define "results_histogram"}}
+<figure class="score-hist" aria-labelledby="hist-cap">
+<figcaption id="hist-cap" class="card-title">Sebaran nilai</figcaption>
+<div class="score-hist-plot">
+<span class="score-hist-kktp" style="left: {{.KKTPLine}}%" aria-hidden="true"><span>{{.A.KKTP.Label}} {{.A.KKTP.Value}}</span></span>
+{{range .A.Summary.Bins}}<div class="score-hist-col" title="{{.Label}}: {{.Count}} peserta"><span class="score-hist-n">{{if .Count}}{{.Count}}{{end}}</span><span class="score-hist-bar" style="height: {{.Width}}%"></span></div>{{end}}
+</div>
+<div class="score-hist-axis" aria-hidden="true">{{range .A.Summary.Bins}}<span>{{.Label}}</span>{{end}}</div>
+<table class="visually-hidden"><caption>Jumlah peserta per rentang nilai</caption><thead><tr><th>Nilai</th><th>Peserta</th></tr></thead>
+<tbody>{{range .A.Summary.Bins}}<tr><td>{{.Label}}</td><td>{{.Count}}</td></tr>{{end}}</tbody></table>
+</figure>
+{{end}}

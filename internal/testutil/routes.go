@@ -615,6 +615,30 @@ var Routes = []Route{
 			func(o *School) url.Values { return url.Values{"user_id": {o.Teacher.ID}} })},
 	{Method: "POST", Pattern: "/ujian/paket/{id}/esai/tugas/{aid}/hapus", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/esai/tugas/0/hapus" }, nil)},
+	// Hasil dan analisis (T148): staf ujian membaca; nilai manual hanya
+	// penulis. Fixture tanpa attempt, jadi route per attempt tanpa kontrol
+	// positif (diuji di paket exam: TestResultDetailAndManualScore).
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/hasil"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil/butir", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/hasil/butir"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil/tp", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/hasil/tp"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil/analisis.xlsx", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/hasil/analisis.xlsx"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil/cetak", Kind: KindByID, Roles: examStaff,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/hasil/cetak"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/hasil/peserta/{attempt}", Kind: KindByID, Roles: examStaff, ControlRoles: []string{},
+		Requests: paths(func(o *School) []string {
+			return []string{"/ujian/paket/" + o.ExamID + "/hasil/peserta/" + o.ExamSessionID}
+		})},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/hasil/peserta/{attempt}/nilai", Kind: KindByID, Roles: examWriters, ControlRoles: []string{},
+		Requests: post(func(o *School) string {
+			return "/ujian/paket/" + o.ExamID + "/hasil/peserta/" + o.ExamSessionID + "/nilai"
+		},
+			func(o *School) url.Values {
+				return url.Values{"qid": {o.ExamQuestionID}, "skor": {"1"}, "alasan": {"Uji lintas sekolah"}}
+			})},
 	{Method: "GET", Pattern: "/ujian/paket/{id}/soal/{qid}/kunci", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: paths(func(o *School) []string {
 			return []string{"/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/kunci"}

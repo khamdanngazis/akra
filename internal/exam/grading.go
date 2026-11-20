@@ -187,11 +187,12 @@ func ScoreLabel(x100 int) string {
 }
 
 // GradeAnswers menilai jawaban attempt (question_id → nilai JSON) untuk
-// items. essay berisi poin esai yang sudah dikoreksi (question_id → poin
-// dalam satuan 1/10.000);
-// esai berisi tanpa poin membuat status menunggu_esai. Murni: hasil sama
-// untuk masukan yang sama (penilaian idempoten).
-func GradeAnswers(items []GradeItem, answers map[string]json.RawMessage, essay map[string]int) AttemptGrade {
+// items. fixed berisi poin tetap (question_id → poin dalam satuan
+// 1/10.000): esai yang sudah dikoreksi dan nilai manual (T148), dipakai
+// apa adanya tanpa menilai jawaban. Esai berisi tanpa poin membuat status
+// menunggu_esai. Murni: hasil sama untuk masukan yang sama (penilaian
+// idempoten).
+func GradeAnswers(items []GradeItem, answers map[string]json.RawMessage, fixed map[string]int) AttemptGrade {
 	var g AttemptGrade
 	g.Status = ScoreFinal
 	for _, it := range items {
@@ -200,17 +201,18 @@ func GradeAnswers(items []GradeItem, answers map[string]json.RawMessage, essay m
 		if !it.Voided {
 			g.Max += it.Points
 		}
-		if !answered {
+		fixedPts, isFixed := fixed[qid]
+		if !answered && !isFixed {
 			continue
 		}
 		frac, manual := ScoreAnswer(it.Question, it.Key, raw)
 		var pts *int
 		switch {
+		case isFixed:
+			v := min(max(fixedPts, 0), it.Points*PointsUnit)
+			pts = &v
 		case manual:
-			if p, ok := essay[qid]; ok {
-				v := min(max(p, 0), it.Points*PointsUnit)
-				pts = &v
-			} else if !it.Voided {
+			if !it.Voided {
 				g.Status = ScoreAwaitEssay
 			}
 		default:
@@ -344,8 +346,8 @@ func gradeAttempt(ctx context.Context, q database.DBTX, cache *gradeCache, schoo
 	return g, nil
 }
 
-// loadGradingAnswers membaca jawaban attempt dan poin esai yang sudah
-// dikoreksi.
+// loadGradingAnswers membaca jawaban attempt dan poin tetap: esai yang
+// sudah dikoreksi dan nilai manual.
 func loadGradingAnswers(ctx context.Context, q database.DBTX, attemptID string, items []GradeItem) (map[string]json.RawMessage, map[string]int, error) {
 	essayQ := map[string]bool{}
 	for _, it := range items {
@@ -353,7 +355,7 @@ func loadGradingAnswers(ctx context.Context, q database.DBTX, attemptID string, 
 			essayQ[it.Question.ID] = true
 		}
 	}
-	rows, err := q.Query(ctx, `SELECT question_id::text, value, points_x10000 FROM exam_answers WHERE attempt_id = $1`, attemptID)
+	rows, err := q.Query(ctx, `SELECT question_id::text, value, points_x10000, override_by IS NOT NULL FROM exam_answers WHERE attempt_id = $1`, attemptID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("exam: grading answers: %w", err)
 	}
@@ -364,11 +366,12 @@ func loadGradingAnswers(ctx context.Context, q database.DBTX, attemptID string, 
 		var qid string
 		var v json.RawMessage
 		var pts *int
-		if err := rows.Scan(&qid, &v, &pts); err != nil {
+		var override bool
+		if err := rows.Scan(&qid, &v, &pts, &override); err != nil {
 			return nil, nil, fmt.Errorf("exam: grading answers: %w", err)
 		}
 		answers[qid] = v
-		if essayQ[qid] && pts != nil {
+		if (essayQ[qid] || override) && pts != nil {
 			essay[qid] = *pts
 		}
 	}
@@ -479,32 +482,4 @@ func GradePending(ctx context.Context, db database.DB, limit int, now time.Time)
 		n++
 	}
 	return n, nil
-}
-
-// LoadResults mengembalikan peserta ujian dengan attempt terakhir dan
-// nilainya (tab Hasil), urut sesi lalu nomor peserta.
-func LoadResults(ctx context.Context, q database.DBTX, schoolID, examID string) ([]ResultRow, error) {
-	rows, err := q.Query(ctx, `
-		SELECT coalesce(s.full_name, ap.full_name, ''), coalesce(nullif(p.participant_no, ''), s.nis, ap.registration_number, ''),
-			coalesce(nullif(x.label, ''), r.name, c.name, ''), coalesce(t.status, ''), t.score_x100, coalesce(t.score_status, '')
-		FROM exam_session_participants p
-		JOIN exam_sessions x ON x.id = p.session_id AND x.cancelled_at IS NULL
-		LEFT JOIN exam_rooms r ON r.id = x.room_id
-		LEFT JOIN classes c ON c.id = x.class_id
-		LEFT JOIN students s ON s.id = p.student_id
-		LEFT JOIN applicants ap ON ap.id = p.applicant_id
-		LEFT JOIN LATERAL (SELECT * FROM exam_attempts t WHERE t.participant_id = p.id ORDER BY t.attempt_no DESC LIMIT 1) t ON true
-		WHERE p.school_id = $1 AND x.exam_id = $2
-		ORDER BY x.starts_at, 3, 2, 1`, schoolID, examID)
-	if err != nil {
-		return nil, fmt.Errorf("exam: results: %w", err)
-	}
-	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (ResultRow, error) {
-		var x ResultRow
-		return x, r.Scan(&x.Name, &x.Number, &x.Session, &x.Status, &x.ScoreX100, &x.ScoreStat)
-	})
-	if err != nil {
-		return nil, fmt.Errorf("exam: results: %w", err)
-	}
-	return out, nil
 }
