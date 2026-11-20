@@ -246,3 +246,58 @@ func (a ObjectiveAnalysis) BuildFollowList() FollowList {
 	}
 	return f
 }
+
+// AchievementSuggestion menyusun saran deskripsi capaian siswa (T150) dari
+// peta TP-nya: paling banyak dua TP tuntas dengan capaian tertinggi
+// ("Menguasai ...") dan dua TP belum tuntas dengan capaian terendah
+// ("perlu ditingkatkan ..."). Hanya saran; guru menyunting sebelum
+// menyimpan. Kosong bila siswa tidak punya TP.
+func (a ObjectiveAnalysis) AchievementSuggestion(s StudentObjectives) string {
+	type tp struct {
+		ref ObjectiveRef
+		pct int
+	}
+	var good, weak []tp
+	for i, c := range s.Cells {
+		if !c.Has {
+			continue
+		}
+		t := tp{a.Objectives[i].ObjectiveRef, c.Percent}
+		if c.Mastered {
+			good = append(good, t)
+		} else {
+			weak = append(weak, t)
+		}
+	}
+	sort.SliceStable(good, func(i, j int) bool { return good[i].pct > good[j].pct })
+	sort.SliceStable(weak, func(i, j int) bool { return weak[i].pct < weak[j].pct })
+	name := func(xs []tp) string {
+		parts := make([]string, 0, 2)
+		for i, x := range xs {
+			if i == 2 {
+				break
+			}
+			p := x.ref.Code
+			if d := Snippet(x.ref.Description, 50); d != "" {
+				p += " (" + d + ")"
+			}
+			parts = append(parts, p)
+		}
+		return strings.Join(parts, " dan ")
+	}
+	var out []string
+	if len(good) > 0 {
+		out = append(out, "Menguasai "+name(good))
+	}
+	if len(weak) > 0 {
+		w := "perlu ditingkatkan " + name(weak)
+		if len(out) == 0 {
+			w = "Perlu ditingkatkan " + name(weak)
+		}
+		out = append(out, w)
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	return strings.Join(out, "; ") + "."
+}

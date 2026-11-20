@@ -3208,6 +3208,10 @@
   .essay-actions { @apply flex flex-wrap gap-2; }
   .essay-keys { @apply hidden md:block; }
   .essay-work { @apply ms-5 grid list-disc gap-1; }
+  /* Kirim nilai ke rapor (T150). */
+  .sync-table tr.is-change td { @apply bg-blue-50/50; }
+  .sync-suggest { @apply mt-1 text-sm; }
+  .sync-suggest summary { @apply cursor-pointer text-blue-700; }
   /* Tes seleksi online (T149). */
   .online-test { @apply mt-2 grid gap-2 rounded-xl border border-blue-200 bg-blue-50/40 p-3; }
   .online-sessions { @apply ms-5 grid list-disc gap-0.5 text-sm; }

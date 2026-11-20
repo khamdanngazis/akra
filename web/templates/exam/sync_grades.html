@@ -1,0 +1,74 @@
+{{define "title"}}Kirim ke rapor · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}{{$p := .Plan}}
+{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Kirim ke rapor" ""}}
+<h1 class="text-2xl font-bold">Kirim nilai ke rapor</h1>
+<p class="muted">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · nilai final dikirim ke komponen nilai rapor setelah Anda periksa. Tidak terkirim otomatis.</p>
+{{template "flash" .}}
+
+{{if .NoTarget}}
+<section class="card stack" aria-labelledby="target-title">
+<h2 class="card-title" id="target-title">Komponen nilai tujuan</h2>
+<p class="mb-0">{{.NoTarget}}</p>
+{{if .Components}}{{template "exam_grade_component_form" .}}
+{{else if not .WrongPurpose}}<p class="hint mb-0">Mapel ini belum punya komponen nilai aktif di tahun ajaran ujian. Admin/TU mengaturnya di <a href="/nilai/komponen">Komponen nilai</a>.</p>{{end}}
+</section>
+{{else}}
+{{if $p.Stale}}<div class="alert alert-warning" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim</strong> untuk {{$p.Stale}} siswa (nilai ulang, koreksi esai, atau susulan). Periksa pratinjau di bawah lalu kirim ulang.</p></div>{{end}}
+
+<section class="card stack" aria-labelledby="target-title">
+<h2 class="card-title" id="target-title">Tujuan</h2>
+<p class="mb-0">Komponen <strong>{{$p.Component.Name}}</strong> ({{$p.Component.Weight}}%) mapel {{$p.Base.SubjectName}}.
+{{if gt (len $p.AverageOf) 1}}Nilai komponen = <strong>rata-rata {{len $p.AverageOf}} ujian</strong> ({{range $i, $n := $p.AverageOf}}{{if $i}}, {{end}}{{$n}}{{end}}); ujian yang tidak diikuti siswa tidak dihitung.{{end}}</p>
+{{if eq $p.Policy "remedial"}}<p class="mb-0">Ujian remedial dari <a href="/ujian/paket/{{$p.Base.ID}}">{{$p.Base.Name}}</a>: nilai rapor tidak pernah turun{{if ne $p.RemedialRule "tertinggi"}}, dan nilai remedial paling tinggi sama dengan KKM/KKTP {{$p.KKTP}}{{end}} (aturan rapor sekolah).</p>
+{{else if eq $p.Policy "pengayaan"}}<p class="mb-0">Ujian pengayaan dari <a href="/ujian/paket/{{$p.Base.ID}}">{{$p.Base.Name}}</a>: nilai rapor tidak pernah turun.</p>
+{{else}}
+<form method="get" class="flex flex-wrap items-end gap-3" aria-label="Aturan bila sudah ada nilai">
+<fieldset class="field mb-0"><legend>Bila siswa sudah punya nilai di komponen ini</legend>
+<div class="option-cards">
+<label class="option-card"><input type="radio" name="aturan" value="timpa"{{if eq $p.Policy "timpa"}} checked{{end}} onchange="this.form.submit()"><span><strong>Timpa</strong><span class="block text-sm text-slate-600">Nilai rapor = nilai ujian.</span></span></label>
+<label class="option-card"><input type="radio" name="aturan" value="tertinggi"{{if eq $p.Policy "tertinggi"}} checked{{end}} onchange="this.form.submit()"><span><strong>Ambil tertinggi</strong><span class="block text-sm text-slate-600">Tidak pernah menurunkan nilai yang ada.</span></span></label>
+</div></fieldset>
+<noscript><button type="submit" class="btn btn-ghost btn-sm">Perbarui pratinjau</button></noscript>
+</form>
+{{end}}
+{{if .Components}}<details class="mb-0"><summary class="text-sm text-blue-700 cursor-pointer">Ganti komponen tujuan</summary>{{template "exam_grade_component_form" .}}</details>{{end}}
+</section>
+
+<section class="card stack mt-4" aria-labelledby="preview-title">
+<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="card-title" id="preview-title">Pratinjau per siswa</h2>
+<span class="muted text-sm">{{$p.Changes}} nilai akan berubah</span></div>
+{{if not $p.CanSendAny}}<p class="alert alert-warning mb-0">Anda tidak mengampu mapel ini di kelas peserta mana pun, jadi tidak bisa mengirim. Nilai rapor hanya dikirim oleh guru pengampu kelas (sama dengan input nilai).</p>{{end}}
+{{if $p.Rows}}
+<div class="table-wrap"><table class="sync-table">
+<thead><tr><th>Siswa</th><th>Kelas</th><th class="text-right">Nilai ujian</th>{{if gt (len $p.AverageOf) 1}}<th class="text-right">Rata-rata</th>{{end}}<th class="text-right">Rapor saat ini</th><th class="text-right">Nilai baru</th><th>Keterangan</th></tr></thead>
+<tbody>{{range $p.Rows}}<tr{{if .Changes}} class="is-change"{{end}}>
+<td>{{.Name}} <span class="muted text-sm">{{.NIS}}</span>{{with .Suggestion}}<details class="sync-suggest"><summary>Saran deskripsi capaian</summary><p class="mb-0" dir="auto">{{.}}</p></details>{{end}}</td>
+<td>{{.ClassName}}</td>
+<td class="text-right">{{with .ExamText}}{{.}}{{else}}—{{end}}</td>
+{{if gt (len $p.AverageOf) 1}}<td class="text-right">{{with .ValueText}}{{.}}{{else}}—{{end}}</td>{{end}}
+<td class="text-right">{{with .CurrentText}}{{.}}{{else}}<span class="muted">kosong</span>{{end}}</td>
+<td class="text-right">{{with .NewText}}<strong>{{.}}</strong>{{else}}—{{end}}</td>
+<td class="text-sm">{{if .Changes}}<span class="badge badge-info">{{.StatusLabel}}</span>{{else}}<span class="muted">{{.StatusLabel}}</span>{{end}}</td>
+</tr>{{end}}</tbody>
+</table></div>
+{{if $p.HasObjectives}}<p class="hint mb-0">Saran deskripsi capaian disusun dari analisis TP ujian ini. Salin dan sunting sendiri; tidak pernah disimpan otomatis.</p>{{end}}
+{{if $p.CanSendAny}}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/rapor" class="action-row" x-data @submit="if (!confirm('Kirim {{$p.Changes}} nilai ke komponen {{$p.Component.Name}}? Perubahan tercatat di audit.')) $event.preventDefault()">
+{{ csrfField }}<input type="hidden" name="aksi" value="kirim"><input type="hidden" name="aturan" value="{{$p.Policy}}">
+<button type="submit" class="btn btn-primary">{{if $p.Changes}}Kirim {{$p.Changes}} nilai ke rapor{{else}}Catat sebagai sudah dikirim{{end}}</button>
+<p class="hint mb-0">Siswa tidak hadir dan yang menunggu koreksi esai tidak diubah. Semua kelas dikirim sekaligus; bila satu nilai tidak valid, tidak ada yang dikirim.</p>
+</form>
+{{end}}
+{{else}}<p class="mb-0">Belum ada siswa peserta.</p>{{end}}
+</section>
+
+{{with $p.History}}
+<section class="card stack mt-4" aria-labelledby="history-title">
+<h2 class="card-title" id="history-title">Riwayat pengiriman</h2>
+<ul class="ms-5 list-disc mb-0">{{range .}}<li>{{.At.Format "02/01/2006 15.04"}} · {{.By}} · {{.PolicyLabel}} · {{.Changed}} nilai berubah dari {{.Students}} siswa</li>{{end}}</ul>
+</section>
+{{end}}
+{{end}}
+{{end}}
+

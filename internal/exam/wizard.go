@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/grades"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/page"
 )
@@ -189,6 +190,8 @@ type examWizardView struct {
 	VariantOps []optionItem
 	// Aturan.
 	Rules RulesForm
+	// GradeComponents: komponen nilai rapor yang bisa dipilih (T150).
+	GradeComponents []grades.Component
 	// Jadwal.
 	Classes  []classRow
 	Sessions []sessionView
@@ -379,6 +382,14 @@ func (h *Handler) renderExamWizard(w http.ResponseWriter, r *http.Request, statu
 		v.Steps = append(v.Steps, l)
 	}
 	fail := func(op string, err error) { h.fail(w, r, op, err) }
+	if v.Step == stepRules && !v.IsNew {
+		comps, err := GradeComponentOptions(ctx, h.db, v.Exam)
+		if err != nil {
+			fail("grade components", err)
+			return
+		}
+		v.GradeComponents = comps
+	}
 	switch v.Step {
 	case stepBasics:
 		for _, p := range Purposes {
@@ -677,7 +688,7 @@ func (h *Handler) examSaveRules(w http.ResponseWriter, r *http.Request) {
 	f := RulesForm{ShuffleQuestions: pf.Get("shuffle_questions") != "", ShuffleOptions: pf.Get("shuffle_options") != "",
 		ShuffleInStimulus: pf.Get("shuffle_in_stimulus") != "", ResultsMode: pf.Get("results_mode"), ResultsAfterAll: pf.Get("results_after_all") != "",
 		MaxAttempts: pf.Get("max_attempts"), PassScore: pf.Get("pass_score"), IntegrityMode: pf.Get("integrity_mode"),
-		IntegrityLimit: pf.Get("integrity_limit"), AllowBack: pf.Get("allow_back") != ""}
+		IntegrityLimit: pf.Get("integrity_limit"), AllowBack: pf.Get("allow_back") != "", GradeComponentID: pf.Get("grade_component_id")}
 	err := UpdateRules(r.Context(), h.db, sa, e.ID, f, time.Now())
 	var fe *FieldError
 	if errors.As(err, &fe) {

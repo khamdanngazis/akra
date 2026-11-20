@@ -27,6 +27,7 @@
 
 {{template "flash" .}}
 {{template "exam_next_step" .Next}}
+{{if .GradesStale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.GradesStale}} siswa). <a href="/ujian/paket/{{.Exam.ID}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
 
 <nav class="tabs mt-4" aria-label="Bagian ujian">
 <a href="/ujian/paket/{{.Exam.ID}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
