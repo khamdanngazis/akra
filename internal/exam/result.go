@@ -129,6 +129,9 @@ func durationLabel(d time.Duration) string {
 	if m < 60 {
 		return strconv.Itoa(m) + " mnt"
 	}
+	if m%60 == 0 {
+		return strconv.Itoa(m/60) + " j"
+	}
 	return fmt.Sprintf("%d j %d mnt", m/60, m%60)
 }
 

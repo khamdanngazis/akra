@@ -15,6 +15,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/dapodik/ref"
+	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/money"
 	"akra/internal/platform/page"
@@ -246,6 +247,12 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 		if a.Status == ApplicantAccepted && a.StudentID == "" {
 			if in.Enroll, err = h.enrollFormFor(ctx, id.SchoolID, a, p); err != nil {
 				h.serverError(w, r, "enroll form", err)
+				return
+			}
+		}
+		if a.Status == ApplicantVerified {
+			if in.MissingOnline, err = exam.ApplicantMissingSessions(ctx, h.db, id.SchoolID, a.ID); err != nil {
+				h.serverError(w, r, "missing online sessions", err)
 				return
 			}
 		}
@@ -591,6 +598,10 @@ type testResult struct {
 	MaxScore    int
 	PassScore   int
 	Failed      bool
+	// Online: nilai dari ujian online (T149) dengan ringkasan attempt.
+	Online  bool
+	ExamID  string
+	Attempt *exam.AttemptSummary
 }
 
 // fillTestResults mengisi nilai tes, skor akhir, dan status lulus (T119).
@@ -605,8 +616,35 @@ func (h *Handler) fillTestResults(ctx context.Context, schoolID string, a Applic
 		return err
 	}
 	mine := all[a.ID]
+	attempts := map[string]string{} // tes → attempt ujian online
+	rows, err := h.db.Query(ctx, `SELECT test_id::text, attempt_id::text FROM applicant_test_scores WHERE school_id = $1 AND applicant_id = $2 AND attempt_id IS NOT NULL`,
+		schoolID, a.ID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var tid, aid string
+		if err := rows.Scan(&tid, &aid); err != nil {
+			rows.Close()
+			return err
+		}
+		attempts[tid] = aid
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 	for _, t := range tests {
-		r := testResult{Name: t.Name, MaxScore: t.MaxScore, PassScore: t.PassScore}
+		r := testResult{Name: t.Name, MaxScore: t.MaxScore, PassScore: t.PassScore, Online: t.Online(), ExamID: t.ExamID}
+		if aid, ok := attempts[t.ID]; ok && t.Online() {
+			s, err := exam.ApplicantAttempt(ctx, h.db, schoolID, t.ExamID, aid)
+			if err != nil && !errors.Is(err, exam.ErrNotFound) {
+				return err
+			}
+			if err == nil {
+				r.Attempt = &s
+			}
+		}
 		if v, ok := mine[t.ID]; ok {
 			r.Score = trimScore(strconv.FormatFloat(v, 'f', 2, 64))
 			r.Failed = t.PassScore > 0 && v < float64(t.PassScore)

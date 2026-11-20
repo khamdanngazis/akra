@@ -121,6 +121,9 @@ type nextStepInput struct {
 	FeeUnpaid   bool // biaya wajib lunas sebelum verifikasi dan belum lunas
 	// Enroll adalah isian Jadikan siswa untuk pendaftar diterima.
 	Enroll enrollForm
+	// MissingOnline: tes online gelombang yang sesinya sudah ada tetapi
+	// pendaftar ini belum menjadi peserta (T149).
+	MissingOnline []string
 }
 
 // buildNextStep menyusun kartu langkah berikutnya untuk staf.
@@ -167,6 +170,11 @@ func buildNextStep(in nextStepInput) nextStepView {
 	case a.Status == ApplicantFix:
 		v.Tone, v.Title = "warn", "Menunggu perbaikan dari orang tua"
 		v.Hint = "Orang tua sudah mendapat catatan dan kode lanjut. Setelah mereka mengirim ulang, status kembali menjadi Dikirim dan bisa diverifikasi."
+		others()
+	case a.Status == ApplicantVerified && len(in.MissingOnline) > 0:
+		v.Tone, v.Title = "warn", "Belum masuk sesi tes online"
+		v.Hint = "Pendaftar ini diverifikasi setelah sesi " + strings.Join(in.MissingOnline, ", ") + " dibuat, jadi belum punya kartu tes. Masukkan ke sesi di tab Tes seleksi gelombang."
+		v.Links = append(v.Links, linkView{Label: "Buka tes seleksi", URL: "/pendaftaran/periode/" + in.Period.ID + "/tes", Primary: true}, ranking)
 		others()
 	case a.Status == ApplicantVerified && selective:
 		v.Title = "Sudah diverifikasi, tinggal ditetapkan hasilnya"

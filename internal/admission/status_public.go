@@ -86,6 +86,13 @@ func proofData(ctx context.Context, h *Handler, schoolName string, a Applicant) 
 			return ProofData{}, err
 		}
 	}
+	if usesTest && a.Status == ApplicantVerified {
+		card, err := loadTestCard(ctx, h.db, h.exam, a.SchoolID, a.ID, loc)
+		if err != nil {
+			return ProofData{}, err
+		}
+		d.Tests = append(d.Tests, card.ProofLines()...)
+	}
 	return d, nil
 }
 
@@ -100,6 +107,10 @@ func testSchedule(ctx context.Context, sel *SelectionService, schoolID, periodID
 	}
 	var out []string
 	for _, t := range tests {
+		if t.Online() {
+			// Tes online tampil di kartu tes online (jadwal per sesi).
+			continue
+		}
 		line := t.Name + ": jadwal menyusul"
 		if t.ScheduledAt != nil {
 			line = t.Name + ": " + clock.FormatDateTimeID(*t.ScheduledAt, loc)
@@ -158,6 +169,8 @@ type statusView struct {
 	Period      string
 	Track       string
 	Tests       []string
+	// Online: kartu tes online dengan kode akses (T149).
+	Online      *testCardView
 	MissingDocs []string
 	FeeAmount   string
 	FeePaid     bool
@@ -226,6 +239,15 @@ func (h *PublicHandler) fillStatus(ctx context.Context, s schoolInfo, a Applican
 	}
 	if usesTest && (a.Status == ApplicantVerified || a.Status == ApplicantSubmitted) {
 		if view.Tests, err = testSchedule(ctx, NewSelectionService(h.db), s.ID, p.ID); err != nil {
+			return err
+		}
+	}
+	if usesTest && a.Status == ApplicantVerified {
+		loc, err := clock.ForSchool(ctx, h.db, s.ID)
+		if err != nil {
+			return err
+		}
+		if view.Online, err = loadTestCard(ctx, h.db, h.exam, s.ID, a.ID, loc); err != nil {
 			return err
 		}
 	}
@@ -313,7 +335,7 @@ func (h *PublicHandler) statusProof(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "load applicant", err)
 		return
 	}
-	staff := &Handler{db: h.db, periods: h.periods, applicants: h.applicants, documents: h.documents}
+	staff := &Handler{db: h.db, periods: h.periods, applicants: h.applicants, documents: h.documents, exam: h.exam}
 	d, err := proofData(r.Context(), staff, s.Name, a)
 	if err != nil {
 		h.serverError(w, r, "proof data", err)

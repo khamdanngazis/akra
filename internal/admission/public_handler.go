@@ -39,12 +39,13 @@ type PublicHandler struct {
 	sessions   *scs.SessionManager
 	render     page.Renderer
 	logger     *slog.Logger
+	exam       examLink // tes seleksi online (T149)
 }
 
 // NewPublicHandler mengembalikan PublicHandler. Route-nya publik (di luar
 // RequireLogin) tetapi tetap memakai sesi dan CSRF.
 func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantService, documents *DocumentService, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger) *PublicHandler {
-	return &PublicHandler{db: db, periods: periods, applicants: applicants, documents: documents, logos: logoServiceFor(db, documents), limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger}
+	return &PublicHandler{db: db, periods: periods, applicants: applicants, documents: documents, logos: logoServiceFor(db, documents), limiter: NewLimiter(db), sessions: sessions, render: render, logger: logger, exam: defaultExamLink()}
 }
 
 // Routes mendaftarkan route publik pendaftaran ke r.

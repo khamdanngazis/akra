@@ -1164,6 +1164,12 @@ var Routes = []Route{
 		}},
 	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/nilai", Kind: KindByID, Roles: adminTU,
 		Requests: admissionTest("/nilai", url.Values{})},
+	// Tes seleksi online (T149): fixture memakai tes kertas, jadi tanpa
+	// kontrol positif (diuji di paket admission: TestOnlineAdmissionTest).
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/tes/{testID}/peserta", Kind: KindByID, Roles: adminTU, ControlRoles: []string{},
+		Requests: admissionTest("/peserta", url.Values{"session_id": {""}})},
+	{Method: "POST", Pattern: "/pendaftaran/periode/{id}/latihan", Kind: KindByID, Roles: adminTU,
+		Requests: post(func(o *School) string { return "/pendaftaran/periode/" + o.AdmissionPeriodID + "/latihan" }, nil)},
 	// Peringkat dan hasil (T93b).
 	{Method: "GET", Pattern: "/pendaftaran/periode/{id}/hasil", Kind: KindByID, Roles: schoolData,
 		Requests: paths(func(o *School) []string { return []string{"/pendaftaran/periode/" + o.AdmissionPeriodID + "/hasil"} })},

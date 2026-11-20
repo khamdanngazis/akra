@@ -128,7 +128,8 @@ func newApp(d appDeps) (http.Handler, error) {
 			d.sessions, d.render, d.logger),
 		activation: auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		duties:     duty.NewHandler(d.db, d.sessions, d.render, d.logger),
-		exam:       exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL),
+		exam: exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL).
+			WithCardCodes(examTokens),
 		participant: exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store).WithTokens(examTokens).
 			WithMetrics(reg).WithSaveFault(d.saveFault),
 		participantSessions: participantSessions,
@@ -150,9 +151,9 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewProfileService(d.db, d.pii),
 			students.NewGuardianDetailService(d.db, d.pii),
 			d.sessions, d.render, d.logger),
-		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger).WithExam(examTokens, d.baseURL),
 		dapodik:         dapodik.NewHandler(d.db, d.pii, d.store, d.sessions, d.render, d.logger),
-		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger),
+		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger).WithExam(examTokens, d.baseURL),
 		wilayah:         wilayah.NewHandler(d.db, d.logger),
 		portal:          portal.NewHandler(portal.NewService(d.db), d.sessions, d.render, d.logger),
 		dev:             devRoutes(d),

@@ -397,7 +397,8 @@ func storeGrade(ctx context.Context, q database.DBTX, attemptID string, g Attemp
 		attemptID, g.ScoreX100, g.Status, g.Earned, g.Max, now); err != nil {
 		return fmt.Errorf("exam: store attempt score: %w", err)
 	}
-	return nil
+	// Tes seleksi online (T149): nilai ikut ke nilai tes pendaftar.
+	return syncAdmissionScore(ctx, q, attemptID)
 }
 
 // FinalScore adalah nilai attempt yang boleh dikirim ke modul lain.

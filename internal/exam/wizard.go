@@ -190,11 +190,13 @@ type examWizardView struct {
 	// Aturan.
 	Rules RulesForm
 	// Jadwal.
-	Classes     []classRow
-	Sessions    []sessionView
-	Periods     []admissionPeriodOption
-	DefaultDate string
-	DefaultTime string
+	Classes  []classRow
+	Sessions []sessionView
+	Periods  []admissionPeriodOption
+	// DefaultPeriod: gelombang tes seleksi yang memakai ujian ini.
+	DefaultPeriod string
+	DefaultDate   string
+	DefaultTime   string
 	// Cek.
 	Readiness Readiness
 }
@@ -249,12 +251,16 @@ func (h *Handler) examNew(w http.ResponseWriter, r *http.Request) {
 	}
 	d := defaultsFor(p)
 	f := BasicsForm{Purpose: string(p), Duration: strconv.Itoa(d.DurationMinutes), SubjectID: r.URL.Query().Get("mapel")}
+	if p == PurposeAdmission {
+		f.AdmissionTestID = r.URL.Query().Get("tes")
+	}
 	h.renderExamWizard(w, r, http.StatusOK, examWizardView{User: id, IsNew: true, Step: stepBasics, Form: f, Exam: d})
 }
 
 func basicsFormFrom(r *http.Request) BasicsForm {
 	return BasicsForm{Name: r.PostForm.Get("name"), Purpose: r.PostForm.Get("purpose"), SubjectID: r.PostForm.Get("subject_id"),
-		GradeLevel: r.PostForm.Get("grade_level"), Duration: r.PostForm.Get("duration"), OwnerID: r.PostForm.Get("owner_id")}
+		GradeLevel: r.PostForm.Get("grade_level"), Duration: r.PostForm.Get("duration"), OwnerID: r.PostForm.Get("owner_id"),
+		AdmissionTestID: r.PostForm.Get("admission_test")}
 }
 
 func basicsFormOf(e Exam) BasicsForm {
@@ -288,6 +294,15 @@ func (h *Handler) examCreate(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		h.fail(w, r, "create exam", err)
 		return
+	}
+	if e.Purpose == PurposeAdmission && f.AdmissionTestID != "" {
+		// Tautkan ke tes gelombang (T149); gagal menaut tidak membatalkan
+		// ujian yang sudah dibuat.
+		if ok, err := LinkAdmissionTest(r.Context(), h.db, sa, e.ID, f.AdmissionTestID); err != nil {
+			h.logger.ErrorContext(r.Context(), "link admission test", "exam_id", e.ID, "error", err)
+		} else if ok {
+			h.flash(r, "Ujian dibuat dan dipakai untuk tes seleksi gelombangnya. Nilainya akan masuk otomatis ke nilai tes pendaftar.")
+		}
 	}
 	http.Redirect(w, r, examStepPath(e.ID, stepQuestions), http.StatusSeeOther)
 }
@@ -471,6 +486,9 @@ func (h *Handler) renderExamWizard(w http.ResponseWriter, r *http.Request, statu
 				return
 			}
 			v.Periods = periods
+			// Gelombang terisi dari tes seleksi yang memakai ujian ini (T149).
+			_ = h.db.QueryRow(ctx, `SELECT period_id::text FROM admission_tests WHERE school_id = $1 AND exam_id = $2`, sa.SchoolID, v.Exam.ID).
+				Scan(&v.DefaultPeriod)
 		case !v.Exam.Purpose.SchoolWide():
 			classes, err := ClassesFor(ctx, h.db, sa.Actor, v.Exam, now)
 			if err != nil {

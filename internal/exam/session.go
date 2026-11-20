@@ -317,9 +317,9 @@ func CreateAdmissionSession(ctx context.Context, db database.DB, sa StaffActor, 
 		if err != nil {
 			return fmt.Errorf("exam: create session: %w", err)
 		}
+		// Peserta: pendaftar diverifikasi di jalur bertes (T149).
 		if _, err := tx.Exec(ctx, `INSERT INTO exam_session_participants (school_id, session_id, applicant_id, participant_no)
-			SELECT $1, $2, a.id, a.registration_number FROM applicants a
-			WHERE a.school_id = $1 AND a.period_id = $3 AND ($4::uuid IS NULL OR a.track_id = $4) AND a.status = 'diverifikasi'
+			SELECT $1, $2, a.id, a.registration_number FROM (`+testedApplicants+`) a
 			ORDER BY a.registration_number`, sa.SchoolID, sid, sl.PeriodID, nullable(sl.TrackID)); err != nil {
 			return fmt.Errorf("exam: add applicants: %w", err)
 		}

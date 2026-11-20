@@ -32,6 +32,7 @@
 {{with .Errors.purpose}}<p class="field-error">{{.}}</p>{{end}}
 </fieldset>
 {{else}}<input type="hidden" name="purpose" value="{{.Exam.Purpose}}">{{end}}
+{{if and .IsNew .Form.AdmissionTestID}}<input type="hidden" name="admission_test" value="{{.Form.AdmissionTestID}}"><p class="alert alert-info mb-0">Ujian ini akan dipakai untuk tes seleksi gelombang yang Anda pilih; nilainya masuk otomatis ke nilai tes pendaftar.</p>{{end}}
 <div class="field-grid">
 <div class="field{{if .Errors.name}} has-error{{end}}">
 <label for="name">Nama ujian</label>
@@ -265,11 +266,11 @@
 <p class="mb-0">{{.Exam.Purpose.Label}} tidak dijadwalkan di sini. Koordinator ujian mengatur jadwal mapel, ruang, sesi, peserta, dan pengawas di <a href="/ujian/agenda">agenda ujian</a>.</p>
 {{else if eq .Exam.Purpose "seleksi"}}
 {{if not .ReadOnly}}
-<form method="post" action="/ujian/paket/{{.Exam.ID}}/sesi" class="stack" novalidate x-data="{ period: '' }">
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/sesi" class="stack" novalidate x-data="{ period: '{{.DefaultPeriod}}', loc: 'di_ruang' }">
 {{ csrfField }}
 <div class="field-grid">
 <div class="field"><label for="period_id">Gelombang</label>
-<select id="period_id" name="period_id" x-model="period"><option value="">Pilih gelombang</option>{{range .Periods}}<option value="{{.ID}}">{{.Name}} ({{.Verified}} terverifikasi)</option>{{end}}</select></div>
+<select id="period_id" name="period_id" x-model="period"><option value="">Pilih gelombang</option>{{range .Periods}}<option value="{{.ID}}"{{if eq .ID $.DefaultPeriod}} selected{{end}}>{{.Name}} ({{.Verified}} terverifikasi)</option>{{end}}</select></div>
 <div class="field"><label for="track_id">Jalur <span class="muted">(opsional)</span></label>
 <select id="track_id" name="track_id"><option value="">Semua jalur</option>{{range .Periods}}{{$p := .ID}}{{range .Tracks}}<option value="{{.Value}}" x-show="period === '{{$p}}'">{{.Label}}</option>{{end}}{{end}}</select></div>
 </div>
@@ -281,9 +282,10 @@
 <div class="field"><label for="end_date">Tanggal selesai</label><input id="end_date" type="date" name="end_date" value="{{.DefaultDate}}"><p class="hint">Tes dari rumah boleh berjendela beberapa hari.</p></div>
 <div class="field"><label for="end">Jam selesai ({{.Zone}})</label><input id="end" type="time" name="end" value="10:00"></div>
 </div>
-<div class="field"><label for="location">Lokasi</label><select id="location" name="location"><option value="di_ruang">Di sekolah (diawasi)</option><option value="jarak_jauh">Dari rumah (jarak jauh)</option></select></div>
+<div class="field"><label for="location">Lokasi</label><select id="location" name="location" x-model="loc"><option value="di_ruang">Di sekolah (diawasi)</option><option value="jarak_jauh">Dari rumah (jarak jauh)</option></select>
+<p class="hint" x-show="loc === 'jarak_jauh'" x-cloak>{{if eq .Exam.IntegrityMode "kunci"}}Aturan integritas sudah mengunci setelah {{.Exam.IntegrityLimit}} kali keluar halaman.{{else}}Untuk tes dari rumah disarankan aturan integritas lebih ketat: <a href="/ujian/paket/{{.Exam.ID}}/atur/aturan">kunci setelah beberapa kali keluar halaman</a>.{{end}}</p></div>
 <div class="action-row"><button type="submit" class="btn btn-primary">Buat sesi</button></div>
-<p class="hint">Peserta otomatis dari pendaftar terverifikasi di gelombang (dan jalur) itu.</p>
+<p class="hint">Peserta otomatis dari pendaftar terverifikasi di jalur bertes pada gelombang (dan jalur) itu. Pendaftar yang terverifikasi belakangan dimasukkan dari tab Tes seleksi gelombang.</p>
 </form>
 {{end}}
 {{else}}

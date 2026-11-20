@@ -87,7 +87,22 @@
 {{/* applicant_status menampilkan status pendaftar sebagai badge. Argumen: kode status. */}}
 {{define "applicant_status"}}{{if eq . "diterima"}}<span class="badge badge-success">Diterima</span>{{else if eq . "diverifikasi"}}<span class="badge badge-info">Diverifikasi</span>{{else if eq . "dikirim"}}<span class="badge badge-info">Dikirim</span>{{else if eq . "perlu_perbaikan"}}<span class="badge badge-warning">Perlu perbaikan</span>{{else if eq . "cadangan"}}<span class="badge badge-warning">Cadangan</span>{{else if eq . "ditolak"}}<span class="badge badge-danger">Ditolak</span>{{else if eq . "mundur"}}<span class="badge">Mundur</span>{{else}}<span class="badge">Draf</span>{{end}}{{end}}
 
-{{define "admission_test_fields"}}
+{{define "admission_test_fields"}}{{$f := .}}
+<fieldset class="field{{if or .Errors.method .Errors.exam_id}} has-error{{end}}" x-data="{ method: '{{if eq .Form.Method "online"}}online{{else}}kertas{{end}}' }">
+<legend>Cara tes</legend>
+<div class="option-cards">
+<label class="option-card"><input type="radio" name="method" value="kertas" x-model="method"{{if ne .Form.Method "online"}} checked{{end}}><span><strong>Di kertas / wawancara</strong><span class="block text-sm text-slate-600">Nilai diketik TU di Isi nilai.</span></span></label>
+<label class="option-card"><input type="radio" name="method" value="online" x-model="method"{{if eq .Form.Method "online"}} checked{{end}}><span><strong>Ujian online</strong><span class="block text-sm text-slate-600">Dikerjakan calon siswa di HP/komputer; nilai masuk otomatis.</span></span></label>
+</div>
+{{with .Errors.method}}<p class="field-error">{{.}}</p>{{end}}
+<div class="field mt-2" x-show="method === 'online'" x-cloak>
+<label for="exam_id-{{.ID}}">Ujian seleksi</label>
+<select id="exam_id-{{.ID}}" name="exam_id"{{if .Errors.exam_id}} aria-invalid="true"{{end}}><option value="">Pilih ujian</option>
+{{range .Exams}}{{if or (eq .TestID "") (eq .TestID $f.ID) (eq .ID $f.Form.ExamID)}}<option value="{{.ID}}"{{if eq .ID $f.Form.ExamID}} selected{{end}}>{{.Name}} ({{.StatusLabel}})</option>{{end}}{{end}}</select>
+{{with .Errors.exam_id}}<p class="field-error">{{.}}</p>{{end}}
+<p class="hint">Belum ada? {{if eq .ID "baru"}}Simpan tes ini sebagai "di kertas" dulu, lalu klik Ubah → Buat ujian seleksi baru agar ujian langsung tertaut ke tes dan gelombangnya.{{else}}<a href="/ujian/paket/baru?tujuan=seleksi&amp;tes={{.ID}}">Buat ujian seleksi baru</a>; ujian langsung tertaut ke tes ini dan gelombangnya terisi saat menjadwalkan.{{end}}</p>
+</div>
+</fieldset>
 <div class="field-grid">
 <div class="field{{if .Errors.test_name}} has-error{{end}}">
 <label for="test_name-{{.ID}}">Nama tes</label>
