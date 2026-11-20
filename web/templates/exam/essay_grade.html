@@ -1,0 +1,48 @@
+{{define "title"}}Koreksi soal {{.Q.Number}} · {{.Exam.Name}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}"><script defer src="{{ asset "js/essay-grade.js" }}"></script>{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Koreksi esai" (printf "/ujian/paket/%s/esai" .Exam.ID) (printf "Soal %d" .Q.Number) ""}}
+<div class="essay-head">
+<h1 class="text-xl font-bold mb-0">Soal {{.Q.Number}} · {{.Q.Points}} poin</h1>
+<p class="essay-count mb-0" aria-live="polite"><strong>{{.Graded}}/{{.Total}}</strong> dikoreksi</p>
+</div>
+{{template "flash" .}}
+<div class="essay-grid">
+<aside class="essay-side card stack">
+<div><h2 class="text-sm font-semibold muted">Soal</h2><div class="essay-body" dir="auto">{{.Body}}</div></div>
+<div><h2 class="text-sm font-semibold muted">Rubrik / acuan</h2>{{if .Rubric}}<div class="essay-rubric" dir="auto">{{.Rubric}}</div>{{else}}<p class="muted mb-0">Tidak ada rubrik.</p>{{end}}</div>
+</aside>
+{{with .Answer}}
+<section class="essay-main card stack" aria-labelledby="answer-title">
+<div class="essay-answer-head">
+<h2 class="text-lg font-bold mb-0" id="answer-title">{{if $.Anonymous}}Jawaban {{.Index}}{{else}}{{.Name}}{{with .Number}} · {{.}}{{end}}{{end}}</h2>
+<span class="muted text-sm">{{$.Position}} dari {{$.Total}}{{if not $.Anonymous}} · {{.SessionLabel}}{{end}}</span>
+<a class="text-sm" href="/ujian/paket/{{$.Exam.ID}}/esai/{{$.Q.Question.ID}}?a={{.AttemptID}}{{if $.Anonymous}}&amp;anonim=0{{end}}">{{if $.Anonymous}}Tampilkan nama{{else}}Sembunyikan nama{{end}}</a>
+</div>
+{{range .Similar}}<p class="essay-similar mb-0" role="note"><strong>Mirip {{.Percent}}%</strong> dengan {{if .Index}}<a href="/ujian/paket/{{$.Exam.ID}}/esai/{{$.Q.Question.ID}}?a={{.AttemptID}}{{if not $.Anonymous}}&amp;anonim=0{{end}}">Jawaban {{.Index}}</a>{{else}}jawaban peserta di luar bagian Anda{{end}}. Bahan pertimbangan, bukan vonis.</p>{{end}}
+<div class="essay-answer" dir="auto">{{.Text}}</div>
+{{if .Graded}}<p class="text-sm muted mb-0">Sudah dikoreksi{{with .GradedBy}} oleh {{.}}{{end}}: {{.PointsLabel}} poin.</p>{{end}}
+<form method="post" action="/ujian/paket/{{$.Exam.ID}}/esai/{{$.Q.Question.ID}}/{{.AttemptID}}" class="stack" data-essay-form novalidate>{{ csrfField }}
+{{if not $.Anonymous}}<input type="hidden" name="anonim" value="0">{{end}}
+<fieldset class="stack"><legend class="font-semibold">Skor (maks. {{$.Q.Points}})</legend>
+{{with $.Buttons}}<div class="essay-scores" role="group" aria-label="Skor cepat">{{range .}}<button type="button" class="essay-score" data-score="{{.}}" aria-pressed="false">{{.}}</button>{{end}}</div>{{end}}
+<label class="sr-only" for="essay-score">Skor</label>
+<input id="essay-score" name="skor" inputmode="decimal" autocomplete="off" value="{{$.Score}}" required class="essay-score-input" placeholder="Ketik skor, mis. 2,5"{{if $.Error}} aria-invalid="true" aria-describedby="essay-error"{{end}}>
+</fieldset>
+<div class="field"><label for="essay-comment">Komentar untuk siswa <span class="muted text-sm">(opsional)</span></label>
+<textarea id="essay-comment" name="komentar" rows="2" maxlength="1000">{{$.Comment}}</textarea></div>
+{{with $.Error}}<p class="alert alert-error mb-0" id="essay-error" role="alert">{{.}}</p>{{end}}
+<div class="essay-actions">
+{{if $.PrevID}}<a class="btn btn-ghost" href="/ujian/paket/{{$.Exam.ID}}/esai/{{$.Q.Question.ID}}?a={{$.PrevID}}{{if not $.Anonymous}}&amp;anonim=0{{end}}" data-prev>← Sebelumnya</a>{{end}}
+<button type="submit" class="btn btn-primary">Simpan &amp; berikutnya</button>
+{{if $.NextID}}<a class="btn btn-ghost" href="/ujian/paket/{{$.Exam.ID}}/esai/{{$.Q.Question.ID}}?a={{$.NextID}}{{if not $.Anonymous}}&amp;anonim=0{{end}}" data-next>Lewati →</a>{{end}}
+</div>
+<p class="hint mb-0 essay-keys">Pintasan: angka 0–9 untuk skor, Enter untuk simpan &amp; berikutnya (Ctrl+Enter dari kolom komentar), ← → untuk pindah jawaban.</p>
+</form>
+</section>
+{{else}}
+<section class="essay-main card"><p class="mb-0">Belum ada jawaban berisi untuk soal ini.</p></section>
+{{end}}
+</div>
+{{end}}

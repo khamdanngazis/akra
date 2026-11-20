@@ -598,6 +598,23 @@ var Routes = []Route{
 	{Method: "POST", Pattern: "/ujian/paket/{id}/soal/{qid}/batal", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/batal" },
 			func(*School) url.Values { return url.Values{"alasan": {"Uji lintas sekolah"}} })},
+	// Koreksi esai (T147): fixture tidak punya soal esai atau attempt yang
+	// dikumpulkan, jadi route per soal/attempt tanpa kontrol positif (diuji
+	// di paket exam: TestEssayAssignmentScope).
+	{Method: "GET", Pattern: "/ujian/paket/{id}/esai", Kind: KindByID, Roles: examWriters,
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/esai"} })},
+	{Method: "GET", Pattern: "/ujian/paket/{id}/esai/{qid}", Kind: KindByID, Roles: examWriters, ControlRoles: []string{},
+		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/esai/" + o.ExamQuestionID} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/esai/{qid}/{attempt}", Kind: KindByID, Roles: examWriters, ControlRoles: []string{},
+		Requests: post(func(o *School) string {
+			return "/ujian/paket/" + o.ExamID + "/esai/" + o.ExamQuestionID + "/" + o.ExamSessionID
+		},
+			func(*School) url.Values { return url.Values{"skor": {"1"}} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/esai/tugas", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/esai/tugas" },
+			func(o *School) url.Values { return url.Values{"user_id": {o.Teacher.ID}} })},
+	{Method: "POST", Pattern: "/ujian/paket/{id}/esai/tugas/{aid}/hapus", Kind: KindByID, Roles: examWriters,
+		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/esai/tugas/0/hapus" }, nil)},
 	{Method: "GET", Pattern: "/ujian/paket/{id}/soal/{qid}/kunci", Kind: KindByID, Roles: examWriters, ControlRoles: []string{Teacher},
 		Requests: paths(func(o *School) []string {
 			return []string{"/ujian/paket/" + o.ExamID + "/soal/" + o.ExamQuestionID + "/kunci"}

@@ -237,7 +237,8 @@
 
 {{else}}
 <section class="card stack mt-4" aria-labelledby="results-title">
-<h2 class="card-title" id="results-title">Nilai peserta</h2>
+<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="card-title" id="results-title">Nilai peserta</h2>
+{{if or .AwaitEssay .CanWrite}}<a class="btn {{if .AwaitEssay}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai{{if .AwaitEssay}} ({{.AwaitEssay}} peserta menunggu){{end}}</a>{{end}}</div>
 {{if .Results}}
 <p class="mb-0">{{.Graded}} peserta bernilai final{{if .AwaitEssay}}, <strong>{{.AwaitEssay}} menunggu koreksi esai</strong> (belum dikirim ke modul lain){{end}}. Soal objektif dinilai otomatis saat dikumpulkan; soal yang dibatalkan tidak dihitung.</p>
 <div class="table-wrap"><table>
