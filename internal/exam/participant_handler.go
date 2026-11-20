@@ -97,6 +97,8 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 			r.Get("/beranda", h.home)
 			// Peserta: konfirmasi, mengerjakan, dan mengumpulkan ujian (T138).
 			h.takeRoutes(r)
+			// Siswa: pembahasan hasil yang sudah dibuka (T151); pendaftar 404.
+			r.Get("/hasil/{attempt}", h.review)
 		})
 		// Peserta (atau tanpa sesi): keluar.
 		r.Post("/keluar", h.logout)
@@ -304,6 +306,8 @@ type participantHomeView struct {
 	Exams       []homeExam
 	// Schedule adalah jadwal PTS/PAS yang sudah diumumkan (T134).
 	Schedule []scheduleRow
+	// Results adalah hasil ujian yang sudah dibuka (T151), 30 hari terakhir.
+	Results []StudentResult
 }
 
 type scheduleRow struct {
@@ -321,6 +325,16 @@ func (h *ParticipantHandler) home(w http.ResponseWriter, r *http.Request) {
 	}
 	v := participantHomeView{Participant: p, Exams: homeExams(sessions, now, loc, p.ReadOnly)}
 	if p.StudentID != "" {
+		results, err := StudentResults(r.Context(), h.db, p.SchoolID, p.StudentID, now)
+		if err != nil {
+			page.ServerError(h.render, h.logger, w, r, nil, "participant results", err)
+			return
+		}
+		for _, res := range results {
+			if now.Sub(res.OpenedAt) <= ResultsWindow {
+				v.Results = append(v.Results, res)
+			}
+		}
 		items, err := StudentSchedule(r.Context(), h.db, p.SchoolID, p.StudentID, now)
 		if err != nil {
 			page.ServerError(h.render, h.logger, w, r, nil, "participant schedule", err)

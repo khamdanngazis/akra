@@ -26,6 +26,7 @@ func (h *Handler) resultRoutes(readers, writers chi.Router) {
 	readers.Get("/paket/{id}/hasil/analisis.xlsx", h.resultsXLSX)
 	readers.Get("/paket/{id}/hasil/cetak", h.resultsPrint)
 	writers.Post("/paket/{id}/hasil/peserta/{attempt}/nilai", h.resultManualScore)
+	writers.Post("/paket/{id}/hasil/buka", h.resultsRelease)
 }
 
 func resultsPath(examID string) string { return "/ujian/paket/" + examID + "/hasil" }
@@ -45,6 +46,9 @@ type resultsView struct {
 	// Rapor (T150).
 	ToReport    bool
 	GradesStale int
+	// Release: buka hasil untuk siswa dan orang tua (T151).
+	Release    ReleaseState
+	ReleasedAt string
 }
 
 // filterOf membaca saringan dari query string.
@@ -77,6 +81,15 @@ func (h *Handler) resultsPage(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	v := resultsView{User: id, Exam: e, Tab: "nilai", A: a, CanWrite: e.Access(sa.Actor, now) >= Write, Query: a.Filter.Query(),
 		KKTPLine: a.KKTP.Value, Flash: auth.PopFlash(ctx, h.sessions)}
+	rs, err := LoadReleaseState(ctx, h.db, e, now)
+	if err != nil {
+		h.fail(w, r, "release state", err)
+		return
+	}
+	v.Release = rs
+	if rs.Released != nil {
+		v.ReleasedAt = clock.FormatDateTimeID(*rs.Released, id.Location())
+	}
 	if v.CanWrite && (e.FeedsGrades() || e.FollowUp != "") {
 		v.ToReport = true
 		var err error
@@ -257,4 +270,31 @@ func (h *Handler) resultsXLSX(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+safeFileName("analisis-"+e.Name)+`.xlsx"`)
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	_, _ = w.Write(data)
+}
+
+// resultsRelease membuka atau menutup hasil untuk siswa dan orang tua
+// (T151).
+func (h *Handler) resultsRelease(w http.ResponseWriter, r *http.Request) {
+	_, sa, e, ok := h.examWrite(w, r)
+	if !ok {
+		return
+	}
+	open := r.PostForm.Get("aksi") != "tutup"
+	err := ReleaseResults(r.Context(), h.db, sa, e, open, time.Now())
+	switch {
+	case errors.Is(err, ErrSessionsNotEnded):
+		h.flash(r, "Masih ada sesi (termasuk susulan) yang belum berakhir. Hasil dibuka setelah semua sesi selesai agar soal tidak bocor.")
+	case errors.Is(err, ErrAdmissionNoResults), errors.Is(err, ErrResultsHidden):
+		h.flash(r, "Aturan ujian ini tidak menampilkan hasil kepada peserta.")
+	case errors.Is(err, ErrResultsImmediate):
+		h.flash(r, "Hasil ujian ini terbuka langsung setelah peserta mengumpulkan.")
+	case err != nil:
+		h.fail(w, r, "release results", err)
+		return
+	case open:
+		h.flash(r, "Hasil dibuka. Siswa melihatnya di beranda ujian (kode kartu berlaku 30 hari untuk melihat hasil) dan orang tua di portal.")
+	default:
+		h.flash(r, "Hasil ditutup kembali untuk siswa dan orang tua.")
+	}
+	http.Redirect(w, r, resultsPath(e.ID), http.StatusSeeOther)
 }

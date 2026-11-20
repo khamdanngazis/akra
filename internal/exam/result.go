@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"math"
 	"net/url"
 	"sort"
@@ -597,6 +598,8 @@ type AnswerDetail struct {
 	OverrideReason string
 	OverrideBy     string
 	OverrideAt     time.Time
+	// Explanation: pembahasan soal (HTML aman, gambar sesuai resolve).
+	Explanation template.HTML
 }
 
 // EarnedText menampilkan poin diperoleh, mis. "1,5".
@@ -615,6 +618,12 @@ func (d AnswerDetail) Pending() bool {
 // LoadAttemptDetail memuat peserta attempt attemptID dan setiap soal
 // paketnya dengan jawaban, kunci (kunci koreksi bila ada), dan poin.
 func LoadAttemptDetail(ctx context.Context, q database.DBTX, e Exam, attemptID string) (ParticipantResult, []AnswerDetail, error) {
+	return loadAttemptDetail(ctx, q, e, attemptID, staffAssetURL)
+}
+
+// loadAttemptDetail sama dengan LoadAttemptDetail dengan URL gambar soal
+// dari resolve (staf atau peserta).
+func loadAttemptDetail(ctx context.Context, q database.DBTX, e Exam, attemptID string, resolve func(string) string) (ParticipantResult, []AnswerDetail, error) {
 	p, err := loadAttemptResult(ctx, q, e, attemptID)
 	if err != nil {
 		return p, nil, err
@@ -661,7 +670,10 @@ func LoadAttemptDetail(ctx context.Context, q database.DBTX, e Exam, attemptID s
 		qk.Key = it.Key
 		pq := ForParticipant(it.Question)
 		pq.Points = it.Points
-		d := AnswerDetail{Item: it, Number: i + 1, View: NewQuestionView(pq, i+1, staffAssetURL), Key: keyLines(qk)}
+		d := AnswerDetail{Item: it, Number: i + 1, View: NewQuestionView(pq, i+1, resolve), Key: keyLines(qk)}
+		if it.Question.ExplanationHTML != "" {
+			d.Explanation = trusted(it.Question.ExplanationHTML, resolve)
+		}
 		if r, ok := recs[it.Question.ID]; ok {
 			d.Answer = answerLines(it.Question, r.value)
 			d.Earned, d.Comment = r.points, r.comment

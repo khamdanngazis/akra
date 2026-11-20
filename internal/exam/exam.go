@@ -120,6 +120,8 @@ type Exam struct {
 	FollowUp     string
 	// GradeComponentID: komponen nilai rapor tujuan kirim nilai (T150).
 	GradeComponentID string
+	// ResultsReleasedAt: guru membuka hasil untuk siswa dan orang tua (T151).
+	ResultsReleasedAt *time.Time
 }
 
 // StatusLabel mengembalikan nama status untuk tampilan.
@@ -200,7 +202,7 @@ const examCols = `e.id, e.school_id, coalesce(e.academic_year_id::text, ''), e.n
 	e.results_mode, e.results_after_all, e.max_attempts, e.pass_score, e.integrity_mode, coalesce(e.integrity_limit, 0), e.allow_back,
 	e.variant_count, e.status, e.wizard_step, e.owner_id, ou.full_name, coalesce(e.copied_from::text, ''), e.scheduled_at, e.locked_at,
 	e.created_by, e.created_at, e.updated_at, e.archived_at, e.builtin, coalesce(e.parent_exam_id::text, ''), coalesce(e.followup, ''),
-	coalesce(e.grade_component_id::text, '')`
+	coalesce(e.grade_component_id::text, ''), e.results_released_at`
 
 const examFrom = ` FROM exams e
 	LEFT JOIN subjects s ON s.id = e.subject_id AND s.school_id = e.school_id
@@ -214,7 +216,7 @@ func scanExam(r pgx.Row) (Exam, error) {
 		&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 		&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
 		&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
-		&e.GradeComponentID)
+		&e.GradeComponentID, &e.ResultsReleasedAt)
 	e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 	if pass != nil {
 		v := int(*pass)
@@ -280,7 +282,7 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 			&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 			&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
 			&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
-			&e.GradeComponentID, &x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
+			&e.GradeComponentID, &e.ResultsReleasedAt, &x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
 		e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 		if pass != nil {
 			v := int(*pass)

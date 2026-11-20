@@ -424,6 +424,7 @@ type doneView struct {
 	Received    string
 	ByTime      bool
 	CanRetry    bool
+	Result      *StudentResult // hasil yang sudah terbuka (T151)
 }
 
 func (h *ParticipantHandler) done(w http.ResponseWriter, r *http.Request) {
@@ -443,6 +444,19 @@ func (h *ParticipantHandler) done(w http.ResponseWriter, r *http.Request) {
 	now := h.now()
 	v := doneView{Participant: p, Info: info, Attempt: a, ByTime: a.SubmitReason == SubmitByTime || a.SubmitReason == SubmitBySystem,
 		CanRetry: !p.ReadOnly && info.Phase(now) == "buka"}
+	// Hasil yang sudah terbuka (mis. latihan): nilai dan tautan pembahasan.
+	if p.StudentID != "" {
+		results, err := StudentResults(r.Context(), h.db, p.SchoolID, p.StudentID, now)
+		if err != nil {
+			page.ServerError(h.render, h.logger, w, r, nil, "attempt result", err)
+			return
+		}
+		for i := range results {
+			if results[i].AttemptID == a.ID {
+				v.Result = &results[i]
+			}
+		}
+	}
 	if a.SubmittedAt != nil {
 		v.Received = clockLabel(*a.SubmittedAt, now, p.Location())
 	}
@@ -457,7 +471,8 @@ func (h *ParticipantHandler) image(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.CurrentParticipant(r.Context())
 	a, err := GetAttempt(r.Context(), h.db, p, chi.URLParam(r, "attempt"))
 	now := h.now()
-	if err == nil && (!a.Running() || h.store == nil) {
+	// Gambar soal: selama mengerjakan, atau di pembahasan yang terbuka (T151).
+	if err == nil && (h.store == nil || !a.Running() && !ReviewAllowed(r.Context(), h.db, p, a.ID, now)) {
 		err = ErrNotFound
 	}
 	var asset Asset
@@ -538,4 +553,28 @@ func homeExams(sessions []SessionInfo, now time.Time, loc *time.Location, readOn
 		out = append(out, e)
 	}
 	return out
+}
+
+// reviewView adalah halaman pembahasan siswa.
+type reviewView struct {
+	Participant auth.Participant
+	Review      StudentReview
+}
+
+// review menampilkan pembahasan attempt (T151): soal, jawaban, kunci,
+// pembahasan, dan ketuntasan TP. 404 bila belum/tidak dibuka, untuk
+// pendaftar, atau attempt milik orang lain.
+func (h *ParticipantHandler) review(w http.ResponseWriter, r *http.Request) {
+	p, _ := auth.CurrentParticipant(r.Context())
+	rv, err := LoadStudentReview(r.Context(), h.db, p, chi.URLParam(r, "attempt"), h.now())
+	if errors.Is(err, ErrNotFound) {
+		page.NotFound(h.render, w, r, nil, "Pembahasan belum dibuka atau tidak tersedia.")
+		return
+	}
+	if err != nil {
+		page.ServerError(h.render, h.logger, w, r, nil, "student review", err)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	h.render.Render(w, r, http.StatusOK, "exam/participant_review", reviewView{Participant: p, Review: rv})
 }

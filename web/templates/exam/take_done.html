@@ -8,7 +8,9 @@
 <h1 class="text-xl font-bold text-center">{{if .ByTime}}Waktu habis — jawaban dikumpulkan{{else}}Jawaban sudah diterima{{end}}</h1>
 <p class="text-center text-lg mb-0">{{.Info.ExamName}}{{with .Info.Subject}} · {{.}}{{end}}</p>
 {{with .Received}}<p class="text-center mb-0">Diterima pukul <strong>{{.}}</strong></p>{{end}}
-<p class="text-center text-slate-600 mb-0">{{if eq .Info.Purpose "latihan"}}Ini ujian latihan; nilainya tidak masuk rapor.{{else}}Nilai diumumkan oleh guru setelah penilaian selesai.{{end}}</p>
+{{with .Result}}<p class="text-center text-lg mb-0">Nilai: {{with .Score}}<strong class="result-score">{{.}}</strong>{{else}}menunggu koreksi esai{{end}}</p>
+{{if .Review}}<p class="text-center mb-0"><a href="/u/hasil/{{.AttemptID}}">Lihat pembahasan</a></p>{{end}}{{end}}
+<p class="text-center text-slate-600 mb-0">{{if eq .Info.Purpose "latihan"}}Ini ujian latihan; nilainya tidak masuk rapor.{{else if not .Result}}Nilai diumumkan oleh guru setelah semua sesi selesai.{{end}}</p>
 <div class="action-row justify-center">
 {{if .CanRetry}}<a class="btn btn-ghost" href="/u/ujian/{{.Info.SessionID}}">Kerjakan lagi</a>{{end}}
 <a class="btn btn-primary" href="/u/beranda">Kembali ke beranda</a>

@@ -1,0 +1,37 @@
+{{define "title"}}Ujian {{.Child.FullName}}{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Anak Saya" "/portal" .Child.FullName (print "/portal/siswa/" .Child.ID) "Ujian" ""}}
+<h1>Ujian</h1>
+<p class="muted">{{.Child.FullName}} · NIS {{.Child.NIS}}</p>
+{{template "flash" .}}
+
+<section class="card stack" aria-labelledby="upcoming-title">
+<h2 class="card-title" id="upcoming-title">Jadwal ujian</h2>
+{{if .Upcoming}}
+<ul class="stack">{{range .Upcoming}}<li class="flex items-start justify-between gap-3 border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+<span class="min-w-0"><strong class="block">{{with .Subject}}{{.}}{{else}}{{$.Child.FullName}}{{end}}</strong><span class="text-sm text-slate-500">{{.Name}}{{if .Makeup}} · <span class="badge badge-info">Susulan</span>{{end}}</span></span>
+<span class="text-sm text-right">{{.When}}{{with .Room}}<span class="block text-slate-500">Ruang {{.}}</span>{{end}}{{with .Number}}<span class="block text-slate-500">No. {{.}}</span>{{end}}</span></li>{{end}}</ul>
+{{else}}<p class="mb-0 muted">Belum ada jadwal ujian yang diumumkan.</p>{{end}}
+</section>
+
+{{if .Absent}}
+<section class="card stack mt-4" aria-labelledby="absent-title">
+<h2 class="card-title" id="absent-title">Tidak hadir</h2>
+<ul class="stack">{{range .Absent}}<li><strong>{{.ExamName}}</strong>{{with .Subject}} <span class="muted">· {{.}}</span>{{end}}
+<span class="block text-sm">{{with .Makeup}}Ujian susulan: <strong>{{.}}</strong>{{else}}Belum ada jadwal susulan. Hubungi wali kelas atau guru mapel.{{end}}</span></li>{{end}}</ul>
+</section>
+{{end}}
+
+<section class="card stack mt-4" aria-labelledby="results-title">
+<h2 class="card-title" id="results-title">Nilai ujian</h2>
+{{if .Results}}
+<div class="table-wrap"><table>
+<thead><tr><th>Ujian</th><th>Mapel</th><th class="text-right">Nilai</th></tr></thead>
+<tbody>{{range .Results}}<tr><td>{{.ExamName}} <span class="muted text-sm">{{.PurposeLabel}}</span></td><td>{{.Subject}}</td>
+<td class="text-right">{{with .Score}}<strong>{{.}}</strong>{{else}}<span class="muted">menunggu koreksi</span>{{end}}</td></tr>{{end}}</tbody>
+</table></div>
+<p class="hint mb-0">Nilai tampil setelah guru membukanya. Soal dan kunci jawaban tidak ditampilkan untuk menjaga bank soal sekolah.</p>
+{{else}}<p class="mb-0 muted">Belum ada nilai ujian yang dibuka guru.</p>{{end}}
+</section>
+{{end}}

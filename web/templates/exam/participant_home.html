@@ -11,6 +11,18 @@
 <div class="adm-shell">
 <div class="adm-title"><h1>Halo, {{.Participant.Name}}</h1>
 {{if .Participant.ReadOnly}}<p>Sesi ujian sudah berakhir. Anda hanya bisa melihat hasil.</p>{{else}}<p>Ujian Anda ada di bawah ini.</p>{{end}}</div>
+{{if .Results}}
+<section class="card stack mb-4" aria-labelledby="results-title">
+<h2 class="card-title" id="results-title">Hasil ujian</h2>
+<ul class="stack">
+{{range .Results}}<li class="flex items-start justify-between gap-3 border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+<span class="min-w-0"><strong class="block">{{.ExamName}}</strong><span class="text-sm text-slate-500">{{with .Subject}}{{.}} · {{end}}{{.PurposeLabel}}</span>
+{{if .Review}}<a class="text-sm" href="/u/hasil/{{.AttemptID}}">Lihat pembahasan</a>{{end}}</span>
+<span class="text-right flex-none">{{with .Score}}<strong class="result-score">{{.}}</strong>{{else}}<span class="badge badge-warning">Menunggu koreksi</span>{{end}}</span>
+</li>{{end}}
+</ul>
+</section>
+{{end}}
 {{if .Exams}}
 <div class="stack">
 {{range .Exams}}
@@ -23,7 +35,7 @@
 </section>
 {{end}}
 </div>
-{{else}}
+{{else if not .Results}}
 <section class="card empty-state"><p>Belum ada ujian untuk Anda.</p></section>
 {{end}}
 {{if .Schedule}}
