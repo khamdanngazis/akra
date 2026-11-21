@@ -115,6 +115,7 @@ func newApp(d appDeps) (http.Handler, error) {
 	return newRouter(routerDeps{
 		pinger:   d.pinger,
 		draining: draining,
+		hsts:     d.secure,
 		ops: &ops.Handler{DB: d.db, Metrics: reg, Render: d.render, Logger: d.logger, Notifier: d.ops.notifier,
 			Token: d.ops.token, Env: d.ops.env},
 		csrf:        csrf.Middleware(d.secure, d.logger),
@@ -150,7 +151,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			students.NewGuardianAccountService(d.db, activation, d.logger),
 			students.NewProfileService(d.db, d.pii),
 			students.NewGuardianDetailService(d.db, d.pii),
-			d.sessions, d.render, d.logger),
+			d.sessions, d.render, d.logger).WithExamExport(exam.StudentExamExportAny),
 		admission:       admission.NewHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger).WithExam(examTokens, d.baseURL),
 		dapodik:         dapodik.NewHandler(d.db, d.pii, d.store, d.sessions, d.render, d.logger),
 		admissionPublic: admission.NewPublicHandler(d.db, periods, applicants, documents, d.sessions, d.render, d.logger).WithExam(examTokens, d.baseURL),

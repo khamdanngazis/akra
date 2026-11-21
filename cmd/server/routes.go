@@ -42,6 +42,8 @@ type routerDeps struct {
 	pinger health.Pinger
 	// draining: server sedang berhenti; /healthz menjawab 503 (T145).
 	draining *atomic.Bool
+	// hsts memasang Strict-Transport-Security (di luar development).
+	hsts bool
 	// ops: halaman status publik, /metrics, dan /internal (T145).
 	ops          *ops.Handler
 	csrf         func(http.Handler) http.Handler
@@ -106,6 +108,7 @@ type routerDeps struct {
 // menyebut peran yang diizinkan di komentar di atas handler-nya.
 func newRouter(d routerDeps) http.Handler {
 	r := chi.NewRouter()
+	r.Use(httpserver.SecurityHeaders(d.hsts))
 
 	// Tanpa sesi dan tanpa CSRF.
 	draining := d.draining

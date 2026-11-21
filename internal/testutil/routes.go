@@ -1233,6 +1233,9 @@ var Routes = []Route{
 		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/ubah"} })},
 	{Method: "GET", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: schoolData,
 		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/data-rinci"} })},
+	// Ekspor data pribadi siswa (UU PDP, T153).
+	{Method: "GET", Pattern: "/siswa/{id}/data-pribadi.json", Kind: KindByID, Roles: adminTU,
+		Requests: paths(func(o *School) []string { return []string{"/siswa/" + o.StudentIDs[0] + "/data-pribadi.json"} })},
 	{Method: "POST", Pattern: "/siswa/{id}/data-rinci", Kind: KindByID, Roles: adminTU,
 		Requests: func(_, o *School) []Request {
 			id := o.StudentIDs[0]

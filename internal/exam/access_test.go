@@ -29,6 +29,10 @@ var actors = map[string]Actor{
 		{SessionID: sessA, Start: now.Add(-time.Hour), End: now.Add(time.Hour)}}},
 	"principal": {UserID: me, Roles: []string{rolePrincipal}},
 	"parent":    {UserID: me, Roles: []string{"orang_tua"}},
+	// T153: bendahara, dan pengawas yang jendela waktunya sudah lewat.
+	"treasurer": {UserID: me, Roles: []string{"bendahara"}},
+	"proctorLate": {UserID: me, Roles: []string{roleTeacher}, Proctors: []ProctorAssignment{
+		{SessionID: sessA, Start: now.Add(-6 * time.Hour), End: now.Add(-4 * time.Hour)}}},
 }
 
 // Sumber daya per aksi: "own" memenuhi syarat cakupan pelaku (mapel yang
@@ -50,14 +54,14 @@ var resources = map[Action]struct{ own, other Resource }{
 // uji ini juga guru, jadi tetap punya hak guru atas milik sendiri
 // (soal, ujian, koreksi), tanpa hak atas milik orang lain.
 var want = map[Action]map[string]string{
-	ActBank:          {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "-", "principal": "R", "parent": "-"},
-	ActQuestionEdit:  {"admin": "W", "coordinator": "W/-", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-"},
-	ActClassExam:     {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "-", "principal": "R", "parent": "-"},
-	ActAgenda:        {"admin": "W", "coordinator": "W", "teacher": "-", "proctor": "-", "principal": "R", "parent": "-"},
-	ActAdmissionTest: {"admin": "W", "coordinator": "-", "teacher": "-", "proctor": "-", "principal": "R", "parent": "-"},
-	ActProctor:       {"admin": "W", "coordinator": "W", "teacher": "-", "proctor": "W/-", "principal": "R", "parent": "-"},
-	ActGrade:         {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-"},
-	ActSendToReport:  {"admin": "-", "coordinator": "W/-", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-"},
+	ActBank:          {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "-", "principal": "R", "parent": "-", "treasurer": "-", "proctorLate": "-"},
+	ActQuestionEdit:  {"admin": "W", "coordinator": "W/-", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-", "treasurer": "-", "proctorLate": "W/-"},
+	ActClassExam:     {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "-", "principal": "R", "parent": "-", "treasurer": "-", "proctorLate": "-"},
+	ActAgenda:        {"admin": "W", "coordinator": "W", "teacher": "-", "proctor": "-", "principal": "R", "parent": "-", "treasurer": "-", "proctorLate": "-"},
+	ActAdmissionTest: {"admin": "W", "coordinator": "-", "teacher": "-", "proctor": "-", "principal": "R", "parent": "-", "treasurer": "-", "proctorLate": "-"},
+	ActProctor:       {"admin": "W", "coordinator": "W", "teacher": "-", "proctor": "W/-", "principal": "R", "parent": "-", "treasurer": "-", "proctorLate": "-"},
+	ActGrade:         {"admin": "W", "coordinator": "W", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-", "treasurer": "-", "proctorLate": "W/-"},
+	ActSendToReport:  {"admin": "-", "coordinator": "W/-", "teacher": "W/-", "proctor": "W/-", "principal": "-", "parent": "-", "treasurer": "-", "proctorLate": "W/-"},
 }
 
 func levelCode(l Level) string {

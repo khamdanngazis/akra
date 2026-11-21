@@ -1,6 +1,7 @@
 package exam
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"io/fs"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alexedwards/scs/v2/memstore"
@@ -190,8 +192,33 @@ func TestLoadActor(t *testing.T) {
 
 // debugOut mengarahkan log uji ke stderr bila AKRA_TEST_LOG=1.
 func debugOut() io.Writer {
+	var w io.Writer = io.Discard
 	if os.Getenv("AKRA_TEST_LOG") == "1" {
-		return os.Stderr
+		w = os.Stderr
 	}
-	return io.Discard
+	if logCapture != nil {
+		return io.MultiWriter(w, logCapture)
+	}
+	return w
+}
+
+// logCapture, bila diisi sebelum env dibuat, menerima salinan semua log
+// handler (uji pemindai log T153).
+var logCapture *lockedBuffer
+
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
