@@ -21,6 +21,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/nav"
@@ -33,7 +34,12 @@ const (
 
 // Renderer menyimpan semua halaman yang sudah di-parse.
 type Renderer struct {
-	pages  map[string]*template.Template
+	pages map[string]*template.Template
+	// clones menyimpan salinan template per halaman untuk dipakai ulang
+	// (T152): fungsi khusus request (token CSRF, menu aktif) dipasang ke
+	// salinan yang sedang dipakai satu request saja, sehingga Clone yang
+	// mahal tidak terjadi di setiap request.
+	clones map[string]*sync.Pool
 	logger *slog.Logger
 	// mapsKey adalah API key Google Maps untuk peta lokasi rumah (T112);
 	// kosong berarti fitur peta tidak tampil.
@@ -98,6 +104,10 @@ func New(fsys, static fs.FS, logger *slog.Logger) (*Renderer, error) {
 		pages[strings.TrimSuffix(p, ".html")] = t
 	}
 	rd.pages = pages
+	rd.clones = make(map[string]*sync.Pool, len(pages))
+	for name := range pages {
+		rd.clones[name] = &sync.Pool{}
+	}
 	return rd, nil
 }
 
@@ -211,14 +221,24 @@ func (rd *Renderer) execute(w http.ResponseWriter, r *http.Request, status int, 
 	if !ok {
 		return fmt.Errorf("render: unknown page %q", name)
 	}
-	t, err := page.Clone()
-	if err != nil {
-		return err
+	pool := rd.clones[name]
+	t, _ := pool.Get().(*template.Template)
+	if t == nil {
+		var err error
+		if t, err = page.Clone(); err != nil {
+			return err
+		}
 	}
 	var buf bytes.Buffer
 	reqFuncs := csrf.FuncMap(r)
 	reqFuncs["currentMenu"] = func(items []nav.MenuItem) string { return nav.Current(items, r.URL.Path) }
-	if err := t.Funcs(reqFuncs).ExecuteTemplate(&buf, block, data); err != nil {
+	err := t.Funcs(reqFuncs).ExecuteTemplate(&buf, block, data)
+	// Fungsi request dilepas sebelum salinan kembali ke pool agar tidak
+	// menahan request lama.
+	t.Funcs(csrf.PlaceholderFuncs)
+	t.Funcs(template.FuncMap{"currentMenu": func([]nav.MenuItem) string { return "" }})
+	pool.Put(t)
+	if err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -49,4 +49,5 @@ tmp/
 
 # Uji beban (T61): data dan hasil lokal
 /loadtest/data.json
+/loadtest/exam-data.json
 /loadtest/results/
