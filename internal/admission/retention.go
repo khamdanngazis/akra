@@ -11,6 +11,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"akra/internal/audit"
+	"akra/internal/exam"
 	"akra/internal/platform/database"
 	"akra/internal/platform/storage"
 	"akra/internal/school"
@@ -121,6 +122,11 @@ func (s *ApplicantService) Anonymize(ctx context.Context, q database.DB, schoolI
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE applicant_events SET note = NULL WHERE school_id = $1 AND applicant_id = $2`, schoolID, id); err != nil {
+			return err
+		}
+		// Data tes seleksi online (T149, T153): jawaban, kejadian, dan kode
+		// akses dihapus; nilai tes tetap.
+		if err := exam.EraseApplicantExamData(ctx, tx, schoolID, id); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `

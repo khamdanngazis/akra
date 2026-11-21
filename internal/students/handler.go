@@ -31,9 +31,11 @@ type Handler struct {
 	accounts  *GuardianAccountService
 	profiles  *ProfileService
 	details   *GuardianDetailService
-	sessions  *scs.SessionManager
-	render    page.Renderer
-	logger    *slog.Logger
+	// examExport: data ujian untuk ekspor data pribadi (T153).
+	examExport ExamExporter
+	sessions   *scs.SessionManager
+	render     page.Renderer
+	logger     *slog.Logger
 }
 
 // NewHandler mengembalikan Handler. Route-nya harus berada di dalam grup
@@ -69,6 +71,9 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Post("/{id}/pindah-kelas", h.move)
 			// Peran: admin_tu.
 			r.Post("/{id}/data-rinci", h.saveProfile)
+			// Peran: admin_tu. Ekspor data pribadi siswa (hak akses UU PDP,
+			// T153); tercatat di audit.
+			r.Get("/{id}/data-pribadi.json", h.dataExport)
 			// Peran: admin_tu.
 			r.Post("/{id}/wali/{guardianID}/akun", h.createAccount)
 			// Peran: admin_tu.

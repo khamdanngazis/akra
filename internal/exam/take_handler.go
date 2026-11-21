@@ -353,6 +353,12 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, saveResponse{Redirect: "/u/a/" + id, Now: now.UnixMilli()})
 		return
 	}
+	if !h.saveLimit.allow(c.AttemptID, now) {
+		// Banjir simpan dari satu attempt (T153): klien mengulang nanti.
+		w.Header().Set("Retry-After", "2")
+		writeJSON(w, http.StatusTooManyRequests, saveResponse{Now: now.UnixMilli()})
+		return
+	}
 	if h.faultPct > 0 && h.randPct() < h.faultPct {
 		// Simulasi gangguan (EXAM_FAULT_SAVE_PERCENT, staging): klien
 		// mengulang dari antrian perangkat, jawaban tidak hilang.

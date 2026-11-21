@@ -53,7 +53,9 @@ type ParticipantHandler struct {
 	math     *mathrender.Renderer // contoh rumus di cek perangkat
 	store    storage.Store        // gambar soal di halaman ujian
 	tokens   *TokenSigner         // token attempt untuk simpan jawaban (T139)
-	metrics  *metrics.Registry    // latensi dan error endpoint peserta (T145)
+	// saveLimit membatasi banjir simpan per attempt (T153).
+	saveLimit *saveLimiter
+	metrics   *metrics.Registry // latensi dan error endpoint peserta (T145)
 	// faultPct: persen simpan yang sengaja digagalkan untuk menguji alert
 	// (hanya di luar production, dicegah config).
 	faultPct int
@@ -85,7 +87,7 @@ func (h *ParticipantHandler) track(name string, fn http.HandlerFunc) http.Handle
 // luar grup sesi staf.
 func NewParticipantHandler(db database.DB, sessions *scs.SessionManager, render page.Renderer, logger *slog.Logger, secure bool) *ParticipantHandler {
 	return &ParticipantHandler{db: db, sessions: sessions, render: render, logger: logger,
-		limiter: ratelimit.New(db, participantLimits), secure: secure, now: time.Now, tokens: DevTokenSigner()}
+		limiter: ratelimit.New(db, participantLimits), secure: secure, now: time.Now, tokens: DevTokenSigner(), saveLimit: newSaveLimiter()}
 }
 
 // Routes mendaftarkan route peserta.
