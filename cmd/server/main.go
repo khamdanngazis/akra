@@ -48,6 +48,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	startPprof(logger, cfg)
 
 	templates, static, err := web.Load(cfg.WebDir)
 	if err != nil {
