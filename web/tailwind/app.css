@@ -1039,6 +1039,21 @@
     @apply ml-auto;
   }
 
+  /* Kerangka halaman ujian (T160): sub-tab hasil bergaya segmen dan
+     tautan di menu "Lainnya". */
+  .segmented {
+    @apply inline-flex max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1;
+  }
+  .segmented a {
+    @apply rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 no-underline hover:text-slate-900;
+  }
+  .segmented a[aria-current="page"] {
+    @apply bg-white font-semibold text-slate-900 shadow-sm;
+  }
+  .menu-link {
+    @apply block rounded-lg px-2 py-1.5 text-sm text-slate-700 no-underline hover:bg-slate-50 hover:text-slate-900;
+  }
+
   /* Saringan daftar ujian (T159). */
   .exam-filter select {
     @apply min-w-36;

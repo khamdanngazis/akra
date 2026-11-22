@@ -244,6 +244,7 @@ func examNextStep(e Exam, rd Readiness, sessions []Session, canWrite bool, now t
 type examDetailView struct {
 	User     auth.Identity
 	Exam     Exam
+	Frame    examFrame // kerangka halaman ujian (T160)
 	Tab      string
 	CanWrite bool
 	Next     nextStep
@@ -396,6 +397,11 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if v.Frame, err = h.frame(ctx, sa, e, v.Tab, "", "", ""); err != nil {
+		h.fail(w, r, "exam frame", err)
+		return
+	}
+	v.Frame.Next = &v.Next
 	h.render.Render(w, r, http.StatusOK, "exam/exam_detail", v)
 }
 

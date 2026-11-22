@@ -57,6 +57,7 @@ func (h *Handler) essayExam(w http.ResponseWriter, r *http.Request) (auth.Identi
 }
 
 type essayQueueView struct {
+	Frame       examFrame // kerangka halaman ujian (T160)
 	User        auth.Identity
 	Exam        Exam
 	Questions   []EssayQuestion
@@ -115,6 +116,9 @@ func (h *Handler) essayQueue(w http.ResponseWriter, r *http.Request) {
 		for _, s := range sessions {
 			v.Sessions = append(v.Sessions, optionItem{Value: s.ID, Label: s.Title()})
 		}
+	}
+	if scope.Full {
+		v.Frame = h.frameOrLog(ctx, sa, e, "hasil", "esai", "Koreksi esai")
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/essay_queue", v)
 }

@@ -47,8 +47,16 @@ Detail ujian dan hasilnya terasa seperti dua aplikasi berbeda:
 - `internal/exam/exam_handler.go`, `result_handler.go`, `essay_handler.go`, `sync_handler.go`, `key_fix` handler
 - `web/templates/exam/exam_detail.html`, `results.html`, `item_analysis.html`, `objective_analysis.html`, `essay_queue.html`, `sync_grades.html`, `key_fix.html`, `partials/exam.html`
 
+## Catatan implementasi
+- **Kartu "langkah berikutnya" hanya di detail ujian.** Kartu ini butuh cek kesiapan dan daftar sesi; di halaman hasil, esai, dan rapor informasinya sudah diwakili tombol utama dan sub-tab.
+- **Tombol utama selesai:** urutannya Koreksi esai → Buka hasil untuk siswa → Kirim ke rapor (belum dikirim atau nilai berubah) → Lihat hasil. Pengguna yang hanya membaca (kepala sekolah) mendapat Lihat jadwal / Pantau sesi / Lihat hasil.
+- **"Atur"** tetap sebagai tombol kedua untuk ujian yang masih bisa diubah. Untuk draf, tombol utama "Lanjutkan menyusun" sudah menggantikannya.
+- **Judul halaman hasil kini nama ujian** (sebelumnya "Hasil ujian"). Judul koreksi esai, kirim nilai ke rapor, dan betulkan kunci menjadi `<h2>`, sehingga setiap halaman tetap punya satu `<h1>`.
+- **Korektor yang hanya ditugaskan** (bukan pemilik ujian) tetap melihat halaman koreksi esai tanpa kerangka, karena tidak boleh membuka tab ujian lainnya.
+- **Sub-tab Koreksi esai** menampilkan jumlah peserta yang menunggu koreksi.
+
 ## Kriteria selesai
-- [ ] Semua halaman satu ujian memakai kerangka yang sama: header, langkah berikutnya, tab Hasil aktif saat di hasil, esai, atau rapor
-- [ ] Uji tabel `PrimaryAction` untuk semua status
-- [ ] Tidak ada tombol yang hilang; setiap aksi lama tercapai dari header, tab, atau menu "Lainnya" (daftar dicek di uji template)
-- [ ] Tautan dan URL lama tetap 200
+- [x] Semua halaman satu ujian memakai kerangka yang sama: header, tab utama, Hasil aktif saat di hasil, analisis, esai, atau rapor (langkah berikutnya hanya di detail, lihat catatan)
+- [x] Uji tabel `PrimaryAction` untuk semua status
+- [x] Tidak ada tombol yang hilang; setiap aksi lama tercapai dari header, tab, atau menu "Lainnya" (diuji)
+- [x] Tautan dan URL lama tetap 200 (tidak ada route yang berubah; uji registry)

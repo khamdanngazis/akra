@@ -1,8 +1,8 @@
 {{define "title"}}Betulkan kunci · {{.Exam.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=soal" .Exam.ID) "Betulkan kunci" ""}}
-<h1 class="text-2xl font-bold">Betulkan kunci</h1>
+{{template "exam_frame" .Frame}}
+<h2 class="card-title mt-4">Betulkan kunci</h2>
 <p class="muted">{{.Question.Kind.Label}} · <span dir="auto">{{.Excerpt}}</span></p>
 {{template "flash" .}}
 <p class="hint">Kunci baru dipakai untuk menilai ulang semua peserta yang sudah mengumpulkan; peserta yang masih mengerjakan dinilai dengan kunci baru saat mengumpulkan. Soal di bank tidak berubah.{{if .Overridden}} Kunci soal ini sudah pernah dibetulkan.{{end}}</p>

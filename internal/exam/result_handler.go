@@ -33,6 +33,7 @@ func resultsPath(examID string) string { return "/ujian/paket/" + examID + "/has
 
 // resultsView adalah isi halaman hasil.
 type resultsView struct {
+	Frame    examFrame // kerangka halaman ujian (T160)
 	User     auth.Identity
 	Exam     Exam
 	Tab      string // nilai, butir, tp
@@ -122,6 +123,11 @@ func (h *Handler) resultsPage(w http.ResponseWriter, r *http.Request) {
 			regs[i].At = regs[i].At.In(loc)
 		}
 		v.Regrades = regs
+	}
+	label := map[string]string{"nilai": "Nilai", "butir": "Analisis butir", "tp": "Analisis TP"}[v.Tab]
+	if v.Frame, err = h.frame(ctx, sa, e, "hasil", v.Tab, label, v.Query); err != nil {
+		h.fail(w, r, "exam frame", err)
+		return
 	}
 	tpl := map[string]string{"nilai": "exam/results", "butir": "exam/item_analysis", "tp": "exam/objective_analysis"}[v.Tab]
 	h.render.Render(w, r, http.StatusOK, tpl, v)

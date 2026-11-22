@@ -24,6 +24,7 @@ func (h *Handler) syncRoutes(writers chi.Router) {
 func gradeSyncPath(examID string) string { return "/ujian/paket/" + examID + "/rapor" }
 
 type gradeSyncView struct {
+	Frame      examFrame // kerangka halaman ujian (T160)
 	User       auth.Identity
 	Exam       Exam
 	Plan       GradeSyncPlan
@@ -95,6 +96,7 @@ func (h *Handler) renderGradeSync(w http.ResponseWriter, r *http.Request, id aut
 			}
 		}
 	}
+	v.Frame = h.frameOrLog(ctx, sa, e, "hasil", "rapor", "Kirim ke rapor")
 	h.render.Render(w, r, status, "exam/sync_grades", v)
 }
 

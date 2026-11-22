@@ -27,6 +27,7 @@ type keyRow struct {
 }
 
 type keyFixView struct {
+	Frame      examFrame // kerangka halaman ujian (T160)
 	User       auth.Identity
 	Exam       Exam
 	Question   Question
@@ -158,11 +159,12 @@ func (h *Handler) keyFixLoad(w http.ResponseWriter, r *http.Request) (auth.Ident
 }
 
 func (h *Handler) keyFixForm(w http.ResponseWriter, r *http.Request) {
-	id, _, e, q, k, over, ok := h.keyFixLoad(w, r)
+	id, sa, e, q, k, over, ok := h.keyFixLoad(w, r)
 	if !ok {
 		return
 	}
 	v := keyFixViewOf(id, e, q, k, over)
+	v.Frame = h.frameOrLog(r.Context(), sa, e, "soal", "kunci", "Betulkan kunci")
 	v.Flash = auth.PopFlash(r.Context(), h.sessions)
 	h.render.Render(w, r, http.StatusOK, "exam/key_fix", v)
 }
@@ -214,5 +216,6 @@ func (h *Handler) keyFixPost(w http.ResponseWriter, r *http.Request) {
 	if v.Error != "" {
 		status = http.StatusUnprocessableEntity
 	}
+	v.Frame = h.frameOrLog(r.Context(), sa, e, "soal", "kunci", "Betulkan kunci")
 	h.render.Render(w, r, status, "exam/key_fix", v)
 }
