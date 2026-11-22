@@ -118,6 +118,7 @@ type banksView struct {
 
 func (h *Handler) banks(w http.ResponseWriter, r *http.Request) {
 	id, sa := h.staff(r)
+	h.ensureSamples(r, sa.SchoolID)
 	grade, _ := parseGrade(r.URL.Query().Get("tingkat"))
 	list, err := ListBanks(r.Context(), h.db, sa.SchoolID, sa.Actor, grade, time.Now())
 	if err != nil {

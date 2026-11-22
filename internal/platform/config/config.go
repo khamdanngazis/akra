@@ -83,6 +83,12 @@ type Config struct {
 	AlertTelegramToken  string
 	AlertTelegramChatID string
 	AlertEmail          string
+	// Kontak dukungan AKRA di pusat bantuan ujian dan panduan cetak (T154).
+	// Semua opsional; tanpa kontak, sekolah diarahkan ke admin TU.
+	SupportWhatsApp  string
+	SupportEmail     string
+	SupportHours     string // mis. "Senin–Jumat 07.00–16.00 WIB"
+	SupportHoursPeak string // jam layanan musim PTS/PAS
 	// ExamFaultSavePercent (0–100, hanya di luar production) membuat
 	// sebagian simpan jawaban gagal 500 untuk menguji alert di staging.
 	ExamFaultSavePercent int
@@ -244,6 +250,15 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("config: invalid ALERT_EMAIL %q", cfg.AlertEmail)
 		}
 	}
+	cfg.SupportWhatsApp = strings.TrimSpace(os.Getenv("SUPPORT_WHATSAPP"))
+	cfg.SupportEmail = strings.TrimSpace(os.Getenv("SUPPORT_EMAIL"))
+	if cfg.SupportEmail != "" {
+		if _, err := mail.ParseAddress(cfg.SupportEmail); err != nil {
+			return Config{}, fmt.Errorf("config: invalid SUPPORT_EMAIL %q", cfg.SupportEmail)
+		}
+	}
+	cfg.SupportHours = strings.TrimSpace(os.Getenv("SUPPORT_HOURS"))
+	cfg.SupportHoursPeak = strings.TrimSpace(os.Getenv("SUPPORT_HOURS_PEAK"))
 	if raw := os.Getenv("EXAM_FAULT_SAVE_PERCENT"); raw != "" {
 		v, err := strconv.Atoi(raw)
 		if err != nil || v < 0 || v > 100 {

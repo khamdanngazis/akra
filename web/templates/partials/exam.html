@@ -167,7 +167,7 @@
 {{/* exam_wizard_steps: kepala langkah wizard ujian. Argumen: []stepLink. */}}
 {{define "exam_wizard_steps"}}
 <ol class="wizard-steps is-5" aria-label="Langkah">
-{{range .}}<li class="is-{{.State}}">{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
+{{range .}}<li class="is-{{.State}}"{{if eq .N 5}} data-tour-step="3" data-tour-title="Cek kesiapan" data-tour-text="Sebelum dijadwalkan, langkah Cek memeriksa soal, kunci, jadwal, peserta, dan pengawas. Perbaiki yang merah, lalu jadwalkan."{{end}}>{{if and .URL (ne .State "current")}}<a class="wizard-box" href="{{.URL}}">{{else}}<span class="wizard-box"{{if eq .State "current"}} aria-current="step"{{end}}>{{end}}<span class="wizard-num" aria-hidden="true">{{if eq .State "done"}}{{template "icon" "check"}}{{else}}{{.N}}{{end}}</span><span class="wizard-title">{{.Title}}</span>{{if and .URL (ne .State "current")}}</a>{{else}}</span>{{end}}</li>{{end}}
 </ol>
 {{end}}
 

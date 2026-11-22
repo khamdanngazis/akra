@@ -1,6 +1,6 @@
 {{define "title"}}{{if .IsNew}}Buat Ujian{{else}}{{.StepTitle}} · {{.Exam.Name}}{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
-{{define "head"}}<script defer src="{{ asset "js/exam-wizard.js" }}"></script>{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-wizard.js" }}"></script><script defer src="{{ asset "js/tour.js" }}"></script>{{end}}
 {{define "content"}}
 {{if .IsNew}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" "Buat ujian" ""}}
 {{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Atur" ""}}{{end}}
@@ -11,7 +11,8 @@
 </div>
 </div>
 
-{{template "exam_wizard_steps" .Steps}}
+<div data-tour="wizard" data-tour-step="1" data-tour-title="Lima langkah" data-tour-text="Dasar, soal, aturan, jadwal, lalu cek. Ujian tersimpan sebagai draf sejak langkah pertama, jadi bisa dilanjutkan kapan saja dari daftar ujian.">{{template "exam_wizard_steps" .Steps}}</div>
+<p class="text-right"><button type="button" class="btn btn-ghost btn-sm" data-tour-start hidden>Tur singkat</button></p>
 {{template "flash" .}}
 {{if .ReadOnly}}<div class="alert alert-info" role="status">Anda hanya bisa melihat ujian ini.</div>{{end}}
 {{if and (not .IsNew) .Exam.Locked}}<div class="alert alert-info" role="status">Soal dan aturan sudah dibekukan karena sesi pertama sudah mulai. <a href="/ujian/paket/{{.Exam.ID}}">Kembali ke detail</a> atau salin ujian untuk membuat versi baru.</div>{{end}}
@@ -21,7 +22,7 @@
 <form method="post" action="{{if .IsNew}}/ujian/paket/{{else}}/ujian/paket/{{.Exam.ID}}/atur/dasar{{end}}" class="card stack" novalidate
  x-data="{ purpose: '{{.Form.Purpose}}', durations: { ulangan: 60, latihan: 30, pts: 90, pas: 90, seleksi: 90 } }">
 {{ csrfField }}
-<h2>1. Dasar</h2>
+<h2 data-tour-step="2" data-tour-title="Isi langkah ini" data-tour-text="Isi kolom lalu simpan untuk lanjut. Tanda ? di samping istilah (varian, KKTP, lokasi) membuka penjelasan singkat.">1. Dasar</h2>
 {{if .IsNew}}
 <fieldset class="field{{if .Errors.purpose}} has-error{{end}}">
 <legend>Tujuan ujian</legend>
@@ -188,7 +189,7 @@
 </form>
 <form method="post" action="/ujian/paket/{{.Exam.ID}}/varian" class="flex flex-wrap items-end gap-2">
 {{ csrfField }}
-<div class="field min-w-0 flex-1"><label for="variants">Varian paket</label><select id="variants" name="variants">{{range .VariantOps}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+<div class="field min-w-0 flex-1"><label for="variants">Varian paket</label> {{template "term" "varian"}}<select id="variants" name="variants">{{range .VariantOps}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
 <p class="hint">Paket A/B/C berisi soal berbeda dengan komposisi TP, level, dan kesulitan yang sama, dibagikan bergilir ke peserta. Perlindungan utama di lab.</p></div>
 <button type="submit" class="btn btn-ghost">Simpan</button>
 </form>
@@ -207,7 +208,7 @@
 <form method="post" action="/ujian/paket/{{.Exam.ID}}/atur/aturan" class="card stack" novalidate x-data="{ integrity: '{{.Rules.IntegrityMode}}' }">
 {{ csrfField }}
 <fieldset{{if or .ReadOnly (not .Exam.Editable)}} disabled{{end}} class="stack">
-<h2>3. Aturan</h2>
+<h2 data-tour-step="2" data-tour-title="Isi langkah ini" data-tour-text="Isi kolom lalu simpan untuk lanjut. Tanda ? di samping istilah (varian, KKTP, lokasi) membuka penjelasan singkat.">3. Aturan</h2>
 <fieldset class="field">
 <legend>Urutan</legend>
 <label class="choice"><input type="checkbox" name="shuffle_questions"{{if .Rules.ShuffleQuestions}} checked{{end}}> Acak urutan soal per peserta</label>
@@ -236,7 +237,7 @@
 </div>
 <div class="field-grid">
 <div class="field{{if .Errors.pass_score}} has-error{{end}}">
-<label for="pass_score">KKTP / nilai minimal <span class="muted">(opsional)</span></label>
+<label for="pass_score">KKTP / nilai minimal <span class="muted">(opsional)</span></label> {{template "term" "kktp"}}
 <input id="pass_score" name="pass_score" value="{{.Rules.PassScore}}" inputmode="numeric" maxlength="3" placeholder="mis. 75">
 {{with .Errors.pass_score}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Dipakai untuk daftar remedial.</p>{{end}}
 </div>
@@ -266,7 +267,7 @@
 
 {{else if eq .Step "jadwal"}}
 <section class="card stack">
-<h2>4. Jadwal &amp; peserta</h2>
+<h2 data-tour-step="2" data-tour-title="Isi langkah ini" data-tour-text="Isi kolom lalu simpan untuk lanjut. Tanda ? di samping istilah (varian, KKTP, lokasi) membuka penjelasan singkat.">4. Jadwal &amp; peserta</h2>
 {{if .Exam.Purpose.SchoolWide}}
 <p class="mb-0">{{.Exam.Purpose.Label}} tidak dijadwalkan di sini. Koordinator ujian mengatur jadwal mapel, ruang, sesi, peserta, dan pengawas di <a href="/ujian/agenda">agenda ujian</a>.</p>
 {{else if eq .Exam.Purpose "seleksi"}}
@@ -287,7 +288,7 @@
 <div class="field"><label for="end_date">Tanggal selesai</label><input id="end_date" type="date" name="end_date" value="{{.DefaultDate}}"><p class="hint">Tes dari rumah boleh berjendela beberapa hari.</p></div>
 <div class="field"><label for="end">Jam selesai ({{.Zone}})</label><input id="end" type="time" name="end" value="10:00"></div>
 </div>
-<div class="field"><label for="location">Lokasi</label><select id="location" name="location" x-model="loc"><option value="di_ruang">Di sekolah (diawasi)</option><option value="jarak_jauh">Dari rumah (jarak jauh)</option></select>
+<div class="field"><label for="location">Lokasi</label> {{template "term" "lokasi"}}<select id="location" name="location" x-model="loc"><option value="di_ruang">Di sekolah (diawasi)</option><option value="jarak_jauh">Dari rumah (jarak jauh)</option></select>
 <p class="hint" x-show="loc === 'jarak_jauh'" x-cloak>{{if eq .Exam.IntegrityMode "kunci"}}Aturan integritas sudah mengunci setelah {{.Exam.IntegrityLimit}} kali keluar halaman.{{else}}Untuk tes dari rumah disarankan aturan integritas lebih ketat: <a href="/ujian/paket/{{.Exam.ID}}/atur/aturan">kunci setelah beberapa kali keluar halaman</a>.{{end}}</p></div>
 <div class="action-row"><button type="submit" class="btn btn-primary">Buat sesi</button></div>
 <p class="hint">Peserta otomatis dari pendaftar terverifikasi di jalur bertes pada gelombang (dan jalur) itu. Pendaftar yang terverifikasi belakangan dimasukkan dari tab Tes seleksi gelombang.</p>
@@ -301,7 +302,7 @@
 <p class="hint">Centang kelas, lalu atur waktunya. Satu sesi dibuat per kelas. Jam dalam {{.Zone}}.</p>
 <div class="table-wrap">
 <table class="schedule-table">
-<thead><tr><th>Kelas</th><th>Tanggal</th><th>Mulai</th><th>Selesai</th><th>Lokasi</th></tr></thead>
+<thead><tr><th>Kelas</th><th>Tanggal</th><th>Mulai</th><th>Selesai</th><th>Lokasi {{template "term" "lokasi"}}</th></tr></thead>
 <tbody>
 {{range .Classes}}
 <tr x-data="{ on: false }">
@@ -348,7 +349,7 @@
 {{else if eq .Step "cek"}}
 <div class="wizard-aside-grid">
 <section class="card stack">
-<h2>5. Cek kesiapan</h2>
+<h2 data-tour-step="2" data-tour-title="Isi langkah ini" data-tour-text="Isi kolom lalu simpan untuk lanjut. Tanda ? di samping istilah (varian, KKTP, lokasi) membuka penjelasan singkat.">5. Cek kesiapan</h2>
 <p class="hint">Butir bertanda <strong>Wajib</strong> harus beres sebelum ujian dijadwalkan. Peringatan boleh dilewati.</p>
 {{template "exam_readiness" .Readiness}}
 {{if and (not .ReadOnly) .Exam.Editable}}

@@ -7,7 +7,7 @@
 {{if .A.Summary.Final}}
 <p class="hint">Dari {{.A.Summary.Final}} peserta bernilai final. <strong>p</strong> = tingkat kesukaran (rata-rata porsi poin; &lt; 0,30 sukar, 0,30–0,70 sedang, &gt; 0,70 mudah). <strong>D</strong> = daya beda, p kelompok atas 27% − p kelompok bawah 27% (≥ 0,40 sangat baik, 0,30 baik, 0,20 cukup, &lt; 0,20 jelek). Pengecoh yang dipilih kurang dari 5% peserta ditandai <span class="item-opt is-weak">!</span>. Dengan paket berbeda, setiap soal dihitung dari peserta yang mendapatkannya.{{if .A.Filter.Empty}} Hasil tersimpan ke riwayat soal di bank soal.{{end}}</p>
 <div class="table-wrap"><table class="item-table">
-<thead><tr><th>No</th><th>Soal</th><th class="text-right">p</th><th class="text-right">D</th><th>Keputusan</th><th>Sebaran opsi</th></tr></thead>
+<thead><tr><th>No</th><th>Soal</th><th class="text-right">p {{template "term" "kesukaran"}}</th><th class="text-right">D {{template "term" "daya_beda"}}</th><th>Keputusan</th><th>Sebaran opsi {{template "term" "pengecoh"}}</th></tr></thead>
 <tbody>{{range .A.Items}}<tr{{if .Warnings}} class="{{if .NegativeD}}is-danger{{else}}is-warn{{end}}"{{end}}>
 <td>{{.Number}}</td>
 <td class="min-w-60"><span dir="auto">{{.Snippet}}</span>
@@ -21,6 +21,7 @@
 </tr>{{end}}</tbody>
 </table></div>
 <p class="hint mb-0">* kunci jawaban.</p>
-{{else}}<p class="mb-0">Belum ada nilai final untuk dianalisis.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Belum ada nilai final untuk dianalisis.</p><p class="hint mb-0">Nilai final tersedia setelah peserta mengumpulkan dan semua jawaban esai dikoreksi. Analisis muncul otomatis.</p>
+<p class="mt-2 mb-0"><a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/esai">Koreksi esai</a></p></div>{{end}}
 </section>
 {{end}}

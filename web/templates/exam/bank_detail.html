@@ -6,6 +6,7 @@
 <div>
 <h1>{{.Bank.Name}}</h1>
 <p class="muted">{{if .Bank.SubjectName}}{{.Bank.SubjectName}}{{else}}Tes umum{{end}}{{if .Bank.GradeLevel}} · Kelas {{.Bank.GradeLevel}}{{end}} · dibuat {{.Bank.CreatorName}}{{if .Bank.ArchivedAt}} · <span class="badge">Diarsipkan</span>{{end}}</p>
+{{if .Bank.Sample}}<p class="alert alert-info mt-2"><span class="badge badge-info">Contoh</span> Bank contoh dari AKRA untuk mencoba semua jenis soal, termasuk rumus dan gambar. Pakai soalnya di ujian, duplikat ke bank Anda, atau arsipkan bila tidak diperlukan.</p>{{end}}
 </div>
 <div class="action-row">
 {{if .Bank.SubjectID}}<a class="btn btn-ghost" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">TP</a>{{end}}
@@ -114,7 +115,7 @@
 </nav>
 {{end}}
 {{else}}
-<section class="card empty-state">
+<section class="card empty-state empty-guide">
 {{if .HasFilter}}<p>Tidak ada soal yang cocok dengan pencarian.</p>
 {{else}}<p>Bank ini belum punya soal.</p>{{if .CanWrite}}<p class="muted">Tambahkan soal satu per satu atau impor dari Word, Moodle, atau Excel.</p>
 <p class="action-row justify-center"><a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a><a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor soal</a></p>{{end}}{{end}}

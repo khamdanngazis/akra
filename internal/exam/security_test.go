@@ -98,6 +98,8 @@ func (e *secEnv) participantGETs() map[string][]string {
 		"/u/cek":                        {"/u/cek"},
 		"/u/cek/ping":                   {"/u/cek/ping"},
 		"/u/cek/contoh.jpg":             {"/u/cek/contoh.jpg"},
+		"/u/panduan/peserta.pdf":        {"/u/panduan/peserta.pdf"},
+		"/u/panduan/orang-tua.pdf":      {"/u/panduan/orang-tua.pdf"},
 		"/u/sw.js":                      {"/u/sw.js"},
 		"/u/{code}":                     {"/u/" + e.a.Code},
 		"/u/ujian/{session}":            {"/u/ujian/" + e.sess},

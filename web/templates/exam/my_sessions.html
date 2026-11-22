@@ -4,5 +4,10 @@
 {{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" ""}}
 <div class="page-header"><div><h1>Sesi saya hari ini</h1><p class="muted">Sesi ujian yang Anda awasi. Waktu dalam {{.Zone}}.</p></div></div>
 {{template "my_session_cards" .Sessions}}
-{{if not .Sessions}}<section class="card"><p class="muted mb-0">Tidak ada sesi yang Anda awasi hari ini.</p></section>{{end}}
+{{if not .Sessions}}<section class="card empty-guide"><h2 class="card-title">Tidak ada sesi yang Anda awasi hari ini</h2>
+<ol class="stack mt-3">
+<li>Sesi muncul di sini pada hari ujian bila Anda ditugasi sebagai pengawas. Layar pengawas bisa dibuka mulai 30 menit sebelum sesi.</li>
+<li>Sebelum bertugas, baca <strong>panduan pengawas</strong> satu halaman: arti warna, reset, dan izin pindah perangkat.</li>
+</ol>
+<p class="mt-4 action-row"><a class="btn btn-primary" href="/ujian/panduan/pengawas.pdf">Unduh panduan pengawas</a><a class="btn btn-ghost" href="/ujian/bantuan">Butuh bantuan?</a></p></section>{{end}}
 {{end}}

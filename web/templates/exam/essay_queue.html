@@ -25,7 +25,8 @@
 </li>
 {{end}}
 </ul>
-{{else}}<p class="mb-0">Tidak ada soal esai{{if not .Full}} yang ditugaskan kepada Anda{{end}}.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Tidak ada soal esai{{if not .Full}} yang ditugaskan kepada Anda{{end}}.</p><p class="hint mb-0">Soal pilihan ganda, benar/salah, isian, dan menjodohkan dinilai otomatis. Koreksi hanya untuk esai{{if not $.Full}}; pembagian korektor diatur pemilik ujian{{end}}.</p>
+<p class="mt-2 mb-0"><a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/hasil">Lihat hasil</a></p></div>{{end}}
 </section>
 
 {{if .Full}}

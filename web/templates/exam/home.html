@@ -6,6 +6,7 @@
 <h1>Ujian</h1>
 <p class="muted">Modul ujian online sekolah · {{.Module.ReleaseLabel}}.</p>
 </div>
+<div class="action-row"><a class="btn btn-ghost" href="/ujian/bantuan">Butuh bantuan?</a></div>
 </div>
 
 {{if .Sections}}
@@ -19,6 +20,6 @@
 {{end}}
 </div>
 {{else}}
-<section class="card"><p class="muted">Belum ada bagian ujian yang bisa Anda buka. Guru mapel melihat bank soal mapel yang diampu setelah penugasan mapel diatur di <a href="/pengaturan/penugasan">Penugasan Guru</a>.</p></section>
+<section class="card empty-guide"><p class="muted">Belum ada bagian ujian yang bisa Anda buka. Guru mapel melihat bank soal mapel yang diampu setelah penugasan mapel diatur di <a href="/pengaturan/penugasan">Penugasan Guru</a>.</p></section>
 {{end}}
 {{end}}

@@ -226,11 +226,13 @@ func createQuestionTx(ctx context.Context, tx pgx.Tx, sa StaffActor, bankID stri
 		order = n
 	}
 	var id string
+	// created_at dari clock_timestamp: soal yang dibuat dalam satu transaksi
+	// (impor, konten contoh) tetap berurutan sesuai urutan dibuat.
 	err = tx.QueryRow(ctx, `
 		INSERT INTO exam_questions (school_id, bank_id, stimulus_id, stimulus_order, kind, body_src, body_html, options, answer_key,
 		       points, difficulty, cognitive_level, objective_id, indicator, tags, explanation_src, explanation_html, status,
-		       search_text, created_by, updated_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20)
+		       search_text, created_by, updated_by, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20, clock_timestamp())
 		RETURNING id`,
 		sa.SchoolID, bankID, nullable(q.StimulusID), order, q.Kind, q.BodySrc, q.BodyHTML, opts, key,
 		q.Points, nullable(q.Difficulty), nullable(q.CognitiveLevel), nullable(q.ObjectiveID), q.Indicator, q.Tags,

@@ -34,6 +34,8 @@ type env struct {
 	tx     pgx.Tx
 	a, b   *testutil.School
 	router http.Handler
+	// schoolID mengganti sekolah identitas uji (kosong = sekolah A).
+	schoolID string
 }
 
 func newEnv(t *testing.T) *env {
@@ -70,7 +72,11 @@ func newEnv(t *testing.T) *env {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID, role, _ := strings.Cut(r.Header.Get("X-Test-User"), "|")
-			id := auth.Identity{UserID: userID, SchoolID: e.a.ID, Roles: []string{role}}
+			sid := e.a.ID
+			if e.schoolID != "" {
+				sid = e.schoolID
+			}
+			id := auth.Identity{UserID: userID, SchoolID: sid, Roles: []string{role}}
 			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
 		})
 	})

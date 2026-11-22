@@ -80,7 +80,7 @@ func (h *Handler) examCards(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "letterhead", err)
 		return
 	}
-	h.writePDF(w, r, "kartu-peserta-"+e.Name, func(b *bytes.Buffer) error { return WriteCardsPDF(b, lh, cards, now, true) })
+	h.writePDF(w, r, "kartu-peserta-"+e.Name, func(b *bytes.Buffer) error { return WriteCardsPDFWith(b, lh, cards, now, true, cardOptions(r)) })
 }
 
 func (h *Handler) sessionDocs(w http.ResponseWriter, r *http.Request, examID, eventID string) ([]SessionDoc, Letterhead, bool) {
@@ -406,7 +406,7 @@ func (h *Handler) eventCards(w http.ResponseWriter, r *http.Request) {
 	if sc.RoomID != "" || sc.ClassID != "" {
 		name += "-" + strconv.Itoa(len(cards))
 	}
-	h.writePDF(w, r, name, func(b *bytes.Buffer) error { return WriteCardsPDF(b, lh, cards, now, true) })
+	h.writePDF(w, r, name, func(b *bytes.Buffer) error { return WriteCardsPDFWith(b, lh, cards, now, true, cardOptions(r)) })
 }
 
 func (h *Handler) eventReseat(w http.ResponseWriter, r *http.Request) {
@@ -425,4 +425,10 @@ func (h *Handler) eventReseat(w http.ResponseWriter, r *http.Request) {
 		h.flash(r, "Tempat duduk diurutkan per kelas.")
 	}
 	http.Redirect(w, r, eventPath(ev.ID)+"/dokumen", http.StatusSeeOther)
+}
+
+// cardOptions membaca pilihan cetak kartu dari form: panduan peserta di
+// balik kartu (T154).
+func cardOptions(r *http.Request) CardOptions {
+	return CardOptions{Guide: r.PostForm.Get("panduan") != ""}
 }

@@ -3,6 +3,7 @@ package exam
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,7 @@ type Handler struct {
 	jobs     ImportJobInserter    // job baca impor; nil = langsung
 	issuer   *Issuer              // kode kartu peserta (T135)
 	baseURL  string               // URL publik untuk QR kartu
+	support  Support              // kontak dukungan AKRA (T154)
 	sessions *scs.SessionManager
 	render   page.Renderer
 	logger   *slog.Logger
@@ -48,7 +50,14 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Route("/ujian", func(r chi.Router) {
 		r.Use(RequireModule(h.db, h.render, h.logger, R1))
 		// Peran: admin_tu, kepala_sekolah, guru.
-		r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru)).Get("/", h.home)
+		staff := r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru))
+		staff.Get("/", h.home)
+		// Pusat bantuan dan panduan cetak (T154). Peran: admin_tu,
+		// kepala_sekolah, guru.
+		staff.Get("/bantuan", h.help)
+		staff.Get("/panduan/pengawas.pdf", h.guidePDF(GuideProctor))
+		staff.Get("/panduan/peserta.pdf", h.guidePDF(GuideParticipant))
+		staff.Get("/panduan/orang-tua.pdf", h.guidePDF(GuideParent))
 		h.bankRoutes(r)
 		h.examRoutes(r)
 		h.eventRoutes(r)
@@ -84,6 +93,7 @@ func (m Module) ReleaseLabel() string { return releaseLabels[m.Release] }
 
 func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
+	h.ensureSamples(r, id.SchoolID)
 	a, err := LoadActor(r.Context(), h.db, id)
 	if err != nil {
 		page.ServerError(h.render, h.logger, w, r, id, "load exam actor", err)
@@ -107,4 +117,13 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/home", v)
+}
+
+// ensureSamples membuat konten contoh sekolah saat staf pertama membuka
+// modul ujian (T154). Gagal tidak menghalangi halaman: dicoba lagi pada
+// kunjungan berikutnya.
+func (h *Handler) ensureSamples(r *http.Request, schoolID string) {
+	if _, err := EnsureSamples(r.Context(), h.db, h.store, h.math, schoolID, time.Now()); err != nil {
+		h.logger.ErrorContext(r.Context(), "ensure exam samples", "error", err)
+	}
 }

@@ -95,14 +95,15 @@
 </li>
 {{end}}
 </ol>
-{{else}}<p class="mb-0">Belum ada soal.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Belum ada soal. Pilih soal dari bank, atau tulis aturan ambil acak (mis. 10 soal PG mudah dari TP 1.1).</p>
+{{if and $.CanWrite $.Exam.Editable}}<p class="mb-0"><a class="btn btn-primary btn-sm" href="/ujian/paket/{{$.Exam.ID}}/atur/soal">Pilih soal</a></p>{{end}}</div>{{end}}
 </section>
 
 {{else if eq .Tab "sesi"}}
 <section class="card stack mt-4">
 {{if .Sessions}}
 <div class="table-wrap"><table>
-<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Lokasi</th><th>Terlambat masuk</th><th>Peserta</th><th>Pengawas</th></tr></thead>
+<thead><tr><th>Sesi</th><th>Waktu ({{.Zone}})</th><th>Lokasi {{template "term" "lokasi"}}</th><th>Terlambat masuk</th><th>Peserta</th><th>Pengawas</th></tr></thead>
 <tbody>
 {{range .Sessions}}<tr><td><a href="/ujian/paket/{{$.Exam.ID}}?tab=sesi&amp;sesi={{.ID}}">{{.Title}}</a>{{if ne .Kind "utama"}} <span class="badge">{{.KindLabel}}</span>{{end}}{{if .PausedAt}} <span class="badge">Dijeda</span>{{end}} <a class="text-sm" href="/ujian/sesi/{{.ID}}/awasi">Awasi</a></td><td>{{.When}}{{if .ExtraMinutes}}<span class="block text-sm text-slate-500">+{{.ExtraMinutes}} menit</span>{{end}}</td><td>{{.LocationLabel}}</td><td>{{.LatePolicyLabel}}</td><td>{{.Participants}}</td><td>{{range $i, $p := .Proctors}}{{if $i}}, {{end}}{{$p}}{{else}}—{{end}}</td></tr>{{end}}
 </tbody>
@@ -148,6 +149,7 @@
 <td>{{if not $.CanWrite}}—{{else if .CardsOpen}}
 <form method="post" action="/ujian/paket/{{$.Exam.ID}}/kartu" class="stack">{{ csrfField }}<input type="hidden" name="session_id" value="{{.ID}}">
 {{if .Issued}}<label class="choice text-sm"><input type="checkbox" name="ulang" value="1"> Cetak ulang ({{.Issued}} kartu lama tidak berlaku)</label>{{end}}
+<label class="choice text-sm"><input type="checkbox" name="panduan" value="1"> Panduan peserta di balik kartu (cetak bolak-balik)</label>
 <button type="submit" class="btn btn-ghost btn-sm">{{if .Issued}}Cetak ulang kartu{{else}}Cetak kartu{{end}}</button></form>
 {{else}}<span class="text-sm text-slate-500">Mulai {{.OpensAt}}</span>{{end}}</td>
 <td class="whitespace-nowrap"><a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/daftar-hadir.pdf?sesi={{.ID}}">Daftar hadir</a>
@@ -188,7 +190,7 @@
 <div class="field"><label for="mk-date">Mulai</label><span class="flex gap-2"><input id="mk-date" type="date" name="date" value="{{.DefaultDate}}"><input type="time" name="start" value="07:30" aria-label="Jam mulai"></span></div>
 <div class="field"><label for="mk-end">Selesai</label><span class="flex gap-2"><input id="mk-end" type="date" name="end_date" value="{{.DefaultDate}}"><input type="time" name="end" value="09:00" aria-label="Jam selesai"></span></div>
 </div>
-<div class="field"><label for="mk-loc">Lokasi</label><select id="mk-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
+<div class="field"><label for="mk-loc">Lokasi</label> {{template "term" "lokasi"}}<select id="mk-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
 <div class="action-row"><button type="submit" class="btn btn-primary">Buat sesi susulan</button></div>
 </form>
 {{else}}<p class="mb-0">Belum ada peserta yang perlu susulan.</p>{{end}}
@@ -212,7 +214,7 @@
 <div class="field"><label for="fu-date">Mulai</label><span class="flex gap-2"><input id="fu-date" type="date" name="date" value="{{.DefaultDate}}"><input type="time" name="start" value="07:30" aria-label="Jam mulai"></span></div>
 <div class="field"><label for="fu-end">Selesai</label><span class="flex gap-2"><input id="fu-end" type="date" name="end_date" value="{{.DefaultDate}}"><input type="time" name="end" value="09:00" aria-label="Jam selesai"></span></div>
 </div>
-<div class="field"><label for="fu-loc">Lokasi</label><select id="fu-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
+<div class="field"><label for="fu-loc">Lokasi</label> {{template "term" "lokasi"}}<select id="fu-loc" name="location"><option value="di_ruang">Di ruang</option><option value="jarak_jauh">Jarak jauh</option></select></div>
 <div class="action-row"><button type="submit" class="btn btn-primary">Buat ujian tindak lanjut</button></div>
 </form>
 {{else}}<p class="mb-0">Belum ada peserta.</p>{{end}}

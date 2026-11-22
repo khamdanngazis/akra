@@ -168,5 +168,5 @@ func (h *Handler) practiceCards(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "letterhead", err)
 		return
 	}
-	h.writePDF(w, r, "kartu-latihan-"+strings.TrimPrefix(s.Title(), "Kelas "), func(b *bytes.Buffer) error { return WriteCardsPDF(b, lh, cards, now, true) })
+	h.writePDF(w, r, "kartu-latihan-"+strings.TrimPrefix(s.Title(), "Kelas "), func(b *bytes.Buffer) error { return WriteCardsPDFWith(b, lh, cards, now, true, cardOptions(r)) })
 }

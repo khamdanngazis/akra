@@ -1,16 +1,17 @@
 {{define "title"}}Awasi · {{.S.Title}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
-{{define "head"}}<script defer src="{{ asset "js/exam-proctor.js" }}"></script>{{end}}
+{{define "head"}}<script defer src="{{ asset "js/exam-proctor.js" }}"></script><script defer src="{{ asset "js/tour.js" }}"></script>{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" "/ujian/sesi-saya" .S.Title ""}}
-<div class="proctor" data-proctor data-data-url="/ujian/sesi/{{.S.ID}}/awasi/data" data-action-url="/ujian/sesi/{{.S.ID}}/awasi/peserta/">
+<div class="proctor" data-tour="pengawas" data-proctor data-data-url="/ujian/sesi/{{.S.ID}}/awasi/data" data-action-url="/ujian/sesi/{{.S.ID}}/awasi/peserta/">
 <header class="proctor-head card">
 <div class="min-w-0">
 <h1 class="proctor-title">{{.S.Title}}</h1>
 <p class="muted text-sm">{{.S.ExamName}}{{with .S.Subject}} · {{.}}{{end}} · {{.When}}{{if .S.ExtraMinutes}} · +{{.S.ExtraMinutes}} menit{{end}}</p>
+<p class="proctor-help text-sm mb-0"><a href="/ujian/bantuan" data-tour-step="5" data-tour-title="Butuh bantuan?" data-tour-text="Langkah pemecahan masalah umum (peserta tidak bisa masuk, HP mati, offline, layar terkunci) dan kontak dukungan AKRA.">Butuh bantuan?</a> · <a href="/ujian/panduan/pengawas.pdf">Panduan pengawas (PDF)</a> · <button type="button" class="link-btn" data-tour-start hidden>Tur singkat</button></p>
 </div>
 {{if .Token.Required}}
-<div class="proctor-token" data-token data-next="{{.Token.NextAt.UnixMilli}}">
+<div class="proctor-token" data-tour-step="3" data-tour-title="Token" data-tour-text="Token berganti berkala. Bila sesi mewajibkan token, tampilkan layar penuh di proyektor atau diktekan kepada peserta." data-token data-next="{{.Token.NextAt.UnixMilli}}">
 <span class="text-sm muted">Token</span>
 <strong class="proctor-token-code" data-token-code>{{.Token.Token}}</strong>
 <span class="text-sm muted">berganti dalam <span data-token-left>--:--</span></span>
@@ -56,7 +57,7 @@
 <p class="hint text-right mt-2" aria-live="off"><span data-updated>Diperbarui baru saja</span></p>
 
 {{if .CanWrite}}{{if not .Ended}}
-<section class="card stack mt-4">
+<section class="card stack mt-4" data-tour-step="4" data-tour-title="Aksi sesi" data-tour-text="Jeda, tambah waktu, atau tutup sesi untuk semua peserta sekaligus. Catatan kejadian masuk berita acara.">
 <h2 class="card-title">Aksi sesi</h2>
 <div class="proctor-actions">
 {{if .S.PausedAt}}
@@ -119,7 +120,7 @@
 {{with $l.Remaining}}<span class="text-sm">Sesi berakhir dalam <strong>{{.}}</strong></span>{{end}}
 {{if $l.Paused}}<span class="badge badge-warning">Sesi dijeda</span>{{end}}
 </div>
-<div class="proctor-counts" role="group" aria-label="Saring peserta">
+<div class="proctor-counts" role="group" aria-label="Saring peserta" data-tour-step="1" data-tour-title="Ringkasan status" data-tour-text="Ketuk angka untuk menyaring peserta. Offline dan Perlu perhatian menunjukkan siapa yang perlu didatangi.">
 <button type="button" class="proctor-count" data-filter="" aria-pressed="true"><strong>{{$l.Total}}</strong><span>Semua</span></button>
 <button type="button" class="proctor-count" data-filter="belum" aria-pressed="false"><strong>{{index $l.Counts "belum"}}</strong><span>Belum mulai</span></button>
 <button type="button" class="proctor-count" data-filter="mengerjakan" aria-pressed="false"><strong>{{index $l.Counts "mengerjakan"}}</strong><span>Mengerjakan</span></button>
@@ -127,7 +128,7 @@
 <button type="button" class="proctor-count is-alert" data-filter="perhatian" aria-pressed="false"><strong>{{index $l.Counts "perhatian"}}</strong><span>Perlu perhatian</span></button>
 <button type="button" class="proctor-count" data-filter="selesai" aria-pressed="false"><strong>{{index $l.Counts "selesai"}}</strong><span>Selesai</span></button>
 </div>
-<ul class="proctor-list" data-list>
+<ul class="proctor-list" data-list data-tour-step="2" data-tour-title="Arti warna" data-tour-text="Titik abu-abu: belum mulai. Hijau: mengerjakan. Kuning: offline. Biru: selesai. Baris merah: perlu perhatian, mis. keluar halaman atau terkunci. Ketuk nama untuk izinkan pindah perangkat, buka kunci, reset login, atau tambah waktu.">
 {{range $l.Rows}}
 <li class="proctor-row{{if .NeedsAttention}} is-alert{{end}}" data-row data-filters="{{.Filters}}" data-pid="{{.ParticipantID}}" data-event="{{.LastEvent}}">
 <button type="button" class="proctor-row-btn"{{if $l.CanWrite}} data-open{{else}} disabled{{end}} data-name="{{.Name}}" data-state="{{.State}}"
@@ -141,7 +142,7 @@
 <span class="proctor-new badge badge-warning" hidden>Baru</span>
 </button>
 </li>
-{{else}}<li class="muted">Belum ada peserta di sesi ini.</li>{{end}}
+{{else}}<li class="muted empty-guide">Belum ada peserta di sesi ini. Peserta dibagikan dari agenda atau jadwal ujian; hubungi koordinator ujian bila daftar seharusnya terisi.</li>{{end}}
 </ul>
 <p class="muted text-sm" data-empty hidden>Tidak ada peserta dengan status ini.</p>
 <span hidden data-updated-at="{{$l.UpdatedAt}}"></span>

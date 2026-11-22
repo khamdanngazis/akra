@@ -58,7 +58,15 @@
 </div>
 </div>
 {{else}}
-<section class="card empty-state"><p>Belum ada TP untuk pilihan ini.</p></section>
+<section class="card empty-guide">
+<h2 class="card-title">Belum ada TP untuk pilihan ini</h2>
+<ol class="stack mt-3">
+<li><strong>Tempel daftar TP</strong> dari dokumen kurikulum (satu TP per baris: kode lalu deskripsi), atau tambah satu per satu.</li>
+<li><strong>Kaitkan soal</strong> ke TP saat membuat atau mengubah soal.</li>
+<li>Setelah ujian, <strong>analisis TP</strong> menunjukkan TP mana yang sudah dan belum tuntas.</li>
+</ol>
+{{if .CanEdit}}<p class="mt-4 action-row"><a class="btn btn-primary" href="#paste">Tempel daftar TP</a><a class="btn btn-ghost" href="#code">Tambah satu TP</a></p>{{else}}<p class="hint mt-3">TP diatur oleh guru pengampu mapel, koordinator ujian, atau admin/TU.</p>{{end}}
+</section>
 {{end}}
 
 {{if .CanEdit}}
@@ -105,6 +113,7 @@
 </div>
 {{end}}
 {{else}}
-<section class="card empty-state"><p>Belum ada mapel yang bisa Anda lihat. TP diatur oleh guru pengampu mapel, koordinator ujian, atau admin/TU.</p></section>
+<section class="card empty-guide"><h2 class="card-title">Belum ada mapel yang bisa Anda lihat</h2><p>TP diatur oleh guru pengampu mapel, koordinator ujian, atau admin/TU. Guru melihat mapel yang diampu setelah penugasan diatur.</p>
+<p class="mt-4"><a class="btn btn-ghost" href="/pengaturan/penugasan">Lihat penugasan mengajar</a></p></section>
 {{end}}
 {{end}}

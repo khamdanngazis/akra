@@ -60,6 +60,7 @@ type ParticipantHandler struct {
 	// (hanya di luar production, dicegah config).
 	faultPct int
 	rand     func() int // 0..99
+	baseURL  string     // URL publik untuk alamat di panduan cetak (T154)
 }
 
 // WithMetrics memasang pencatat latensi endpoint peserta.
@@ -108,6 +109,9 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 		r.Get("/cek", h.deviceCheck)
 		r.Get("/cek/ping", h.devicePing)
 		r.Get("/cek/contoh.jpg", h.deviceSample)
+		// Publik: panduan cetak peserta dan orang tua calon siswa (T154).
+		r.Get("/panduan/peserta.pdf", h.guidePDF(GuideParticipant))
+		r.Get("/panduan/orang-tua.pdf", h.guidePDF(GuideParent))
 		// Publik: petunjuk bila peserta belum/tidak lagi masuk.
 		r.Get("/", h.index)
 		// Publik: login peserta per sekolah.

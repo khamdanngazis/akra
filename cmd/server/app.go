@@ -69,6 +69,7 @@ type appDeps struct {
 	metrics   *metrics.Registry
 	ops       opsDeps
 	saveFault int          // EXAM_FAULT_SAVE_PERCENT (bukan production)
+	support   exam.Support // kontak dukungan AKRA di pusat bantuan (T154)
 	draining  *atomic.Bool // true setelah SIGTERM: /healthz 503
 }
 
@@ -130,9 +131,9 @@ func newApp(d appDeps) (http.Handler, error) {
 		activation: auth.NewActivationHandler(activation, d.sessions, d.render, d.logger),
 		duties:     duty.NewHandler(d.db, d.sessions, d.render, d.logger),
 		exam: exam.NewHandler(d.db, d.store, math, d.sessions, d.render, d.logger).WithJobs(examJobs(d.jobs)).WithBaseURL(d.baseURL).
-			WithCardCodes(examTokens),
+			WithCardCodes(examTokens).WithSupport(d.support),
 		participant: exam.NewParticipantHandler(d.db, participantSessions, d.render, d.logger, d.secure).WithMath(math).WithStorage(d.store).WithTokens(examTokens).
-			WithMetrics(reg).WithSaveFault(d.saveFault),
+			WithMetrics(reg).WithSaveFault(d.saveFault).WithBaseURL(d.baseURL),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
