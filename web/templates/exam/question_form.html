@@ -6,9 +6,9 @@
 {{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{if .ImportMode}}{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Pratinjau impor" .CancelURL "Perbaiki soal" ""}}
-{{else if .IsNew}}{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Tambah soal" ""}}
-{{else}}{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Soal" (printf "/ujian/soal/%s" .Question.ID) "Ubah" ""}}{{end}}
+{{if .ImportMode}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Pratinjau impor" .CancelURL "Perbaiki soal" ""}}
+{{else if .IsNew}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Tambah soal" ""}}
+{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Soal" (printf "/ujian/soal/%s" .Question.ID) "Ubah" ""}}{{end}}
 
 <div class="page-header">
 <div>

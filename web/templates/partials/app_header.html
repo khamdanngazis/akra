@@ -49,6 +49,7 @@
 </div>
 </div>
 </header>
+{{with subnav}}<nav class="module-nav" aria-label="Menu modul">{{range .}}<a href="{{.Path}}"{{if .End}} class="is-end"{{end}}{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}</nav>{{end}}
 
 <nav class="bottom-nav" aria-label="Menu cepat">
 {{range bottomMenu $items .Roles}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.ShortLabel}}</span></a>

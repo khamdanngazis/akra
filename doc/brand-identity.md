@@ -43,3 +43,19 @@ Tema ini cocok untuk dashboard admin sekolah, guru, siswa, dan orang tua. Sebaik
 4. Tahap berikutnya
 Logo pada gambar ini masih berupa konsep visual. Sebelum digunakan di produk sungguhan, sebaiknya kita rapikan menjadi aset logo yang konsisten, termasuk versi SVG, ikon mandiri, versi monokrom, dan panduan penggunaan warna.
 Satu catatan: identitas visual ini belum berarti nama AKRA sudah lolos pemeriksaan merek dagang atau domain. Verifikasi nama tetap diperlukan sebelum peluncuran.
+5. Judul, breadcrumb, dan sub-navigasi halaman (T157)
+
+**Judul halaman (`<h1>`), satu per halaman:**
+- **Tujuan menu atau sub-navigasi** memakai label navigasinya dengan Huruf Kapital di Setiap Kata, mis. "Bank Soal", "Daftar Ujian", "Agenda Ujian", "Pengaturan Ujian".
+- **Halaman satu objek** memakai nama objeknya, mis. nama ujian atau nama bank.
+- **Halaman aksi** memakai kalimat biasa, mis. "Buat ujian", "Tambah soal".
+
+**Breadcrumb:**
+- dimulai dari halaman akar modul, mis. "Ujian" → `/ujian` atau "Pengaturan" → `/pengaturan`;
+- lalu bagian, objek, dan halaman sekarang, mis. Ujian › Daftar ujian › {ujian} › Hasil › Koreksi esai;
+- satu label selalu menuju tempat yang sama.
+
+**Sub-navigasi modul** tampil di bawah header untuk modul yang punya banyak bagian (mis. modul ujian):
+- isinya sesuai hak akses pengguna;
+- item yang sedang dibuka disorot;
+- di HP bisa digulir ke samping.

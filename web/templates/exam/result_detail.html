@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" (printf "/ujian/paket/%s/hasil" .Exam.ID) .P.Name ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" (printf "/ujian/paket/%s/hasil" .Exam.ID) .P.Name ""}}
 <div class="flex flex-wrap items-start justify-between gap-3">
 <div><h1 class="text-2xl font-bold">{{.P.Name}}</h1>
 <p class="muted mb-0">{{with .P.Number}}{{.}} · {{end}}{{with .P.ClassName}}{{.}} · {{end}}{{.P.SessionTitle}}{{with .P.KindLabel}} ({{.}}){{end}}{{with .P.VariantLabel}} · Paket {{.}}{{end}}{{if gt .P.AttemptNo 1}} · percobaan ke-{{.P.AttemptNo}}{{end}}</p></div>

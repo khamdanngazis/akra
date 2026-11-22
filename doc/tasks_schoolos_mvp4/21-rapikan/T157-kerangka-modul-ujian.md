@@ -56,8 +56,15 @@ Halaman modul ujian tidak punya kerangka yang sama:
 - `web/templates/exam/*.html`, `web/templates/partials/exam.html`, `web/templates/partials/back_nav.html`
 - `internal/platform/nav/menu.go`, `doc/brand-identity.md`
 
+## Catatan implementasi
+- **Sub-navigasi lewat context, bukan view dasar.** Paket generik `internal/platform/subnav` menyimpan item di context. Middleware modul ujian (`withNav`) memuat `Actor` sekali per request, dan `RequireAccess` serta handler memakai ulang `Actor` itu (sebelumnya dimuat ulang di beberapa tempat). `app_header` merender sub-navigasi bila ada. Akibatnya tidak ada view atau template yang perlu disematkan `examPage`, dan modul lain bisa memakai pola yang sama.
+- **Breadcrumb tetap ditulis di template**, tetapi semuanya berakar di "Ujian" → `/ujian` dan dijaga uji registry. Penyusunan di handler ditunda; T160 merombak kerangka halaman satu ujian.
+- **Item "Telaah Soal" keluar dari menu samping.** Sekarang hanya di sub-navigasi, dan tampil bila telaah aktif.
+- **Judul diganti:** "Daftar Ujian", "Sesi Saya", "Telaah Soal", "Pengaturan Ujian", "Bantuan". Halaman hasil dan analisis sudah punya `<h1>` "Hasil ujian" dari partial bersama.
+- **Item aktif di HP** digulir ke tengah oleh `nav.js`.
+
 ## Kriteria selesai
-- [ ] Sub-navigasi tampil di semua halaman staf modul ujian sesuai hak akses (uji per peran: admin TU, koordinator, guru mapel, guru pengawas, kepala sekolah)
-- [ ] Uji: semua halaman staf `/ujian` (registry) punya breadcrumb berakar "Ujian" → `/ujian` dan tepat satu `<h1>`
-- [ ] Tidak ada lagi label "Ujian" yang menuju `/ujian/paket/`
-- [ ] Sub-navigasi bisa digulir di HP 360 px tanpa memotong item aktif
+- [x] Sub-navigasi tampil di semua halaman staf modul ujian sesuai hak akses (uji per peran: admin TU, guru, kepala sekolah)
+- [x] Uji: semua halaman staf `/ujian` (registry) punya breadcrumb berakar "Ujian" → `/ujian` dan tepat satu `<h1>` (52 halaman admin TU, 42 guru, 34 kepala sekolah)
+- [x] Tidak ada lagi label "Ujian" yang menuju `/ujian/paket/` (diuji)
+- [x] Sub-navigasi bisa digulir di HP (overflow horizontal, item aktif digulir ke tengah); perlu dicek sekali di HP sungguhan

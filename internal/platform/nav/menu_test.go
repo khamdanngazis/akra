@@ -28,9 +28,9 @@ func TestMenuFor(t *testing.T) {
 			t.Errorf("%s:\n got %s\nwant %s", role, got, want)
 		}
 	}
-	// Dengan modul ujian: jumlah sesuai analisis menu (admin 17 + Telaah
-	// sampai T157, kepala 18, guru 10 + Telaah).
-	for role, want := range map[string]int{"admin_tu": 18, "kepala_sekolah": 18, "guru": 11, "bendahara": 10} {
+	// Dengan modul ujian: jumlah sesuai analisis menu. Telaah Soal ada di
+	// sub-navigasi modul ujian (T157).
+	for role, want := range map[string]int{"admin_tu": 17, "kepala_sekolah": 18, "guru": 10, "bendahara": 10} {
 		if got := len(MenuForUser([]string{role}, nil, exam)); got != want {
 			t.Errorf("%s with exam: %d items, want %d", role, got, want)
 		}

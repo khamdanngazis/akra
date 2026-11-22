@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "head"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}"><script defer src="{{ asset "js/essay-grade.js" }}"></script>{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Koreksi esai" (printf "/ujian/paket/%s/esai" .Exam.ID) (printf "Soal %d" .Q.Number) ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" (printf "/ujian/paket/%s/hasil" .Exam.ID) "Koreksi esai" (printf "/ujian/paket/%s/esai" .Exam.ID) (printf "Soal %d" .Q.Number) ""}}
 <div class="essay-head">
 <h1 class="text-xl font-bold mb-0">Soal {{.Q.Number}} · {{.Q.Points}} poin</h1>
 <p class="essay-count mb-0" aria-live="polite"><strong>{{.Graded}}/{{.Total}}</strong> dikoreksi</p>

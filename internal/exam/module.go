@@ -168,10 +168,13 @@ func RequireAccess(db database.DBTX, rd page.Renderer, logger *slog.Logger, act 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id, _ := auth.CurrentUser(r.Context())
-			a, err := LoadActor(r.Context(), db, id)
-			if err != nil {
-				page.ServerError(rd, logger, w, r, id, "load exam actor", err)
-				return
+			a, ok := ActorFrom(r.Context())
+			if !ok {
+				var err error
+				if a, err = LoadActor(r.Context(), db, id); err != nil {
+					page.ServerError(rd, logger, w, r, id, "load exam actor", err)
+					return
+				}
 			}
 			if !a.CanAny(act, want) {
 				logger.WarnContext(r.Context(), "exam access denied", "user_id", id.UserID, "action", string(act), "path", r.URL.Path)
