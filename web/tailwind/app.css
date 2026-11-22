@@ -1051,7 +1051,7 @@
     @apply bg-white font-semibold text-slate-900 shadow-sm;
   }
   .menu-link {
-    @apply block rounded-lg px-2 py-1.5 text-sm text-slate-700 no-underline hover:bg-slate-50 hover:text-slate-900;
+    @apply block w-full cursor-pointer rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-sm text-slate-700 no-underline hover:bg-slate-50 hover:text-slate-900;
   }
 
   /* Saringan daftar ujian (T159). */
@@ -2812,12 +2812,23 @@
     @apply sticky top-16 z-10 mb-3 border-blue-200 bg-blue-50;
   }
 
+  /* Klik di mana pun pada baris membuka soal (T161); kotak pilih dan menu
+     aksi tetap di atas tautan. */
   .question-row {
-    @apply flex items-start gap-3;
+    @apply relative flex items-start gap-3 hover:border-slate-300;
+  }
+
+  .question-link {
+    @apply text-slate-900 no-underline hover:underline;
+  }
+
+  .question-link::after {
+    content: "";
+    @apply absolute inset-0 rounded-2xl;
   }
 
   .question-check {
-    @apply flex-none pt-1;
+    @apply relative z-10 flex-none pt-1;
   }
 
   .question-meta {
@@ -2829,7 +2840,7 @@
   }
 
   .question-actions {
-    @apply flex flex-none flex-col items-end gap-1 sm:flex-row;
+    @apply z-10 flex-none;
   }
 
   .stimulus-group > summary {
@@ -2958,6 +2969,10 @@
   .menu-details { @apply relative; }
   .menu-details > summary { @apply list-none; }
   .menu-panel { @apply absolute right-0 z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-lg; }
+  .menu-details[open] { @apply z-30; }
+  .menu-panel-sm { @apply w-44 p-2; }
+  /* Bar di atas daftar: jumlah hasil dan aksi untuk soal terpilih (T161). */
+  .list-bar { @apply mb-3 flex flex-wrap items-center justify-between gap-2; }
   .section-edit > summary, .rule-form > summary { @apply list-none; }
   .schedule-table input, .schedule-table select { @apply min-w-28; }
 

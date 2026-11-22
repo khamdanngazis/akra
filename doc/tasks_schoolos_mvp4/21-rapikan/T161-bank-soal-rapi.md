@@ -37,8 +37,19 @@
 - `web/templates/exam/bank_detail.html`, `banks.html`, `partials/exam.html`, `partials/action_menu.html` (baru)
 - `internal/exam/bank.go`, `bank_handler.go`, `seed_practice.go`, migrasi data
 
+## Catatan implementasi
+- **Menu aksi tanpa partial baru.** Isi menu berbeda-beda (tautan, form POST dengan konfirmasi), sehingga yang dibagikan adalah pola `<details class="menu-details">` + `.menu-panel` + `.menu-link` (tautan atau tombol). Perilakunya ada di `js/nav.js` untuk semua halaman, termasuk menu "Lainnya" T160:
+  - Esc menutup menu dan fokus kembali ke tombolnya;
+  - klik di luar menutup menu;
+  - membuka satu menu menutup menu lain.
+- **Header detail bank:** Tambah soal (utama), Impor (kedua), "Lainnya" berisi Tambah stimulus, Tujuan pembelajaran, Ekspor Excel, Ekspor Moodle, Ubah bank, Arsipkan bank. Tombol "Arsipkan bank" di bawah halaman dihapus. Kepala sekolah hanya melihat Tujuan pembelajaran di "Lainnya".
+- **"Cetak & periksa"** ada di bar jumlah soal ("Menampilkan 1–20 dari 42 soal"). Panelnya menulis "3 soal terpilih" atau "Semua 42 soal sesuai filter". Cek mutu kini juga mengikuti soal terpilih/filter, sama seperti kisi-kisi dan kartu soal.
+- **Per soal:** Duplikat dan Arsipkan di menu "⋯". Klik di mana pun pada kartu soal membuka soal; kotak pilih dan menu tetap bisa diklik.
+- **Bank paket bawaan:** migrasi 088 menandai `sample = true` dan mengganti nama "Latihan Antarmuka (contoh)" menjadi "Contoh — Coba Halaman Ujian" (bila belum diubah sekolah). Bank dikenali dari soal yang dipakai ujian bawaan.
+- **Saringan mapel:** pilihan diambil dari bank yang boleh dilihat pengguna (`ListBankSubjects`). Bila saringan tidak menemukan bank, tampil "Tidak ada bank yang cocok" dengan tautan hapus saringan.
+
 ## Kriteria selesai
-- [ ] Header detail bank: satu tombol utama, satu tombol kedua, dan menu "Lainnya"; semua aksi lama tetap tercapai (uji template)
-- [ ] Menu "Cetak & periksa" menampilkan jumlah soal yang akan diproses
-- [ ] Bank paket bawaan berlabel Contoh, termasuk di sekolah yang sudah ada (uji migrasi)
-- [ ] Saringan mapel bekerja; bank contoh di urutan akhir
+- [x] Header detail bank: satu tombol utama, satu tombol kedua, dan menu "Lainnya"; semua aksi lama tetap tercapai (uji template)
+- [x] Menu "Cetak & periksa" menampilkan jumlah soal yang akan diproses
+- [x] Bank paket bawaan berlabel Contoh, termasuk di sekolah yang sudah ada (uji migrasi)
+- [x] Saringan mapel bekerja; bank contoh di urutan akhir

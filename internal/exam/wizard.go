@@ -545,7 +545,7 @@ func sessionWhen(s Session, loc *time.Location) string {
 
 // examBanks mengembalikan bank yang boleh dipakai ujian e.
 func (h *Handler) examBanks(r *http.Request, sa StaffActor, e Exam) ([]Bank, error) {
-	sums, err := ListBanks(r.Context(), h.db, sa.SchoolID, sa.Actor, 0, time.Now())
+	sums, err := ListBanks(r.Context(), h.db, sa.SchoolID, sa.Actor, BankFilter{}, time.Now())
 	if err != nil {
 		return nil, err
 	}

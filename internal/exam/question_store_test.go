@@ -198,7 +198,7 @@ func TestSharedBankPermissions(t *testing.T) {
 	var outsider string
 	e.tx.QueryRow(ctx, `WITH u AS (INSERT INTO users (school_id, email, password_hash, full_name, is_active) VALUES ($1, 'guru3@a.uji', 'x', 'Guru Tiga', true) RETURNING id),
 		r AS (INSERT INTO user_roles (user_id, role_id) SELECT u.id, roles.id FROM u, roles WHERE roles.code = 'guru') SELECT id FROM u`, e.a.ID).Scan(&outsider)
-	if banks, _ := ListBanks(ctx, e.tx, e.a.ID, e.staff(outsider, "guru").Actor, 0, now); len(banks) != 0 {
+	if banks, _ := ListBanks(ctx, e.tx, e.a.ID, e.staff(outsider, "guru").Actor, BankFilter{}, now); len(banks) != 0 {
 		t.Errorf("outsider sees %d banks", len(banks))
 	}
 	if _, err := DuplicateQuestion(ctx, e.tx, e.staff(outsider, "guru"), q.ID, "", now); !errors.Is(err, ErrNotFound) {
@@ -308,7 +308,7 @@ func TestObjectivesAndBankSummary(t *testing.T) {
 	draft := sampleQuestion(KindEssay)
 	draft.Status = StatusDraft
 	CreateQuestion(ctx, e.tx, owner, e.bank.ID, draft, now)
-	banks, err := ListBanks(ctx, e.tx, e.a.ID, owner.Actor, 7, now)
+	banks, err := ListBanks(ctx, e.tx, e.a.ID, owner.Actor, BankFilter{Grade: 7}, now)
 	if err != nil {
 		t.Fatal(err)
 	}

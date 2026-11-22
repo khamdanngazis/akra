@@ -111,6 +111,8 @@ type banksView struct {
 	Banks     []BankSummary
 	Grade     int
 	Grades    []int
+	Subject   string
+	Subjects  []BankSubject
 	CanCreate bool
 	Flash     string
 	Error     string
@@ -120,7 +122,14 @@ func (h *Handler) banks(w http.ResponseWriter, r *http.Request) {
 	id, sa := h.staff(r)
 	h.ensureSamples(r, sa.SchoolID)
 	grade, _ := parseGrade(r.URL.Query().Get("tingkat"))
-	list, err := ListBanks(r.Context(), h.db, sa.SchoolID, sa.Actor, grade, time.Now())
+	now := time.Now()
+	f := BankFilter{Grade: grade, SubjectID: r.URL.Query().Get("mapel")}
+	list, err := ListBanks(r.Context(), h.db, sa.SchoolID, sa.Actor, f, now)
+	if err != nil {
+		h.fail(w, r, "list banks", err)
+		return
+	}
+	bankSubjects, err := ListBankSubjects(r.Context(), h.db, sa.SchoolID, sa.Actor, now)
 	if err != nil {
 		h.fail(w, r, "list banks", err)
 		return
@@ -130,8 +139,8 @@ func (h *Handler) banks(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "list banks", err)
 		return
 	}
-	v := banksView{User: id, Banks: list, Grade: grade, Flash: auth.PopFlash(r.Context(), h.sessions),
-		CanCreate: len(subjects) > 0 || sa.Can(ActBank, Resource{}, time.Now()) >= Write}
+	v := banksView{User: id, Banks: list, Grade: grade, Subject: f.SubjectID, Subjects: bankSubjects, Flash: auth.PopFlash(r.Context(), h.sessions),
+		CanCreate: len(subjects) > 0 || sa.Can(ActBank, Resource{}, now) >= Write}
 	for g := 1; g <= 12; g++ {
 		v.Grades = append(v.Grades, g)
 	}
@@ -372,7 +381,7 @@ func (h *Handler) showBankDetail(w http.ResponseWriter, r *http.Request, status 
 	}
 	creators.Close()
 	if v.CanWrite {
-		banks, err := ListBanks(ctx, h.db, sa.SchoolID, sa.Actor, 0, now)
+		banks, err := ListBanks(ctx, h.db, sa.SchoolID, sa.Actor, BankFilter{}, now)
 		if err != nil {
 			h.fail(w, r, "list banks", err)
 			return

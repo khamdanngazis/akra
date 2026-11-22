@@ -113,12 +113,22 @@ type BankSummary struct {
 // Total mengembalikan jumlah soal aktif.
 func (s BankSummary) Total() int { return s.Ready + s.Draft }
 
+// BankFilter menyaring daftar bank: tingkat (0 = semua; bank tanpa tingkat
+// selalu ikut) dan mapel ("" = semua).
+type BankFilter struct {
+	Grade     int
+	SubjectID string
+}
+
 // ListBanks mengembalikan bank aktif yang boleh dilihat a, dengan ringkasan
-// isi. grade 0 berarti semua tingkat.
-func ListBanks(ctx context.Context, q database.DBTX, schoolID string, a Actor, grade int, now time.Time) ([]BankSummary, error) {
+// isi.
+
+func ListBanks(ctx context.Context, q database.DBTX, schoolID string, a Actor, f BankFilter, now time.Time) ([]BankSummary, error) {
+	// Bank contoh selalu di urutan akhir (T161).
 	rows, err := q.Query(ctx, `SELECT `+bankCols+bankFrom+`
 		WHERE b.school_id = $1 AND b.archived_at IS NULL AND ($2 = 0 OR b.grade_level = $2 OR b.grade_level IS NULL)
-		ORDER BY coalesce(s.name, ''), b.grade_level NULLS FIRST, lower(b.name)`, schoolID, grade)
+		  AND ($3 = '' OR b.subject_id::text = $3)
+		ORDER BY b.sample, coalesce(s.name, ''), b.grade_level NULLS FIRST, lower(b.name)`, schoolID, f.Grade, f.SubjectID)
 	if err != nil {
 		return nil, fmt.Errorf("exam: list banks: %w", err)
 	}
@@ -321,4 +331,37 @@ func ArchiveBank(ctx context.Context, db database.DB, sa StaffActor, id string, 
 func recordAudit(ctx context.Context, tx pgx.Tx, sa StaffActor, action, entity, id string, before, after any) error {
 	return audit.Record(ctx, tx, audit.Entry{SchoolID: sa.SchoolID, UserID: sa.UserID, Action: action,
 		EntityType: entity, EntityID: id, Before: before, After: after, IP: sa.IP})
+}
+
+// BankSubject adalah pilihan saringan mapel di daftar bank.
+type BankSubject struct {
+	ID, Name string
+}
+
+// ListBankSubjects mengembalikan mapel dari bank aktif yang boleh dilihat a,
+// untuk saringan daftar bank (T161).
+func ListBankSubjects(ctx context.Context, q database.DBTX, schoolID string, a Actor, now time.Time) ([]BankSubject, error) {
+	rows, err := q.Query(ctx, `SELECT s.id, s.name, b.created_by FROM exam_banks b
+		JOIN subjects s ON s.school_id = b.school_id AND s.id = b.subject_id
+		WHERE b.school_id = $1 AND b.archived_at IS NULL
+		ORDER BY lower(s.name)`, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("exam: bank subjects: %w", err)
+	}
+	defer rows.Close()
+	var out []BankSubject
+	seen := map[string]bool{}
+	for rows.Next() {
+		var s BankSubject
+		var owner string
+		if err := rows.Scan(&s.ID, &s.Name, &owner); err != nil {
+			return nil, fmt.Errorf("exam: bank subjects: %w", err)
+		}
+		if seen[s.ID] || a.Can(ActBank, Resource{SubjectID: s.ID, OwnerID: owner}, now) < Read {
+			continue
+		}
+		seen[s.ID] = true
+		out = append(out, s)
+	}
+	return out, rows.Err()
 }
