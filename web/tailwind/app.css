@@ -1039,6 +1039,17 @@
     @apply ml-auto;
   }
 
+  /* Beranda modul ujian (T158). */
+  .exam-home {
+    @apply grid gap-4 lg:grid-cols-2 lg:items-start;
+  }
+  .todo-list {
+    @apply m-0 grid list-none gap-0 p-0;
+  }
+  .todo-list li {
+    @apply flex items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-b-0;
+  }
+
   /* Pusat Pengaturan (T156). */
   .settings-section + .settings-section {
     @apply mt-6;

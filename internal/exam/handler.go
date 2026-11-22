@@ -69,18 +69,23 @@ func (h *Handler) Routes(r chi.Router) {
 	})
 }
 
-// section adalah satu bagian modul ujian di halaman depan.
-type section struct {
-	Title, Desc, Path string
-	// Release adalah tahap rilis yang membuka bagian ini.
-	Release Release
-	Ready   bool // halaman sudah tersedia di rilis ini
+// quickLink adalah tombol "Mulai cepat" di beranda modul.
+type quickLink struct {
+	Label, Href string
+	Primary     bool
 }
 
 type homeView struct {
-	User     auth.Identity
-	Module   Module
-	Sections []section
+	User   auth.Identity
+	Module Module
+	// Hari ini: sesi yang diawasi pengguna dan agenda yang berlangsung.
+	Proctor []MySessionCard
+	Events  []TodayEvent
+	Control bool // boleh membuka pusat kendali agenda
+	ToDo    []ToDo
+	Quick   []quickLink
+	// Fresh: sekolah belum punya ujian selain ujian latihan bawaan.
+	Fresh bool
 }
 
 var releaseLabels = map[Release]string{
@@ -92,33 +97,63 @@ var releaseLabels = map[Release]string{
 // ReleaseLabel mengembalikan nama tahap rilis untuk tampilan.
 func (m Module) ReleaseLabel() string { return releaseLabels[m.Release] }
 
+// home adalah beranda modul ujian (T158): hari ini, perlu tindakan, dan
+// mulai cepat. Peran: admin_tu, kepala_sekolah, guru.
 func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
-	id, _ := auth.CurrentUser(r.Context())
+	id, sa := h.staff(r)
+	ctx := r.Context()
 	h.ensureSamples(r, id.SchoolID)
-	a, ok := ActorFrom(r.Context())
-	if !ok {
-		var err error
-		if a, err = LoadActor(r.Context(), h.db, id); err != nil {
+	if _, ok := ActorFrom(ctx); !ok {
+		a, err := LoadActor(ctx, h.db, id)
+		if err != nil {
 			page.ServerError(h.render, h.logger, w, r, id, "load exam actor", err)
 			return
 		}
+		sa.Actor = a
 	}
-	m := ModuleFrom(r.Context())
-	all := []struct {
-		section
-		act Action
-	}{
-		{section{Title: "Bank soal", Desc: "Soal per mapel, dipakai bersama guru mapel. Bisa diimpor dari Word.", Path: "/ujian/bank/", Release: R1, Ready: true}, ActBank},
-		{section{Title: "Tes seleksi", Desc: "Tes online calon siswa; nilai langsung masuk ke peringkat pendaftaran.", Path: "/ujian/paket/", Release: R1, Ready: true}, ActAdmissionTest},
-		{section{Title: "Ulangan kelas", Desc: "Ulangan dan ujian latihan untuk kelas yang Anda ampu, dari bank soal.", Path: "/ujian/paket/", Release: R2, Ready: true}, ActClassExam},
-		{section{Title: "Ujian latihan", Desc: "Siswa mencoba halaman ujian sebelum ujian sungguhan. Buka untuk satu kelas dalam satu klik.", Path: "/ujian/latihan", Release: R1, Ready: true}, ActClassExam},
-		{section{Title: "Agenda PTS/PAS", Desc: "Jadwal mapel per hari, ruang, sesi, pengawas, dan kartu peserta.", Path: "/ujian/agenda", Release: R3, Ready: true}, ActAgenda},
-	}
+	m := ModuleFrom(ctx)
+	now := time.Now()
 	v := homeView{User: id, Module: m}
-	for _, s := range all {
-		if a.CanAny(s.act, Read) && m.Has(s.Release) {
-			v.Sections = append(v.Sections, s.section)
+	from, to := DayBounds(now, id.Location())
+	ps, err := MyProctorSessions(ctx, h.db, id.SchoolID, id.UserID, from, to)
+	if err != nil {
+		h.fail(w, r, "home proctor sessions", err)
+		return
+	}
+	v.Proctor = MySessionCards(ps, id.Location(), now)
+	if m.Has(R3) && sa.CanAny(ActAgenda, Read) {
+		v.Control = true
+		if v.Events, err = TodayEvents(ctx, h.db, id.SchoolID, from); err != nil {
+			h.fail(w, r, "home events", err)
+			return
 		}
+	}
+	review := false
+	if sa.CanAny(ActBank, Read) {
+		s, err := LoadExamSettings(ctx, h.db, id.SchoolID)
+		if err != nil {
+			h.fail(w, r, "home exam settings", err)
+			return
+		}
+		review = s.Review
+	}
+	if v.ToDo, err = MyToDo(ctx, h.db, sa, review, now); err != nil {
+		h.fail(w, r, "home to-do", err)
+		return
+	}
+	if err := h.db.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM exams WHERE school_id = $1 AND NOT builtin AND archived_at IS NULL)`,
+		id.SchoolID).Scan(&v.Fresh); err != nil {
+		h.fail(w, r, "home fresh school", err)
+		return
+	}
+	if sa.CanAny(ActClassExam, Write) || sa.CanAny(ActAdmissionTest, Write) {
+		v.Quick = append(v.Quick, quickLink{Label: "Buat ujian", Href: "/ujian/paket/baru", Primary: true})
+	}
+	if sa.CanAny(ActBank, Write) {
+		v.Quick = append(v.Quick, quickLink{Label: "Tambah atau impor soal", Href: "/ujian/bank/"})
+	}
+	if sa.CanAny(ActClassExam, Write) {
+		v.Quick = append(v.Quick, quickLink{Label: "Buka ujian latihan", Href: "/ujian/latihan"})
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/home", v)
 }
