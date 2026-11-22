@@ -67,4 +67,32 @@ func TestApply(t *testing.T) {
 	if m, _ := exam.LoadModule(ctx, tx, schoolID); m.Enabled {
 		t.Error("module still enabled after off")
 	}
+	// Daftar status semua sekolah (rollout bertahap, T155).
+	if err := apply(ctx, tx, "test-modul", "on", "r1", &out); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := listSchools(ctx, tx, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "test-modul") || !strings.Contains(out.String(), "aktif") || !strings.Contains(out.String(), "sekolah dengan modul ujian aktif") {
+		t.Errorf("list = %q", out.String())
+	}
+}
+
+func TestSchoolCodes(t *testing.T) {
+	f := t.TempDir() + "/gelombang.txt"
+	if err := os.WriteFile(f, []byte("# gelombang 2\nSDA\n\n  smpb  \nsda\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := schoolCodes(" smpc, sda ,", f)
+	if err != nil || strings.Join(got, ",") != "smpc,sda,smpb" {
+		t.Errorf("schoolCodes = %v, %v", got, err)
+	}
+	if got, _ := schoolCodes("", ""); len(got) != 0 {
+		t.Errorf("empty = %v", got)
+	}
+	if _, err := schoolCodes("", t.TempDir()+"/tidak-ada.txt"); err == nil {
+		t.Error("missing file accepted")
+	}
 }

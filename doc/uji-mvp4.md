@@ -198,3 +198,93 @@ Belum dijalankan karena memakai sumber daya Railway berbayar dan butuh persetuju
 5. **Pengamatan:** metrik CPU/RAM Railway per replika dan Postgres, koneksi Postgres, `/internal/`.
 6. **Perkiraan biaya satu putaran** (±1 jam): ±10 vCPU-jam + ±10 GB-jam ≈ **< $1**, ditambah VPS generator.
 
+
+## Pilot dan rollout (T155)
+
+Status: **belum dimulai.** Alat ukur dan prosedur sudah siap. Pilot dijalankan bersama sekolah dan diisi di bagian ini setelah setiap rilis.
+
+### Rencana pilot per rilis
+
+| Rilis | Sekolah pilot | Skenario | Mulai | Status |
+|---|---|---|---|---|
+| R1 — tes seleksi online | 1–2 sekolah | Satu sesi tes di sekolah (lab/HP) dan satu sesi dari rumah | | belum |
+| R2 — ulangan guru | 3–5 guru dari sekolah pilot | Ulangan harian dengan HP siswa; minimal satu ulangan diimpor dari Word | | belum |
+| R3 — PTS/PAS sekolah | 1 sekolah | PTS/PAS penuh (lab dan HP), koordinator memakai agenda dan pusat kendali | | belum |
+
+Aktivasi per sekolah pilot (dicatat di audit sebagai `module.exam`):
+
+```sh
+akra-modul -school <kode> -exam on -release r1
+```
+
+### Pendampingan setiap sekolah pilot
+
+| Kapan | Kegiatan | Alat |
+|---|---|---|
+| H-7 | Siswa cek perangkat; perangkat yang gagal diganti atau dipinjami | `/u/cek`, panduan peserta (Ujian → Bantuan) |
+| H-7 | Isi kontak dukungan dan jam layanan di server | `SUPPORT_WHATSAPP`, `SUPPORT_EMAIL`, `SUPPORT_HOURS`, `SUPPORT_HOURS_PEAK` |
+| H-3 | Cetak kartu dengan **panduan peserta di balik kartu**; ujian latihan dibuka untuk kelas peserta | Detail ujian/agenda → Dokumen; Ujian → Ujian latihan |
+| H-2 | Gladi pengawas di sesi latihan: layar pengawas, arti warna, pindah perangkat, reset login, jeda, berita acara | Panduan pengawas (PDF), [doc/panduan-ujian/uji-keterbacaan.md](panduan-ujian/uji-keterbacaan.md) |
+| Hari H | Tim AKRA hadir (langsung atau daring) di ujian pertama; tim siaga memantau alert | `/internal/`, [runbook-ujian.md](runbook-ujian.md) |
+| H+1 sampai H+3 | Laporan ukuran, perbandingan nilai, wawancara singkat | `akra-ops pilot` (di bawah) |
+
+### Data yang dikumpulkan
+
+**Ukuran dari AKRA**, dihitung `akra-ops pilot`. Perintah ini hanya membaca, dan keluarannya Markdown siap tempel ke bagian Hasil:
+
+```sh
+DATABASE_URL=... APP_BASE_URL=https://<host> akra-ops pilot -school <kode> -from 2027-02-01 -to 2027-02-28 -tickets <jumlah tiket> -sample 10
+```
+
+| Ukuran (indeks bagian 9) | Cara dihitung |
+|---|---|
+| 0 jawaban hilang | Soal yang perubahannya dikirim perangkat setelah attempt ditutup dan belum pernah tersimpan (`exam_lost_answers`) |
+| ≥ 95% attempt tanpa bantuan pengawas | Attempt **tanpa** pindah perangkat, reset login, buka kunci, tambah waktu peserta, atau dikumpulkan pengawas |
+| Kelas mulai ≤ 5 menit sejak token | Per sesi (≥ 5 peserta): menit sejak peserta pertama mulai sampai 90% peserta mulai |
+| Ulangan 20 soal ≤ 15 menit (≤ 5 dari Word) | Per ujian: menit sejak soal atau impor pertama guru (≤ 3 jam sebelum ujian dibuat) sampai dijadwalkan |
+| Koreksi 30 esai ≤ 20 menit | Per korektor per ujian: rata-rata jeda antar-esai (jeda > 10 menit diabaikan) × 30 |
+| ≥ 70% guru membuat ujian kedua | Guru dengan ≥ 2 ujian di rentang. "Tanpa didampingi" dicek dari catatan pendamping |
+| Tiket ≤ 1 per 100 peserta | Jumlah tiket dari catatan tim (`-tickets`) dibagi peserta |
+| Insiden | Kejadian platform (`ops_incidents`) di rentang; yang masih terbuka |
+
+**Dari tim:**
+- tiket bantuan (WhatsApp/email/telepon) dengan kategori;
+- kejadian di berita acara;
+- wawancara singkat 5–10 menit dengan guru, pengawas, koordinator, dan 5 siswa:
+  1. Bagian mana yang paling membingungkan?
+  2. Kapan Anda perlu bertanya atau dibantu?
+  3. Apa yang lebih lambat daripada cara lama?
+  4. Mau memakai lagi di ulangan/ujian berikutnya? Mengapa?
+
+**Perbandingan nilai:** `-sample 10` memilih 10 lembar acak bernilai final. Guru mengoreksi manual dari halaman hasil peserta tanpa melihat nilai AKRA, lalu mengisi kolom "Nilai manual". Setiap selisih ditelusuri: kunci salah, aturan penilaian (mis. PG kompleks proporsional), atau bug.
+
+### Kriteria lanjut ke rollout
+
+| Kriteria | R1 | R2 | R3 |
+|---|---|---|---|
+| 0 jawaban hilang | | | |
+| Tidak ada insiden kategori tinggi yang terbuka | | | |
+| ≥ 95% attempt tanpa bantuan | | | |
+| 10 lembar sampel cocok dengan koreksi manual | | | |
+| Guru pilot mau memakai lagi | | | |
+
+Bila satu kriteria belum terpenuhi, rollout rilis itu ditunda. Masalahnya dicatat sebagai task di `doc/tasks_schoolos_mvp4/21-perbaikan/`, diperbaiki, lalu pilot diulang untuk bagian yang gagal.
+
+### Rollout bertahap
+
+| Gelombang | Sekolah | Syarat masuk | Perintah |
+|---|---|---|---|
+| 1 | 5 sekolah | Kriteria lanjut rilis terpenuhi | `akra-modul -file gelombang-1.txt -exam on -release <r>` |
+| 2 | 20 sekolah | Gelombang 1 berjalan 2 minggu tanpa insiden tinggi; tiket ≤ 1 per 100 peserta | `akra-modul -file gelombang-2.txt -exam on -release <r>` |
+| 3 | Semua sekolah | Gelombang 2 lulus ukuran yang sama | per berkas daftar sekolah |
+
+- Satu berkas gelombang diterapkan dalam satu transaksi: bila satu kode salah, tidak ada yang berubah. Status semua sekolah dicek dengan `akra-modul -list`.
+- Setiap gelombang: pengumuman ke admin TU, webinar singkat 30 menit (isi [doc/panduan-ujian/](panduan-ujian/README.md)), dan tautan panduan cetak.
+- **Musim PAS pertama** dipantau khusus:
+  - `SUPPORT_HOURS_PEAK` diisi; jam layanan diperluas tampil otomatis di halaman bantuan sekolah yang punya agenda;
+  - tim siaga mengikuti [runbook-ujian.md](runbook-ujian.md) dan jadwal musim ujian di `/internal/`;
+  - kapasitas mengikuti bagian "Prosedur menjelang musim PAS" di atas, termasuk uji S4 di staging lebih dulu.
+
+### Hasil pilot
+
+_Tempel keluaran `akra-ops pilot` per sekolah di sini, lalu isi tiket, wawancara, perbandingan nilai, dan keputusan lanjut/tunda._

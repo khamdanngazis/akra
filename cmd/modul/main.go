@@ -7,6 +7,14 @@
 //	akra-modul -school sdharapan                       # tampilkan status
 //	akra-modul -school sdharapan -exam on -release r1  # aktifkan tahap 1
 //	akra-modul -school sdharapan -exam off             # nonaktifkan
+//	akra-modul -school sda,smpb -exam on -release r1   # beberapa sekolah sekaligus
+//	akra-modul -file gelombang-2.txt -exam on -release r2
+//	akra-modul -list                                   # status semua sekolah
+//
+// Rollout bertahap (T155): pilot dulu, lalu gelombang 5 → 20 → semua
+// sekolah. Satu gelombang diterapkan dalam satu transaksi: bila satu kode
+// salah, tidak ada yang berubah. -file berisi satu kode sekolah per baris;
+// baris kosong dan baris diawali # diabaikan.
 //
 // Koneksi hanya dari environment DATABASE_URL. Setiap perubahan dicatat di
 // audit sebagai aksi sistem. Pengguna sekolah melihat menu baru setelah
@@ -18,9 +26,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -39,14 +49,20 @@ func main() {
 
 func run(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("akra-modul", flag.ContinueOnError)
-	code := fs.String("school", "", "kode sekolah (wajib)")
+	code := fs.String("school", "", "kode sekolah; beberapa dipisah koma")
+	file := fs.String("file", "", "berkas berisi kode sekolah, satu per baris")
+	list := fs.Bool("list", false, "tampilkan status modul ujian semua sekolah")
 	examFlag := fs.String("exam", "", "on atau off; kosong = tidak diubah")
 	release := fs.String("release", "", "tahap modul ujian: r1, r2, atau r3")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *code == "" {
-		return errors.New("-school is required")
+	codes, err := schoolCodes(*code, *file)
+	if err != nil {
+		return err
+	}
+	if len(codes) == 0 && !*list {
+		return errors.New("-school, -file, or -list is required")
 	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -57,9 +73,82 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	defer pool.Close()
+	if *list {
+		return listSchools(ctx, pool, os.Stdout)
+	}
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
-		return apply(ctx, tx, *code, *examFlag, *release, os.Stdout)
+		for _, c := range codes {
+			if err := apply(ctx, tx, c, *examFlag, *release, os.Stdout); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
+}
+
+// schoolCodes menggabungkan kode dari -school (dipisah koma) dan -file,
+// tanpa duplikat.
+func schoolCodes(flagCodes, file string) ([]string, error) {
+	raw := strings.Split(flagCodes, ",")
+	if file != "" {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			return nil, fmt.Errorf("read -file: %w", err)
+		}
+		for _, l := range strings.Split(string(b), "\n") {
+			if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
+				raw = append(raw, l)
+			}
+		}
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, c := range raw {
+		c = strings.ToLower(strings.TrimSpace(c))
+		if c != "" && !seen[c] {
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+// listSchools menulis status modul ujian setiap sekolah.
+func listSchools(ctx context.Context, q database.DBTX, out io.Writer) error {
+	rows, err := q.Query(ctx, `SELECT s.code, s.name,
+			coalesce((SELECT value FROM school_settings WHERE school_id = s.id AND key = 'exam.enabled'), 'false'),
+			coalesce((SELECT value FROM school_settings WHERE school_id = s.id AND key = 'exam.release'), '-'),
+			(SELECT max(created_at) FROM audit_logs WHERE school_id = s.id AND action = 'module.exam')
+		FROM schools s ORDER BY s.code`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	active := 0
+	for rows.Next() {
+		var code, name, on, rel string
+		var changed *time.Time
+		if err := rows.Scan(&code, &name, &on, &rel, &changed); err != nil {
+			return err
+		}
+		state := "nonaktif"
+		if on == "true" {
+			state = "aktif"
+			active++
+		}
+		since := ""
+		if changed != nil {
+			since = " · diubah " + changed.Format("2006-01-02")
+		}
+		if _, err := fmt.Fprintf(out, "%-24s %-8s %-3s %s%s\n", code, state, rel, name, since); err != nil {
+			return err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "%d sekolah dengan modul ujian aktif\n", active)
+	return err
 }
 
 // apply membaca dan (bila diminta) mengubah status modul ujian sekolah.

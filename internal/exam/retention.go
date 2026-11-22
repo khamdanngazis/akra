@@ -18,8 +18,8 @@ import (
 // (bila ujian tanpa tahun ajaran, mis. latihan bawaan: 365 hari setelah
 // sesi berakhir). Setelah itu per sesi:
 //
-//   - jawaban (termasuk komentar esai), kejadian, kode akses, dan catatan
-//     kirim-rapor dihapus;
+//   - jawaban (termasuk komentar esai dan jawaban hilang), kejadian, kode
+//     akses, dan catatan kirim-rapor dihapus;
 //   - peserta dilepas dari identitas siswa/pendaftar;
 //   - nilai dan durasi attempt tetap, tanpa identitas, untuk statistik.
 //
@@ -57,6 +57,7 @@ func eraseParticipants(ctx context.Context, tx pgx.Tx, sel string, args ...any) 
 	steps := []string{
 		`DELETE FROM exam_answers WHERE attempt_id IN (SELECT t.id FROM exam_attempts t WHERE t.participant_id IN (` + sel + `))`,
 		`DELETE FROM exam_attempt_events WHERE attempt_id IN (SELECT t.id FROM exam_attempts t WHERE t.participant_id IN (` + sel + `))`,
+		`DELETE FROM exam_lost_answers WHERE attempt_id IN (SELECT t.id FROM exam_attempts t WHERE t.participant_id IN (` + sel + `))`,
 		`DELETE FROM exam_grade_sent g USING exam_session_participants p
 			WHERE p.id IN (` + sel + `) AND g.student_id = p.student_id AND g.exam_id = (SELECT exam_id FROM exam_sessions x WHERE x.id = p.session_id)`,
 		`DELETE FROM student_credentials c USING exam_session_participants p

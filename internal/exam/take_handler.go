@@ -384,6 +384,11 @@ func (h *ParticipantHandler) save(w http.ResponseWriter, r *http.Request) {
 	}()
 	switch {
 	case errors.Is(err, ErrAttemptClosed):
+		if n, lerr := RecordLostAnswers(r.Context(), h.db, c.SchoolID, c.AttemptID, req.Changes, now); lerr != nil {
+			h.logger.ErrorContext(r.Context(), "record lost answers", "attempt_id", id, "error", lerr)
+		} else if n > 0 {
+			h.logger.WarnContext(r.Context(), "answers arrived after attempt closed", "attempt_id", id, "questions", n)
+		}
 		writeJSON(w, http.StatusConflict, saveResponse{Closed: true, Redirect: "/u/a/" + id, Now: now.UnixMilli()})
 	case errors.Is(err, ErrBadAnswer):
 		writeJSON(w, http.StatusBadRequest, saveResponse{Now: now.UnixMilli()})
