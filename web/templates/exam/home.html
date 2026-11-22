@@ -6,20 +6,40 @@
 <h1>Ujian</h1>
 <p class="muted">Modul ujian online sekolah · {{.Module.ReleaseLabel}}.</p>
 </div>
-<div class="action-row"><a class="btn btn-ghost" href="/ujian/bantuan">Butuh bantuan?</a></div>
+{{with .Quick}}<div class="action-row">{{range .}}<a class="btn {{if .Primary}}btn-primary{{else}}btn-ghost{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}</div>{{end}}
 </div>
 
-{{if .Sections}}
-<div class="shortcut-grid">
-{{range .Sections}}
-<section class="card">
-<h2 class="card-title">{{.Title}}</h2>
-<p class="muted mt-1">{{.Desc}}</p>
-{{if .Ready}}<p class="mt-3"><a class="btn btn-ghost" href="{{.Path}}">Buka</a></p>{{else}}<p class="mt-3"><span class="badge">Sedang disiapkan</span></p>{{end}}
+{{if .Fresh}}
+<section class="card empty-guide">
+<h2 class="card-title">Mulai memakai ujian online</h2>
+<ol class="stack mt-3">
+<li><strong>Lihat bank contoh</strong> di <a href="/ujian/bank/">Bank soal</a>: semua jenis soal, termasuk rumus dan gambar.</li>
+<li><strong>Buka ujian latihan</strong> untuk satu kelas agar siswa mencoba halaman ujian lebih dulu.</li>
+<li><strong>Buat ujian pertama:</strong> pilih soal dari bank atau impor dari Word, atur jadwal, lalu cetak kartu.</li>
+</ol>
 </section>
 {{end}}
-</div>
+
+<div class="exam-home mt-4">
+<section class="card stack" aria-labelledby="today-title">
+<h2 id="today-title" class="card-title">Hari ini</h2>
+{{if or .Proctor .Events}}
+{{with .Proctor}}{{template "my_session_cards" .}}{{end}}
+{{if .Events}}<ul class="todo-list">{{range .Events}}<li><span class="min-w-0"><strong class="block">{{.Name}}</strong><span class="text-sm text-slate-500">Agenda berlangsung hari ini</span></span>
+<a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{.ID}}/kendali">Pusat kendali</a></li>{{end}}</ul>{{end}}
 {{else}}
-<section class="card empty-guide"><p class="muted">Belum ada bagian ujian yang bisa Anda buka. Guru mapel melihat bank soal mapel yang diampu setelah penugasan mapel diatur di <a href="/pengaturan/penugasan">Penugasan Guru</a>.</p></section>
+<p class="muted mb-0">Tidak ada sesi yang Anda awasi atau agenda ujian hari ini.</p>
 {{end}}
+</section>
+
+<section class="card stack" aria-labelledby="todo-title">
+<h2 id="todo-title" class="card-title">Perlu tindakan</h2>
+{{with .ToDo}}
+<ul class="todo-list">{{range .}}<li><span class="min-w-0"><strong class="block">{{.Text}}</strong>{{with .Detail}}<span class="block truncate text-sm text-slate-500">{{.}}</span>{{end}}</span>
+<a class="btn btn-ghost btn-sm" href="{{.Href}}">{{.Action}}</a></li>{{end}}</ul>
+{{else}}
+<p class="muted mb-0">Tidak ada yang perlu ditindaklanjuti.</p>
+{{end}}
+</section>
+</div>
 {{end}}

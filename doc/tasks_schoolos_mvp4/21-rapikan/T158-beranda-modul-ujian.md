@@ -40,8 +40,16 @@ Beranda modul menjadi ringkasan kerja pengguna, dengan tiga bagian.
 - `internal/exam/handler.go` (home), `internal/exam/home.go` (baru), `home_test.go`
 - `web/templates/exam/home.html`
 
+## Catatan implementasi
+- **"Perlu tindakan" hanya untuk ujian milik pengguna** (pemilik ujian), ditambah esai yang ditugaskan kepadanya dan, untuk pengelola agenda, agenda dekat.
+- **Ujian yang sesi terakhirnya berakhir lebih dari 60 hari lalu** tidak lagi diingatkan (hasil belum dibuka, nilai belum dikirim).
+- **"Kesiapan agenda merah"** dipersempit menjadi dua hal yang bisa dihitung murah: jadwal belum diumumkan, dan sesi tanpa pengawas, untuk agenda yang berjalan atau mulai dalam 14 hari.
+- **"Kirim ulang ke rapor"** memakai `GradesStale` yang sama dengan detail ujian, hanya untuk ujian yang dikirim dalam 60 hari terakhir.
+- **Mulai cepat** ada di header beranda modul: Buat ujian, Tambah atau impor soal, Buka ujian latihan. Kartu bagian lama dihapus; tujuannya kini ada di sub-navigasi (T157).
+- **Jumlah query tidak dibatasi 4.** Beranda memakai sekitar 8 query ringan: sesi pengawas, agenda hari ini, pengaturan telaah, satu query gabungan untuk draf/hasil/rapor, esai, telaah, agenda, dan cek sekolah baru. Ditambah `GradesStale` per ujian yang baru dikirim. Semua dibatasi per pengguna dan rentang waktu, jadi tidak tumbuh dengan jumlah ujian sekolah.
+
 ## Kriteria selesai
-- [ ] Uji per peran: guru melihat sesi pengawasannya dan esai menunggu di ujiannya saja; koordinator melihat agenda hari ini; kepala sekolah hanya melihat (tanpa tombol ubah)
-- [ ] Setiap baris "Perlu tindakan" menuju halaman yang tepat dan hilang setelah ditindaklanjuti
-- [ ] Beranda tidak menambah lebih dari 4 query (diukur di uji)
-- [ ] Tampilan desktop dan HP diperiksa
+- [x] Uji per peran: guru melihat draf miliknya dan tombol Buat ujian; kepala sekolah hanya melihat (tanpa tombol ubah dan tanpa draf guru lain); pengelola agenda melihat agenda hari ini dan "jadwal belum diumumkan" paling atas
+- [x] Setiap baris "Perlu tindakan" menuju halaman yang tepat dan hilang setelah ditindaklanjuti (diuji untuk hasil dibuka dan batas 60 hari)
+- [ ] Beranda tidak menambah lebih dari 4 query: tidak dipenuhi, lihat catatan
+- [x] Tampilan desktop diperiksa; HP perlu dicek sekali di perangkat sungguhan

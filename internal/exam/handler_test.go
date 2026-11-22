@@ -103,7 +103,7 @@ func TestModuleRoutes(t *testing.T) {
 	ctx := context.Background()
 	a := e.a
 
-	if rec := e.get("/ujian/", a.Admin); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Agenda PTS/PAS") {
+	if rec := e.get("/ujian/", a.Admin); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `href="/ujian/agenda"`) {
 		t.Fatalf("admin /ujian/ = %d", rec.Code)
 	}
 	if rec := e.get("/ujian/", a.Treasurer); rec.Code != http.StatusForbidden {
@@ -118,7 +118,7 @@ func TestModuleRoutes(t *testing.T) {
 	if rec := e.get("/ujian/agenda", a.Teacher); rec.Code != http.StatusForbidden {
 		t.Errorf("teacher agenda = %d, want 403", rec.Code)
 	}
-	if rec := e.get("/ujian/", a.Teacher); rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "Agenda PTS/PAS") {
+	if rec := e.get("/ujian/", a.Teacher); rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `href="/ujian/agenda"`) {
 		t.Errorf("teacher /ujian/ = %d or shows agenda", rec.Code)
 	}
 	if _, err := duty.Assign(ctx, e.tx, duty.Actor{SchoolID: a.ID, UserID: a.Admin.ID}, a.YearID, a.Teacher.ID, duty.ExamCoordinator); err != nil {
