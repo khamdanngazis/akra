@@ -6,6 +6,7 @@
 // dengan 10 gambar, sesi mulai -start-in dari sekarang, kartu berkode):
 //
 //	DATABASE_URL=... STORAGE_LOCAL_DIR=... go run ./scripts/loadtest seed -schools 10 -out loadtest/exam-data.json
+//	DATABASE_URL=... STORAGE_DRIVER=r2 R2_ACCOUNT_ID=... R2_BUCKET=<bucket uji> R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... go run ./scripts/loadtest seed ...
 //
 // Jalankan skenario (S1–S3 satu sekolah, S4 10 sekolah, S5 dengan -fail
 // dan restart/mematikan replika selama berjalan):
@@ -55,7 +56,7 @@ func main() {
 		if strings.Contains(os.Getenv("APP_ENV"), "production") {
 			log.Fatal("refusing to seed with APP_ENV=production")
 		}
-		store, err := storage.NewLocal(os.Getenv("STORAGE_LOCAL_DIR"))
+		store, err := seedStore()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -238,4 +239,16 @@ func run(ctx context.Context, pool *pgxpool.Pool, args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// seedStore memilih penyimpanan gambar soal untuk seed: STORAGE_DRIVER=r2
+// (uji S4 di staging, bucket uji) memakai R2_ACCOUNT_ID, R2_BUCKET,
+// R2_ACCESS_KEY_ID, dan R2_SECRET_ACCESS_KEY seperti server; selain itu
+// folder STORAGE_LOCAL_DIR.
+func seedStore() (storage.Store, error) {
+	if os.Getenv("STORAGE_DRIVER") == "r2" {
+		return storage.NewR2(storage.R2Config{AccountID: os.Getenv("R2_ACCOUNT_ID"), Bucket: os.Getenv("R2_BUCKET"),
+			AccessKeyID: os.Getenv("R2_ACCESS_KEY_ID"), SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY")})
+	}
+	return storage.NewLocal(os.Getenv("STORAGE_LOCAL_DIR"))
 }

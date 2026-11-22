@@ -193,7 +193,7 @@ Belum dijalankan karena memakai sumber daya Railway berbayar dan butuh persetuju
 
 1. **Siapkan lingkungan uji beban:** layanan aplikasi dan Postgres terpisah dari pilot (bisa project/environment baru), `APP_ENV=staging`, penyimpanan R2 bucket uji. **Jangan pernah memakai database produksi atau pilot.**
 2. **Konfigurasi:** sesuai baris "Musim PAS" di tabel di atas. Catat vCPU/RAM per replika, `DB_MAX_CONNS`, dan paket Postgres.
-3. **Data:** jalankan `seed -schools 10` dari mesin yang bisa menjangkau database uji. `STORAGE_LOCAL_DIR` tidak dipakai; gambar perlu diunggah ke R2, dan seeder harus disesuaikan bila memakai R2.
+3. **Data:** jalankan `seed -schools 10` dari mesin yang bisa menjangkau database uji, dengan `STORAGE_DRIVER=r2` dan kredensial bucket uji (`R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) agar gambar soal terunggah ke R2 seperti di produksi.
 4. **Generator beban:** dari ≥2 mesin di luar Railway (mis. VPS di Jakarta/Singapura). Bagi sekolah per mesin (`-from`, `-schools`) agar setiap IP ≤ 3.000 login per 15 menit.
 5. **Pengamatan:** metrik CPU/RAM Railway per replika dan Postgres, koneksi Postgres, `/internal/`.
 6. **Perkiraan biaya satu putaran** (±1 jam): ±10 vCPU-jam + ±10 GB-jam ≈ **< $1**, ditambah VPS generator.
