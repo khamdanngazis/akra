@@ -268,7 +268,7 @@ DATABASE_URL=... APP_BASE_URL=https://<host> akra-ops pilot -school <kode> -from
 | 10 lembar sampel cocok dengan koreksi manual | | | |
 | Guru pilot mau memakai lagi | | | |
 
-Bila satu kriteria belum terpenuhi, rollout rilis itu ditunda. Masalahnya dicatat sebagai task di `doc/tasks_schoolos_mvp4/21-perbaikan/`, diperbaiki, lalu pilot diulang untuk bagian yang gagal.
+Bila satu kriteria belum terpenuhi, rollout rilis itu ditunda. Masalahnya dicatat sebagai task di `doc/tasks_schoolos_mvp4/22-perbaikan/`, diperbaiki, lalu pilot diulang untuk bagian yang gagal.
 
 ### Rollout bertahap
 

@@ -27,7 +27,7 @@ Modul ujian dipakai sungguhan di sekolah, masalahnya ditemukan dan diperbaiki, l
    - dibuka bertahap: 5 → 20 → semua sekolah;
    - pengumuman dan webinar singkat;
    - musim PAS pertama dipantau khusus (jam dukungan diperluas, tim siaga).
-7. Masalah dari pilot dicatat sebagai task di folder `21-perbaikan/` (pola `13-perbaikan/` MVP 3).
+7. Masalah dari pilot dicatat sebagai task di folder `22-perbaikan/` (pola `13-perbaikan/` MVP 3).
 
 ## Kriteria selesai
 - [ ] Pilot setiap rilis selesai dengan laporan di `doc/uji-mvp4.md`

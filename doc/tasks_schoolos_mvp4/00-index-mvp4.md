@@ -121,7 +121,8 @@ Berlaku untuk **semua** task MVP 4. Task belum selesai bila standar ini tidak te
 | `18-hari-h/` | T143–T145 | Layar pengawas, pusat kendali koordinator, keandalan dan observabilitas | 2 minggu |
 | `19-penilaian/` | T146–T151 | Penilaian otomatis, koreksi esai, analisis butir dan TP, integrasi seleksi, integrasi rapor, hasil untuk siswa dan orang tua | 3 minggu |
 | `20-siap-produksi/` | T152–T155 | Uji beban, uji keamanan dan privasi, panduan dan onboarding, pilot dan rollout | 2 minggu + pilot |
-| `21-perbaikan/` | T156– | Perbaikan dari pilot (T155), diprioritaskan P0–P3 sebelum gelombang rollout berikutnya | sesuai kebutuhan |
+| `21-rapikan/` | T156–T162 | Rapikan navigasi dan tampilan: menu samping per modul, kerangka modul ujian (sub-navigasi, breadcrumb, judul), beranda modul, daftar dan detail ujian, bank soal, komponen halaman bersama | 2 minggu |
+| `22-perbaikan/` | T163– | Perbaikan dari pilot (T155), diprioritaskan P0–P3 sebelum gelombang rollout berikutnya | sesuai kebutuhan |
 
 Total perkiraan: **± 20 minggu pengembangan** (± 100 hari kerja, satu pengembang penuh waktu dibantu Claude), ditambah pilot. Pekerjaan dibagi ke tiga rilis agar sekolah bisa memakai lebih awal.
 
