@@ -122,7 +122,7 @@ Berlaku untuk **semua** task MVP 4. Task belum selesai bila standar ini tidak te
 | `19-penilaian/` | T146–T151 | Penilaian otomatis, koreksi esai, analisis butir dan TP, integrasi seleksi, integrasi rapor, hasil untuk siswa dan orang tua | 3 minggu |
 | `20-siap-produksi/` | T152–T155 | Uji beban, uji keamanan dan privasi, panduan dan onboarding, pilot dan rollout | 2 minggu + pilot |
 | `21-rapikan/` | T156–T162 | Rapikan navigasi dan tampilan: menu seluruh aplikasi berkelompok dengan pusat Pengaturan, kerangka modul ujian (sub-navigasi, breadcrumb, judul), beranda modul, daftar dan detail ujian, bank soal, komponen halaman bersama | 2,5 minggu |
-| `22-modul-sekolah/` | T163–T169 | Modul dan paket per sekolah (ADR 0002): katalog modul, penegakan di route/beranda/portal/laporan, fitur lintas modul dan peran, halaman modul untuk sekolah, pengelola untuk tim AKRA, uji kombinasi | 2,5 minggu |
+| `22-modul-sekolah/` | T163–T169 | Modul dan paket per sekolah (ADR 0002): katalog modul, penegakan di route/beranda/portal/laporan, fitur lintas modul dan peran, halaman modul untuk sekolah (baca saja), pengelola untuk tim implementator lewat CLI, uji kombinasi | 2 minggu |
 | `23-perbaikan/` | T170– | Perbaikan dari pilot (T155), diprioritaskan P0–P3 sebelum gelombang rollout berikutnya | sesuai kebutuhan |
 
 Total perkiraan: **± 20 minggu pengembangan** (± 100 hari kerja, satu pengembang penuh waktu dibantu Claude), ditambah pilot. Pekerjaan dibagi ke tiga rilis agar sekolah bisa memakai lebih awal.
