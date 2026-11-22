@@ -11,7 +11,6 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/page"
-	"akra/internal/platform/settings"
 	"akra/internal/school"
 )
 
@@ -68,9 +67,6 @@ type subjectsView struct {
 	Rows      []subjectRow
 	New       SubjectForm
 	NewErrors map[string]string
-	// PerSubject: absensi per mapel aktif (T68). Diubah lewat
-	// POST /pengaturan/absensi di paket attendance.
-	PerSubject bool
 	// KKMDefault dan KKMLabel (KKM atau KKTP) dari pengaturan rapor (T73).
 	KKMDefault int
 	KKMLabel   string
@@ -144,11 +140,6 @@ func (h *SubjectHandler) show(w http.ResponseWriter, r *http.Request, status int
 		h.serverError(w, r, "list subjects", err)
 		return
 	}
-	perSubject, err := settings.Bool(r.Context(), h.svc.db, id.SchoolID, settings.AttendancePerSubject, false)
-	if err != nil {
-		h.serverError(w, r, "attendance settings", err)
-		return
-	}
 	kkm, label, err := SchoolThreshold(r.Context(), h.svc.db, id.SchoolID)
 	if err != nil {
 		h.serverError(w, r, "report threshold", err)
@@ -160,7 +151,6 @@ func (h *SubjectHandler) show(w http.ResponseWriter, r *http.Request, status int
 		User:       id,
 		New:        opts.newForm,
 		NewErrors:  opts.newErrors,
-		PerSubject: perSubject,
 		Flash:      auth.PopFlash(r.Context(), h.sessions),
 	}
 	for _, s := range list {

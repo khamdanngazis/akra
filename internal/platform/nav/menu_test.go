@@ -13,16 +13,26 @@ func paths(items []MenuItem) string {
 	return strings.Join(s, " ")
 }
 
+var exam = []string{ModuleExam}
+
+// Menu per peran (analisis menu bagian 3, T156): urutan mengikuti kelompok.
 func TestMenuFor(t *testing.T) {
 	for role, want := range map[string]string{
-		"admin_tu":       "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /keuangan/audit /pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/penugasan /nilai/rekap /nilai/komponen /pengaturan/rapor /pengaturan/mapel",
-		"bendahara":      "/ /keuangan/pembayaran/baru /keuangan/tagihan-massal /pendaftaran/biaya /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /laporan /pengumuman /pengaturan/keuangan",
-		"guru":           "/ /absensi /jadwal/saya /pengumuman /pengaturan/penugasan /nilai/input /nilai/rekap /nilai/komponen /dapodik/nilai",
-		"kepala_sekolah": "/ /absensi/rekap /siswa /pendaftaran /dapodik /kelas /jadwal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /laporan /pengumuman /keuangan/audit /pengaturan/keuangan /pengaturan/sekolah /pengaturan/tahun-ajaran /nilai/rekap",
+		"admin_tu":       "/ /siswa /kelas /jadwal /absensi/rekap /nilai/rekap /nilai/komponen /pendaftaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/audit /dapodik /pengumuman /laporan /pengaturan",
+		"bendahara":      "/ /pendaftaran/biaya /keuangan/pembayaran/baru /keuangan/tagihan-massal /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /pengumuman /laporan /pengaturan",
+		"guru":           "/ /jadwal/saya /absensi /nilai/input /nilai/rekap /nilai/komponen /pengaturan/penugasan /dapodik/nilai /pengumuman",
+		"kepala_sekolah": "/ /siswa /kelas /jadwal /absensi/rekap /nilai/rekap /pendaftaran /keuangan/rekap-pembayaran /keuangan/tunggakan /keuangan/jenis-tagihan /keuangan/pembatalan /keuangan/audit /dapodik /pengumuman /laporan /pengaturan",
 		"orang_tua":      "/portal /portal/pengumuman",
 	} {
 		if got := paths(MenuFor([]string{role})); got != want {
 			t.Errorf("%s:\n got %s\nwant %s", role, got, want)
+		}
+	}
+	// Dengan modul ujian: jumlah sesuai analisis menu (admin 17 + Telaah
+	// sampai T157, kepala 18, guru 10 + Telaah).
+	for role, want := range map[string]int{"admin_tu": 18, "kepala_sekolah": 18, "guru": 11, "bendahara": 10} {
+		if got := len(MenuForUser([]string{role}, nil, exam)); got != want {
+			t.Errorf("%s with exam: %d items, want %d", role, got, want)
 		}
 	}
 	if got := MenuFor(nil); len(got) != 0 {
@@ -35,8 +45,8 @@ func TestMenuFor(t *testing.T) {
 
 func TestMenuFor_Restrictions(t *testing.T) {
 	guru := paths(MenuFor([]string{"guru"}))
-	for _, p := range []string{"/keuangan", "/siswa", "/laporan"} {
-		if strings.Contains(guru, p) {
+	for _, p := range []string{"/keuangan", "/siswa", "/laporan", "/pengaturan "} {
+		if strings.Contains(guru+" ", p) {
 			t.Errorf("teacher menu contains %s: %s", p, guru)
 		}
 	}
@@ -45,6 +55,14 @@ func TestMenuFor_Restrictions(t *testing.T) {
 	}
 	if p := paths(MenuFor([]string{"orang_tua"})); strings.Contains(p, "/keuangan") || strings.Contains(p, "/pengumuman ") || strings.HasPrefix(p, "/ ") {
 		t.Errorf("parent menu leaks staff items: %s", p)
+	}
+	// Pengaturan sekolah tidak lagi di menu: dibuka dari pusat Pengaturan.
+	for _, role := range []string{"admin_tu", "kepala_sekolah", "bendahara"} {
+		for _, it := range MenuForUser([]string{role}, nil, exam) {
+			if strings.HasPrefix(it.Path, "/pengaturan/") || it.Path == "/ujian/pengaturan" {
+				t.Errorf("%s menu still has settings page %s", role, it.Path)
+			}
+		}
 	}
 }
 
@@ -62,12 +80,68 @@ func TestMenuFor_TwoRolesMergedWithoutDuplicates(t *testing.T) {
 			t.Errorf("merged menu misses %s", p)
 		}
 	}
-	if len(got) != len(MenuFor([]string{"bendahara"}))+7 { // + /absensi, /jadwal/saya, /pengaturan/penugasan, /nilai/input, /nilai/rekap, /nilai/komponen, /dapodik/nilai
+	if len(got) != len(MenuFor([]string{"bendahara"}))+7 { // + /jadwal/saya, /absensi, /nilai/input, /nilai/rekap, /nilai/komponen, /pengaturan/penugasan, /dapodik/nilai
 		t.Errorf("merged menu = %s", paths(got))
 	}
 	// Urutan mengikuti Items, bukan urutan peran.
 	if paths(MenuFor([]string{"bendahara", "guru"})) != paths(got) {
 		t.Error("menu order depends on role order")
+	}
+}
+
+// Item satu kelompok bersebelahan, kelompok sesuai GroupOrder, dan setiap
+// item punya modul yang dikenal (kosong hanya untuk inti).
+func TestItemsGroupedAndModules(t *testing.T) {
+	rank := map[string]int{}
+	for i, g := range GroupOrder {
+		rank[g] = i
+	}
+	known := map[string]bool{ModuleAttendance: true, ModuleSchedule: true, ModuleGrades: true, ModuleBilling: true, ModuleAdmission: true,
+		ModuleDapodik: true, ModuleExam: true, ModuleAnnouncements: true, ModulePortal: true}
+	core := map[string]bool{"/": true, "/siswa": true, "/kelas": true, "/pengaturan/penugasan": true, "/laporan": true, "/pengaturan": true}
+	last := -1
+	for _, it := range Items {
+		r, ok := rank[it.Group]
+		if !ok {
+			t.Errorf("%s: unknown group %q", it.Path, it.Group)
+		}
+		if r < last {
+			t.Errorf("%s: group %q out of order", it.Path, it.Group)
+		}
+		last = r
+		if it.Module == "" && !core[it.Path] {
+			t.Errorf("%s has no module", it.Path)
+		}
+		if it.Module != "" && !known[it.Module] {
+			t.Errorf("%s: unknown module %q", it.Path, it.Module)
+		}
+		if l := it.ShortLabel(); l == "" || len(l) > 10 {
+			t.Errorf("short label of %s = %q", it.Path, l)
+		}
+	}
+}
+
+func TestGroups(t *testing.T) {
+	g := Groups(MenuForUser([]string{"admin_tu"}, nil, exam))
+	var names, titled []string
+	for _, x := range g {
+		names = append(names, x.Name)
+		if x.Titled() {
+			titled = append(titled, x.Name)
+		}
+	}
+	if got := strings.Join(names, "|"); got != "|Akademik|Ujian|Pendaftaran|Keuangan|Dapodik|Informasi|Pengaturan" {
+		t.Errorf("groups = %s", got)
+	}
+	// Kelompok satu item (Pendaftaran, Dapodik, Pengaturan) dan Beranda tanpa judul.
+	if got := strings.Join(titled, "|"); got != "Akademik|Ujian|Keuangan|Informasi" {
+		t.Errorf("titled = %s", got)
+	}
+	// Kelompok kosong tidak ada: orang tua hanya dua kelompok tanpa judul.
+	for _, x := range Groups(MenuFor([]string{"orang_tua"})) {
+		if x.Titled() || len(x.Items) == 0 {
+			t.Errorf("parent group %+v", x)
+		}
 	}
 }
 
@@ -81,11 +155,17 @@ func TestCurrent(t *testing.T) {
 		"/absensi/rekap":             "/absensi/rekap",
 		"/keuangan/tagihan/1":        "",
 		"/laporan/kehadiran":         "/laporan",
-		"/pengaturan/tahun-ajaran":   "/pengaturan/tahun-ajaran",
-		"/pengaturan/sekolah":        "/pengaturan/sekolah",
+		"/pengaturan":                "/pengaturan",
+		"/pengaturan/tahun-ajaran":   "/pengaturan",
+		"/pengaturan/sekolah":        "/pengaturan",
+		"/pengaturan/absensi":        "/pengaturan",
+		"/pengaturan/penugasan":      "/pengaturan/penugasan",
+		"/pendaftaran/pengaturan":    "/pengaturan",
+		"/pendaftaran/rekap":         "/pendaftaran",
 		"/siswax":                    "",
 		"/impor/siswa":               "/siswa",
 		"/impor/siswa/template.xlsx": "/siswa",
+		"/impor/nilai":               "/nilai/rekap",
 	} {
 		if got := Current(items, path); got != want {
 			t.Errorf("Current(%q) = %q, want %q", path, got, want)
@@ -97,22 +177,71 @@ func TestCurrent(t *testing.T) {
 	}
 }
 
+// Bottom navigation dan pintasan beranda per peran, dengan cadangan saat
+// modul ujian nonaktif.
 func TestBottomAndShortcuts(t *testing.T) {
-	kepala := MenuFor([]string{"kepala_sekolah"})
-	if got := Bottom(kepala); len(got) != 4 || got[0].Path != "/" {
-		t.Errorf("Bottom = %s", paths(got))
+	for _, c := range []struct {
+		roles   []string
+		modules []string
+		bottom  string
+	}{
+		{[]string{"admin_tu"}, exam, "/ /siswa /keuangan/tunggakan /ujian"},
+		{[]string{"admin_tu"}, nil, "/ /siswa /keuangan/tunggakan /absensi/rekap"},
+		{[]string{"kepala_sekolah"}, exam, "/ /absensi/rekap /laporan /keuangan/tunggakan"},
+		{[]string{"guru"}, exam, "/ /absensi /nilai/input /ujian"},
+		{[]string{"guru"}, nil, "/ /absensi /nilai/input /jadwal/saya"},
+		{[]string{"bendahara"}, nil, "/ /keuangan/pembayaran/baru /keuangan/tunggakan /keuangan/rekap-pembayaran"},
+		{[]string{"orang_tua"}, nil, "/portal /portal/pengumuman"},
+		// Beberapa peran: peran berprioritas tertinggi didahulukan.
+		{[]string{"bendahara", "guru"}, exam, "/ /absensi /nilai/input /ujian"},
+	} {
+		items := MenuForUser(c.roles, nil, c.modules)
+		if got := paths(Bottom(items, c.roles)); got != c.bottom {
+			t.Errorf("Bottom(%v, %v) = %s, want %s", c.roles, c.modules, got, c.bottom)
+		}
 	}
-	sc := Shortcuts(kepala)
-	if len(sc) != MaxShortcuts || strings.Contains(paths(sc), "/ ") || sc[0].Path == "/" {
-		t.Errorf("Shortcuts = %s", paths(sc))
+	guru := []string{"guru"}
+	sc := Shortcuts(MenuForUser(guru, nil, exam), guru)
+	if got := paths(sc); got != "/absensi /nilai/input /ujian /jadwal/saya /nilai/rekap /pengumuman" {
+		t.Errorf("teacher shortcuts = %s", got)
 	}
-	parent := MenuFor([]string{"orang_tua"})
-	if got := Bottom(parent); len(got) != len(parent) {
-		t.Errorf("parent Bottom = %s", paths(got))
+	for _, role := range []string{"admin_tu", "kepala_sekolah", "bendahara"} {
+		sc := Shortcuts(MenuForUser([]string{role}, nil, nil), []string{role})
+		if len(sc) != MaxShortcuts || strings.HasPrefix(paths(sc), "/ ") {
+			t.Errorf("%s shortcuts = %s", role, paths(sc))
+		}
 	}
-	for _, it := range kepala {
-		if it.ShortLabel() == "" || len(it.ShortLabel()) > 10 {
-			t.Errorf("short label of %s = %q", it.Path, it.ShortLabel())
+	if sc := Shortcuts(MenuFor([]string{"orang_tua"}), []string{"orang_tua"}); paths(sc) != "/portal /portal/pengumuman" {
+		t.Errorf("parent shortcuts = %s", paths(sc))
+	}
+}
+
+// Isi pusat Pengaturan per peran (T156), mengikuti hak akses route.
+func TestSettingsFor(t *testing.T) {
+	show := func(roles, duties, modules []string) string {
+		var parts []string
+		for _, g := range SettingsFor(roles, duties, modules) {
+			parts = append(parts, g.Name+":"+paths(g.Items))
+		}
+		return strings.Join(parts, " | ")
+	}
+	for _, c := range []struct {
+		roles, duties, modules []string
+		want                   string
+	}{
+		{[]string{"admin_tu"}, nil, nil, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"admin_tu"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan /pengaturan/tugas | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan | Ujian:/ujian/pengaturan"},
+		{[]string{"kepala_sekolah"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		// Tugas koordinator hanya menambah hak guru (sama dengan matriks
+		// akses ujian): kepala sekolah koordinator tetap tanpa Pengaturan Ujian.
+		{[]string{"kepala_sekolah"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"bendahara"}, nil, nil, "Keuangan:/pengaturan/keuangan"},
+		{[]string{"guru"}, nil, exam, "Sekolah:/pengaturan/penugasan"},
+		{[]string{"guru"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/penugasan | Ujian:/ujian/pengaturan"},
+		{[]string{"orang_tua"}, nil, exam, ""},
+	} {
+		if got := show(c.roles, c.duties, c.modules); got != c.want {
+			t.Errorf("SettingsFor(%v, %v, %v):\n got %s\nwant %s", c.roles, c.duties, c.modules, got, c.want)
 		}
 	}
 }
@@ -132,21 +261,23 @@ func TestMenuForUser_ModuleAndDuty(t *testing.T) {
 	if m := MenuForUser(guru, []string{"koordinator_ujian"}, nil); has(m, "/ujian") || has(m, "/ujian/agenda") {
 		t.Error("exam menu shown while module is off")
 	}
-	if m := MenuForUser([]string{"admin_tu"}, nil, nil); has(m, "/pengaturan/tugas") {
-		t.Error("duties menu shown while exam module is off")
-	}
-	m := MenuForUser(guru, nil, []string{"exam"})
-	if !has(m, "/ujian") || has(m, "/ujian/agenda") {
+	m := MenuForUser(guru, nil, exam)
+	if !has(m, "/ujian") || has(m, "/ujian/agenda") || has(m, "/pengaturan") {
 		t.Errorf("teacher with module on: %s", paths(m))
 	}
-	m = MenuForUser(guru, []string{"koordinator_ujian"}, []string{"exam"})
-	if !has(m, "/ujian/agenda") {
-		t.Errorf("coordinator without agenda: %s", paths(m))
+	// Koordinator: Agenda Ujian dan pusat Pengaturan (untuk Pengaturan Ujian).
+	m = MenuForUser(guru, []string{"koordinator_ujian"}, exam)
+	if !has(m, "/ujian/agenda") || !has(m, "/pengaturan") {
+		t.Errorf("coordinator menu: %s", paths(m))
 	}
-	if m := MenuForUser([]string{"admin_tu"}, nil, []string{"exam"}); !has(m, "/pengaturan/tugas") || !has(m, "/ujian/agenda") {
+	if m := MenuForUser([]string{"admin_tu"}, nil, exam); !has(m, "/ujian/agenda") {
 		t.Errorf("admin with module on: %s", paths(m))
 	}
-	// MenuFor (tanpa modul) sama dengan sebelum T125.
+	// Modul selain ujian belum diperiksa per sekolah (T163): selalu tampil.
+	if m := MenuFor([]string{"bendahara"}); !has(m, "/keuangan/tunggakan") {
+		t.Errorf("billing items hidden before T163: %s", paths(m))
+	}
+	// MenuFor (tanpa modul) sama dengan MenuForUser tanpa tugas dan modul.
 	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, nil)); got != want {
 		t.Errorf("MenuFor = %s, want %s", got, want)
 	}

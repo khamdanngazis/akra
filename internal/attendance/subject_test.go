@@ -181,8 +181,17 @@ func TestSubjectAttendance_Handler(t *testing.T) {
 		t.Errorf("invalid setting: status = %d", rec.Code)
 	}
 	for range 2 { // yang kedua tidak berubah: tanpa audit
-		if rec := e.do(http.MethodPost, settingsPath, e.admin, "admin_tu", url.Values{"per_mapel": {"aktif"}}); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != subjectsPage {
+		if rec := e.do(http.MethodPost, settingsPath, e.admin, "admin_tu", url.Values{"per_mapel": {"aktif"}}); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != settingsPath {
 			t.Fatalf("enable: status = %d", rec.Code)
+		}
+	}
+	// Halaman pengaturan absensi (T156): admin/TU saja, pilihan aktif tercentang.
+	if rec := e.do(http.MethodGet, settingsPath, e.admin, "admin_tu", nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `value="aktif" checked`) {
+		t.Errorf("settings page: status = %d", rec.Code)
+	}
+	for _, role := range []string{"guru", "kepala_sekolah", "bendahara"} {
+		if rec := e.do(http.MethodGet, settingsPath, e.guru1, role, nil); rec.Code != http.StatusForbidden {
+			t.Errorf("settings page as %s: status = %d", role, rec.Code)
 		}
 	}
 	var audits int

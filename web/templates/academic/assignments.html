@@ -1,4 +1,4 @@
-{{define "title"}}Penugasan Guru{{end}}
+{{define "title"}}{{if .User.HasRole "admin_tu"}}Penugasan Guru{{else}}Mapel Saya{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{if .Admin}}
@@ -78,8 +78,8 @@
 {{else}}
 <div class="page-header">
 <div>
-<h1>Penugasan Saya</h1>
-<p class="muted">Mata pelajaran yang Anda ampu di tahun ajaran aktif. Penugasan diatur oleh admin/TU.</p>
+<h1>Mapel Saya</h1>
+<p class="muted">Mata pelajaran dan kelas yang Anda ampu di tahun ajaran aktif. Penugasan diatur oleh admin/TU.</p>
 </div>
 </div>
 

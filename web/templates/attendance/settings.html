@@ -1,0 +1,25 @@
+{{define "title"}}Absensi per Mapel · Pengaturan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Pengaturan" "/pengaturan" "Absensi per mapel" ""}}
+<div class="page-header">
+<div>
+<h1>Absensi per Mapel</h1>
+<p class="muted">Jika aktif, guru bisa mengisi absensi untuk mapel yang diajarnya di kelas, selain absensi harian. Rekap absensi bisa difilter per mapel. Absensi harian tetap berjalan seperti biasa.</p>
+</div>
+</div>
+
+{{template "flash" .}}
+
+<section class="card form-card">
+<form method="post" action="/pengaturan/absensi" class="stack" x-data="{ submitting: false }" @submit="submitting = true">
+{{ csrfField }}
+<fieldset class="choice-row">
+<legend class="visually-hidden">Absensi per mapel</legend>
+<label class="choice"><input type="radio" name="per_mapel" value="nonaktif"{{if not .PerSubject}} checked{{end}}> Nonaktif, hanya absensi harian</label>
+<label class="choice"><input type="radio" name="per_mapel" value="aktif"{{if .PerSubject}} checked{{end}}> Aktif, harian dan per mapel</label>
+</fieldset>
+<div class="action-row"><button type="submit" class="btn btn-primary" :disabled="submitting">Simpan pengaturan</button></div>
+</form>
+</section>
+{{end}}

@@ -128,7 +128,7 @@ Item yang keluar dari menu ke **pusat Pengaturan**: Profil Sekolah, Tahun Ajaran
 | Bendahara | 10 | 10 | Keuangan (5), Pendaftaran, Informasi (2), Pengaturan |
 | Orang tua | 2 | 2 | – |
 
-Jumlah item admin TU dan kepala sekolah turun, tetapi yang lebih penting setiap item kini berada di kelompoknya. Kelompok dengan satu item tampil tanpa judul.
+Jumlah item admin TU dan kepala sekolah turun, tetapi yang lebih penting setiap item kini berada di kelompoknya. Kelompok dengan satu item tampil tanpa judul, tetapi dipisah garis tipis agar tidak terlihat ikut kelompok di atasnya.
 
 ### Bottom navigation HP (maksimal 4 + tombol Menu)
 

@@ -1,0 +1,21 @@
+{{define "title"}}Pengaturan{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+<div class="page-header">
+<div>
+<h1>Pengaturan</h1>
+<p class="muted">Pengaturan sekolah dan setiap modul yang dipakai sekolah.</p>
+</div>
+</div>
+
+{{range .Sections}}
+<section class="settings-section" aria-label="{{.Name}}">
+<h2 class="settings-section-title">{{.Name}}</h2>
+<div class="shortcut-grid">
+{{range .Items}}<a class="shortcut" href="{{.Path}}"><span class="kpi-icon bg-navy-50 text-navy-900">{{template "icon" .Icon}}</span><span class="min-w-0"><strong class="block">{{.Label}}</strong><span class="block text-sm text-slate-500">{{.Desc}}</span></span><span class="ml-auto text-slate-300">{{template "icon" "chevron"}}</span></a>
+{{end}}</div>
+</section>
+{{else}}
+<section class="card empty-state"><p>Tidak ada pengaturan yang bisa Anda ubah.</p></section>
+{{end}}
+{{end}}

@@ -182,6 +182,9 @@ func funcs(versions map[string]string) template.FuncMap {
 	// menu mengembalikan item navigasi untuk peran pengguna (T51).
 	m["menu"] = nav.MenuForUser
 	m["roleLabel"] = nav.RoleLabel
+	// menuGroups mengelompokkan item menu (T156); bottomMenu dan shortcuts
+	// memilih item per prioritas peran.
+	m["menuGroups"] = nav.Groups
 	m["bottomMenu"] = nav.Bottom
 	m["shortcuts"] = nav.Shortcuts
 	m["initials"] = nav.Initials

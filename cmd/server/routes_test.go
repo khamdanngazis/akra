@@ -97,6 +97,7 @@ func newTestRouter(t *testing.T) http.Handler {
 		// Service tanpa database: uji di paket ini tidak sampai ke handler tahun ajaran.
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(nil), sessions, rd, logger),
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(nil), sessions, rd, logger),
+		settingsHub:         school.NewSettingsHubHandler(rd),
 		duties:              duty.NewHandler(nil, sessions, rd, logger),
 		exam:                exam.NewHandler(nil, nil, nil, sessions, rd, logger),
 		participant:         exam.NewParticipantHandler(nil, sessions, rd, logger, false),

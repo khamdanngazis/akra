@@ -1021,6 +1021,30 @@
     @apply text-white/70 transition;
   }
 
+  /* Pusat Pengaturan (T156). */
+  .settings-section + .settings-section {
+    @apply mt-6;
+  }
+
+  .settings-section-title {
+    @apply mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /* Judul kelompok menu (T156). */
+  .app-nav-group {
+    @apply mb-0 mt-3 px-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-navy-200;
+  }
+
+  .app-nav-group:first-child {
+    @apply mt-0;
+  }
+
+  /* Pemisah sebelum kelompok satu item (tanpa judul), agar item itu tidak
+     terlihat ikut kelompok di atasnya. */
+  .app-nav-sep {
+    @apply mx-3 my-2 border-0 border-t border-white/10;
+  }
+
   .app-nav a:hover .icon {
     @apply text-white;
   }

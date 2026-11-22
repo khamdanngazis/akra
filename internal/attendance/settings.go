@@ -19,11 +19,9 @@ import (
 // masuk audit keuangan.
 const ActionSettingsUpdate = "attendance.settings_update"
 
-const (
-	settingsPath = "/pengaturan/absensi"
-	// subjectsPage adalah halaman tempat pengaturan ini ditampilkan.
-	subjectsPage = "/pengaturan/mapel"
-)
+// settingsPath adalah halaman pengaturan absensi (T156: dipindah dari
+// halaman mata pelajaran ke halaman sendiri di pusat Pengaturan).
+const settingsPath = "/pengaturan/absensi"
 
 // PerSubjectEnabled melaporkan apakah sekolah mengaktifkan absensi per mapel.
 // Belum diatur berarti nonaktif.
@@ -60,8 +58,25 @@ func (s *Service) SetPerSubject(ctx context.Context, actor school.Actor, enabled
 	return changed, err
 }
 
-// saveSettings menyimpan isian per_mapel ("aktif" atau "nonaktif") dari
-// kartu pengaturan di halaman mata pelajaran.
+type settingsView struct {
+	User       auth.Identity
+	PerSubject bool
+	Flash      string
+	Error      string
+}
+
+// showSettings menampilkan pengaturan absensi.
+func (h *Handler) showSettings(w http.ResponseWriter, r *http.Request) {
+	id, _ := auth.CurrentUser(r.Context())
+	on, err := PerSubjectEnabled(r.Context(), h.db, id.SchoolID)
+	if err != nil {
+		h.serverError(w, r, "load attendance settings", err)
+		return
+	}
+	h.render.Render(w, r, http.StatusOK, "attendance/settings", settingsView{User: id, PerSubject: on, Flash: auth.PopFlash(r.Context(), h.sessions)})
+}
+
+// saveSettings menyimpan isian per_mapel ("aktif" atau "nonaktif").
 func (h *Handler) saveSettings(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	r.Body = http.MaxBytesReader(w, r.Body, 4<<10)
@@ -91,5 +106,5 @@ func (h *Handler) saveSettings(w http.ResponseWriter, r *http.Request) {
 		msg = "Absensi per mapel dinonaktifkan. Data absensi per mapel yang sudah ada tetap tersimpan."
 	}
 	auth.SetFlash(r.Context(), h.sessions, msg)
-	http.Redirect(w, r, subjectsPage, http.StatusSeeOther)
+	http.Redirect(w, r, settingsPath, http.StatusSeeOther)
 }

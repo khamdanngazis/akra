@@ -55,6 +55,8 @@ type routerDeps struct {
 	academicYear *school.AcademicYearHandler
 	// schoolProfile adalah Pengaturan → Profil sekolah (T126).
 	schoolProfile *school.ProfileHandler
+	// settingsHub adalah pusat Pengaturan (T156).
+	settingsHub *school.SettingsHubHandler
 	// duties adalah Pengaturan → Tugas tambahan (T125).
 	duties *duty.Handler
 	// exam adalah halaman staf modul ujian (MVP 4), aktif per sekolah.
@@ -186,6 +188,7 @@ func newRouter(d routerDeps) http.Handler {
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)
 			d.schoolProfile.Routes(r)
+			d.settingsHub.Routes(r)
 			d.duties.Routes(r)
 			d.exam.Routes(r)
 			d.classes.Routes(r)
