@@ -153,7 +153,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		v.Quick = append(v.Quick, quickLink{Label: "Tambah atau impor soal", Href: "/ujian/bank/"})
 	}
 	if sa.CanAny(ActClassExam, Write) {
-		v.Quick = append(v.Quick, quickLink{Label: "Buka ujian latihan", Href: "/ujian/latihan"})
+		v.Quick = append(v.Quick, quickLink{Label: "Coba halaman ujian", Href: "/ujian/latihan"})
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/home", v)
 }

@@ -18,7 +18,7 @@ Satu agenda (mis. "PAS Ganjil 2026/2027") berisi jadwal mapel per hari, ruang, g
 6. **Kesiapan agenda**: perbaiki semua yang ditandai (ujian belum terjadwal, ruang tanpa pengawas, dan sebagainya), lalu **Terapkan ke sesi ujian** dan **Umumkan jadwal ke siswa**. Jadwal tampil di beranda siswa dan portal orang tua.
 7. **Kartu peserta** (mulai H-3, agar kode tidak beredar terlalu lama): per ruang atau kelas. Centang **Panduan peserta di balik kartu** dan cetak bolak-balik (balik di sisi panjang).
 8. **Dokumen per ruang**: daftar hadir, berita acara, denah, dan tempelan pintu.
-9. **Ujian latihan** untuk semua kelas paling lambat H-3, agar siswa mengenal halaman ujian.
+9. **Coba halaman ujian** untuk semua kelas paling lambat H-3, agar siswa mengenal halaman ujian.
 10. Bagikan **panduan pengawas** (Ujian → Bantuan) kepada semua pengawas.
 
 ## Hari ujian: pusat kendali
@@ -48,7 +48,7 @@ Gangguan lebih dari ± 5 menit: **jeda** ruang yang terdampak. Lama jeda dikemba
 
 ## Tes seleksi calon siswa (admin TU)
 
-Ujian → Daftar ujian → **Tes seleksi**. Nilai masuk ke peringkat pendaftaran. Calon siswa tidak melihat nilai maupun pembahasan. Kartu tes tampil di halaman status pendaftaran, lengkap dengan tautan **Cek perangkat** dan **Panduan orang tua**. Ujian latihan untuk calon siswa bisa dibuka dari halaman tes di menu Pendaftaran.
+Ujian → Daftar Ujian → **Buat ujian**, pilih **Tes seleksi**. Nilai masuk ke peringkat pendaftaran. Calon siswa tidak melihat nilai maupun pembahasan. Kartu tes tampil di halaman status pendaftaran, lengkap dengan tautan **Cek perangkat** dan **Panduan orang tua**. Ujian latihan untuk calon siswa bisa dibuka dari halaman tes di menu Pendaftaran.
 
 ## Bila ada masalah
 

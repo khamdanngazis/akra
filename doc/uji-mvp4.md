@@ -223,7 +223,7 @@ akra-modul -school <kode> -exam on -release r1
 |---|---|---|
 | H-7 | Siswa cek perangkat; perangkat yang gagal diganti atau dipinjami | `/u/cek`, panduan peserta (Ujian → Bantuan) |
 | H-7 | Isi kontak dukungan dan jam layanan di server | `SUPPORT_WHATSAPP`, `SUPPORT_EMAIL`, `SUPPORT_HOURS`, `SUPPORT_HOURS_PEAK` |
-| H-3 | Cetak kartu dengan **panduan peserta di balik kartu**; ujian latihan dibuka untuk kelas peserta | Detail ujian/agenda → Dokumen; Ujian → Ujian latihan |
+| H-3 | Cetak kartu dengan **panduan peserta di balik kartu**; coba halaman ujian dibuka untuk kelas peserta | Detail ujian/agenda → Dokumen; Ujian → Coba halaman ujian |
 | H-2 | Gladi pengawas di sesi latihan: layar pengawas, arti warna, pindah perangkat, reset login, jeda, berita acara | Panduan pengawas (PDF), [doc/panduan-ujian/uji-keterbacaan.md](panduan-ujian/uji-keterbacaan.md) |
 | Hari H | Tim AKRA hadir (langsung atau daring) di ujian pertama; tim siaga memantau alert | `/internal/`, [runbook-ujian.md](runbook-ujian.md) |
 | H+1 sampai H+3 | Laporan ukuran, perbandingan nilai, wawancara singkat | `akra-ops pilot` (di bawah) |

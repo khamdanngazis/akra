@@ -8,39 +8,51 @@
 <p class="muted">Ulangan, ujian latihan, PTS/PAS, dan tes seleksi. Ujian disusun dari bank soal lewat wizard, lalu dijadwalkan.</p>
 </div>
 <div class="action-row">
-{{if .Archived}}<a class="btn btn-ghost" href="/ujian/paket/">Ujian aktif</a>{{else}}<a class="btn btn-ghost" href="/ujian/paket/?arsip=1">Arsip</a>{{end}}
+{{if .Archived}}<a class="btn btn-ghost" href="/ujian/paket/">Ujian aktif</a>{{else}}<a class="btn btn-ghost" href="/ujian/paket/?arsip=1">Arsip</a><a class="btn btn-ghost" href="/ujian/latihan">Coba halaman ujian</a>{{end}}
+{{if and .CanCreate (not .Archived)}}<a class="btn btn-primary" href="/ujian/paket/baru">Buat ujian</a>{{end}}
 </div>
 </div>
 
 {{template "flash" .}}
 
-{{if and .CanCreate (not .Archived)}}
-<section class="card stack" id="buat-ujian">
-<h2 class="card-title">Buat ujian</h2>
-<div class="option-cards">
-{{range .Purposes}}<a class="option-card no-underline" href="/ujian/paket/baru?tujuan={{.Value}}"><span><strong>{{.Label}}</strong><span class="block text-sm text-slate-600">{{.Hint}}</span></span></a>{{end}}
-</div>
-</section>
-{{end}}
+<form method="get" action="/ujian/paket/" class="filter-bar exam-filter" x-data @change="$el.requestSubmit()">
+{{if .Archived}}<input type="hidden" name="arsip" value="1">{{end}}
+<div class="field exam-filter-q"><label for="f-q">Cari</label><input id="f-q" type="search" name="q" value="{{.Q}}" placeholder="Nama ujian"></div>
+<div class="field"><label for="f-tujuan">Tujuan</label><select id="f-tujuan" name="tujuan"><option value="">Semua</option>{{range .Purposes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="field"><label for="f-status">Status</label><select id="f-status" name="status"><option value="">Semua</option>{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+{{with .Subjects}}<div class="field"><label for="f-mapel">Mapel</label><select id="f-mapel" name="mapel"><option value="">Semua</option>{{range .}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+{{with .Classes}}<div class="field"><label for="f-kelas">Kelas</label><select id="f-kelas" name="kelas"><option value="">Semua</option>{{range .}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
+<div class="field"><label for="f-tahun">Tahun ajaran</label><select id="f-tahun" name="tahun">{{range .Years}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>
+<div class="action-row"><button type="submit" class="btn btn-ghost">Tampilkan</button>{{if .HasFilter}}<a class="btn btn-ghost" href="/ujian/paket/{{if .Archived}}?arsip=1{{end}}">Hapus saringan</a>{{end}}</div>
+</form>
 
 {{if .Rows}}
-<div class="table-wrap mt-4">
+<p class="muted text-sm mt-3">Menampilkan {{.From}}–{{.To}} dari {{.Total}} ujian.</p>
+<div class="table-wrap mt-2">
 <table>
-<thead><tr><th>Ujian</th><th>Tujuan</th><th>Mapel</th><th>Soal</th><th>Sesi</th><th>Status</th></tr></thead>
+<thead><tr><th>Ujian</th><th>Tujuan</th><th>Mapel</th><th>Jadwal terdekat</th><th>Status</th><th><span class="visually-hidden">Aksi</span></th></tr></thead>
 <tbody>
 {{range .Rows}}
 <tr>
-<td><a href="{{.Href}}"><strong>{{.Name}}</strong></a><span class="block text-sm text-slate-500">{{.OwnerName}}{{with .When}} · mulai {{.}}{{end}}</span></td>
+<td><a href="{{.Href}}"><strong>{{.Name}}</strong></a><span class="block text-sm text-slate-500">{{.OwnerName}} · {{.Questions}} soal · {{.Sessions}} sesi</span></td>
 <td>{{.Purpose.Label}}</td>
 <td>{{if .SubjectName}}{{.SubjectName}}{{else}}—{{end}}{{if .GradeLevel}} · Kelas {{.GradeLevel}}{{end}}</td>
-<td>{{.Questions}}</td>
-<td>{{.Sessions}}</td>
+<td>{{with .When}}{{.}}{{else}}—{{end}}</td>
 <td>{{template "exam_status_badge" .Status}}</td>
+<td class="text-right">{{if .ActionHref}}<a class="btn btn-ghost btn-sm" href="{{.ActionHref}}">{{.ActionLabel}}</a>{{end}}</td>
 </tr>
 {{end}}
 </tbody>
 </table>
 </div>
+{{if or .PrevURL .NextURL}}
+<nav class="pagination" aria-label="Halaman">
+{{if .PrevURL}}<a class="btn btn-ghost btn-sm" href="{{.PrevURL}}">← Sebelumnya</a>{{else}}<span></span>{{end}}
+{{if .NextURL}}<a class="btn btn-ghost btn-sm" href="{{.NextURL}}">Berikutnya →</a>{{else}}<span></span>{{end}}
+</nav>
+{{end}}
+{{else if .HasFilter}}
+<section class="card mt-4 empty-guide"><p class="mb-0">Tidak ada ujian yang cocok dengan saringan. <a href="/ujian/paket/{{if .Archived}}?arsip=1{{end}}">Hapus saringan</a></p></section>
 {{else}}
 <section class="card mt-4 empty-guide">
 {{if .Archived}}<p class="mb-0">Belum ada ujian yang diarsipkan.</p>
@@ -51,7 +63,7 @@
 <li><strong>Buat ujian</strong>: pilih soal atau tulis aturan ambil acak, atur aturan, lalu pilih kelas dan waktu.</li>
 <li><strong>Cek kesiapan</strong> lalu jadwalkan. Siswa masuk dengan NIS dan kode di kartu ujian.</li>
 </ol>
-<p class="mt-4 action-row">{{if .CanCreate}}<a class="btn btn-primary" href="#buat-ujian">Pilih jenis ujian di atas</a>{{end}}<a class="btn btn-ghost" href="/ujian/latihan">Coba ujian latihan dulu</a></p>
+<p class="mt-4 action-row">{{if .CanCreate}}<a class="btn btn-primary" href="/ujian/paket/baru">Buat ujian</a>{{end}}<a class="btn btn-ghost" href="/ujian/latihan">Coba halaman ujian dulu</a></p>
 {{end}}
 </section>
 {{end}}

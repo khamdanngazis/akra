@@ -37,15 +37,15 @@ Setelah **Baca file**, AKRA menampilkan pratinjau setiap soal. Perbaiki soal yan
 
 ![Daftar TP](img/tp.png)
 
-## 2. Ujian latihan dulu
+## 2. Coba halaman ujian dulu
 
-Sebelum ulangan pertama, buka **Ujian → Ujian latihan**, pilih kelas, lalu tekan **Buka latihan**. Cetak kartu, dan siswa mencoba ragu-ragu, daftar soal, offline, dan kumpul. Latihan dibuka 3 hari dan boleh dicoba dari rumah. Kartu latihan selalu tercetak dengan panduan peserta di baliknya.
+Sebelum ulangan pertama, buka **Ujian → Coba halaman ujian** (tombol di beranda modul atau di daftar ujian), pilih kelas, lalu tekan **Buka latihan**. Cetak kartu, dan siswa mencoba ragu-ragu, daftar soal, offline, dan kumpul. Latihan dibuka 3 hari dan boleh dicoba dari rumah. Kartu latihan selalu tercetak dengan panduan peserta di baliknya.
 
-![Ujian latihan](img/latihan.png)
+![Coba halaman ujian](img/latihan.png)
 
 ## 3. Membuat ulangan
 
-**Ujian → Daftar ujian → Ulangan**. Wizard lima langkah; ujian tersimpan sebagai draf sejak langkah pertama.
+**Ujian → Daftar Ujian → Buat ujian**, lalu pilih **Ulangan** di langkah pertama. Wizard lima langkah; ujian tersimpan sebagai draf sejak langkah pertama.
 
 ![Wizard buat ujian](img/buat.png)
 

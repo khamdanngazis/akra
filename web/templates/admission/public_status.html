@@ -32,7 +32,7 @@
 {{with .Online}}
 <section class="adm-card test-card online-card" aria-labelledby="online-card-title">
 <div class="adm-card-head"><h2 id="online-card-title">Kartu tes online</h2><span class="badge">Simpan halaman ini</span></div>
-<ul class="adm-checklist">{{range .Tests}}<li><span class="adm-ico is-navy">{{template "icon" "calendar"}}</span><span><strong>{{if .Practice}}Ujian latihan (coba tampilan){{else}}{{.ExamName}}{{end}}</strong><span class="block text-sm text-slate-600">{{.When}} · {{if .Remote}}dari rumah{{else}}di sekolah, diawasi{{end}}{{if .Submitted}} · <strong>sudah dikerjakan</strong>{{else if .Ended}} · selesai{{end}}</span></span></li>{{end}}</ul>
+<ul class="adm-checklist">{{range .Tests}}<li><span class="adm-ico is-navy">{{template "icon" "calendar"}}</span><span><strong>{{if .Practice}}Coba halaman ujian{{else}}{{.ExamName}}{{end}}</strong><span class="block text-sm text-slate-600">{{.When}} · {{if .Remote}}dari rumah{{else}}di sekolah, diawasi{{end}}{{if .Submitted}} · <strong>sudah dikerjakan</strong>{{else if .Ended}} · selesai{{end}}</span></span></li>{{end}}</ul>
 {{if .HasPending}}
 <div class="online-login">
 <div class="online-login-text">
@@ -49,7 +49,7 @@
 <a class="btn btn-primary btn-lg" href="{{.LoginURL}}">Masuk ujian</a>
 <a class="btn btn-ghost" href="/u/cek">Cek perangkat dulu</a>
 <a class="btn btn-ghost" href="/u/panduan/orang-tua.pdf">Panduan orang tua (PDF)</a>
-{{if .Practice}}<a class="btn btn-ghost" href="{{.LoginURL}}">Coba ujian latihan</a>{{end}}
+{{if .Practice}}<a class="btn btn-ghost" href="{{.LoginURL}}">Coba halaman ujian</a>{{end}}
 </div>
 <p class="hint mb-0">Buka dari HP atau komputer. Masukkan nomor pendaftaran dan kode akses. Pindai QR dengan kamera HP untuk langsung membuka halaman masuk.{{if .Practice}} Ujian latihan memakai kode yang sama dan nilainya tidak dihitung.{{end}}</p>
 {{end}}
