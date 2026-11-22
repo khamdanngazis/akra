@@ -101,6 +101,19 @@ Bedakan masalah satu peserta, satu ruang, atau satu sekolah.
 
 **Pesan ke sekolah (satu peserta):** *"Pengawas bisa membuat kode baru dari layar pengawas → nama peserta → Reset login, lalu mendiktekan kodenya."*
 
+## 6. Jawaban tiba setelah attempt ditutup
+
+**Tanda:** log `answers arrived after attempt closed` (dengan `attempt_id`), atau `akra-ops pilot` melaporkan jawaban hilang > 0.
+
+Perangkat masih menyimpan perubahan saat attempt sudah dikumpulkan (lewat tenggat dan tenggang 2 menit, atau ditutup pengawas). Perubahan itu tidak masuk nilai. AKRA menyimpan salinannya per soal (`exam_lost_answers`), hanya bila server belum punya versi yang sama atau lebih baru.
+
+1. Lihat soal dan isinya: `SELECT question_id, value, client_seq, reported_at FROM exam_lost_answers WHERE attempt_id = '<id>';`
+2. Cari penyebab di kejadian attempt (offline lama, pindah perangkat) dan log save di sekitar tenggat.
+3. Sampaikan ke guru pemilik ujian. Guru memutuskan dan, bila perlu, mengubah poin soal itu dengan **nilai manual** di halaman hasil peserta. Nilai manual tercatat di audit dengan alasan.
+4. Catat sebagai temuan pilot ([doc/uji-mvp4.md](uji-mvp4.md)). Target pilot: 0.
+
+Salinan ini ikut dihapus oleh job masa simpan data ujian.
+
 ---
 
 ## Jendela deploy
