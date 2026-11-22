@@ -7,6 +7,7 @@
 <h1>Rekap Nilai{{with .Class}} · Kelas {{.Name}}{{end}}</h1>
 <p class="muted">Nilai akhir = jumlah nilai komponen × bobot, dibulatkan ke bilangan bulat (setengah ke atas). Siswa dengan komponen yang belum dinilai ditandai <strong>belum lengkap</strong> dan belum punya nilai akhir.</p>
 </div>
+{{if .User.HasRole "admin_tu"}}<div class="action-row"><a class="btn btn-ghost" href="/impor/nilai">Impor dari Excel</a></div>{{end}}
 </div>
 
 {{template "flash" .}}

@@ -82,9 +82,18 @@ Sesuai bagian 3 analisis.
 - `web/templates/grades/*.html` (tombol impor), `internal/testutil/routes.go`
 - `web/tailwind/app.css`
 
+## Catatan implementasi
+- **Kelompok satu item** (mis. Pendaftaran dan Dapodik untuk admin TU) tampil tanpa judul, **dengan garis pemisah**. Tanpa garis, item itu terlihat ikut kelompok di atasnya.
+- **Isi pusat Pengaturan mengikuti hak akses route**, bukan menu lama. Pengaturan Keuangan juga tampil untuk admin TU (boleh membuka), dan Tugas Tambahan untuk kepala sekolah (baca).
+- **Tugas koordinator ujian hanya menambah hak guru**, sama dengan matriks akses ujian (kolom koordinator hanya untuk guru). Sebelumnya, kepala sekolah yang ditugasi koordinator melihat Pengaturan Ujian di menu tetapi mendapat 403.
+- **Impor nilai hanya untuk admin TU** (hak route `/impor/nilai`), sehingga tombol "Impor dari Excel" hanya ada di Rekap Nilai untuk admin TU.
+- **Telaah Soal tetap di kelompok Ujian** sampai sub-navigasi modul ujian (T157). Karena itu admin TU 18 item dan guru 11 item bila modul ujian aktif.
+- **Field `Bottom`/`Shortcut` per item diganti tabel prioritas per peran** (`bottomByRole`, `shortcutsByRole`), agar cadangan per peran mudah dibaca.
+- **Modul selain `exam` belum diperiksa per sekolah** (selalu aktif) sampai T163.
+
 ## Kriteria selesai
-- [ ] Uji snapshot menu per peran (admin TU, kepala sekolah, guru, guru koordinator, bendahara, orang tua): kelompok, urutan, dan jumlah sesuai tabel analisis
-- [ ] Uji bottom nav dan pintasan per peran, termasuk cadangan saat modul ujian nonaktif
-- [ ] Semua halaman pengaturan lama tercapai dari pusat Pengaturan sesuai peran (uji tautan); absensi per mapel tersimpan dari lokasi baru
-- [ ] Setiap item menu punya `Module`
-- [ ] Tangkapan layar sidebar desktop, drawer tablet, dan bottom nav HP 360 px untuk semua peran diperiksa
+- [x] Uji snapshot menu per peran (admin TU, kepala sekolah, guru, guru koordinator, bendahara, orang tua): kelompok, urutan, dan jumlah sesuai tabel analisis
+- [x] Uji bottom nav dan pintasan per peran, termasuk cadangan saat modul ujian nonaktif
+- [x] Semua halaman pengaturan lama tercapai dari pusat Pengaturan sesuai peran (uji tautan); absensi per mapel tersimpan dari lokasi baru
+- [x] Setiap item menu punya `Module` (kosong hanya untuk item inti, diuji)
+- [x] Tangkapan layar sidebar desktop (admin TU, guru, bendahara), pusat Pengaturan, dan bottom nav HP guru diperiksa. Tangkapan HP dari Chrome headless terpotong lebar jendela minimumnya, jadi tampilan HP 360 px perlu dicek sekali di perangkat sungguhan

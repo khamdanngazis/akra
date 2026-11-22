@@ -10,8 +10,9 @@
 <button type="button" class="icon-btn sidebar-close" @click="open = false" aria-label="Tutup menu">{{template "icon" "close"}}</button>
 </div>
 <nav id="app-nav" class="app-nav flex flex-col gap-1" aria-label="Menu utama">
-{{range $items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.Label}}</span></a>
-{{end}}</nav>
+{{range $i, $g := menuGroups $items}}{{if .Titled}}<p class="app-nav-group" role="presentation">{{.Name}}</p>{{else if $i}}<hr class="app-nav-sep">{{end}}
+{{range .Items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.Label}}</span></a>
+{{end}}{{end}}</nav>
 <div class="mt-auto flex items-center gap-3 rounded-xl bg-white/8 px-3 py-3 ring-1 ring-white/10">
 <span class="inline-flex size-9 flex-none items-center justify-center rounded-lg bg-white/10 text-white">{{template "icon" "building"}}</span>
 <div class="min-w-0 leading-tight">
@@ -50,7 +51,7 @@
 </header>
 
 <nav class="bottom-nav" aria-label="Menu cepat">
-{{range bottomMenu $items}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.ShortLabel}}</span></a>
+{{range bottomMenu $items .Roles}}<a href="{{.Path}}"{{if eq .Path $current}} aria-current="page"{{end}}>{{template "icon" .Icon}}<span>{{.ShortLabel}}</span></a>
 {{end}}{{if gt (len $items) 4}}<button type="button" @click="open = true" aria-controls="app-sidebar">{{template "icon" "menu"}}<span>Menu</span></button>{{end}}
 </nav>
 </div>

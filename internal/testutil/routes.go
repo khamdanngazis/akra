@@ -790,6 +790,8 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/ujian/bank/" + o.ExamBankID + "/arsip" }, nil)},
 
 	// Profil sekolah dan zona waktu (T126).
+	// Pusat Pengaturan (T156): semua staf; isinya per peran dan modul.
+	{Method: "GET", Pattern: "/pengaturan", Kind: KindPage, Roles: staff},
 	{Method: "GET", Pattern: "/pengaturan/sekolah/", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pengaturan/sekolah/", Kind: KindOwn, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pengaturan/sekolah/" }, func(*School) url.Values {
@@ -810,7 +812,9 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/pengaturan/tahun-ajaran/{id}/ubah", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/pengaturan/tahun-ajaran/" + o.YearID + "/ubah"} })},
 
-	// Pengaturan absensi per mapel (T68): hanya admin/TU.
+	// Pengaturan absensi per mapel (T68): hanya admin/TU. Halaman sendiri
+	// sejak T156 (sebelumnya kartu di halaman mata pelajaran).
+	{Method: "GET", Pattern: "/pengaturan/absensi", Kind: KindPage, Roles: adminTU},
 	{Method: "POST", Pattern: "/pengaturan/absensi", Kind: KindOwn, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pengaturan/absensi" }, func(*School) url.Values {
 			return url.Values{"per_mapel": {"aktif"}}

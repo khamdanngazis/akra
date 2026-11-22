@@ -57,7 +57,9 @@ func (h *Handler) Routes(r chi.Router) {
 		// Peran: admin_tu, kepala_sekolah (semua kelas), guru (kelas perwaliannya).
 		r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru)).Get("/rekap", h.report)
 	})
-	// Peran: admin_tu.
+	// Peran: admin_tu. Pengaturan absensi per mapel (T68), dibuka dari
+	// pusat Pengaturan (T156).
+	r.With(auth.RequireRole(auth.RoleAdminTU)).Get(settingsPath, h.showSettings)
 	r.With(auth.RequireRole(auth.RoleAdminTU)).Post(settingsPath, h.saveSettings)
 }
 
