@@ -1,10 +1,10 @@
-# 21 — Perbaikan dari Pilot MVP 4
+# 23 — Perbaikan dari Pilot MVP 4
 
 Folder ini berisi task perbaikan dari pilot modul ujian (T155), mengikuti pola `13-perbaikan/` MVP 3. Belum ada task; folder diisi setelah pilot pertama.
 
 ## Cara mencatat
 
-- Satu masalah satu task, bernomor lanjut dari T155 (T156, T157, …), memakai format task biasa: Fase, Dependensi, Estimasi, Latar belakang, Langkah, Kriteria selesai.
+- Satu masalah satu task, bernomor lanjut dari task terakhir di `22-modul-sekolah/` (T170, T171, …), memakai format task biasa: Fase, Dependensi, Estimasi, Latar belakang, Langkah, Kriteria selesai.
 - **Latar belakang** menyebut sumbernya: sekolah dan rilis pilot, tiket, berita acara, wawancara, atau hasil `akra-ops pilot`.
 - Tambah satu baris di tabel di bawah dan di indeks `00-index-mvp4.md`.
 
