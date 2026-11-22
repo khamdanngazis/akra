@@ -1,6 +1,6 @@
 # ADR 0002 — Modul dan paket per sekolah
 
-- **Status:** diusulkan, menunggu keputusan pemilik produk (bagian 8)
+- **Status:** diterima 2026-11-22. Keputusan pemilik produk ada di bagian 8
 - **Tanggal:** 2026-11-22
 - **Terkait:** [analisis menu](../analisis-menu.md), [ADR 0001](0001-modul-ujian.md) (aktivasi modul ujian T125), task di `tasks_schoolos_mvp4/22-modul-sekolah/`
 
@@ -135,21 +135,22 @@ Paket adalah **templat** kumpulan modul, bukan batas teknis. Konfigurasi sekolah
 - Setiap perubahan tercatat di audit (`module.<id>`) dengan siapa, kapan, dan catatan.
 
 ### Siapa yang mengatur
-- Lihat keputusan 1 di bagian 8.
-- Usulan: **pengelola AKRA** mengatur modul dan paket lewat `akra-modul` dan dasbor internal.
-- **Admin sekolah** melihat halaman **Pengaturan → Modul & paket** (baca saja): modul aktif, isinya, dan tombol "Minta aktifkan" yang mengirim permintaan ke tim AKRA.
+- **Tim implementator AKRA** mengatur modul dan paket setiap sekolah (keputusan 1).
+- **Untuk sekarang tanpa UI pengelola:** perubahan lewat CLI `akra-modul`. Layanannya dirancang agar bisa dipakai UI implementator nanti tanpa diubah.
+- **Admin sekolah** melihat halaman **Pengaturan → Modul & paket** (baca saja): modul aktif dan isinya, dengan keterangan untuk menghubungi tim implementator AKRA bila butuh modul lain.
+- Tombol permintaan dan dasbor implementator menyusul bersama UI implementator.
 
 ## 7. Pengujian
 - **Registry route:** setiap entri punya `Module`. Uji memastikan setiap route modul memberi 404 / "modul tidak aktif" bila modulnya mati, dan route modul lain tetap 200.
 - **Kombinasi:** satu sekolah "inti saja", satu per paket, dan "semua kecuali X" untuk setiap modul. Diuji untuk menu, beranda, portal, dan laporan (tanpa error dan tanpa tautan ke modul mati).
 - **Uji lintas sekolah (T58)** dan **uji orang tua (T59)** tetap lulus untuk semua kombinasi.
 
-## 8. Keputusan yang dibutuhkan
+## 8. Keputusan (2026-11-22)
 
-| # | Pertanyaan | Usulan |
+| # | Pertanyaan | Keputusan |
 |---|---|---|
-| 1 | Siapa yang menyalakan/mematikan modul: tim AKRA (terkait paket/langganan) atau admin sekolah sendiri? | Tim AKRA. Sekolah hanya melihat dan meminta. Swalayan menyusul bila ada penagihan langganan |
-| 2 | Isi dan nama paket | Empat paket di bagian 5 sebagai titik awal |
-| 3 | Sekolah yang sudah ada saat rilis | Semua modul non-ujian aktif; ujian tetap per sekolah seperti sekarang |
-| 4 | Biaya formulir pendaftaran tanpa modul keuangan | Tetap bisa: kuitansi dan penomoran dari `payments` dipakai bersama, dicatat admin TU bila tidak ada bendahara |
-| 5 | Inti cukup atau perlu dipecah (mis. pengguna/peran, mapel) | Cukup; mapel dan penugasan dibutuhkan absensi per mapel, nilai, jadwal, dan ujian |
+| 1 | Siapa yang menyalakan/mematikan modul? | **Tim implementator AKRA.** UI implementator belum dibuat; sementara lewat CLI `akra-modul`. Sekolah hanya melihat modulnya |
+| 2 | Isi dan nama paket | **Empat paket di bagian 5:** Dasar, Akademik, Keuangan, Lengkap |
+| 3 | Sekolah yang sudah ada saat rilis | **Semua modul non-ujian aktif**; ujian tetap per sekolah seperti sekarang |
+| 4 | Biaya formulir pendaftaran tanpa modul keuangan | **Tetap bisa.** Kuitansi dan penomoran dari `payments` dipakai bersama; dicatat admin TU bila tidak ada bendahara |
+| 5 | Inti cukup atau perlu dipecah (mis. pengguna/peran, mapel) | Cukup; mapel dan penugasan dibutuhkan absensi per mapel, nilai, jadwal, dan ujian (usulan, tidak dipersoalkan) |
