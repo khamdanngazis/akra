@@ -108,8 +108,6 @@ var Items = []MenuItem{
 
 	{Label: "Ujian", Path: "/ujian", Icon: "file-text", Desc: "Bank soal, ujian, dan hasil", Module: ModuleExam, Group: GroupExam, Roles: []string{adminTU, kepala, guru}},
 	{Label: "Agenda Ujian", Path: "/ujian/agenda", Icon: "calendar", Short: "Agenda", Desc: "PTS/PAS: ruang, sesi, dan pengawas", Module: ModuleExam, Group: GroupExam, Roles: []string{adminTU, kepala}, Duties: []string{koordinatorUjian}},
-	// Telaah soal pindah ke sub-navigasi modul ujian di T157.
-	{Label: "Telaah Soal", Path: "/ujian/telaah", Icon: "check", Short: "Telaah", Desc: "Soal yang menunggu persetujuan", Module: ModuleExam, Group: GroupExam, Roles: []string{adminTU, guru}},
 
 	{Label: "Pendaftaran", Path: "/pendaftaran", Icon: "user-check", Short: "Daftar", Desc: "Periode, jalur, dan pendaftar siswa baru", Module: ModuleAdmission, Group: GroupAdmission, Roles: []string{adminTU, kepala}},
 	{Label: "Biaya Pendaftaran", Path: "/pendaftaran/biaya", Icon: "receipt", Short: "Formulir", Desc: "Catat biaya formulir pendaftar", Module: ModuleAdmission, Group: GroupAdmission, Roles: []string{bendahara}},

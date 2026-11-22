@@ -25,3 +25,16 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore);
   else restore();
 })();
+
+// Sub-navigasi modul (T157): di HP, item aktif digulir ke tengah agar
+// tidak terpotong.
+(function () {
+  function center() {
+    var a = document.querySelector('.module-nav [aria-current="page"]');
+    if (a && a.parentElement.scrollWidth > a.parentElement.clientWidth) {
+      a.parentElement.scrollLeft = a.offsetLeft - (a.parentElement.clientWidth - a.offsetWidth) / 2;
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', center);
+  else center();
+})();

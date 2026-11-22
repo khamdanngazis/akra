@@ -39,6 +39,10 @@ func (h *Handler) proctorRoutes(r chi.Router) {
 // withActor memuat Actor ke konteks tanpa syarat akses; hak dicek per sesi.
 func (h *Handler) withActor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := ActorFrom(r.Context()); ok {
+			next.ServeHTTP(w, r)
+			return
+		}
 		id, _ := auth.CurrentUser(r.Context())
 		a, err := LoadActor(r.Context(), h.db, id)
 		if err != nil {

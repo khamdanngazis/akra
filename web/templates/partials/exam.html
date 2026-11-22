@@ -233,7 +233,7 @@
 
 {{/* results_head: judul, sub-tab, tombol, dan saringan halaman hasil (T148). Argumen: resultsView. */}}
 {{define "results_head"}}{{$q := .Query}}
-{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" ""}}
 <div class="flex flex-wrap items-start justify-between gap-3">
 <div><h1 class="text-2xl font-bold">Hasil ujian</h1>
 <p class="muted mb-0">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · {{.A.KKTP.Label}} {{.A.KKTP.Value}} <span class="text-sm">({{.A.KKTP.Source}})</span></p></div>

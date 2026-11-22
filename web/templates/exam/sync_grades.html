@@ -1,7 +1,7 @@
 {{define "title"}}Kirim ke rapor · {{.Exam.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}{{$p := .Plan}}
-{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Kirim ke rapor" ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Kirim ke rapor" ""}}
 <h1 class="text-2xl font-bold">Kirim nilai ke rapor</h1>
 <p class="muted">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · nilai final dikirim ke komponen nilai rapor setelah Anda periksa. Tidak terkirim otomatis.</p>
 {{template "flash" .}}

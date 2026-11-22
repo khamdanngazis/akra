@@ -1,10 +1,10 @@
-{{define "title"}}Ujian{{end}}
+{{define "title"}}{{if .Archived}}Ujian Diarsipkan{{else}}Daftar Ujian{{end}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" ""}}
 <div class="page-header">
 <div>
-<h1>{{if .Archived}}Ujian diarsipkan{{else}}Ujian{{end}}</h1>
+<h1>{{if .Archived}}Ujian Diarsipkan{{else}}Daftar Ujian{{end}}</h1>
 <p class="muted">Ulangan, ujian latihan, PTS/PAS, dan tes seleksi. Ujian disusun dari bank soal lewat wizard, lalu dijadwalkan.</p>
 </div>
 <div class="action-row">

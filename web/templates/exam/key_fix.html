@@ -1,7 +1,7 @@
 {{define "title"}}Betulkan kunci · {{.Exam.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=soal" .Exam.ID) "Betulkan kunci" ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s?tab=soal" .Exam.ID) "Betulkan kunci" ""}}
 <h1 class="text-2xl font-bold">Betulkan kunci</h1>
 <p class="muted">{{.Question.Kind.Label}} · <span dir="auto">{{.Excerpt}}</span></p>
 {{template "flash" .}}

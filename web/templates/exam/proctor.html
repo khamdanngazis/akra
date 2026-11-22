@@ -8,7 +8,7 @@
 <div class="min-w-0">
 <h1 class="proctor-title">{{.S.Title}}</h1>
 <p class="muted text-sm">{{.S.ExamName}}{{with .S.Subject}} · {{.}}{{end}} · {{.When}}{{if .S.ExtraMinutes}} · +{{.S.ExtraMinutes}} menit{{end}}</p>
-<p class="proctor-help text-sm mb-0"><a href="/ujian/bantuan" data-tour-step="5" data-tour-title="Butuh bantuan?" data-tour-text="Langkah pemecahan masalah umum (peserta tidak bisa masuk, HP mati, offline, layar terkunci) dan kontak dukungan AKRA.">Butuh bantuan?</a> · <a href="/ujian/panduan/pengawas.pdf">Panduan pengawas (PDF)</a> · <button type="button" class="link-btn" data-tour-start hidden>Tur singkat</button></p>
+<p class="proctor-help text-sm mb-0"><a href="/ujian/bantuan" data-tour-step="5" data-tour-title="Butuh bantuan?" data-tour-text="Langkah pemecahan masalah umum (peserta tidak bisa masuk, HP mati, offline, layar terkunci) dan kontak dukungan AKRA.">Butuh bantuan?</a> · <a href="/ujian/panduan/pengawas.pdf">Panduan pengawas (PDF)</a><button type="button" class="link-btn" data-tour-start hidden><span class="text-slate-400" aria-hidden="true">&nbsp;·&nbsp;</span>Tur singkat</button></p>
 </div>
 {{if .Token.Required}}
 <div class="proctor-token" data-tour-step="3" data-tour-title="Token" data-tour-text="Token berganti berkala. Bila sesi mewajibkan token, tampilkan layar penuh di proyektor atau diktekan kepada peserta." data-token data-next="{{.Token.NextAt.UnixMilli}}">

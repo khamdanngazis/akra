@@ -25,6 +25,7 @@ import (
 
 	"akra/internal/platform/csrf"
 	"akra/internal/platform/nav"
+	"akra/internal/platform/subnav"
 )
 
 const (
@@ -190,6 +191,8 @@ func funcs(versions map[string]string) template.FuncMap {
 	m["initials"] = nav.Initials
 	// currentMenu mengembalikan Path item menu yang aktif untuk request ini.
 	m["currentMenu"] = func([]nav.MenuItem) string { return "" }
+	// subnav mengembalikan sub-navigasi modul request ini (T157), bila ada.
+	m["subnav"] = func() []subnav.Item { return nil }
 	for k, v := range csrf.PlaceholderFuncs {
 		m[k] = v
 	}
@@ -235,11 +238,12 @@ func (rd *Renderer) execute(w http.ResponseWriter, r *http.Request, status int, 
 	var buf bytes.Buffer
 	reqFuncs := csrf.FuncMap(r)
 	reqFuncs["currentMenu"] = func(items []nav.MenuItem) string { return nav.Current(items, r.URL.Path) }
+	reqFuncs["subnav"] = func() []subnav.Item { return subnav.From(r.Context()) }
 	err := t.Funcs(reqFuncs).ExecuteTemplate(&buf, block, data)
 	// Fungsi request dilepas sebelum salinan kembali ke pool agar tidak
 	// menahan request lama.
 	t.Funcs(csrf.PlaceholderFuncs)
-	t.Funcs(template.FuncMap{"currentMenu": func([]nav.MenuItem) string { return "" }})
+	t.Funcs(template.FuncMap{"currentMenu": func([]nav.MenuItem) string { return "" }, "subnav": func() []subnav.Item { return nil }})
 	pool.Put(t)
 	if err != nil {
 		return err

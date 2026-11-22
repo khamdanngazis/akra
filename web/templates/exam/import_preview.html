@@ -2,7 +2,7 @@
 {{define "head"}}{{if eq .Import.Status "memproses"}}<meta http-equiv="refresh" content="2">{{end}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" (printf "/ujian/bank/%s/impor" .Bank.ID) .Import.FileName ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" (printf "/ujian/bank/%s/impor" .Bank.ID) .Import.FileName ""}}
 <div class="page-header">
 <div>
 <h1>Pratinjau impor</h1>

@@ -1,7 +1,7 @@
 {{define "title"}}Cek Mutu · {{.Bank.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Cek mutu" ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Cek mutu" ""}}
 <div class="page-header"><div><h1>Cek mutu soal</h1><p class="muted">Pemeriksaan otomatis untuk {{.Bank.Name}}. Hasil ini saran, bukan larangan.</p></div></div>
 <div class="stack">
 <section class="card">

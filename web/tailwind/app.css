@@ -1021,6 +1021,24 @@
     @apply text-white/70 transition;
   }
 
+  /* Sub-navigasi modul (T157): di bawah header, bisa digulir di HP. */
+  .module-nav {
+    @apply flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-4 sm:px-6 desktop:ml-66 desktop:px-8;
+    scrollbar-width: none;
+  }
+  .module-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .module-nav a {
+    @apply flex-none whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 no-underline hover:border-slate-300 hover:text-slate-900;
+  }
+  .module-nav a[aria-current="page"] {
+    @apply border-blue-600 font-semibold text-blue-700;
+  }
+  .module-nav a.is-end {
+    @apply ml-auto;
+  }
+
   /* Pusat Pengaturan (T156). */
   .settings-section + .settings-section {
     @apply mt-6;

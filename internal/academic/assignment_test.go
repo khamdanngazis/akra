@@ -325,7 +325,7 @@ func TestAssignmentHandler(t *testing.T) {
 	}
 	// Guru hanya melihat penugasannya sendiri, tanpa form.
 	mine := e.do(http.MethodGet, "/pengaturan/penugasan", e.guru1, "guru", nil).Body.String()
-	if !strings.Contains(mine, "<h1>Mapel Saya</h1>") ||!strings.Contains(mine, "Matematika") || strings.Contains(mine, `action="/pengaturan/penugasan/`) {
+	if !strings.Contains(mine, "<h1>Mapel Saya</h1>") || !strings.Contains(mine, "Matematika") || strings.Contains(mine, `action="/pengaturan/penugasan/`) {
 		t.Error("teacher page")
 	}
 	if other := e.do(http.MethodGet, "/pengaturan/penugasan", e.guru2, "guru", nil).Body.String(); strings.Contains(other, "Matematika") {

@@ -1,7 +1,7 @@
 {{define "title"}}Impor Soal · {{.Bank.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" ""}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" ""}}
 <div class="page-header">
 <div>
 <h1>Impor soal</h1>

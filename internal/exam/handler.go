@@ -49,6 +49,7 @@ func (h *Handler) WithCardCodes(t *TokenSigner) *Handler {
 func (h *Handler) Routes(r chi.Router) {
 	r.Route("/ujian", func(r chi.Router) {
 		r.Use(RequireModule(h.db, h.render, h.logger, R1))
+		r.Use(h.withNav)
 		// Peran: admin_tu, kepala_sekolah, guru.
 		staff := r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleGuru))
 		staff.Get("/", h.home)
@@ -94,10 +95,13 @@ func (m Module) ReleaseLabel() string { return releaseLabels[m.Release] }
 func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	h.ensureSamples(r, id.SchoolID)
-	a, err := LoadActor(r.Context(), h.db, id)
-	if err != nil {
-		page.ServerError(h.render, h.logger, w, r, id, "load exam actor", err)
-		return
+	a, ok := ActorFrom(r.Context())
+	if !ok {
+		var err error
+		if a, err = LoadActor(r.Context(), h.db, id); err != nil {
+			page.ServerError(h.render, h.logger, w, r, id, "load exam actor", err)
+			return
+		}
 	}
 	m := ModuleFrom(r.Context())
 	all := []struct {
