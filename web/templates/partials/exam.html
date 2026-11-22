@@ -233,23 +233,9 @@
 
 {{/* results_head: judul, sub-tab, tombol, dan saringan halaman hasil (T148). Argumen: resultsView. */}}
 {{define "results_head"}}{{$q := .Query}}
-{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" ""}}
-<div class="flex flex-wrap items-start justify-between gap-3">
-<div><h1 class="text-2xl font-bold">Hasil ujian</h1>
-<p class="muted mb-0">{{.Exam.Name}}{{with .Exam.SubjectName}} · {{.}}{{end}} · {{.A.KKTP.Label}} {{.A.KKTP.Value}} <span class="text-sm">({{.A.KKTP.Source}})</span></p></div>
-<div class="action-row">
-{{if .A.Summary.Awaiting}}<a class="btn btn-primary btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai ({{.A.Summary.Awaiting}} menunggu)</a>{{else if .CanWrite}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/esai">Koreksi esai</a>{{end}}
-{{if .ToReport}}<a class="btn {{if .GradesStale}}btn-primary{{else}}btn-ghost{{end}} btn-sm" href="/ujian/paket/{{.Exam.ID}}/rapor">Kirim ke rapor</a>{{end}}
-<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/analisis.xlsx{{with $q}}?{{.}}{{end}}">Unduh Excel</a>
-<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.Exam.ID}}/hasil/cetak{{with $q}}?{{.}}{{end}}">Cetak analisis</a>
-</div>
-</div>
+{{template "exam_frame" .Frame}}
 {{template "flash" .}}
-<nav class="tabs mt-4" aria-label="Bagian hasil">
-<a href="/ujian/paket/{{.Exam.ID}}/hasil{{with $q}}?{{.}}{{end}}"{{if eq .Tab "nilai"}} aria-current="page"{{end}}>Nilai</a>
-<a href="/ujian/paket/{{.Exam.ID}}/hasil/butir{{with $q}}?{{.}}{{end}}"{{if eq .Tab "butir"}} aria-current="page"{{end}}>Analisis butir</a>
-<a href="/ujian/paket/{{.Exam.ID}}/hasil/tp{{with $q}}?{{.}}{{end}}"{{if eq .Tab "tp"}} aria-current="page"{{end}}>Analisis TP &amp; remedial</a>
-</nav>
+<p class="muted text-sm mt-3 mb-0">{{.A.KKTP.Label}} {{.A.KKTP.Value}} ({{.A.KKTP.Source}})</p>
 {{if or (gt (len .A.Classes) 1) (gt (len .A.Sessions) 1) (gt (len .A.Variants) 1)}}
 <form method="get" class="results-filter" aria-label="Saring hasil">
 {{if gt (len .A.Classes) 1}}<div class="field"><label for="f-kelas">Kelas</label><select id="f-kelas" name="kelas"><option value="">Semua kelas</option>{{range .A.Classes}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></div>{{end}}
@@ -267,7 +253,6 @@
 {{if .Released}}<button type="submit" name="aksi" value="tutup" class="btn btn-ghost btn-sm">Tutup hasil</button>
 {{else}}<button type="submit" name="aksi" value="buka" class="btn btn-primary btn-sm"{{if not .Ended}} disabled{{end}}>Buka hasil untuk siswa &amp; orang tua</button>{{end}}</form>{{end}}
 </div>{{end}}{{end}}
-{{if .GradesStale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.GradesStale}} siswa). <a href="/ujian/paket/{{.Exam.ID}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
 {{if .A.Summary.Awaiting}}<p class="alert alert-warning mt-3">{{.A.Summary.Awaiting}} peserta menunggu koreksi esai. Nilai mereka belum masuk statistik dan analisis di bawah.</p>{{end}}
 {{end}}
 
@@ -293,4 +278,57 @@
 <select id="grade_component_id" name="grade_component_id"><option value="">Pilih komponen</option>{{range .Components}}<option value="{{.ID}}"{{if eq .ID $.Exam.GradeComponentID}} selected{{end}}>{{.Name}} ({{.Weight}}%)</option>{{end}}</select></div>
 <button type="submit" class="btn btn-ghost btn-sm">Simpan komponen</button>
 </form>
+{{end}}
+
+{{/* exam_frame: kerangka halaman satu ujian (T160): breadcrumb, header
+     dengan satu tombol utama sesuai status, langkah berikutnya, tab utama,
+     dan sub-tab hasil. Argumen: examFrame. */}}
+{{define "exam_frame"}}{{$id := .Exam.ID}}{{$q := .Query}}
+{{if eq .Tab "hasil"}}{{if eq .Sub "nilai"}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" $id) "Hasil" ""}}
+{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" $id) "Hasil" (printf "/ujian/paket/%s/hasil" $id) .SubLabel ""}}{{end}}
+{{else if .SubLabel}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" $id) .SubLabel ""}}
+{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name ""}}{{end}}
+<div class="page-header">
+<div>
+<h1>{{.Exam.Name}}</h1>
+<p class="muted">{{.Exam.Purpose.Label}}{{with .Exam.SubjectName}} · {{.}}{{end}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}} · {{.Exam.DurationMinutes}} menit · {{.Exam.OwnerName}} · {{template "exam_status_badge" .Exam.Status}}</p>
+</div>
+<div class="action-row">
+{{with .Primary.Href}}<a class="btn btn-primary" href="{{.}}">{{$.Primary.Label}}</a>{{end}}
+{{if and .CanWrite .Exam.Editable (ne .Exam.Status "draf")}}<a class="btn btn-ghost" href="/ujian/paket/{{$id}}/atur/soal">Atur</a>{{end}}
+<details class="menu-details">
+<summary class="btn btn-ghost">Lainnya</summary>
+<div class="menu-panel stack">
+<a class="menu-link" href="/ujian/paket/{{$id}}/hasil/analisis.xlsx{{with $q}}?{{.}}{{end}}">Unduh hasil (Excel)</a>
+<a class="menu-link" href="/ujian/paket/{{$id}}/hasil/cetak{{with $q}}?{{.}}{{end}}">Cetak analisis</a>
+{{if .CanWrite}}<a class="menu-link" href="/ujian/paket/{{$id}}/naskah">Naskah soal</a>
+<a class="menu-link" href="/ujian/paket/{{$id}}/kunci">Kunci jawaban</a>
+<form method="post" action="/ujian/paket/{{$id}}/salin" class="stack">{{ csrfField }}
+<label class="text-sm" for="copy-name">Salin untuk kelas lain atau tahun depan</label>
+<input id="copy-name" name="name" maxlength="120" value="{{.Exam.Name}} (salinan)">
+<button type="submit" class="btn btn-ghost btn-sm">Salin ujian</button></form>
+{{if ne .Exam.Status "berlangsung"}}<form method="post" action="/ujian/paket/{{$id}}/arsip" x-data @submit="if (!confirm('Arsipkan ujian ini? Sesi yang belum mulai dibatalkan.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm text-red-700">Arsipkan ujian</button></form>{{end}}{{end}}
+</div>
+</details>
+</div>
+</div>
+{{with .Next}}{{template "exam_next_step" .}}{{end}}
+{{if .Stale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.Stale}} siswa). <a href="/ujian/paket/{{$id}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
+<nav class="tabs mt-4" aria-label="Bagian ujian">
+<a href="/ujian/paket/{{$id}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
+<a href="/ujian/paket/{{$id}}?tab=soal"{{if eq .Tab "soal"}} aria-current="page"{{end}}>Soal</a>
+<a href="/ujian/paket/{{$id}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
+<a href="/ujian/paket/{{$id}}?tab=dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
+<a href="/ujian/paket/{{$id}}/hasil"{{if eq .Tab "hasil"}} aria-current="page"{{end}}>Hasil</a>
+<a href="/ujian/paket/{{$id}}?tab=lanjut"{{if eq .Tab "lanjut"}} aria-current="page"{{end}}>Tindak lanjut</a>
+</nav>
+{{if eq .Tab "hasil"}}
+<nav class="segmented mt-3" aria-label="Bagian hasil">
+<a href="/ujian/paket/{{$id}}/hasil{{with $q}}?{{.}}{{end}}"{{if eq .Sub "nilai"}} aria-current="page"{{end}}>Nilai</a>
+<a href="/ujian/paket/{{$id}}/hasil/butir{{with $q}}?{{.}}{{end}}"{{if eq .Sub "butir"}} aria-current="page"{{end}}>Analisis butir</a>
+<a href="/ujian/paket/{{$id}}/hasil/tp{{with $q}}?{{.}}{{end}}"{{if eq .Sub "tp"}} aria-current="page"{{end}}>Analisis TP</a>
+{{if .CanWrite}}<a href="/ujian/paket/{{$id}}/esai"{{if eq .Sub "esai"}} aria-current="page"{{end}}>Koreksi esai{{if .Awaiting}} <span class="badge badge-warning">{{.Awaiting}}</span>{{end}}</a>{{end}}
+{{if .ToReport}}<a href="/ujian/paket/{{$id}}/rapor"{{if eq .Sub "rapor"}} aria-current="page"{{end}}>Kirim ke rapor</a>{{end}}
+</nav>
+{{end}}
 {{end}}

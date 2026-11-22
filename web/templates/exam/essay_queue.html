@@ -1,9 +1,10 @@
 {{define "title"}}Koreksi esai · {{.Exam.Name}}{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{if .Full}}{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s" .Exam.ID) "Hasil" (printf "/ujian/paket/%s/hasil" .Exam.ID) "Koreksi esai" ""}}
-{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Koreksi esai" ""}}{{end}}
-<h1 class="text-2xl font-bold">Koreksi esai</h1>
+{{if .Full}}{{template "exam_frame" .Frame}}
+<h2 class="card-title mt-4">Koreksi esai</h2>
+{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Koreksi esai" ""}}
+<h1 class="text-2xl font-bold">Koreksi esai</h1>{{end}}
 <p class="muted">{{.Exam.Name}} · {{.Graded}}/{{.Total}} jawaban dikoreksi</p>
 {{template "flash" .}}
 {{if not .Full}}<p class="alert alert-info">Anda ditugaskan mengoreksi bagian ujian ini. Hanya soal dan peserta yang ditugaskan yang tampil.</p>{{end}}

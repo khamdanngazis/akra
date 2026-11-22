@@ -2,41 +2,8 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "head"}}{{if eq .Tab "soal"}}<link rel="stylesheet" href="{{ asset "vendor/katex/katex.min.css" }}">{{end}}{{end}}
 {{define "content"}}
-{{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name ""}}
-<div class="page-header">
-<div>
-<h1>{{.Exam.Name}}</h1>
-<p class="muted">{{.Exam.Purpose.Label}}{{with .Exam.SubjectName}} · {{.}}{{end}}{{if .Exam.GradeLevel}} · Kelas {{.Exam.GradeLevel}}{{end}} · {{.Exam.DurationMinutes}} menit · {{.Exam.OwnerName}} · {{template "exam_status_badge" .Exam.Status}}</p>
-</div>
-{{if .CanWrite}}
-<div class="action-row">
-{{if .Exam.Editable}}<a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/atur/{{if eq .Exam.Status "draf"}}{{.Exam.WizardStep}}{{else}}soal{{end}}">Atur</a>{{end}}
-<details class="menu-details">
-<summary class="btn btn-ghost">Lainnya</summary>
-<div class="menu-panel stack">
-<form method="post" action="/ujian/paket/{{.Exam.ID}}/salin" class="stack">{{ csrfField }}
-<label class="text-sm" for="copy-name">Salin untuk kelas lain atau tahun depan</label>
-<input id="copy-name" name="name" maxlength="120" value="{{.Exam.Name}} (salinan)">
-<button type="submit" class="btn btn-ghost btn-sm">Salin ujian</button></form>
-{{if ne .Exam.Status "berlangsung"}}<form method="post" action="/ujian/paket/{{.Exam.ID}}/arsip" x-data @submit="if (!confirm('Arsipkan ujian ini? Sesi yang belum mulai dibatalkan.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan</button></form>{{end}}
-</div>
-</details>
-</div>
-{{end}}
-</div>
-
+{{template "exam_frame" .Frame}}
 {{template "flash" .}}
-{{template "exam_next_step" .Next}}
-{{if .GradesStale}}<div class="alert alert-warning mt-3" role="status"><p class="mb-0"><strong>Nilai berubah setelah dikirim ke rapor</strong> ({{.GradesStale}} siswa). <a href="/ujian/paket/{{.Exam.ID}}/rapor">Periksa dan kirim ulang?</a></p></div>{{end}}
-
-<nav class="tabs mt-4" aria-label="Bagian ujian">
-<a href="/ujian/paket/{{.Exam.ID}}"{{if eq .Tab "ringkasan"}} aria-current="page"{{end}}>Ringkasan</a>
-<a href="/ujian/paket/{{.Exam.ID}}?tab=soal"{{if eq .Tab "soal"}} aria-current="page"{{end}}>Soal</a>
-<a href="/ujian/paket/{{.Exam.ID}}?tab=sesi"{{if eq .Tab "sesi"}} aria-current="page"{{end}}>Sesi &amp; peserta</a>
-<a href="/ujian/paket/{{.Exam.ID}}?tab=dokumen"{{if eq .Tab "dokumen"}} aria-current="page"{{end}}>Dokumen</a>
-<a href="/ujian/paket/{{.Exam.ID}}?tab=lanjut"{{if eq .Tab "lanjut"}} aria-current="page"{{end}}>Tindak lanjut</a>
-<a href="/ujian/paket/{{.Exam.ID}}/hasil">Hasil</a>
-</nav>
 
 {{if eq .Tab "ringkasan"}}
 <div class="wizard-aside-grid mt-4">
