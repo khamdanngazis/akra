@@ -122,6 +122,48 @@ type Trail struct {
 	Parent Crumb
 }
 
+// Action adalah satu aksi di header halaman atau menu "Lainnya" (T162):
+// tautan, atau form POST bila Post. Confirm (opsional) ditanyakan sebelum
+// form dikirim; Danger menandai aksi berbahaya (merah, hanya di menu).
+type Action struct {
+	Label, Href string
+	Post        bool
+	Confirm     string
+	Danger      bool
+}
+
+// actionFuncs membuat aksi dari template, mis.
+//
+//	{{template "page_header" dict "Title" "Agenda Ujian"
+//	   "Primary" (when .CanEdit (action "Buat agenda" "/ujian/agenda/baru"))
+//	   "Secondary" (actions (action "Ruang ujian" "/ujian/ruang"))}}
+var actionFuncs = template.FuncMap{
+	"action": func(label, href string) Action { return Action{Label: label, Href: href} },
+	// post membuat aksi form POST dengan konfirmasi (boleh kosong).
+	"post": func(label, href, confirm string) Action {
+		return Action{Label: label, Href: href, Post: true, Confirm: confirm}
+	},
+	// danger menandai aksi berbahaya.
+	"danger": func(a Action) Action { a.Danger = true; return a },
+	// when mengembalikan a bila cond benar, selain itu aksi kosong.
+	"when": func(cond bool, a Action) Action {
+		if !cond {
+			return Action{}
+		}
+		return a
+	},
+	// actions mengumpulkan aksi, membuang aksi kosong.
+	"actions": func(as ...Action) []Action {
+		var out []Action
+		for _, a := range as {
+			if a.Label != "" {
+				out = append(out, a)
+			}
+		}
+		return out
+	},
+}
+
 // funcs berisi fungsi template yang tersedia di semua halaman. Fungsi CSRF
 // diganti per request di Render.
 func funcs(versions map[string]string) template.FuncMap {
@@ -193,6 +235,9 @@ func funcs(versions map[string]string) template.FuncMap {
 	m["currentMenu"] = func([]nav.MenuItem) string { return "" }
 	// subnav mengembalikan sub-navigasi modul request ini (T157), bila ada.
 	m["subnav"] = func() []subnav.Item { return nil }
+	for k, v := range actionFuncs {
+		m[k] = v
+	}
 	for k, v := range csrf.PlaceholderFuncs {
 		m[k] = v
 	}

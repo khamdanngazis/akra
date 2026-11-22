@@ -160,3 +160,17 @@ func TestCrumbs(t *testing.T) {
 		t.Error("odd crumbs accepted")
 	}
 }
+
+// Fungsi aksi header (T162): when membuang aksi bila kondisi salah, actions
+// membuang aksi kosong, post dan danger menandai form dan aksi berbahaya.
+func TestActionFuncs(t *testing.T) {
+	act := actionFuncs["action"].(func(string, string) Action)
+	post := actionFuncs["post"].(func(string, string, string) Action)
+	danger := actionFuncs["danger"].(func(Action) Action)
+	when := actionFuncs["when"].(func(bool, Action) Action)
+	all := actionFuncs["actions"].(func(...Action) []Action)
+	got := all(when(false, act("Ubah", "/ubah")), act("Impor", "/impor"), when(true, danger(post("Arsipkan", "/arsip", "Yakin?"))))
+	if len(got) != 2 || got[0].Label != "Impor" || !got[1].Post || !got[1].Danger || got[1].Confirm != "Yakin?" {
+		t.Errorf("actions = %+v", got)
+	}
+}

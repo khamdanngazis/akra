@@ -59,3 +59,22 @@ Satu catatan: identitas visual ini belum berarti nama AKRA sudah lolos pemeriksa
 - isinya sesuai hak akses pengguna;
 - item yang sedang dibuka disorot;
 - di HP bisa digulir ke samping.
+
+6. Header, tombol, kartu, dan lebar halaman (T162)
+
+**Header halaman** memakai partial `page_header` (judul, keterangan, tombol utama, tombol kedua, menu "Lainnya"). Aksinya dibuat dengan fungsi template `action`, `post`, `danger`, `when`, dan `actions`. Halaman dengan keterangan kaya (badge, tautan) boleh menulis markup `.page-header` sendiri, asal mengikuti aturan di bawah.
+
+**Hierarki tombol:**
+- paling banyak satu tombol utama (`btn-primary`, biru) per area;
+- tombol kedua memakai `btn-ghost` (putih bergaris abu-abu);
+- aksi ketiga dan seterusnya masuk menu "Lainnya" (partial `action_menu`);
+- tombol berbahaya (merah) hanya di dalam menu atau form dengan konfirmasi (`data-confirm`).
+
+**Kartu:**
+- tidak ada kartu (`.card`) di dalam kartu lain; pilihan atau baris di dalam kartu memakai `.tile` (bergaris, tanpa bayangan) atau daftar bergaris;
+- judul di dalam kartu memakai `<h2 class="card-title">`;
+- `.empty-state` untuk pesan kosong singkat, `.empty-guide` untuk panduan langkah awal (boleh digabung).
+
+**Lebar konten:** halaman daftar dan detail selebar area konten; formulir di dalam `.form-card` (maks. 42rem); layar kerja (pengawas, pusat kendali, koreksi esai) memakai `.work-head` sebagai header dan kolom samping di desktop.
+
+**Pemeriksaan:** uji `TestExamPagesFrame` dan `TestVisual` memeriksa aturan ini di halaman staf modul ujian. Jalankan `make visual` sebelum PR yang mengubah tampilan, lalu lampirkan tangkapan desktop dan HP halaman yang berubah.

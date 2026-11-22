@@ -4,7 +4,7 @@
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" "/ujian/sesi-saya" .S.Title ""}}
 <div class="proctor" data-tour="pengawas" data-proctor data-data-url="/ujian/sesi/{{.S.ID}}/awasi/data" data-action-url="/ujian/sesi/{{.S.ID}}/awasi/peserta/">
-<header class="proctor-head card">
+<header class="proctor-head work-head card">
 <div class="min-w-0">
 <h1 class="proctor-title">{{.S.Title}}</h1>
 <p class="muted text-sm">{{.S.ExamName}}{{with .S.Subject}} · {{.}}{{end}} · {{.When}}{{if .S.ExtraMinutes}} · +{{.S.ExtraMinutes}} menit{{end}}</p>

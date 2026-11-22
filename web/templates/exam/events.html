@@ -2,16 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" ""}}
-<div class="page-header">
-<div>
-<h1>Agenda Ujian</h1>
-<p class="muted">PTS dan PAS satu sekolah: jadwal mapel per hari, ruang, gelombang, peserta, dan pengawas.</p>
-</div>
-<div class="action-row">
-<a class="btn btn-ghost" href="/ujian/ruang">Ruang ujian ({{.Rooms}})</a>
-{{if .CanEdit}}<a class="btn btn-primary" href="/ujian/agenda/baru">Buat agenda</a>{{end}}
-</div>
-</div>
+{{template "page_header" dict "Title" "Agenda Ujian" "Lead" "PTS dan PAS satu sekolah: jadwal mapel per hari, ruang, gelombang, peserta, dan pengawas." "Primary" (when .CanEdit (action "Buat agenda" "/ujian/agenda/baru")) "Secondary" (actions (action (printf "Ruang ujian (%d)" .Rooms) "/ujian/ruang"))}}
 {{template "flash" .}}
 {{if .Events}}
 <div class="table-wrap">

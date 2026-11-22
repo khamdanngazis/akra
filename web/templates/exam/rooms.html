@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" "Ruang ujian" ""}}
-<div class="page-header"><div><h1>Ruang Ujian</h1><p class="muted">Dicatat sekali dan dipakai ulang di setiap agenda. Lab: komputer sekolah, kapasitas = jumlah komputer. Ruang kelas: peserta memakai HP.</p></div></div>
+{{template "page_header" dict "Title" "Ruang Ujian" "Lead" "Dicatat sekali dan dipakai ulang di setiap agenda. Lab: komputer sekolah, kapasitas = jumlah komputer. Ruang kelas: peserta memakai HP."}}
 {{template "flash" .}}
 {{with .Error}}<div class="alert alert-error" role="alert">{{.}}</div>{{end}}
 {{if .Rooms}}

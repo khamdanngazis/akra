@@ -4,7 +4,7 @@
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Agenda" "/ujian/agenda" .Event.Name (printf "/ujian/agenda/%s" .Event.ID) "Pusat kendali" ""}}
 <div class="control" data-control data-data-url="/ujian/agenda/{{.Event.ID}}/kendali/data">
-<header class="control-head">
+<header class="control-head work-head">
 <div class="min-w-0">
 <h1 class="text-2xl font-bold">Pusat kendali</h1>
 <p class="muted mb-0">{{.Event.Name}} · {{.Day}} · waktu {{.Zone}}</p>

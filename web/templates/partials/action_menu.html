@@ -1,0 +1,10 @@
+{{/* action_menu adalah menu aksi (T161, T162): <details> dengan panel; tertutup dengan Esc, klik di luar, atau saat menu lain dibuka (js/nav.js). Argumen dict: Label (teks tombol, mis. "Lainnya"), Items ([]Action). Aksi berbahaya tampil merah dan form dengan Confirm ditanyakan dulu. */}}
+{{define "action_menu"}}
+<details class="menu-details">
+<summary class="btn btn-ghost">{{.Label}}</summary>
+<div class="menu-panel stack">
+{{range .Items}}{{if .Post}}<form method="post" action="{{.Href}}"{{with .Confirm}} data-confirm="{{.}}"{{end}}>{{ csrfField }}<button type="submit" class="menu-link{{if .Danger}} text-red-700{{end}}">{{.Label}}</button></form>{{else}}<a class="menu-link{{if .Danger}} text-red-700{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}
+{{end}}
+</div>
+</details>
+{{end}}

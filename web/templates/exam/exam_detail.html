@@ -31,7 +31,7 @@
 {{if gt (len .Variants) 1}}<nav class="tabs" aria-label="Paket">{{range .Variants}}<a href="/ujian/paket/{{$.Exam.ID}}?tab=soal&amp;paket={{.Label}}"{{if eq .Label $.Variant.Label}} aria-current="page"{{end}}>Paket {{.Label}}</a>{{end}}</nav>{{end}}
 <p class="hint">{{if .Exam.Locked}}Soal saat ujian dibekukan.{{else}}Hasil rakit saat ini; aturan acak dirakit ulang setiap isi ujian berubah. Urutan per peserta diacak saat mengerjakan bila diatur.{{end}}</p>
 {{if and .CanWrite .Running}}
-<form method="post" action="/ujian/paket/{{.Exam.ID}}/ralat" class="card stack exam-fix" novalidate>{{ csrfField }}
+<form method="post" action="/ujian/paket/{{.Exam.ID}}/ralat" class="tile stack exam-fix" novalidate>{{ csrfField }}
 <label for="fix-msg" class="font-semibold">Kirim ralat ke {{.Running}} sesi yang sedang berlangsung</label>
 <textarea id="fix-msg" name="pesan" rows="2" maxlength="290" required placeholder="Mis. Soal tentang fotosintesis, opsi C dibaca &quot;hasil&quot;."></textarea>
 <p class="hint mb-0">Muncul sebagai banner di layar peserta dan tercatat di berita acara. Nomor soal bisa berbeda antarpeserta bila urutan diacak; sebutkan kutipan soalnya.</p>

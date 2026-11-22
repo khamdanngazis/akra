@@ -1,13 +1,7 @@
 {{define "title"}}Ujian{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-<div class="page-header">
-<div>
-<h1>Ujian</h1>
-<p class="muted">Modul ujian online sekolah · {{.Module.ReleaseLabel}}.</p>
-</div>
-{{with .Quick}}<div class="action-row">{{range .}}<a class="btn {{if .Primary}}btn-primary{{else}}btn-ghost{{end}}" href="{{.Href}}">{{.Label}}</a>{{end}}</div>{{end}}
-</div>
+{{template "page_header" dict "Title" "Ujian" "Lead" (printf "Modul ujian online sekolah · %s." .Module.ReleaseLabel) "Primary" .Primary "Secondary" .Secondary "More" .More}}
 
 {{if .Fresh}}
 <section class="card empty-guide">

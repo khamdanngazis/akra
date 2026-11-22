@@ -2,12 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{if .Back}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" .Back "Tujuan pembelajaran" ""}}{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" "Tujuan pembelajaran" ""}}{{end}}
-<div class="page-header">
-<div>
-<h1>Tujuan Pembelajaran</h1>
-<p class="muted">TP per mapel dan tingkat. Dipakai untuk menandai soal, kisi-kisi, analisis per TP, dan deskripsi capaian rapor.</p>
-</div>
-</div>
+{{template "page_header" dict "Title" "Tujuan Pembelajaran" "Lead" "TP per mapel dan tingkat. Dipakai untuk menandai soal, kisi-kisi, analisis per TP, dan deskripsi capaian rapor."}}
 
 {{template "flash" .}}
 

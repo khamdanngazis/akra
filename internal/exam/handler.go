@@ -12,6 +12,7 @@ import (
 	"akra/internal/exam/mathrender"
 	"akra/internal/platform/database"
 	"akra/internal/platform/page"
+	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
 )
 
@@ -69,12 +70,6 @@ func (h *Handler) Routes(r chi.Router) {
 	})
 }
 
-// quickLink adalah tombol "Mulai cepat" di beranda modul.
-type quickLink struct {
-	Label, Href string
-	Primary     bool
-}
-
 type homeView struct {
 	User   auth.Identity
 	Module Module
@@ -83,7 +78,11 @@ type homeView struct {
 	Events  []TodayEvent
 	Control bool // boleh membuka pusat kendali agenda
 	ToDo    []ToDo
-	Quick   []quickLink
+	// Aksi cepat di header (T162): Buat ujian sebagai tombol utama, satu
+	// tombol kedua, sisanya di menu "Lainnya".
+	Primary   render.Action
+	Secondary []render.Action
+	More      []render.Action
 	// Fresh: sekolah belum punya ujian selain ujian latihan bawaan.
 	Fresh bool
 }
@@ -147,13 +146,17 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sa.CanAny(ActClassExam, Write) || sa.CanAny(ActAdmissionTest, Write) {
-		v.Quick = append(v.Quick, quickLink{Label: "Buat ujian", Href: "/ujian/paket/baru", Primary: true})
+		v.Primary = render.Action{Label: "Buat ujian", Href: "/ujian/paket/baru"}
 	}
+	var rest []render.Action
 	if sa.CanAny(ActBank, Write) {
-		v.Quick = append(v.Quick, quickLink{Label: "Tambah atau impor soal", Href: "/ujian/bank/"})
+		rest = append(rest, render.Action{Label: "Tambah atau impor soal", Href: "/ujian/bank/"})
 	}
 	if sa.CanAny(ActClassExam, Write) {
-		v.Quick = append(v.Quick, quickLink{Label: "Coba halaman ujian", Href: "/ujian/latihan"})
+		rest = append(rest, render.Action{Label: "Coba halaman ujian", Href: "/ujian/latihan"})
+	}
+	if len(rest) > 0 {
+		v.Secondary, v.More = rest[:1], rest[1:]
 	}
 	h.render.Render(w, r, http.StatusOK, "exam/home", v)
 }

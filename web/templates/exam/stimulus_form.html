@@ -7,9 +7,8 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) (or (and .IsNew "Tambah stimulus") "Ubah stimulus") ""}}
+{{template "page_header" dict "Title" (or (and .Action "Perbaiki stimulus impor") (and .IsNew "Tambah stimulus") "Ubah stimulus") "Lead" (or (and .IsNew "Teks bacaan, tabel, gambar, atau grafik yang dipakai beberapa soal.") "Teks bacaan, tabel, gambar, atau grafik yang dipakai beberapa soal. Menyimpan membuat versi baru; ujian lama tidak berubah.")}}
 <section class="card form-card">
-<h1>{{if .Action}}Perbaiki stimulus impor{{else if .IsNew}}Tambah stimulus{{else}}Ubah stimulus{{end}}</h1>
-<p class="muted">Teks bacaan, tabel, gambar, atau grafik yang dipakai beberapa soal.{{if not .IsNew}} Menyimpan membuat versi baru; ujian lama tidak berubah.{{end}}</p>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
 <form method="post" action="{{if .Action}}{{.Action}}{{else if .IsNew}}/ujian/bank/{{.Bank.ID}}/stimulus{{else}}/ujian/stimulus/{{.Stimulus.ID}}{{end}}" class="stack" novalidate
  data-editor data-bank="{{.Bank.ID}}" data-upload="/ujian/bank/{{.Bank.ID}}/gambar" x-data="{ submitting: false }" @submit="submitting = true">
