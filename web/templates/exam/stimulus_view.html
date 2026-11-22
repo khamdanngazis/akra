@@ -3,16 +3,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Stimulus" ""}}
-<div class="page-header">
-<div>
-<h1>{{.Stimulus.Title}}</h1>
-<p class="muted">Stimulus · versi {{.Stimulus.Version}} · {{len .Rows}} soal</p>
-</div>
-<div class="action-row">
-{{if .CanWrite}}<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru?stimulus={{.Stimulus.ID}}">Tambah soal ke stimulus ini</a>{{end}}
-{{if .CanEdit}}<a class="btn btn-ghost" href="/ujian/stimulus/{{.Stimulus.ID}}/ubah">Ubah</a>{{end}}
-</div>
-</div>
+{{template "page_header" dict "Title" .Stimulus.Title "Lead" (printf "Stimulus · versi %d · %d soal" .Stimulus.Version (len .Rows)) "Primary" (when .CanWrite (action "Tambah soal ke stimulus ini" (printf "/ujian/bank/%s/soal/baru?stimulus=%s" .Bank.ID .Stimulus.ID))) "Secondary" (actions (when .CanEdit (action "Ubah" (printf "/ujian/stimulus/%s/ubah" .Stimulus.ID))))}}
 {{template "flash" .}}
 
 <section class="card">
@@ -28,7 +19,7 @@
 {{ csrfField }}
 <ol class="stack" data-sortable>
 {{range $i, $q := .Rows}}
-<li class="option-row card p-3" data-sort-item>
+<li class="option-row tile p-3" data-sort-item>
 <input type="hidden" name="order" value="{{$q.ID}}">
 <span class="exam-q-number">{{inc $i}}</span>
 <a class="min-w-0 flex-1" href="/ujian/soal/{{$q.ID}}" dir="auto">{{$q.Kind.Label}}: {{$q.Excerpt}}</a>

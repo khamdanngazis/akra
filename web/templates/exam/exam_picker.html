@@ -2,13 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" .Exam.Name (printf "/ujian/paket/%s/atur/soal" .Exam.ID) "Pilih soal" ""}}
-<div class="page-header">
-<div>
-<h1>Pilih soal</h1>
-<p class="muted">Centang soal lalu tambahkan ke ujian. Memilih soal dari satu teks/stimulus menambahkan seluruh kelompoknya; soal tertentu bisa dilepas sesudahnya.</p>
-</div>
-<div class="action-row"><a class="btn btn-ghost" href="/ujian/paket/{{.Exam.ID}}/atur/soal">Kembali ke langkah Soal</a></div>
-</div>
+{{template "page_header" dict "Title" "Pilih soal" "Lead" "Centang soal lalu tambahkan ke ujian. Memilih soal dari satu teks/stimulus menambahkan seluruh kelompoknya; soal tertentu bisa dilepas sesudahnya." "Secondary" (actions (action "Kembali ke langkah Soal" (printf "/ujian/paket/%s/atur/soal" .Exam.ID)))}}
 {{template "flash" .}}
 
 {{if not .Banks}}

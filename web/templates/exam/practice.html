@@ -2,12 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" "/ujian/paket/" "Coba halaman ujian" ""}}
-<div class="page-header">
-<div>
-<h1>Coba Halaman Ujian</h1>
-<p class="muted">Siswa mencoba halaman ujian sebelum ujian sungguhan: ragu-ragu, grid nomor, offline, dan kumpulkan. Disarankan sekali sebelum ujian online pertama. Nilai latihan tidak dipakai.</p>
-</div>
-</div>
+{{template "page_header" dict "Title" "Coba Halaman Ujian" "Lead" "Siswa mencoba halaman ujian sebelum ujian sungguhan: ragu-ragu, grid nomor, offline, dan kumpulkan. Disarankan sekali sebelum ujian online pertama. Nilai latihan tidak dipakai."}}
 {{template "flash" .}}
 <div class="wizard-aside-grid">
 <div class="stack">

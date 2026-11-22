@@ -38,8 +38,27 @@ Setiap halaman menyusun header, tombol, dan kartu sendiri-sendiri:
 - `web/templates/exam/*.html`, `web/tailwind/app.css`
 - `scripts/visual/` atau `Makefile`, uji lint template di `internal/exam`
 
+## Catatan implementasi
+- **`page_header` dan `action_menu`** (partial baru) menerima aksi `render.Action` yang dibuat di template dengan `action`, `post`, `danger`, `when`, dan `actions`. Dipakai di 19 halaman staf modul ujian (beranda, daftar ujian, agenda, buat agenda, ruang, sesi saya, telaah, bantuan, coba halaman ujian, TP, impor, pratinjau impor, cek mutu, pilih soal, stimulus, form bank, form stimulus, pengaturan, dan menu "Lainnya" detail bank).
+- **Header dengan keterangan kaya tetap markup sendiri:** detail bank, kerangka ujian (T160), detail agenda, lihat soal, wizard, form soal (status simpan), dan daftar bank (atribut tur). Template Go tidak bisa mengoper potongan HTML ke partial; aturan yang sama dijaga uji lint.
+- **Uji lint** (`pageLint`, dipakai `TestExamPagesFrame` untuk 52/42/34 halaman per peran dan `TestVisual` untuk halaman demo):
+  - satu header halaman berisi `<h1>` (`.page-header`, atau `.work-head` di layar kerja pengawas dan pusat kendali);
+  - paling banyak satu tombol utama dan dua tombol di luar menu "Lainnya";
+  - tidak ada kartu di dalam kartu;
+  - tombol merah hanya di menu atau form dengan konfirmasi.
+- **Kartu bersarang yang diperbaiki:** kelompok soal satu stimulus di bank (kini garis kiri, bukan kartu), urutan soal di halaman stimulus, kartu sesi di beranda dan Sesi Saya, soal kembar di cek mutu, dan form ralat di detail ujian. Semuanya memakai `.tile` (bergaris tanpa bayangan).
+- **Tombol kedua (`btn-ghost`) kini abu-abu netral** di seluruh aplikasi, sehingga hanya tombol utama yang biru.
+- **Konfirmasi `data-confirm`** pada form ditangani `js/nav.js` di semua halaman (sebelumnya hanya di layar pengawas).
+- **Bar tab:** di HP, tab aktif digulir ke tengah (sebelumnya tab Hasil tidak terlihat).
+- **Harness visual:** `cmd/server/visual_test.go` (sebelumnya berkas lokal) dan `scripts/visual.sh` / `make visual`:
+  - 84 halaman (21 di modul ujian) dipotret di desktop 1280 px dan HP 360 px;
+  - lebar halaman di HP diukur otomatis; skrip gagal bila ada gulir horizontal dan menyebut elemen penyebabnya;
+  - `--panduan` menyalin tangkapan ke `doc/panduan-ujian/img`.
+- **HP 360 px:** layar pengawas (405 px) dan pilihan kelas absensi guru (422 px) melebar; keduanya diperbaiki. Kini tidak ada halaman yang melebar.
+- **CSS dobel:** `empty-state` dan `empty-guide` dipertahankan karena berbeda fungsi, `card-title` untuk judul di dalam kartu. Aturannya dicatat di `doc/brand-identity.md` bagian 6, bersama hierarki tombol dan lebar konten. Formulir tetap `.form-card` (42rem, di bawah batas 48rem).
+
 ## Kriteria selesai
-- [ ] Semua halaman staf modul ujian memakai `page_header`; uji lint lulus (satu tombol utama di header, tanpa kartu bersarang)
-- [ ] Harness visual masuk repo dan menghasilkan tangkapan desktop dan HP untuk ±15 halaman utama
-- [ ] Pemeriksaan HP 360 px: tidak ada gulir horizontal (diperiksa dari tangkapan layar)
-- [ ] Panduan `doc/panduan-ujian/` memakai tangkapan layar baru
+- [x] Semua halaman staf modul ujian memakai `page_header` atau markup yang sama dan lulus uji lint (satu tombol utama di header, tanpa kartu bersarang); lihat catatan
+- [x] Harness visual masuk repo dan menghasilkan tangkapan desktop dan HP untuk 21 halaman modul ujian (84 halaman seluruhnya)
+- [x] Pemeriksaan HP 360 px: tidak ada gulir horizontal (diukur otomatis oleh `scripts/visual.sh`)
+- [x] Panduan `doc/panduan-ujian/` memakai tangkapan layar baru

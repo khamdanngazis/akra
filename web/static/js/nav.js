@@ -26,14 +26,17 @@
   else restore();
 })();
 
-// Sub-navigasi modul (T157): di HP, item aktif digulir ke tengah agar
-// tidak terpotong.
+// Sub-navigasi modul (T157) dan bar tab (T162): di HP, item aktif digulir
+// ke tengah agar tidak terpotong.
 (function () {
   function center() {
-    var a = document.querySelector('.module-nav [aria-current="page"]');
-    if (a && a.parentElement.scrollWidth > a.parentElement.clientWidth) {
-      a.parentElement.scrollLeft = a.offsetLeft - (a.parentElement.clientWidth - a.offsetWidth) / 2;
-    }
+    document.querySelectorAll('.module-nav [aria-current="page"], .tabs > [aria-current="page"]').forEach(function (a) {
+      var box = a.parentElement;
+      if (box.scrollWidth > box.clientWidth) {
+        var r = a.getBoundingClientRect(), b = box.getBoundingClientRect();
+        box.scrollLeft += r.left - b.left - (box.clientWidth - r.width) / 2;
+      }
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', center);
   else center();
@@ -62,3 +65,11 @@
     if (s) s.focus();
   });
 })();
+
+// Konfirmasi (T162): form bertanda data-confirm menanyakan pesannya sebelum
+// dikirim, mis. aksi yang tidak bisa dibatalkan di menu "Lainnya" atau
+// layar pengawas.
+document.addEventListener('submit', function (e) {
+  var msg = e.target.getAttribute && e.target.getAttribute('data-confirm');
+  if (msg && !window.confirm(msg)) e.preventDefault();
+}, true);

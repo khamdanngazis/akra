@@ -2,16 +2,8 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Daftar ujian" ""}}
-<div class="page-header">
-<div>
-<h1>{{if .Archived}}Ujian Diarsipkan{{else}}Daftar Ujian{{end}}</h1>
-<p class="muted">Ulangan, ujian latihan, PTS/PAS, dan tes seleksi. Ujian disusun dari bank soal lewat wizard, lalu dijadwalkan.</p>
-</div>
-<div class="action-row">
-{{if .Archived}}<a class="btn btn-ghost" href="/ujian/paket/">Ujian aktif</a>{{else}}<a class="btn btn-ghost" href="/ujian/paket/?arsip=1">Arsip</a><a class="btn btn-ghost" href="/ujian/latihan">Coba halaman ujian</a>{{end}}
-{{if and .CanCreate (not .Archived)}}<a class="btn btn-primary" href="/ujian/paket/baru">Buat ujian</a>{{end}}
-</div>
-</div>
+{{if .Archived}}{{template "page_header" dict "Title" "Ujian Diarsipkan" "Lead" "Ujian yang diarsipkan tidak tampil di daftar dan tidak bisa dijadwalkan." "Secondary" (actions (action "Ujian aktif" "/ujian/paket/"))}}
+{{else}}{{template "page_header" dict "Title" "Daftar Ujian" "Lead" "Ulangan, ujian latihan, PTS/PAS, dan tes seleksi. Ujian disusun dari bank soal lewat wizard, lalu dijadwalkan." "Primary" (when .CanCreate (action "Buat ujian" "/ujian/paket/baru")) "Secondary" (actions (action "Coba halaman ujian" "/ujian/latihan")) "More" (actions (action "Ujian diarsipkan" "/ujian/paket/?arsip=1"))}}{{end}}
 
 {{template "flash" .}}
 

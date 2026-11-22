@@ -48,3 +48,8 @@ css-watch: $(TAILWIND)
 css-check: $(TAILWIND)
 	@$(TAILWIND) -i $(CSS_SRC) -o bin/app.check.css --minify 2>/dev/null
 	@cmp -s bin/app.check.css $(CSS_OUT) || (echo "web/static/css/app.css is stale: run make css" >&2; exit 1)
+
+## visual: potret halaman utama (desktop 1280 px dan HP 360 px) dengan data demo ke tmp/visual dan periksa gulir horizontal di HP (butuh TEST_DATABASE_URL dan Chrome)
+.PHONY: visual
+visual:
+	scripts/visual.sh

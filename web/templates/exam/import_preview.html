@@ -3,12 +3,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" (printf "/ujian/bank/%s/impor" .Bank.ID) .Import.FileName ""}}
-<div class="page-header">
-<div>
-<h1>Pratinjau impor</h1>
-<p class="muted">{{.Import.FileName}} → {{.Bank.Name}}</p>
-</div>
-</div>
+{{template "page_header" dict "Title" "Pratinjau impor" "Lead" (printf "%s → %s" .Import.FileName .Bank.Name)}}
 {{template "flash" .}}
 
 {{if eq .Import.Status "memproses"}}

@@ -1,7 +1,7 @@
 {{/* my_session_cards: kartu "Sesi saya hari ini" untuk pengawas (T143). Argumen: []MySessionCard. */}}
 {{define "my_session_cards" -}}
 {{if .}}<div class="session-cards">
-{{range .}}<a class="session-card card" href="/ujian/sesi/{{.ID}}/awasi">
+{{range .}}<a class="session-card tile" href="/ujian/sesi/{{.ID}}/awasi">
 <span class="session-card-room">{{.Title}}</span>
 <span class="session-card-time">{{.Time}}</span>
 <span class="muted text-sm">{{.ExamName}}{{with .Subject}} · {{.}}{{end}}</span>

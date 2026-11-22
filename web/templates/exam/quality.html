@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Cek mutu" ""}}
-<div class="page-header"><div><h1>Cek mutu soal</h1><p class="muted">Pemeriksaan otomatis untuk {{.Bank.Name}}. Hasil ini saran, bukan larangan.</p></div></div>
+{{template "page_header" dict "Title" "Cek mutu soal" "Lead" (printf "Pemeriksaan otomatis untuk %s. Hasil ini saran, bukan larangan." .Bank.Name)}}
 <div class="stack">
 <section class="card">
 <h2 class="card-title">Posisi kunci pilihan ganda</h2>
@@ -25,7 +25,7 @@
 <section class="card">
 <h2 class="card-title">Soal kembar atau sangat mirip</h2>
 {{if .Report.Duplicates}}
-<ul class="stack mt-2">{{range .Report.Duplicates}}<li class="card p-3"><a href="/ujian/soal/{{(index . 0).ID}}" dir="auto">{{(index . 0).Snippet}}</a><br><span class="muted">mirip dengan</span> <a href="/ujian/soal/{{(index . 1).ID}}" dir="auto">{{(index . 1).Snippet}}</a></li>{{end}}</ul>
+<ul class="stack mt-2">{{range .Report.Duplicates}}<li class="tile p-3"><a href="/ujian/soal/{{(index . 0).ID}}" dir="auto">{{(index . 0).Snippet}}</a><br><span class="muted">mirip dengan</span> <a href="/ujian/soal/{{(index . 1).ID}}" dir="auto">{{(index . 1).Snippet}}</a></li>{{end}}</ul>
 <p class="hint mt-2">Biasanya terjadi karena file yang sama diimpor dua kali. Arsipkan salah satunya.</p>
 {{else}}<p class="hint mt-2">Tidak ditemukan{{if not .Report.NearDuplicate}} (bank besar: hanya soal yang persis sama yang diperiksa){{end}}.</p>{{end}}
 </section>

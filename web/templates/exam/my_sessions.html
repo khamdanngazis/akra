@@ -2,7 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Sesi saya" ""}}
-<div class="page-header"><div><h1>Sesi Saya</h1><p class="muted">Sesi ujian yang Anda awasi hari ini. Waktu dalam {{.Zone}}.</p></div></div>
+{{template "page_header" dict "Title" "Sesi Saya" "Lead" (printf "Sesi ujian yang Anda awasi hari ini. Waktu dalam %s." .Zone)}}
 {{template "my_session_cards" .Sessions}}
 {{if not .Sessions}}<section class="card empty-guide"><h2 class="card-title">Tidak ada sesi yang Anda awasi hari ini</h2>
 <ol class="stack mt-3">

@@ -2,12 +2,7 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Impor" ""}}
-<div class="page-header">
-<div>
-<h1>Impor soal</h1>
-<p class="muted">Ke bank {{.Bank.Name}}. Anda melihat pratinjau dan bisa memperbaiki setiap soal sebelum disimpan. Maks. 20 MB dan 500 soal per file.</p>
-</div>
-</div>
+{{template "page_header" dict "Title" "Impor soal" "Lead" (printf "Ke bank %s. Anda melihat pratinjau dan bisa memperbaiki setiap soal sebelum disimpan. Maks. 20 MB dan 500 soal per file." .Bank.Name)}}
 {{template "flash" .}}
 <div class="bank-grid">
 {{range .Sources}}

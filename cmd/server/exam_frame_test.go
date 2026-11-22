@@ -11,7 +11,8 @@ import (
 
 // Kerangka modul ujian (T157): setiap halaman staf /ujian di registry punya
 // sub-navigasi modul, tepat satu <h1>, dan breadcrumb (bila ada) berakar di
-// "Ujian" → /ujian. Diuji untuk admin TU, guru, dan kepala sekolah.
+// "Ujian" → /ujian, serta mengikuti aturan tata letak halaman (T162, lihat
+// pageLint). Diuji untuk admin TU, guru, dan kepala sekolah.
 func TestExamPagesFrame(t *testing.T) {
 	app, _, a, _ := newTenantApp(t)
 	for _, u := range []testutil.User{a.Admin, a.Teacher, a.Principal} {
@@ -51,6 +52,10 @@ func TestExamPagesFrame(t *testing.T) {
 				}
 				if strings.Contains(body, `href="/ujian/paket/" data-restore>Ujian<`) {
 					t.Errorf("%s %s: breadcrumb label Ujian points to exam list", u.Role, req.Path)
+				}
+				// Aturan tata letak halaman (T162).
+				for _, v := range pageLint(body) {
+					t.Errorf("%s %s: %s", u.Role, req.Path, v)
 				}
 			}
 		}

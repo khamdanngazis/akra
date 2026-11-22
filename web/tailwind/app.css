@@ -210,6 +210,12 @@
     @apply overflow-hidden p-0 sm:p-0;
   }
 
+  /* Kotak pilihan di dalam kartu (T162): bergaris tanpa bayangan, agar
+     tidak ada kartu di dalam kartu. */
+  .tile {
+    @apply rounded-xl border border-slate-200 bg-white p-4;
+  }
+
   .card-title {
     @apply m-0 text-base font-semibold text-slate-900 sm:text-lg;
   }
@@ -367,8 +373,9 @@
     @apply bg-blue-600 text-white shadow-xs hover:bg-blue-700 hover:text-white;
   }
 
+  /* Tombol kedua (T162): netral agar tombol utama biru tetap menonjol. */
   .btn-ghost {
-    @apply border-blue-600/70 bg-white text-blue-700 hover:border-blue-600 hover:bg-blue-50 hover:text-blue-700;
+    @apply border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900;
   }
 
   .btn-success {
@@ -608,7 +615,12 @@
 
   /* Absensi (untuk HP: tombol besar) */
   .class-picker {
-    @apply m-0 grid list-none gap-2 p-0;
+    @apply m-0 grid list-none grid-cols-1 gap-2 p-0;
+  }
+
+  /* Daftar mapel bisa panjang: boleh turun baris di HP (T162). */
+  .class-picker .btn {
+    @apply whitespace-normal;
   }
 
   .attendance-head {
@@ -2843,8 +2855,14 @@
     @apply z-10 flex-none;
   }
 
+  /* Kelompok soal satu stimulus (T162): bukan kartu, karena soal di
+     dalamnya sudah kartu; ditandai garis kiri. */
+  .stimulus-group {
+    @apply border-l-4 border-amber-300 pl-3 sm:pl-4;
+  }
+
   .stimulus-group > summary {
-    @apply cursor-pointer;
+    @apply cursor-pointer py-1;
   }
 }
 
@@ -3239,8 +3257,8 @@
 
 /* Layar pengawas (T143): HP lebih dulu. */
 @layer components {
-  .proctor { @apply mx-auto grid max-w-3xl gap-3; }
-  .proctor-head { @apply grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center; }
+  .proctor { @apply mx-auto grid max-w-3xl grid-cols-1 gap-3; }
+  .proctor-head { @apply grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center; }
   .proctor-title { @apply text-xl font-bold; }
   .proctor-token { @apply grid justify-items-center gap-1 rounded-xl bg-slate-900 px-4 py-3 text-center text-white; }
   .proctor-token .muted { @apply text-slate-300; }
@@ -3250,7 +3268,7 @@
   .proctor-code-value { @apply my-2 font-mono text-4xl font-bold tracking-[0.2em]; }
   .proctor-status { @apply flex flex-wrap items-center gap-2; }
   .proctor-counts { @apply mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6; }
-  .proctor-count { @apply grid min-h-16 place-items-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-center; }
+  .proctor-count { @apply grid min-h-16 min-w-0 place-items-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-center; }
   .proctor-count strong { @apply text-2xl leading-none; }
   .proctor-count span { @apply text-xs text-slate-600; }
   .proctor-count[aria-pressed="true"] { @apply border-blue-600 bg-blue-50 ring-2 ring-blue-600; }
@@ -3272,9 +3290,9 @@
   .proctor-state.is-selesai { @apply bg-blue-600; }
   .proctor-new[hidden] { display: none; }
   .is-stale { @apply text-amber-700; }
-  .proctor-actions { @apply grid gap-2 sm:grid-cols-2; }
-  .proctor-inline { @apply flex gap-2; }
-  .proctor-inline select { @apply w-auto; }
+  .proctor-actions { @apply grid grid-cols-1 gap-2 sm:grid-cols-2; }
+  .proctor-inline { @apply flex min-w-0 gap-2; }
+  .proctor-inline select { @apply w-auto min-w-0 flex-1; }
   .proctor-minutes { @apply grid grid-cols-2 gap-2; }
   .proctor-minutes dt { @apply text-sm text-slate-600; }
   .proctor-minutes dd { @apply text-xl font-bold; }

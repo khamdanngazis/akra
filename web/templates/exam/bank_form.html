@@ -2,8 +2,8 @@
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
 {{if .IsNew}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" "Buat bank" ""}}{{else}}{{template "back_nav" crumbs "Ujian" "/ujian" "Bank soal" "/ujian/bank/" .Bank.Name (printf "/ujian/bank/%s" .Bank.ID) "Ubah" ""}}{{end}}
+{{template "page_header" dict "Title" (or (and .IsNew "Buat bank soal") "Ubah bank soal") "Lead" (or (and .IsNew "Satu bank untuk satu mapel dan tingkat, mis. Matematika Kelas 7.") .Bank.Name)}}
 <section class="card form-card">
-<h1>{{if .IsNew}}Buat bank soal{{else}}Ubah bank soal{{end}}</h1>
 {{if .Errors}}<div class="alert alert-error" role="alert">Periksa kembali isian yang ditandai.</div>{{end}}
 <form method="post" action="{{if .IsNew}}/ujian/bank/{{else}}/ujian/bank/{{.Bank.ID}}{{end}}" class="stack" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}

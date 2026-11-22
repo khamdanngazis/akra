@@ -1,0 +1,17 @@
+{{/* page_header adalah header halaman (T162): judul (h1), keterangan, paling banyak satu tombol utama, tombol kedua (ghost), dan aksi lain di menu "Lainnya". Argumen dict: Title, Lead (opsional), Primary (Action, opsional), Secondary ([]Action), More ([]Action). Buat aksi dengan action/post/when/actions (render.Action). */}}
+{{define "page_header"}}
+<div class="page-header">
+<div>
+<h1>{{.Title}}</h1>
+{{with .Lead}}<p class="muted">{{.}}</p>{{end}}
+</div>
+{{if or .Primary.Label .Secondary .More}}<div class="action-row">
+{{with .Primary}}{{if .Label}}{{template "action_button" dict "A" . "Class" "btn btn-primary"}}{{end}}{{end}}
+{{range .Secondary}}{{template "action_button" dict "A" . "Class" "btn btn-ghost"}}{{end}}
+{{with .More}}{{template "action_menu" dict "Label" "Lainnya" "Items" .}}{{end}}
+</div>{{end}}
+</div>
+{{end}}
+
+{{/* action_button: satu aksi sebagai tombol. Argumen dict: A (Action), Class. */}}
+{{define "action_button"}}{{if .A.Post}}<form method="post" action="{{.A.Href}}"{{with .A.Confirm}} data-confirm="{{.}}"{{end}}>{{ csrfField }}<button type="submit" class="{{.Class}}">{{.A.Label}}</button></form>{{else}}<a class="{{.Class}}" href="{{.A.Href}}">{{.A.Label}}</a>{{end}}{{end}}

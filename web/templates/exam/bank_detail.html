@@ -11,17 +11,13 @@
 {{if or .CanWrite .CanManage .Bank.SubjectID}}<div class="action-row">
 {{if .CanWrite}}<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a>
 <a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor</a>{{end}}
-<details class="menu-details">
-<summary class="btn btn-ghost">Lainnya</summary>
-<div class="menu-panel stack">
-{{if .CanWrite}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/stimulus/baru">Tambah stimulus</a>{{end}}
-{{if .Bank.SubjectID}}<a class="menu-link" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">Tujuan pembelajaran</a>{{end}}
-{{if .CanWrite}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ekspor/soal.xlsx">Ekspor Excel</a>
-<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ekspor/moodle.xml">Ekspor Moodle</a>{{end}}
-{{if .CanManage}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ubah">Ubah bank</a>
-<form method="post" action="/ujian/bank/{{.Bank.ID}}/arsip" x-data @submit="if (!confirm('Arsipkan bank ini? Soalnya tidak dihapus.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="menu-link text-red-700">Arsipkan bank</button></form>{{end}}
-</div>
-</details>
+{{template "action_menu" dict "Label" "Lainnya" "Items" (actions
+  (when .CanWrite (action "Tambah stimulus" (printf "/ujian/bank/%s/stimulus/baru" .Bank.ID)))
+  (when (ne .Bank.SubjectID "") (action "Tujuan pembelajaran" (printf "/ujian/tp/?mapel=%s&tingkat=%d&bank=%s" .Bank.SubjectID .Bank.GradeLevel .Bank.ID)))
+  (when .CanWrite (action "Ekspor Excel" (printf "/ujian/bank/%s/ekspor/soal.xlsx" .Bank.ID)))
+  (when .CanWrite (action "Ekspor Moodle" (printf "/ujian/bank/%s/ekspor/moodle.xml" .Bank.ID)))
+  (when .CanManage (action "Ubah bank" (printf "/ujian/bank/%s/ubah" .Bank.ID)))
+  (when .CanManage (danger (post "Arsipkan bank" (printf "/ujian/bank/%s/arsip" .Bank.ID) "Arsipkan bank ini? Soalnya tidak dihapus."))))}}
 </div>{{end}}
 </div>
 </div>
@@ -108,7 +104,7 @@
 <div class="stack">
 {{range .Groups}}
 {{if .StimulusID}}
-<details class="card stimulus-group" open>
+<details class="stimulus-group" open>
 <summary><strong>{{.StimulusTitle}}</strong> <span class="muted">· {{len .Rows}} soal ·</span> <a href="/ujian/stimulus/{{.StimulusID}}">Buka stimulus</a></summary>
 <div class="stack mt-3">{{range .Rows}}{{template "exam_question_row" dict "Row" . "Editable" $.HasEditable}}{{end}}</div>
 </details>
