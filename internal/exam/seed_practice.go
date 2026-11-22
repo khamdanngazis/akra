@@ -37,6 +37,9 @@ var practiceQuestions = []url.Values{
 // PracticeName adalah nama paket latihan bawaan.
 const PracticeName = "Coba Halaman Ujian"
 
+// PracticeBankName adalah nama bank contoh paket latihan bawaan (T161).
+const PracticeBankName = "Contoh — " + PracticeName
+
 // GetPractice mengembalikan paket latihan bawaan sekolah, bila ada.
 func GetPractice(ctx context.Context, q database.DBTX, schoolID string) (Exam, bool, error) {
 	var id string
@@ -52,7 +55,7 @@ func GetPractice(ctx context.Context, q database.DBTX, schoolID string) (Exam, b
 }
 
 // EnsurePractice mengembalikan paket latihan bawaan, membuatnya bila belum
-// ada: bank contoh "Latihan Antarmuka (contoh)" dengan enam soal (semua
+// ada: bank contoh "Contoh — Coba Halaman Ujian" dengan enam soal (semua
 // jenis) dan ujian latihan berisi soal-soal itu. sa menjadi pembuatnya.
 func EnsurePractice(ctx context.Context, db database.DB, sa StaffActor, math *mathrender.Renderer, now time.Time) (Exam, error) {
 	if e, ok, err := GetPractice(ctx, db, sa.SchoolID); err != nil || ok {
@@ -61,8 +64,8 @@ func EnsurePractice(ctx context.Context, db database.DB, sa StaffActor, math *ma
 	var out Exam
 	err := pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
 		var bankID string
-		if err := tx.QueryRow(ctx, `INSERT INTO exam_banks (school_id, name, created_by) VALUES ($1, 'Latihan Antarmuka (contoh)', $2) RETURNING id`,
-			sa.SchoolID, sa.UserID).Scan(&bankID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO exam_banks (school_id, name, created_by, sample) VALUES ($1, $2, $3, true) RETURNING id`,
+			sa.SchoolID, PracticeBankName, sa.UserID).Scan(&bankID); err != nil {
 			return fmt.Errorf("exam: practice bank: %w", err)
 		}
 		writer := sa

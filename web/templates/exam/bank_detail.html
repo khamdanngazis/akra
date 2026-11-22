@@ -8,14 +8,21 @@
 <p class="muted">{{if .Bank.SubjectName}}{{.Bank.SubjectName}}{{else}}Tes umum{{end}}{{if .Bank.GradeLevel}} · Kelas {{.Bank.GradeLevel}}{{end}} · dibuat {{.Bank.CreatorName}}{{if .Bank.ArchivedAt}} · <span class="badge">Diarsipkan</span>{{end}}</p>
 {{if .Bank.Sample}}<p class="alert alert-info mt-2"><span class="badge badge-info">Contoh</span> Bank contoh dari AKRA untuk mencoba semua jenis soal, termasuk rumus dan gambar. Pakai soalnya di ujian, duplikat ke bank Anda, atau arsipkan bila tidak diperlukan.</p>{{end}}
 </div>
-<div class="action-row">
-{{if .Bank.SubjectID}}<a class="btn btn-ghost" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">TP</a>{{end}}
-{{if .CanManage}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ubah">Ubah</a>{{end}}
-{{if .CanWrite}}<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/stimulus/baru">Tambah stimulus</a>
-<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor</a>
-<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ekspor/soal.xlsx">Ekspor Excel</a>
-<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/ekspor/moodle.xml">Ekspor Moodle</a>
-<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a>{{end}}
+{{if or .CanWrite .CanManage .Bank.SubjectID}}<div class="action-row">
+{{if .CanWrite}}<a class="btn btn-primary" href="/ujian/bank/{{.Bank.ID}}/soal/baru">Tambah soal</a>
+<a class="btn btn-ghost" href="/ujian/bank/{{.Bank.ID}}/impor">Impor</a>{{end}}
+<details class="menu-details">
+<summary class="btn btn-ghost">Lainnya</summary>
+<div class="menu-panel stack">
+{{if .CanWrite}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/stimulus/baru">Tambah stimulus</a>{{end}}
+{{if .Bank.SubjectID}}<a class="menu-link" href="/ujian/tp/?mapel={{.Bank.SubjectID}}&amp;tingkat={{.Bank.GradeLevel}}&amp;bank={{.Bank.ID}}">Tujuan pembelajaran</a>{{end}}
+{{if .CanWrite}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ekspor/soal.xlsx">Ekspor Excel</a>
+<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ekspor/moodle.xml">Ekspor Moodle</a>{{end}}
+{{if .CanManage}}<a class="menu-link" href="/ujian/bank/{{.Bank.ID}}/ubah">Ubah bank</a>
+<form method="post" action="/ujian/bank/{{.Bank.ID}}/arsip" x-data @submit="if (!confirm('Arsipkan bank ini? Soalnya tidak dihapus.')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="menu-link text-red-700">Arsipkan bank</button></form>{{end}}
+</div>
+</details>
+</div>{{end}}
 </div>
 </div>
 
@@ -57,14 +64,19 @@
 </form>
 
 {{if .Page.Rows}}
-<div class="action-row mb-3" x-data="{ docs(path) { const ids = [...document.querySelectorAll('input[name=ids]:checked')].map(i => 'ids=' + i.value); location.href = '/ujian/bank/{{.Bank.ID}}/' + path + '?' + (ids.length ? ids.join('&') : '{{.QueryString}}'); } }">
-<button type="button" class="btn btn-ghost btn-sm" @click="docs('kisi-kisi')">Kisi-kisi</button>
-<button type="button" class="btn btn-ghost btn-sm" @click="docs('kartu-soal')">Kartu soal</button>
-<a class="btn btn-ghost btn-sm" href="/ujian/bank/{{.Bank.ID}}/mutu">Cek mutu</a>
-<span class="hint self-center">Untuk soal terpilih, atau semua soal sesuai filter.</span>
+<div x-data="{ n: 0, action: '', docs(path) { const ids = [...document.querySelectorAll('input[name=ids]:checked')].map(i => 'ids=' + i.value); location.href = '/ujian/bank/{{.Bank.ID}}/' + path + '?' + (ids.length ? ids.join('&') : '{{.QueryString}}'); } }" @change="n = document.querySelectorAll('input[name=ids]:checked').length">
+<div class="list-bar">
+<p class="muted result-count mb-0">Menampilkan {{.From}}–{{.To}} dari {{.Page.Total}} soal.</p>
+<details class="menu-details">
+<summary class="btn btn-ghost btn-sm">Cetak &amp; periksa</summary>
+<div class="menu-panel stack">
+<p class="hint mb-1" data-docs-scope x-text="n > 0 ? n + ' soal terpilih' : 'Semua {{.Page.Total}} soal sesuai filter'">Semua {{.Page.Total}} soal sesuai filter</p>
+<button type="button" class="menu-link" @click="docs('kisi-kisi')">Kisi-kisi</button>
+<button type="button" class="menu-link" @click="docs('kartu-soal')">Kartu soal</button>
+<button type="button" class="menu-link" @click="docs('mutu')">Cek mutu</button>
 </div>
-<div x-data="{ n: 0, action: '' }" @change="n = document.querySelectorAll('input[name=ids]:checked').length">
-<p class="muted result-count">Menampilkan {{.From}}–{{.To}} dari {{.Page.Total}} soal.</p>
+</details>
+</div>
 
 {{if .HasEditable}}
 <form id="bulk" method="post" action="/ujian/bank/{{.Bank.ID}}/massal" class="card bulk-bar" x-show="n > 0" x-cloak>
@@ -122,9 +134,4 @@
 </section>
 {{end}}
 
-{{if .CanManage}}
-<form method="post" action="/ujian/bank/{{.Bank.ID}}/arsip" class="mt-6" x-data @submit="if (!confirm('Arsipkan bank ini? Soalnya tidak dihapus.')) $event.preventDefault()">
-{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Arsipkan bank</button>
-</form>
-{{end}}
 {{end}}

@@ -13,7 +13,7 @@
 
 {{template "flash" .}}
 
-<form method="get" action="/ujian/bank/" class="filter-bar" x-data @change="$el.submit()" data-tour-step="4" data-tour-text="Saring bank per tingkat kelas. Template Word dan Excel resmi ada di halaman impor setiap bank.">
+<form method="get" action="/ujian/bank/" class="filter-bar" x-data @change="$el.submit()" data-tour-step="4" data-tour-text="Saring bank per mapel dan tingkat kelas. Template Word dan Excel resmi ada di halaman impor setiap bank.">
 <div class="field">
 <label for="tingkat">Tingkat</label>
 <select id="tingkat" name="tingkat">
@@ -21,6 +21,15 @@
 {{range .Grades}}<option value="{{.}}"{{if eq . $.Grade}} selected{{end}}>Kelas {{.}}</option>{{end}}
 </select>
 </div>
+{{if .Subjects}}
+<div class="field">
+<label for="mapel">Mapel</label>
+<select id="mapel" name="mapel">
+<option value="">Semua mapel</option>
+{{range .Subjects}}<option value="{{.ID}}"{{if eq .ID $.Subject}} selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+</div>
+{{end}}
 <noscript><button type="submit" class="btn btn-ghost">Tampilkan</button></noscript>
 </form>
 
@@ -36,6 +45,8 @@
 </a>
 {{end}}
 </div>
+{{else if or .Grade .Subject}}
+<section class="card empty-state"><p>Tidak ada bank yang cocok dengan saringan.</p><p><a class="btn btn-ghost" href="/ujian/bank/">Hapus saringan</a></p></section>
 {{else}}
 <section class="card empty-guide">
 <h2 class="card-title">Mulai bank soal</h2>
