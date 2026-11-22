@@ -11,7 +11,7 @@ Kriteria selesai T154: panduan pengawas dan siswa 1 halaman **dipahami tanpa pen
 
 1. Berikan panduan cetak (pengawas untuk guru, peserta untuk siswa). Jangan menjelaskan apa pun.
 2. Beri waktu membaca 3 menit.
-3. Minta peserta uji mengerjakan tugas berikut di ujian latihan, sambil berpikir keras. Catat di mana mereka ragu atau bertanya.
+3. Minta peserta uji mengerjakan tugas berikut di sesi coba halaman ujian, sambil berpikir keras. Catat di mana mereka ragu atau bertanya.
 4. Setelah selesai, tanyakan: bagian mana yang membingungkan, dan istilah apa yang tidak dimengerti.
 
 ### Tugas guru (layar pengawas, sesi latihan)
@@ -24,7 +24,7 @@ Kriteria selesai T154: panduan pengawas dan siswa 1 halaman **dipahami tanpa pen
 | 4 | Listrik padam 10 menit | **Jeda** sesi, lalu **Lanjutkan semua** |
 | 5 | Sesi selesai | Menandatangani berita acara |
 
-### Tugas siswa (ujian latihan)
+### Tugas siswa (coba halaman ujian)
 
 | No | Tugas | Lulus bila |
 |---|---|---|

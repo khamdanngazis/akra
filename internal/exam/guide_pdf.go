@@ -411,7 +411,7 @@ func participantGuide(g *guideDoc, info GuideInfo) {
 	g.heading(g.m, g.w, "", "Sebelum hari ujian")
 	before := []string{
 		"Isi baterai HP dan pastikan kuota/sinyal cukup. Pakai Chrome atau Safari versi terbaru.",
-		"Coba **ujian latihan** bila guru membukanya, agar terbiasa dengan halaman ujian.",
+		"Ikuti **coba halaman ujian** bila guru membukanya, agar terbiasa sebelum ujian sungguhan.",
 	}
 	if info.LoginURL != "" {
 		before = append([]string{"Alamat masuk ujian: **" + info.LoginURL + "**"}, before...)

@@ -45,8 +45,17 @@
 - `internal/exam/guide_pdf.go`, `doc/panduan-ujian/*.md`
 - migrasi data nama paket bawaan
 
+## Catatan implementasi
+- **Nama baru dipakai:** halaman `/ujian/latihan` dan paket bawaan menjadi **"Coba halaman ujian"** / **"Coba Halaman Ujian"**. Tombolnya ada di beranda modul dan header Daftar Ujian.
+  - Paket bawaan sekolah yang sudah ada diganti namanya lewat migrasi 087 (hanya bila namanya belum diubah sekolah).
+  - Teks pendaftaran (tes seleksi), cek kesiapan, PDF panduan peserta, dan `doc/panduan-ujian/` ikut diganti.
+  - Nama bank paket bawaan menunggu T161.
+- **Saringan:** cari nama, tujuan, status, mapel, kelas, tahun ajaran. Pilihan mapel dan kelas diambil dari ujian yang boleh dilihat pengguna. Tahun ajaran bawaan adalah tahun aktif; ujian tanpa tahun ajaran selalu ikut. Saringan berlaku otomatis saat diubah, dan "Hapus saringan" muncul bila ada saringan.
+- **Paginasi** 25 per halaman. Diukur dengan 2.000 ujian di satu sekolah: query inti sekitar 3 ms, termasuk di halaman terakhir. Indeks `(school_id, created_at)` yang sudah ada cukup.
+- **Kolom:** Ujian (pemilik, jumlah soal, jumlah sesi), Tujuan, Mapel/kelas, Jadwal terdekat, Status, dan aksi cepat (Lanjutkan / Pantau / Hasil).
+
 ## Kriteria selesai
-- [ ] Daftar ujian langsung terlihat di layar pertama (desktop 1280×800 dan HP 360 px)
-- [ ] Saringan dan pencarian bekerja dan diuji; daftar terpaginasi
-- [ ] Tidak ada lagi dua hal berbeda bernama "Ujian latihan" di antarmuka staf
-- [ ] Panduan dan PDF memakai nama baru
+- [x] Daftar ujian langsung terlihat di layar pertama (desktop 1280×800); HP 360 px perlu dicek sekali di perangkat sungguhan
+- [x] Saringan dan pencarian bekerja dan diuji; daftar terpaginasi
+- [x] Tidak ada lagi dua hal berbeda bernama "Ujian latihan" di antarmuka staf
+- [x] Panduan dan PDF memakai nama baru

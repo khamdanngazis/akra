@@ -1039,6 +1039,14 @@
     @apply ml-auto;
   }
 
+  /* Saringan daftar ujian (T159). */
+  .exam-filter select {
+    @apply min-w-36;
+  }
+  .exam-filter-q {
+    @apply min-w-56 flex-1;
+  }
+
   /* Beranda modul ujian (T158). */
   .exam-home {
     @apply grid gap-4 lg:grid-cols-2 lg:items-start;

@@ -354,9 +354,9 @@ func sessionReadiness(ctx context.Context, q database.DBTX, e Exam, sessions []S
 			WHERE pp.student_id = p.student_id)`, ids).Scan(&notPracticed); err != nil {
 		return fmt.Errorf("exam: readiness practice: %w", err)
 	}
-	it = ReadyItem{Key: "practice", Label: "Siswa sudah mencoba ujian latihan", FixURL: "/ujian/latihan", FixLabel: "Buka latihan", Level: ReadyOK}
+	it = ReadyItem{Key: "practice", Label: "Siswa sudah mencoba halaman ujian", FixURL: "/ujian/latihan", FixLabel: "Buka coba halaman ujian", Level: ReadyOK}
 	if notPracticed > 0 {
-		it.Level, it.Hint = ReadyWarn, fmt.Sprintf("%d siswa belum pernah ujian latihan sebelum ujian ini. Disarankan sekali sebelum ujian online pertama.", notPracticed)
+		it.Level, it.Hint = ReadyWarn, fmt.Sprintf("%d siswa belum pernah mencoba halaman ujian sebelum ujian ini. Disarankan sekali sebelum ujian online pertama.", notPracticed)
 	}
 	r.add(it)
 	return nil

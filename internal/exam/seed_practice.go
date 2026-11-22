@@ -14,7 +14,7 @@ import (
 	"akra/internal/platform/database"
 )
 
-// Ujian latihan bawaan (T136): setiap sekolah mendapat paket latihan
+// Paket "Coba halaman ujian" (T136, nama sejak T159): setiap sekolah mendapat paket latihan
 // antarmuka berisi semua jenis soal, agar siswa mencoba halaman ujian
 // (ragu-ragu, grid nomor, offline, kumpulkan) sebelum ujian sungguhan.
 
@@ -35,7 +35,7 @@ var practiceQuestions = []url.Values{
 }
 
 // PracticeName adalah nama paket latihan bawaan.
-const PracticeName = "Latihan Antarmuka Ujian"
+const PracticeName = "Coba Halaman Ujian"
 
 // GetPractice mengembalikan paket latihan bawaan sekolah, bila ada.
 func GetPractice(ctx context.Context, q database.DBTX, schoolID string) (Exam, bool, error) {

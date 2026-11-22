@@ -3,6 +3,7 @@ package exam
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -45,45 +46,117 @@ type examListItem struct {
 	ExamListRow
 	When string
 	Href string
+	// Aksi cepat sesuai status (T159): Lanjutkan, Pantau, atau Hasil.
+	ActionLabel, ActionHref string
 }
 
 type examListView struct {
 	User      auth.Identity
 	Rows      []examListItem
 	Archived  bool
-	Purposes  []purposeOption
 	CanCreate bool
-	Flash     string
-	Error     string
+	// Saringan (T159).
+	Q                                            string
+	Purposes, Statuses, Subjects, Classes, Years []optionItem
+	HasFilter                                    bool
+	Total, From, To                              int
+	PrevURL, NextURL                             string
+	Flash                                        string
+	Error                                        string
 }
 
+var examStatusFilter = []optionItem{{Value: ExamDraft, Label: "Draf"}, {Value: "terjadwal", Label: "Terjadwal"},
+	{Value: "berlangsung", Label: "Berlangsung"}, {Value: "selesai", Label: "Selesai"}}
+
+// selectOpts menandai pilihan yang sama dengan v.
+func selectOpts(opts []optionItem, v string) []optionItem {
+	out := make([]optionItem, len(opts))
+	for i, o := range opts {
+		o.Selected = o.Value == v
+		out[i] = o
+	}
+	return out
+}
+
+// examList adalah daftar ujian dengan saringan dan paginasi (T159).
 func (h *Handler) examList(w http.ResponseWriter, r *http.Request) {
 	id, sa := h.staff(r)
-	archived := r.URL.Query().Get("arsip") == "1"
-	rows, err := ListExams(r.Context(), h.db, sa.SchoolID, sa.Actor, archived)
+	q := r.URL.Query()
+	opts, err := LoadExamFilterOptions(r.Context(), h.db, sa.SchoolID, sa.Actor)
+	if err != nil {
+		h.fail(w, r, "exam filter options", err)
+		return
+	}
+	page, _ := strconv.Atoi(q.Get("hal"))
+	f := ExamFilter{Archived: q.Get("arsip") == "1", Text: q.Get("q"), Purpose: Purpose(q.Get("tujuan")), Status: q.Get("status"),
+		SubjectID: q.Get("mapel"), ClassID: q.Get("kelas"), Page: page}
+	// Tahun ajaran: bawaan tahun aktif; "semua" untuk semua tahun.
+	year := q.Get("tahun")
+	switch year {
+	case "":
+		year = opts.ActiveYear
+	case "semua":
+		year = ""
+	}
+	f.YearID = year
+	pg, err := ListExams(r.Context(), h.db, sa.SchoolID, sa.Actor, f)
 	if err != nil {
 		h.fail(w, r, "list exams", err)
 		return
 	}
 	now := time.Now()
-	v := examListView{User: id, Archived: archived, Flash: auth.PopFlash(r.Context(), h.sessions)}
+	v := examListView{User: id, Archived: f.Archived, Q: f.Text, Total: pg.Total, Flash: auth.PopFlash(r.Context(), h.sessions),
+		Statuses: selectOpts(examStatusFilter, f.Status), Subjects: selectOpts(opts.Subjects, f.SubjectID), Classes: selectOpts(opts.Classes, f.ClassID),
+		HasFilter: f.Text != "" || f.Purpose != "" || f.Status != "" || f.SubjectID != "" || f.ClassID != "" || q.Get("tahun") != ""}
+	yearOpts := append([]optionItem{{Value: "semua", Label: "Semua tahun ajaran"}}, opts.Years...)
+	shown := year
+	if shown == "" {
+		shown = "semua"
+	}
+	v.Years = selectOpts(yearOpts, shown)
+	for _, p := range Purposes {
+		if ModuleFrom(r.Context()).Has(p.Release()) {
+			v.Purposes = append(v.Purposes, optionItem{Value: string(p), Label: p.Label(), Selected: p == f.Purpose})
+		}
+		if purposeOffered(sa.Actor, p, now) && ModuleFrom(r.Context()).Has(p.Release()) {
+			v.CanCreate = true
+		}
+	}
 	loc := id.Location()
-	for _, row := range rows {
+	for _, row := range pg.Rows {
 		it := examListItem{ExamListRow: row, Href: examPath(row.ID)}
-		if row.Status == ExamDraft && row.Access(sa.Actor, now) >= Write {
+		switch {
+		case row.Status == ExamDraft && row.Access(sa.Actor, now) >= Write:
 			it.Href = examStepPath(row.ID, row.WizardStep)
+			it.ActionLabel, it.ActionHref = "Lanjutkan", it.Href
+		case row.Status == "berlangsung":
+			it.ActionLabel, it.ActionHref = "Pantau", examPath(row.ID)+"?tab=sesi"
+		case row.Status == "selesai":
+			it.ActionLabel, it.ActionHref = "Hasil", examPath(row.ID)+"/hasil"
 		}
 		if row.FirstStart != nil {
 			it.When = clock.FormatDateTimeID(*row.FirstStart, loc)
 		}
 		v.Rows = append(v.Rows, it)
 	}
-	for _, p := range Purposes {
-		if purposeOffered(sa.Actor, p, now) && ModuleFrom(r.Context()).Has(p.Release()) {
-			v.Purposes = append(v.Purposes, purposeOption{Value: p, Label: p.Label(), Hint: purposeHints[p]})
-		}
+	if pg.Total > 0 {
+		v.From = (pg.Page-1)*ExamPageSize + 1
+		v.To = v.From + len(pg.Rows) - 1
 	}
-	v.CanCreate = len(v.Purposes) > 0
+	pageURL := func(p int) string {
+		qq := url.Values{}
+		for k, vs := range q {
+			qq[k] = vs
+		}
+		qq.Set("hal", strconv.Itoa(p))
+		return "/ujian/paket/?" + qq.Encode()
+	}
+	if pg.Page > 1 {
+		v.PrevURL = pageURL(pg.Page - 1)
+	}
+	if pg.Page < pg.Pages {
+		v.NextURL = pageURL(pg.Page + 1)
+	}
 	h.render.Render(w, r, http.StatusOK, "exam/exams", v)
 }
 

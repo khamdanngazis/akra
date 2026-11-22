@@ -37,7 +37,7 @@ Kartu peserta dengan panduan di baliknya dicetak **bolak-balik, dibalik di sisi 
 Saat staf pertama kali membuka menu Ujian, AKRA menyiapkan:
 
 - **Bank contoh Matematika per jenjang** yang ada di sekolah: SD kelas 4, SMP kelas 8, SMA kelas 11. Jenjang dibaca dari tingkat kelas sekolah; sekolah tanpa kelas mendapat ketiganya. Isinya 7 soal: semua jenis soal, rumus, dan satu soal bergambar (diagram batang). Bank berlabel **Contoh** dan soalnya bertag `contoh`. Bila sekolah punya mapel Matematika, bank ditautkan ke mapel itu sehingga guru Matematika ikut melihatnya.
-- **Ujian latihan** siap pakai (Latihan Antarmuka Ujian) untuk mengenalkan halaman ujian kepada siswa.
+- **Coba Halaman Ujian**, paket latihan siap pakai untuk mengenalkan halaman ujian kepada siswa (tombol **Coba halaman ujian** di beranda modul dan di Daftar Ujian).
 - **Template Word dan Excel resmi** di halaman impor setiap bank.
 
 Konten contoh dibuat sekali, atas nama admin TU pertama sekolah. Bank contoh yang diarsipkan tidak dibuat ulang.

@@ -249,31 +249,91 @@ type ExamListRow struct {
 	Questions  int
 }
 
-// ListExams mengembalikan ujian aktif yang boleh dilihat a, terbaru dulu.
-// Admin dan kepala sekolah melihat semua; koordinator semua kecuali tes
-// seleksi; guru hanya ujian yang ia pegang.
-func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, archived bool) ([]ExamListRow, error) {
-	where := "e.school_id = $1 AND (e.archived_at IS NOT NULL) = $2"
-	args := []any{schoolID, archived}
+// ExamPageSize adalah jumlah ujian per halaman daftar (T159).
+const ExamPageSize = 25
+
+// ExamFilter adalah saringan daftar ujian (T159). Kosong berarti semua.
+type ExamFilter struct {
+	Archived  bool
+	Text      string  // cari nama ujian
+	Purpose   Purpose // tujuan
+	Status    string  // draf, terjadwal, berlangsung, selesai
+	SubjectID string
+	ClassID   string // kelas peserta (lewat sesi)
+	YearID    string // tahun ajaran; ujian tanpa tahun ajaran selalu ikut
+	Page      int
+}
+
+// ExamPage adalah satu halaman daftar ujian.
+type ExamPage struct {
+	Rows               []ExamListRow
+	Total, Page, Pages int
+}
+
+// examVisible mengembalikan syarat SQL ujian yang boleh dilihat a. Admin
+// dan kepala sekolah melihat semua; koordinator semua kecuali tes seleksi;
+// guru hanya ujian yang ia pegang. args sudah berisi $1 (sekolah).
+func examVisible(a Actor, args []any) (string, []any) {
+	where := "e.school_id = $1 AND NOT e.builtin"
 	switch {
 	case slices.Contains(a.Roles, roleAdmin) || slices.Contains(a.Roles, rolePrincipal):
 	case a.Coordinator:
 		args = append(args, a.UserID)
-		where += " AND (e.purpose <> 'seleksi' OR e.owner_id = $3)"
+		where += fmt.Sprintf(" AND (e.purpose <> 'seleksi' OR e.owner_id = $%d)", len(args))
 	default:
 		args = append(args, a.UserID)
-		where += " AND e.owner_id = $3 AND e.purpose <> 'seleksi'"
+		where += fmt.Sprintf(" AND e.owner_id = $%d AND e.purpose <> 'seleksi'", len(args))
 	}
+	return where, args
+}
+
+// ListExams mengembalikan satu halaman ujian yang boleh dilihat a sesuai
+// saringan f, terbaru dulu. Ujian latihan bawaan tidak ikut: dibuka dari
+// halaman Coba halaman ujian.
+func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, f ExamFilter) (ExamPage, error) {
+	where, args := examVisible(a, []any{schoolID})
+	add := func(cond string, v any) {
+		args = append(args, v)
+		where += " AND " + strings.ReplaceAll(cond, "$?", fmt.Sprintf("$%d", len(args)))
+	}
+	if f.Archived {
+		where += " AND e.archived_at IS NOT NULL"
+	} else {
+		where += " AND e.archived_at IS NULL"
+	}
+	if t := strings.TrimSpace(f.Text); t != "" {
+		add("e.name ILIKE $?", "%"+strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(t)+"%")
+	}
+	if f.Purpose.Valid() {
+		add("e.purpose = $?", string(f.Purpose))
+	}
+	switch f.Status {
+	case ExamDraft, "terjadwal", "berlangsung", "selesai":
+		add("e.status = $?", f.Status)
+	}
+	if database.IsUUID(f.SubjectID) {
+		add("e.subject_id = $?", f.SubjectID)
+	}
+	if database.IsUUID(f.ClassID) {
+		add("EXISTS (SELECT 1 FROM exam_sessions x WHERE x.exam_id = e.id AND x.cancelled_at IS NULL AND x.class_id = $?)", f.ClassID)
+	}
+	if database.IsUUID(f.YearID) {
+		add("(e.academic_year_id = $? OR e.academic_year_id IS NULL)", f.YearID)
+	}
+	page := max(f.Page, 1)
+	args = append(args, ExamPageSize, (page-1)*ExamPageSize)
 	rows, err := q.Query(ctx, `SELECT `+examCols+`,
 		(SELECT count(*) FROM exam_sessions x WHERE x.exam_id = e.id AND x.cancelled_at IS NULL),
 		(SELECT min(starts_at) FROM exam_sessions x WHERE x.exam_id = e.id AND x.cancelled_at IS NULL),
 		(SELECT max(ends_at) FROM exam_sessions x WHERE x.exam_id = e.id AND x.cancelled_at IS NULL),
-		(SELECT count(*) FROM exam_variant_items vi JOIN exam_variants v ON v.id = vi.variant_id WHERE v.exam_id = e.id AND v.label = 'A')`+
-		examFrom+` WHERE `+where+` ORDER BY e.created_at DESC LIMIT 500`, args...)
+		(SELECT count(*) FROM exam_variant_items vi JOIN exam_variants v ON v.id = vi.variant_id WHERE v.exam_id = e.id AND v.label = 'A'),
+		count(*) OVER ()`+
+		examFrom+` WHERE `+where+fmt.Sprintf(` ORDER BY e.created_at DESC, e.id LIMIT $%d OFFSET $%d`, len(args)-1, len(args)), args...)
 	if err != nil {
-		return nil, fmt.Errorf("exam: list exams: %w", err)
+		return ExamPage{}, fmt.Errorf("exam: list exams: %w", err)
 	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (ExamListRow, error) {
+	var total int64
+	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (ExamListRow, error) {
 		var x ExamListRow
 		var pass *int16
 		var grade, dur, attempts, limit, variants int16
@@ -282,7 +342,7 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 			&e.ShuffleQuestions, &e.ShuffleOptions, &e.ShuffleInStimulus, &e.ResultsMode, &e.ResultsAfterAll, &attempts, &pass,
 			&e.IntegrityMode, &limit, &e.AllowBack, &variants, &e.Status, &e.WizardStep, &e.OwnerID, &e.OwnerName, &e.CopiedFrom,
 			&e.ScheduledAt, &e.LockedAt, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.Builtin, &e.ParentExamID, &e.FollowUp,
-			&e.GradeComponentID, &e.ResultsReleasedAt, &x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions)
+			&e.GradeComponentID, &e.ResultsReleasedAt, &x.Sessions, &x.FirstStart, &x.LastEnd, &x.Questions, &total)
 		e.GradeLevel, e.DurationMinutes, e.MaxAttempts, e.IntegrityLimit, e.VariantCount = int(grade), int(dur), int(attempts), int(limit), int(variants)
 		if pass != nil {
 			v := int(*pass)
@@ -290,6 +350,50 @@ func ListExams(ctx context.Context, q database.DBTX, schoolID string, a Actor, a
 		}
 		return x, err
 	})
+	if err != nil {
+		return ExamPage{}, fmt.Errorf("exam: list exams: %w", err)
+	}
+	pages := (int(total) + ExamPageSize - 1) / ExamPageSize
+	return ExamPage{Rows: list, Total: int(total), Page: page, Pages: max(pages, 1)}, nil
+}
+
+// ExamFilterOptions adalah pilihan saringan daftar ujian: mapel dan kelas
+// yang muncul di ujian yang boleh dilihat a, dan tahun ajaran sekolah.
+type ExamFilterOptions struct {
+	Subjects, Classes, Years []optionItem
+	ActiveYear               string
+}
+
+// LoadExamFilterOptions memuat pilihan saringan daftar ujian.
+func LoadExamFilterOptions(ctx context.Context, q database.DBTX, schoolID string, a Actor) (ExamFilterOptions, error) {
+	var o ExamFilterOptions
+	where, args := examVisible(a, []any{schoolID})
+	collect := func(sql string, args ...any) ([]optionItem, error) {
+		rows, err := q.Query(ctx, sql, args...)
+		if err != nil {
+			return nil, fmt.Errorf("exam: filter options: %w", err)
+		}
+		return pgx.CollectRows(rows, func(r pgx.CollectableRow) (optionItem, error) {
+			var it optionItem
+			return it, r.Scan(&it.Value, &it.Label)
+		})
+	}
+	var err error
+	if o.Subjects, err = collect(`SELECT DISTINCT s.id::text, s.name FROM exams e JOIN subjects s ON s.id = e.subject_id
+		WHERE `+where+` ORDER BY s.name`, args...); err != nil {
+		return o, err
+	}
+	if o.Classes, err = collect(`SELECT DISTINCT c.id::text, c.name FROM exams e JOIN exam_sessions x ON x.exam_id = e.id AND x.cancelled_at IS NULL
+		JOIN classes c ON c.id = x.class_id WHERE `+where+` ORDER BY c.name`, args...); err != nil {
+		return o, err
+	}
+	if o.Years, err = collect(`SELECT id::text, name FROM academic_years WHERE school_id = $1 ORDER BY start_date DESC`, schoolID); err != nil {
+		return o, err
+	}
+	if err := q.QueryRow(ctx, `SELECT coalesce((SELECT id::text FROM academic_years WHERE school_id = $1 AND is_active), '')`, schoolID).Scan(&o.ActiveYear); err != nil {
+		return o, fmt.Errorf("exam: active year: %w", err)
+	}
+	return o, nil
 }
 
 // BasicsForm adalah isian langkah Dasar.

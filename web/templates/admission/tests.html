@@ -68,7 +68,7 @@
 </section>
 {{if .HasOnline}}
 <section class="card stack mt-4" aria-labelledby="practice-title">
-<h2 id="practice-title">Ujian latihan untuk calon siswa</h2>
+<h2 id="practice-title">Coba halaman ujian untuk calon siswa</h2>
 <p class="mb-0">Calon siswa bisa mencoba tampilan ujian dari rumah dengan kode di kartu tesnya, sebelum tes sebenarnya. Nilainya tidak dipakai.</p>
 {{with .Practice}}<p class="mb-0"><span class="badge badge-success">Dibuka</span> sampai {{.When}} · {{.Participants}} pendaftar, {{.Submitted}} sudah mencoba.</p>{{end}}
 {{if .CanEdit}}<form method="post" action="/pendaftaran/periode/{{.Period.ID}}/latihan">{{ csrfField }}<button type="submit" class="btn {{if .Practice}}btn-ghost{{else}}btn-primary{{end}} btn-sm">{{if .Practice}}Masukkan pendaftar baru ke latihan{{else}}Buka ujian latihan{{end}}</button></form>{{end}}

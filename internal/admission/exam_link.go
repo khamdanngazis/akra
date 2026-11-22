@@ -165,7 +165,7 @@ func (h *Handler) openPractice(w http.ResponseWriter, r *http.Request) {
 	_, n, err := exam.OpenApplicantPractice(r.Context(), h.db, staffActor(r, id), periodID, end, now)
 	switch {
 	case errors.Is(err, exam.ErrNoPractice):
-		auth.SetFlash(r.Context(), h.sessions, "Paket ujian latihan belum disiapkan. Buka menu Ujian → Ujian latihan sekali untuk menyiapkannya.")
+		auth.SetFlash(r.Context(), h.sessions, "Paket ujian latihan belum disiapkan. Buka menu Ujian → Coba halaman ujian sekali untuk menyiapkannya.")
 	case errors.Is(err, exam.ErrNotFound):
 		page.NotFound(h.render, w, r, id, msgPeriodGone)
 		return
@@ -173,7 +173,7 @@ func (h *Handler) openPractice(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "open applicant practice", err)
 		return
 	default:
-		auth.SetFlash(r.Context(), h.sessions, fmt.Sprintf("Ujian latihan dibuka untuk pendaftar (%d baru). Tombol Coba ujian latihan tampil di kartu tes mereka.", n))
+		auth.SetFlash(r.Context(), h.sessions, fmt.Sprintf("Coba halaman ujian dibuka untuk pendaftar (%d baru). Tombol Coba halaman ujian tampil di kartu tes mereka.", n))
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
@@ -234,7 +234,7 @@ func (v *testCardView) ProofLines() []string {
 		}
 		name := t.ExamName
 		if t.Practice {
-			name = "Ujian latihan (coba tampilan)"
+			name = "Coba halaman ujian"
 		}
 		out = append(out, name+" (online, "+where+"): "+t.When)
 	}
