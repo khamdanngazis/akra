@@ -333,6 +333,15 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/u/cek", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/cek/ping", Kind: KindPublic},
 	{Method: "GET", Pattern: "/u/cek/contoh.jpg", Kind: KindPublic},
+	// Panduan cetak umum (T154): publik, tanpa data sekolah.
+	{Method: "GET", Pattern: "/u/panduan/peserta.pdf", Kind: KindPublic},
+	{Method: "GET", Pattern: "/u/panduan/orang-tua.pdf", Kind: KindPublic},
+
+	// Pusat bantuan dan panduan cetak (T154).
+	{Method: "GET", Pattern: "/ujian/bantuan", Kind: KindPage, Roles: examStaff},
+	{Method: "GET", Pattern: "/ujian/panduan/pengawas.pdf", Kind: KindPage, Roles: examStaff},
+	{Method: "GET", Pattern: "/ujian/panduan/peserta.pdf", Kind: KindPage, Roles: examStaff},
+	{Method: "GET", Pattern: "/ujian/panduan/orang-tua.pdf", Kind: KindPage, Roles: examStaff},
 
 	// Ujian latihan bawaan (T136).
 	{Method: "GET", Pattern: "/ujian/latihan", Kind: KindPage, Roles: examStaff},

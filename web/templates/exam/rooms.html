@@ -22,7 +22,15 @@
 {{end}}
 </tbody>
 </table></div>
-{{else}}<section class="card"><p class="mb-0">Belum ada ruang ujian.</p></section>{{end}}
+{{else}}<section class="card empty-guide">
+<h2 class="card-title">Belum ada ruang ujian</h2>
+<ol class="stack mt-3">
+<li>Catat setiap <strong>lab komputer</strong>, kapasitas = jumlah komputer yang berfungsi.</li>
+<li>Catat <strong>ruang kelas</strong> untuk peserta yang memakai HP, kapasitas = jumlah kursi.</li>
+<li>Ruang dipakai ulang di setiap agenda. Peserta dibagi ke ruang dan gelombang otomatis sesuai kapasitas.</li>
+</ol>
+{{if .CanEdit}}<p class="mt-4"><a class="btn btn-primary" href="#name">Tambah ruang pertama</a></p>{{else}}<p class="hint mt-3">Ruang dicatat oleh admin/TU atau koordinator ujian.</p>{{end}}
+</section>{{end}}
 {{if .CanEdit}}
 <form method="post" action="/ujian/ruang" class="card stack mt-4" novalidate>
 {{ csrfField }}

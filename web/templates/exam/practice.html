@@ -21,7 +21,7 @@
 <button type="submit" class="btn btn-primary">Buka latihan</button>
 </form>
 <p class="hint">Dibuka mulai sekarang selama {{.Window}}, boleh dicoba dari rumah. Setelah dibuka, cetak kartu agar siswa bisa masuk dengan NIS dan kode.</p>
-{{else}}<p class="mb-0">Tidak ada kelas yang Anda ajar tahun ini.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Tidak ada kelas yang Anda ajar tahun ini.</p><p class="hint mb-0">Latihan dibuka untuk kelas yang Anda ajar. Minta admin/TU mengatur <a href="/pengaturan/penugasan">penugasan mengajar</a>.</p></div>{{end}}
 </section>
 {{end}}
 <section class="card stack">
@@ -31,10 +31,10 @@
 <thead><tr><th>Kelas</th><th>Waktu</th><th>Peserta</th><th></th></tr></thead>
 <tbody>
 {{range .Sessions}}<tr><td>{{.Title}}{{if .Active}} <span class="badge badge-success">Dibuka</span>{{end}}</td><td>{{.When}}</td><td>{{.Participants}}{{if .Issued}} · {{.Issued}} kartu{{end}}</td>
-<td>{{if .CanCard}}<form method="post" action="/ujian/latihan/{{.ID}}/kartu">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">{{if .Issued}}Cetak ulang kartu{{else}}Cetak kartu{{end}}</button></form>{{end}}</td></tr>{{end}}
+<td>{{if .CanCard}}<form method="post" action="/ujian/latihan/{{.ID}}/kartu">{{ csrfField }}<input type="hidden" name="panduan" value="1"><button type="submit" class="btn btn-ghost btn-sm">{{if .Issued}}Cetak ulang kartu{{else}}Cetak kartu{{end}}</button></form>{{end}}</td></tr>{{end}}
 </tbody>
 </table></div>
-{{else}}<p class="mb-0">Belum ada kelas yang membuka latihan.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Belum ada kelas yang membuka latihan.</p><ol class="stack mt-2"><li>Pilih kelas lalu tekan <strong>Buka latihan</strong>.</li><li><strong>Cetak kartu</strong> agar siswa masuk dengan NIS dan kode.</li><li>Siswa mencoba ragu-ragu, grid nomor, offline, dan kumpul sebelum ujian sungguhan.</li></ol></div>{{end}}
 </section>
 </div>
 <aside class="wizard-aside">

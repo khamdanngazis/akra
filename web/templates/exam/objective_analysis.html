@@ -6,14 +6,15 @@
 <section class="card stack mt-4" aria-labelledby="tp-title">
 <h2 class="card-title" id="tp-title">Ketuntasan per TP</h2>
 {{if $o.Objectives}}
-<p class="hint">Siswa tuntas suatu TP bila capaiannya (poin diperoleh ÷ poin maksimum soal TP itu yang ia kerjakan) ≥ {{.A.KKTP.Label}} {{.A.KKTP.Value}}%.{{with $o.Untagged}} {{.}} soal tanpa TP tidak dihitung.{{end}}</p>
+<p class="hint">Siswa tuntas suatu TP bila capaiannya (poin diperoleh ÷ poin maksimum soal TP itu yang ia kerjakan) ≥ {{.A.KKTP.Label}} {{.A.KKTP.Value}}%. {{template "term" "kktp"}} {{template "term" "tp"}}{{with $o.Untagged}} {{.}} soal tanpa TP tidak dihitung.{{end}}</p>
 <div class="table-wrap"><table>
 <thead><tr><th>TP</th><th class="text-right">Soal</th><th class="text-right">Siswa tuntas</th><th class="min-w-40">% tuntas</th><th class="text-right">Rata-rata capaian</th></tr></thead>
 <tbody>{{range $o.Objectives}}<tr><td><strong>{{.Code}}</strong> <span class="text-sm" dir="auto">{{.Description}}</span></td><td class="text-right">{{.Questions}}</td><td class="text-right">{{.Mastered}}/{{.Students}}</td>
 <td><span class="tp-meter"><progress max="100" value="{{.Percent}}" class="{{if lt .Percent 60}}is-low{{end}}" aria-label="{{.Code}} tuntas {{.Percent}}%"></progress> <strong>{{.Percent}}%</strong></span></td><td class="text-right">{{.Average}}%</td></tr>{{end}}</tbody>
 </table></div>
 {{else if .A.Summary.Final}}<p class="mb-0">Soal ujian ini belum ditandai TP. Tandai TP soal di bank soal agar analisis TP dan remedial terfokus tersedia.</p>
-{{else}}<p class="mb-0">Belum ada nilai final untuk dianalisis.</p>{{end}}
+{{else}}<div class="empty-guide"><p>Belum ada nilai final untuk dianalisis.</p><p class="hint mb-0">Nilai final tersedia setelah peserta mengumpulkan dan semua jawaban esai dikoreksi. Analisis muncul otomatis.</p>
+<p class="mt-2 mb-0"><a class="btn btn-ghost btn-sm" href="/ujian/paket/{{$.Exam.ID}}/esai">Koreksi esai</a></p></div>{{end}}
 </section>
 
 {{if and $o.Objectives $o.Students}}

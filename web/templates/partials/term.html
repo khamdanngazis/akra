@@ -1,0 +1,13 @@
+{{/* Penjelasan istilah "Apa ini?" (T154). Pakai: {{template "term" "kktp"}},
+     di luar <label> agar klik label tidak membuka penjelasan. Tanpa JS. */}}
+{{define "term"}}<details class="term"><summary class="term-btn" aria-label="Apa ini: {{template "term_name" .}}?" title="Apa ini?">?</summary><span class="term-pop" role="note"><strong>{{template "term_name" .}}</strong> {{template "term_text" .}}</span></details>{{end}}
+
+{{define "term_name"}}{{if eq . "varian"}}Varian paket{{else if eq . "kktp"}}KKTP{{else if eq . "daya_beda"}}Daya beda (D){{else if eq . "kesukaran"}}Tingkat kesukaran (p){{else if eq . "lokasi"}}Lokasi ujian{{else if eq . "pengecoh"}}Pengecoh{{else if eq . "tp"}}Tujuan pembelajaran (TP){{end}}{{end}}
+
+{{define "term_text"}}{{if eq . "varian"}}Beberapa versi paket (A, B, C) dengan soal berbeda tetapi komposisi TP, level, dan kesulitan yang sama. Peserta yang duduk bersebelahan mendapat paket berbeda sehingga sulit mencontek.
+{{else if eq . "kktp"}}Kriteria Ketercapaian Tujuan Pembelajaran: nilai minimal untuk dianggap tuntas. Siswa di bawah KKTP masuk daftar remedial.
+{{else if eq . "daya_beda"}}Seberapa baik soal membedakan siswa yang menguasai materi dan yang belum. Dihitung dari porsi benar 27% siswa nilai tertinggi dikurangi 27% terendah. ≥ 0,40 sangat baik, 0,30 baik, 0,20 cukup, di bawah 0,20 perlu diperbaiki.
+{{else if eq . "kesukaran"}}Rata-rata porsi poin yang diperoleh peserta pada soal itu. Di bawah 0,30 sukar, 0,30–0,70 sedang, di atas 0,70 mudah.
+{{else if eq . "lokasi"}}Di ruang: peserta di sekolah dengan pengawas, dan perangkat berbunyi bila peserta keluar dari halaman ujian. Jarak jauh: peserta mengerjakan dari rumah tanpa bunyi; kejadian keluar halaman tetap tercatat.
+{{else if eq . "pengecoh"}}Pilihan jawaban yang salah. Pengecoh yang baik dipilih sebagian siswa yang belum paham; yang dipilih kurang dari 5% peserta sebaiknya diganti.
+{{else if eq . "tp"}}Kemampuan yang ingin dicapai siswa (Kurikulum Merdeka). Soal dikaitkan ke TP agar hasil ujian menunjukkan TP mana yang sudah dan belum tuntas.{{end}}{{end}}

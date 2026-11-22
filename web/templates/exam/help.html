@@ -1,0 +1,86 @@
+{{define "title"}}Bantuan Ujian{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Ujian" "/ujian" "Bantuan" ""}}
+<div class="page-header"><div><h1>Butuh bantuan?</h1><p class="muted">Langkah cepat untuk masalah yang paling sering terjadi saat ujian. Jawaban peserta tersimpan di perangkat dan terkirim otomatis, jadi jangan panik dan jangan minta peserta menutup halaman ujian.</p></div></div>
+
+<section class="card stack help-contact">
+<h2 class="card-title">Kontak dukungan AKRA</h2>
+{{if .Support.Configured}}
+<p class="action-row mb-0">{{with .Support.WhatsAppURL}}<a class="btn btn-primary" href="{{.}}" target="_blank" rel="noopener">WhatsApp {{$.Support.WhatsApp}}</a>{{end}}{{with .Support.Email}}<a class="btn btn-ghost" href="mailto:{{.}}">{{.}}</a>{{end}}</p>
+{{if and .Peak .Support.PeakHours}}<p class="mb-0"><span class="badge badge-info">Musim ujian</span> Jam layanan diperluas: <strong>{{.Support.PeakHours}}</strong></p>
+{{else if .Support.Hours}}<p class="mb-0">Jam layanan: <strong>{{.Support.Hours}}</strong>{{if .Support.PeakHours}} · musim PTS/PAS: {{.Support.PeakHours}}{{end}}</p>{{end}}
+{{else}}<p class="mb-0">Hubungi admin TU atau koordinator ujian sekolah. Mereka meneruskan ke tim AKRA bila perlu.</p>{{end}}
+<p class="hint mb-0">Saat menghubungi, sebutkan nama sekolah, ruang/sesi, jumlah peserta terdampak, dan pesan yang muncul di layar. Status layanan: <a href="/status" target="_blank" rel="noopener">halaman status AKRA</a>.</p>
+</section>
+
+<section class="card stack mt-4">
+<h2 class="card-title">Panduan cetak 1 halaman</h2>
+<ul class="stack mb-0">
+<li><a href="/ujian/panduan/pengawas.pdf">Panduan pengawas</a>: sebelum, saat, dan sesudah sesi; arti warna; reset dan pindah perangkat.</li>
+<li><a href="/ujian/panduan/peserta.pdf">Panduan peserta</a>: masuk, ragu-ragu, offline, dan kumpul. Bisa juga dicetak di balik kartu peserta.</li>
+<li><a href="/ujian/panduan/orang-tua.pdf">Panduan orang tua calon siswa</a>: cek perangkat dan tes dari rumah.</li>
+</ul>
+</section>
+
+<section class="stack mt-4 help-faq" aria-label="Pemecahan masalah">
+<details class="card" open>
+<summary class="font-semibold">Peserta tidak bisa masuk</summary>
+<ol class="stack mt-3">
+<li>Pastikan peserta membuka alamat <strong>/u/{{.Code}}</strong> (atau memindai QR di kartu) dan mengetik NIS/nomor pendaftaran serta kode kartu dengan benar.</li>
+<li>Kode hanya berlaku pada jadwal sesinya. Di luar jadwal, peserta melihat pesan kapan ujian dibuka.</li>
+<li><strong>"Kode sudah dipakai di perangkat lain"</strong>: layar pengawas → nama peserta → <strong>Izinkan pindah perangkat</strong>.</li>
+<li><strong>Kartu hilang, kode salah 5 kali, atau terkunci</strong>: layar pengawas → nama peserta → <strong>Reset login (kode baru)</strong>, lalu diktekan kodenya.</li>
+<li>Semua peserta di satu ruang gagal: biasanya jaringan. Buka <a href="/u/cek" target="_blank" rel="noopener">/u/cek</a> di satu perangkat untuk cek koneksi.</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">HP mati, baterai habis, atau perangkat rusak</summary>
+<ol class="stack mt-3">
+<li>Jawaban yang sudah tersimpan tetap ada.</li>
+<li>Berikan perangkat lain, lalu layar pengawas → nama peserta → <strong>Izinkan pindah perangkat</strong>. Peserta masuk lagi dengan NIS dan kode yang sama.</li>
+<li>Bila waktunya banyak terbuang, <strong>Tambah waktu</strong> untuk peserta itu dan isi alasannya (masuk berita acara).</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">Peserta offline atau sinyal hilang</summary>
+<ol class="stack mt-3">
+<li>Peserta tetap bisa mengerjakan. Jawaban disimpan di perangkat dan terkirim otomatis saat tersambung lagi.</li>
+<li><strong>Jangan tutup halaman, jangan hapus data browser</strong>, dan jangan memakai mode penyamaran.</li>
+<li>Bila waktu habis saat offline, jawaban dikirim begitu perangkat tersambung.</li>
+<li>Banyak peserta offline bersamaan: periksa Wi-Fi/akses internet sekolah. Bila lebih dari ± 5 menit, <strong>jeda sesi</strong> agar waktu peserta tidak berkurang.</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">Layar peserta terkunci atau merah</summary>
+<ol class="stack mt-3">
+<li>Layar merah berbunyi: peserta keluar dari halaman ujian. Minta peserta kembali dan menekan <strong>Lanjutkan</strong>. Kejadian tercatat.</li>
+<li>Terkunci setelah beberapa kali keluar halaman: periksa peserta, lalu layar pengawas → nama peserta → <strong>Buka kunci</strong>. Waktu tetap berjalan.</li>
+<li>Seluruh sesi terkunci dengan tulisan dijeda: sesi sedang dijeda pengawas atau koordinator. Tekan <strong>Lanjutkan semua</strong>.</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">Tidak ada bunyi saat peserta keluar halaman</summary>
+<ol class="stack mt-3">
+<li>Volume dan mode senyap HP tidak bisa diatur dari browser. Minta peserta menaikkan volume sebelum mulai.</li>
+<li>iPhone/iPad dalam mode senyap bisa tidak berbunyi sama sekali.</li>
+<li>Indikator di layar pengawas adalah acuan utama, bukan bunyi.</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">Soal tidak bisa dikerjakan atau kunci salah</summary>
+<ol class="stack mt-3">
+<li>Saat ujian: <strong>catat kejadian</strong> di layar pengawas agar masuk berita acara. Bila gambar soal tidak muncul, peserta boleh melewati soal itu dulu.</li>
+<li>Koordinator bisa <strong>membatalkan soal</strong> (tab Soal) agar poinnya tidak dihitung.</li>
+<li>Setelah ujian, pemilik ujian bisa <strong>membetulkan kunci dan menilai ulang</strong> dari analisis butir.</li>
+</ol>
+</details>
+<details class="card">
+<summary class="font-semibold">Peserta tidak hadir atau sudah mengumpulkan terlalu cepat</summary>
+<ol class="stack mt-3">
+<li>Jawaban yang sudah dikumpulkan tidak bisa dibuka lagi.</li>
+<li>Peserta yang tidak hadir atau perlu mengulang dibuatkan <strong>ujian susulan</strong> oleh pemilik ujian atau koordinator (detail ujian → tab Tindak lanjut).</li>
+</ol>
+</details>
+</section>
+{{end}}

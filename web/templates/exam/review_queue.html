@@ -4,11 +4,13 @@
 {{template "back_nav" crumbs "Ujian" "/ujian" "Telaah soal" ""}}
 <div class="page-header"><div><h1>Telaah soal</h1><p class="muted">Soal yang diajukan guru lain untuk ditelaah. Setujui, atau minta perbaikan dengan catatan.</p></div></div>
 {{template "flash" .}}
-{{if not .Review}}<section class="card empty-state"><p>Telaah soal tidak aktif. Admin/TU atau koordinator ujian bisa mengaktifkannya di <a href="/ujian/pengaturan">Pengaturan ujian</a>.</p></section>
+{{if not .Review}}<section class="card empty-state empty-guide"><p>Telaah soal tidak aktif. Admin/TU atau koordinator ujian bisa mengaktifkannya di <a href="/ujian/pengaturan">Pengaturan ujian</a>.</p></section>
 {{else if .Rows}}
 <div class="stack">{{range .Rows}}<article class="card question-row"><div class="min-w-0 flex-1">
 <div class="question-meta"><span class="badge">{{.Kind.Label}}</span><span class="text-sm text-slate-500">{{.StimulusTitle}} · {{.CreatorName}} · v{{.Version}}</span></div>
 <p class="question-snippet" dir="auto"><a href="/ujian/soal/{{.ID}}">{{.Snippet}}</a></p></div>
 <a class="btn btn-primary btn-sm" href="/ujian/soal/{{.ID}}#telaah">Telaah</a></article>{{end}}</div>
-{{else}}<section class="card empty-state"><p>Tidak ada soal yang menunggu telaah.</p></section>{{end}}
+{{else}}<section class="card empty-guide"><h2 class="card-title">Tidak ada soal yang menunggu telaah</h2>
+<p>Soal muncul di sini saat guru menekan <strong>Ajukan telaah</strong> pada soal draf. Soal yang Anda setujui berstatus siap dan bisa dipakai di ujian.</p>
+<p class="mt-4"><a class="btn btn-ghost" href="/ujian/bank/">Buka bank soal</a></p></section>{{end}}
 {{end}}

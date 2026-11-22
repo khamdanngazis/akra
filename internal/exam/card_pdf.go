@@ -59,29 +59,33 @@ func formatCode(c string) string {
 // Setiap kartu memuat identitas, nomor peserta, ruang dan kursi, jadwal,
 // kode masuk, dan QR berisi tautan login dengan NIS terisi (tanpa kode).
 func WriteCardsPDF(w io.Writer, lh Letterhead, cards []Card, printedAt time.Time, compress bool) error {
+	return WriteCardsPDFWith(w, lh, cards, printedAt, compress, CardOptions{})
+}
+
+// CardOptions mengatur cetak kartu peserta.
+type CardOptions struct {
+	// Guide menambah halaman belakang berisi panduan peserta singkat di
+	// setiap kartu (T154), untuk cetak bolak-balik (balik di sisi panjang).
+	Guide bool
+}
+
+// WriteCardsPDFWith seperti WriteCardsPDF dengan pilihan opts.
+func WriteCardsPDFWith(w io.Writer, lh Letterhead, cards []Card, printedAt time.Time, compress bool, opts CardOptions) error {
 	pdf, tr := newDocPDF("Kartu Peserta Ujian", "P", printedAt, compress)
 	pdf.SetMargins(cardMargin, cardMargin, cardMargin)
 	pdf.SetAutoPageBreak(false, 0)
 	pageW, pageH := pdf.GetPageSize()
 	cw := (pageW - 2*cardMargin) / cardCols
 	ch := (pageH - 2*cardMargin) / cardRows
+	perPage := cardCols * cardRows
 	for i, c := range cards {
-		slot := i % (cardCols * cardRows)
+		slot := i % perPage
 		if slot == 0 {
+			if opts.Guide && i > 0 {
+				writeCardGuides(pdf, tr, perPage)
+			}
 			pdf.AddPage()
-			// Garis potong.
-			pdf.SetDrawColor(160, 160, 160)
-			pdf.SetLineWidth(0.2)
-			pdf.SetDashPattern([]float64{2, 1.5}, 0)
-			for col := 0; col <= cardCols; col++ {
-				x := cardMargin + float64(col)*cw
-				pdf.Line(x, cardMargin, x, pageH-cardMargin)
-			}
-			for row := 0; row <= cardRows; row++ {
-				y := cardMargin + float64(row)*ch
-				pdf.Line(cardMargin, y, pageW-cardMargin, y)
-			}
-			pdf.SetDashPattern([]float64{}, 0)
+			cutLines(pdf, cw, ch)
 		}
 		x := cardMargin + float64(slot%cardCols)*cw + 3
 		y := cardMargin + float64(slot/cardCols)*ch + 3
@@ -162,6 +166,75 @@ func WriteCardsPDF(w io.Writer, lh Letterhead, cards []Card, printedAt time.Time
 	}
 	if len(cards) == 0 {
 		pdf.AddPage()
+	} else if opts.Guide {
+		writeCardGuides(pdf, tr, (len(cards)-1)%perPage+1)
 	}
 	return pdf.Output(w)
+}
+
+// cutLines menggambar garis potong kartu di halaman aktif.
+func cutLines(pdf *fpdf.Fpdf, cw, ch float64) {
+	pageW, pageH := pdf.GetPageSize()
+	pdf.SetDrawColor(160, 160, 160)
+	pdf.SetLineWidth(0.2)
+	pdf.SetDashPattern([]float64{2, 1.5}, 0)
+	for col := 0; col <= cardCols; col++ {
+		x := cardMargin + float64(col)*cw
+		pdf.Line(x, cardMargin, x, pageH-cardMargin)
+	}
+	for row := 0; row <= cardRows; row++ {
+		y := cardMargin + float64(row)*ch
+		pdf.Line(cardMargin, y, pageW-cardMargin, y)
+	}
+	pdf.SetDashPattern([]float64{}, 0)
+}
+
+// cardGuideLines adalah panduan peserta singkat di balik kartu.
+var cardGuideLines = [][2]string{
+	{"Masuk", "Pindai QR di kartu, lalu ketik NIS dan kode."},
+	{"Kerjakan", "Jawaban tersimpan otomatis. Hijau = sudah dijawab."},
+	{"Ragu-ragu", "Tandai soal yang ingin dicek lagi (kuning)."},
+	{"Offline", "Tetap kerjakan. Jangan tutup halaman ujian."},
+	{"Kumpulkan", "Cek nomor abu-abu dan kuning, lalu Kumpulkan."},
+}
+
+// writeCardGuides menambah halaman belakang untuk n kartu di halaman
+// sebelumnya. Kolom dicerminkan agar panduan tepat di balik kartunya.
+func writeCardGuides(pdf *fpdf.Fpdf, tr func(string) string, n int) {
+	pdf.AddPage()
+	pageW, pageH := pdf.GetPageSize()
+	cw := (pageW - 2*cardMargin) / cardCols
+	ch := (pageH - 2*cardMargin) / cardRows
+	cutLines(pdf, cw, ch)
+	for slot := 0; slot < n; slot++ {
+		col := cardCols - 1 - slot%cardCols
+		x := cardMargin + float64(col)*cw + 4
+		y := cardMargin + float64(slot/cardCols)*ch + 4
+		inner := cw - 8
+		pdf.SetTextColor(13, 148, 136)
+		pdf.SetFont("Helvetica", "B", 9)
+		pdf.SetXY(x, y)
+		pdf.CellFormat(inner, 4.5, tr("CARA MENGIKUTI UJIAN"), "", 2, "L", false, 0, "")
+		pdf.Ln(1)
+		for k, l := range cardGuideLines {
+			ly := pdf.GetY()
+			pdf.SetFillColor(13, 148, 136)
+			pdf.Circle(x+2, ly+2.2, 2, "F")
+			pdf.SetTextColor(255, 255, 255)
+			pdf.SetFont("Helvetica", "B", 6.5)
+			pdf.SetXY(x, ly+0.5)
+			pdf.CellFormat(4, 3.4, fmt.Sprint(k+1), "", 0, "C", false, 0, "")
+			pdf.SetTextColor(15, 23, 42)
+			pdf.SetFont("Helvetica", "B", 7.5)
+			pdf.SetXY(x+5.5, ly)
+			pdf.CellFormat(17, 4.4, tr(l[0]), "", 0, "L", false, 0, "")
+			pdf.SetFont("Helvetica", "", 7.5)
+			pdf.CellFormat(inner-22.5, 4.4, fitText(pdf, tr, l[1], inner-22.5), "", 2, "L", false, 0, "")
+			pdf.SetY(ly + 6.2)
+		}
+		pdf.SetTextColor(71, 85, 105)
+		pdf.SetFont("Helvetica", "I", 7)
+		pdf.SetXY(x, y+ch-14)
+		pdf.CellFormat(inner, 4, tr("Ada masalah? Angkat tangan dan panggil pengawas."), "", 0, "L", false, 0, "")
+	}
 }

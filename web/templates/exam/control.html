@@ -151,6 +151,7 @@
 </li>
 {{end}}
 </ul>
-{{else}}<p class="card muted mt-3">Tidak ada sesi agenda hari ini.</p>{{end}}
+{{else}}<section class="card empty-guide mt-3"><p>Tidak ada sesi agenda hari ini.</p><p class="hint">Pusat kendali menampilkan semua ruang dan sesi pada hari ujian. Pastikan jadwal, pembagian ruang, dan pengawas sudah diterapkan ke sesi.</p>
+<p class="mb-0 action-row"><a class="btn btn-ghost btn-sm" href="/ujian/agenda/{{$.Event.ID}}">Buka agenda</a><a class="btn btn-ghost btn-sm" href="/ujian/bantuan">Butuh bantuan?</a></p></section>{{end}}
 <span hidden data-updated-at="{{$l.UpdatedAt}}"></span>
 {{end}}

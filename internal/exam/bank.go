@@ -53,6 +53,7 @@ type Bank struct {
 	CreatorName string
 	CreatedAt   time.Time
 	ArchivedAt  *time.Time
+	Sample      bool // bank contoh bawaan (T154)
 }
 
 // resource mengembalikan sumber daya cek akses bank.
@@ -66,7 +67,7 @@ type BankForm struct {
 }
 
 const bankCols = `b.id, b.school_id, b.name, coalesce(b.subject_id::text, ''), coalesce(s.name, ''), coalesce(b.grade_level, 0),
-	b.created_by, u.full_name, b.created_at, b.archived_at`
+	b.created_by, u.full_name, b.created_at, b.archived_at, b.sample`
 
 const bankFrom = ` FROM exam_banks b
 	LEFT JOIN subjects s ON s.id = b.subject_id AND s.school_id = b.school_id
@@ -74,7 +75,7 @@ const bankFrom = ` FROM exam_banks b
 
 func scanBank(r pgx.CollectableRow) (Bank, error) {
 	var b Bank
-	err := r.Scan(&b.ID, &b.SchoolID, &b.Name, &b.SubjectID, &b.SubjectName, &b.GradeLevel, &b.CreatedBy, &b.CreatorName, &b.CreatedAt, &b.ArchivedAt)
+	err := r.Scan(&b.ID, &b.SchoolID, &b.Name, &b.SubjectID, &b.SubjectName, &b.GradeLevel, &b.CreatedBy, &b.CreatorName, &b.CreatedAt, &b.ArchivedAt, &b.Sample)
 	return b, err
 }
 

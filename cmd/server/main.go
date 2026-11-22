@@ -165,7 +165,8 @@ func run(logger *slog.Logger) error {
 		jobs: jobClient, dev: cfg.AppEnv == config.EnvDevelopment, store: store, pii: keys,
 		examTokens: examTokens,
 		metrics:    reg, saveFault: cfg.ExamFaultSavePercent, draining: draining,
-		ops: opsDeps{token: cfg.OpsToken, env: cfg.AppEnv, notifier: notifier},
+		ops:     opsDeps{token: cfg.OpsToken, env: cfg.AppEnv, notifier: notifier},
+		support: exam.Support{WhatsApp: cfg.SupportWhatsApp, Email: cfg.SupportEmail, Hours: cfg.SupportHours, PeakHours: cfg.SupportHoursPeak},
 	})
 	if err != nil {
 		return err

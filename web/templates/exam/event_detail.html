@@ -175,6 +175,7 @@
 <div class="field"><label for="card-room">Ruang</label><select id="card-room" name="room_id"><option value="">Semua ruang</option>{{range .Plans}}{{if eq .Shift 1}}<option value="{{.Room.ID}}">{{.Room.Name}}</option>{{end}}{{end}}</select></div>
 <div class="field"><label for="card-class">Kelas</label><select id="card-class" name="class_id"><option value="">Semua kelas</option>{{range .Classes}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></div>
 {{if .Issued}}<label class="choice text-sm"><input type="checkbox" name="ulang" value="1"> Cetak ulang ({{.Issued}} siswa sudah punya kartu; kartu lama tidak berlaku)</label>{{end}}
+<label class="choice text-sm"><input type="checkbox" name="panduan" value="1"> Panduan peserta di balik kartu (cetak bolak-balik)</label>
 <button type="submit" class="btn btn-primary">Cetak kartu</button>
 </form>
 {{end}}
