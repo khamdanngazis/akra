@@ -2,6 +2,13 @@
 
 Panduan untuk sekolah yang memakai modul ujian online AKRA. Ditulis untuk dibaca sendiri tanpa pelatihan panjang.
 
+**Modul Ujian Online** dinyalakan tim implementator AKRA per sekolah, bersama tahap rilisnya (tes seleksi, ulangan guru, PTS/PAS). Admin TU dan kepala sekolah bisa melihat modul yang dipakai sekolah di **Pengaturan → Modul & Paket**. Bila menu Ujian tidak ada atau muncul halaman "Modul tidak aktif", modul belum termasuk paket sekolah: hubungi tim AKRA.
+
+Beberapa fitur ujian butuh modul lain:
+- **Kirim ke rapor** butuh modul Nilai & Rapor;
+- **Tes seleksi** butuh modul Pendaftaran;
+- **Koordinator ujian** hanya bisa ditetapkan bila modul Ujian aktif.
+
 | Untuk | Panduan | Isi |
 |---|---|---|
 | Guru mapel | [guru.md](guru.md) | Bank soal, impor Word/Excel, membuat ulangan, koreksi esai, analisis, kirim ke rapor |

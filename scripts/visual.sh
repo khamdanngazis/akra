@@ -11,6 +11,8 @@
 #   VISUAL_OUT  folder hasil (bawaan tmp/visual)
 #   CHROME      perintah Chrome (bawaan google-chrome atau chromium)
 #   --panduan   salin tangkapan desktop ke doc/panduan-ujian/img
+#   --modules   juga potret menu dan beranda paket Dasar dan Keuangan
+#               (halaman pkg-*, T169)
 #   pola        hanya halaman yang namanya cocok, mis. 'ujian-*'
 #
 # Lampirkan tangkapan halaman yang berubah di setiap PR yang mengubah
@@ -21,10 +23,12 @@ cd "$(dirname "$0")/.."
 : "${TEST_DATABASE_URL:?TEST_DATABASE_URL harus diisi (database uji lokal)}"
 out=$(realpath -m "${VISUAL_OUT:-tmp/visual}")
 panduan=0
+modules=""
 pattern='*'
 for arg in "$@"; do
   case "$arg" in
     --panduan) panduan=1 ;;
+    --modules) modules=1 ;;
     *) pattern=$arg ;;
   esac
 done
@@ -36,7 +40,7 @@ fi
 
 mkdir -p "$out/hp"
 rm -f "$out"/*.html "$out"/*.png "$out"/hp/*.html "$out"/hp/*.png "$out/overflow.txt"
-VISUAL_OUT="$out" go test ./cmd/server/ -run '^TestVisual$' -count=1
+VISUAL_OUT="$out" VISUAL_MODULES="$modules" go test ./cmd/server/ -run '^TestVisual$' -count=1
 
 shoot() { # shoot <lebar> <tinggi> <png> <url>
   "$chrome" --headless=new --disable-gpu --no-sandbox --hide-scrollbars \

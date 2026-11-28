@@ -94,7 +94,7 @@ Bedakan masalah satu peserta, satu ruang, atau satu sekolah.
 1. **Satu peserta**: pengawas membuka layar pengawas → peserta → *Reset login* (kode baru untuk sesi itu) atau *Izinkan pindah perangkat*. Kode terkunci karena salah 5 kali juga dibuka dari sini.
 2. **Satu ruang/lab**: biasanya jaringan. Minta pengawas membuka `/u/cek` di satu perangkat (cek koneksi). Bila semua perangkat lab gagal: cek Wi-Fi/akses internet sekolah. Batas login per IP sudah longgar (3.000/15 menit) untuk lab di belakang satu IP.
 3. **Seluruh sekolah**: cek `/status` dan `/internal/`. Bila server normal (tidak ada alert), periksa:
-   - modul ujian aktif untuk sekolah (`akra-modul -school <kode>`);
+   - modul ujian aktif untuk sekolah (`akra-modul -school <kode>`); bila tidak, lihat bagian 7;
    - jadwal sesi (jam mulai/selesai, zona waktu sekolah);
    - kode kartu sudah diterbitkan (tab Dokumen agenda) dan peserta memakai alamat `/u/<kode-sekolah>`.
 4. Bila server bermasalah: lihat bagian 1–2.
@@ -113,6 +113,21 @@ Perangkat masih menyimpan perubahan saat attempt sudah dikumpulkan (lewat tengga
 4. Catat sebagai temuan pilot ([doc/uji-mvp4.md](uji-mvp4.md)). Target pilot: 0.
 
 Salinan ini ikut dihapus oleh job masa simpan data ujian.
+
+## 7. "Modul tidak aktif" dan permintaan aktivasi modul
+
+**Tanda:** pengguna sekolah melihat halaman **"Modul tidak aktif"** ("Modul {nama} tidak aktif untuk sekolah Anda"), menu modul itu tidak ada, atau halaman publik pendaftaran/peserta menjawab "tidak ditemukan".
+
+Halaman ini bukan gangguan: sekolah tidak memakai modul itu (ADR 0002). Data modul yang dimatikan tetap tersimpan.
+
+1. **Cek status sekolah:** `akra-modul -school <kode>` menampilkan paket dan modul aktif. Riwayat perubahan ada di audit (`action LIKE 'module.%'`, lihat [implementator-modul.md](implementator-modul.md) bagian 5).
+2. **Modul memang tidak termasuk paket:**
+   - teruskan ke tim implementator AKRA sebagai permintaan aktivasi, beserta kode sekolah, modul, dan alasannya;
+   - sekolah bisa melihat modulnya sendiri di **Pengaturan → Modul & Paket** (admin TU dan kepala sekolah).
+3. **Modul seharusnya aktif** (mis. terlanjur dimatikan): tim implementator menyalakannya dengan catatan, mis. `akra-modul -school <kode> -module exam -on -option release=r2 -note "tiket #123"`. Perubahan terlihat tanpa login ulang, paling lama 30 detik.
+4. **Mematikan modul ditolak penjaga** (sesi ujian dalam 24 jam, periode pendaftaran dibuka): jangan dipaksa. Tunggu sesi selesai atau minta sekolah menutup periodenya. Untuk keuangan dengan tagihan belum lunas, `-force` hanya setelah sekolah setuju tagihan tidak lagi terlihat orang tua.
+
+**Pesan ke sekolah:** *"Modul itu belum termasuk paket sekolah Anda. Permintaan sudah kami teruskan ke tim implementator; datanya aman dan akan muncul saat modul diaktifkan."*
 
 ---
 

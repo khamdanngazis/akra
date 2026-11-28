@@ -1,6 +1,6 @@
 # ADR 0002 — Modul dan paket per sekolah
 
-- **Status:** diterima 2026-11-22. Keputusan pemilik produk ada di bagian 8
+- **Status:** diterima 2026-11-22, diterapkan 2026-11-28 (T163–T169). Keputusan pemilik produk ada di bagian 8, keputusan final implementasi di bagian 9
 - **Tanggal:** 2026-11-22
 - **Terkait:** [analisis menu](../analisis-menu.md), [ADR 0001](0001-modul-ujian.md) (aktivasi modul ujian T125), task di `tasks_schoolos_mvp4/22-modul-sekolah/`
 
@@ -143,7 +143,7 @@ Paket adalah **templat** kumpulan modul, bukan batas teknis. Konfigurasi sekolah
 ## 7. Pengujian
 - **Registry route:** setiap entri punya `Module`. Uji memastikan setiap route modul memberi 404 / "modul tidak aktif" bila modulnya mati, dan route modul lain tetap 200.
 - **Kombinasi:** satu sekolah "inti saja", satu per paket, dan "semua kecuali X" untuk setiap modul. Diuji untuk menu, beranda, portal, dan laporan (tanpa error dan tanpa tautan ke modul mati).
-- **Uji lintas sekolah (T58)** dan **uji orang tua (T59)** tetap lulus untuk semua kombinasi.
+- **Uji lintas sekolah (T58)** dan **uji orang tua (T59)** tetap lulus. Keduanya berjalan dengan konfigurasi bawaan; untuk setiap kombinasi, yang diuji adalah tanpa 5xx, tanpa tautan ke modul mati, dan penegakan route per modul (lihat bagian 9).
 
 ## 8. Keputusan (2026-11-22)
 
@@ -154,3 +154,19 @@ Paket adalah **templat** kumpulan modul, bukan batas teknis. Konfigurasi sekolah
 | 3 | Sekolah yang sudah ada saat rilis | **Semua modul non-ujian aktif**; ujian tetap per sekolah seperti sekarang |
 | 4 | Biaya formulir pendaftaran tanpa modul keuangan | **Tetap bisa.** Kuitansi dan penomoran dari `payments` dipakai bersama; dicatat admin TU bila tidak ada bendahara |
 | 5 | Inti cukup atau perlu dipecah (mis. pengguna/peran, mapel) | Cukup; mapel dan penugasan dibutuhkan absensi per mapel, nilai, jadwal, dan ujian (usulan, tidak dipersoalkan) |
+
+## 9. Keputusan final implementasi (T163–T169, 2026-11-28)
+
+| Bagian | Keputusan |
+|---|---|
+| Penyimpanan | Tabel `school_modules` (migrasi 089) dengan `options`, `changed_at`, `changed_by` (teks: pelaku tim implementator), `note`; `schools.package` label paket. Modul tanpa baris memakai bawaan katalog: semua aktif kecuali ujian. Kunci lama `exam.enabled`/`exam.release` tidak dibaca lagi dan dihapus di migrasi rilis berikutnya |
+| Katalog | `internal/platform/module`: 10 modul, ketergantungan wajib (saat ini hanya inti), ketergantungan opsional, pola route per modul, fitur, dan pilihan yang divalidasi (`exam.release`) |
+| Status per request | `module.Middleware` di grup login memuat set modul sekali per request (cache 30 detik per replika); sesi tidak menyimpan modul. Template memakai `modules`/`hasModule`. Halaman publik membaca per sekolah (`module.Load`) |
+| Penegakan route | Satu penjaga terpusat (`module.Enforce`) dari pola route katalog, bukan middleware per paket. Satu path bisa butuh beberapa modul (mis. tab tagihan portal: portal + keuangan). Fitur lintas modul yang ada di route modul lain (kirim ke rapor, nilai ke Dapodik) ikut dipetakan ke modul nilai. Registry route mencatat `Module` setiap route dan diuji sama dengan katalog |
+| Halaman staf modul mati | 404 "Modul tidak aktif" dengan nama modul, dirender sebelum handler; JSON dan unduhan 404 biasa |
+| Lintas modul | Sesuai bagian 4 dan T166. Tes online lama tetap tertaut saat modul ujian dimatikan (nilai tidak hilang); tes baru hanya di kertas. Hub Laporan dan Pengaturan yang kosong untuk pengguna disembunyikan |
+| Pengelola | `module.Admin` satu-satunya jalan mengubah modul: catatan wajib, ketergantungan, penjaga (ujian: sesi dalam 24 jam; pendaftaran: periode dibuka; keuangan: tagihan belum lunas, bisa `force`), audit `module.<kode>` dan `module.package`. CLI `akra-modul` memakainya; UI implementator menyusul dengan layanan yang sama |
+| Paket | `module.Packages`: Dasar, Akademik, Keuangan, Lengkap. Sekolah baru lewat `akra-seed` mendapat paket Dasar. Sekolah demo (`akra-demoseed`) tanpa paket kecuali diminta, agar demo tetap lengkap |
+| Sekolah | Pengaturan → Modul & Paket (admin TU, kepala sekolah), baca saja |
+| Uji | Penegakan per modul (`TestModuleGate`), pemindai tautan halaman lintas modul, fitur lintas modul, dan kombinasi: inti saja, setiap paket, dan semua kecuali X (`TestModuleCombinations`, 14 kombinasi × ±480 halaman, tanpa 5xx dan tanpa tautan ke modul mati). Harness visual `scripts/visual.sh --modules` memotret menu dan beranda paket Dasar dan Keuangan |
+| Panduan | [doc/implementator-modul.md](../implementator-modul.md) untuk tim implementator; runbook ujian bagian 7 untuk "modul tidak aktif" |

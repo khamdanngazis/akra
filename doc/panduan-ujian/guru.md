@@ -76,7 +76,7 @@ Buka **Ujian → Sesi saya → Layar pengawas** (guru yang membuat ulangan otoma
 
 ## 7. Kirim nilai ke rapor
 
-Detail ujian → **Kirim ke rapor**. Pilih komponen nilai tujuan, periksa **pratinjau per siswa**, lalu kirim.
+Detail ujian → **Kirim ke rapor**. Pilih komponen nilai tujuan, periksa **pratinjau per siswa**, lalu kirim. Fitur ini hanya ada bila sekolah memakai modul **Nilai & Rapor**.
 
 - Remedial tidak pernah menurunkan nilai dan dibatasi KKM. Beberapa ulangan ke komponen yang sama dirata-rata.
 - Siswa yang tidak hadir dan jawaban yang menunggu koreksi esai tidak diubah.
