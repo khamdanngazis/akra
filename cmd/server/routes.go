@@ -101,6 +101,8 @@ type routerDeps struct {
 	// modules memuat modul aktif sekolah ke context setiap request login
 	// (T163).
 	modules func(http.Handler) http.Handler
+	// moduleGate menolak route modul yang tidak aktif (T164).
+	moduleGate func(http.Handler) http.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -188,7 +190,7 @@ func newRouter(d routerDeps) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireLogin(d.sessions))
 			if d.modules != nil { // router uji tanpa database
-				r.Use(d.modules)
+				r.Use(d.modules, d.moduleGate)
 			}
 			// Peran: semua peran.
 			r.Method(http.MethodGet, "/", d.home)

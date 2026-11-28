@@ -22,7 +22,7 @@ func TestCatalog(t *testing.T) {
 			t.Errorf("duplicate module %s", m.ID)
 		}
 		seen[m.ID] = true
-		if m.Name == "" || m.Desc == "" || len(m.Prefixes) == 0 {
+		if m.Name == "" || m.Desc == "" || len(m.Routes) == 0 {
 			t.Errorf("%s: name, description, or route prefixes missing", m.ID)
 		}
 		for _, r := range append(append([]ID(nil), m.Requires...), m.Optional...) {
@@ -223,5 +223,40 @@ func TestMigrationSchoolModules(t *testing.T) {
 			t.Errorf("%s: %d rows, want %d", c.school, n, len(Catalog)-1)
 		}
 		Forget(c.school)
+	}
+}
+
+// Pencocokan route ke modul (T164): per segmen, "*" dan "{...}" untuk satu
+// segmen, akhiran ".ext" pada segmen terakhir, dan beberapa modul sekaligus.
+func TestRequiredAndOwner(t *testing.T) {
+	for _, c := range []struct {
+		path, required string
+		owner          ID
+	}{
+		{"/siswa/123", "", Core},
+		{"/laporan", "", Core},
+		{"/laporan/kehadiran.pdf", "attendance", Attendance},
+		{"/laporan/tunggakan.xlsx", "billing", Billing},
+		{"/pengaturan/absensi", "attendance", Attendance},
+		{"/ujian/paket/1", "exam", Exam},
+		{"/u/sekolah-a", "exam", Exam},
+		{"/umum", "", Core},
+		{"/s/sd-a", "", Core},
+		{"/s/sd-a/daftar/isi/1", "admission", Admission},
+		{"/portal/siswa/{id}/tagihan", "billing,portal", Billing},
+		{"/portal/siswa/9/rapor.pdf", "grades,portal", Grades},
+		{"/portal/pengumuman", "announcements,portal", Announcements},
+		{"/siswa/{id}/wali/{guardianID}/akun", "portal", Portal},
+	} {
+		var got []string
+		for _, id := range Required(c.path) {
+			got = append(got, string(id))
+		}
+		if strings.Join(got, ",") != c.required || Owner(c.path) != c.owner {
+			t.Errorf("%s: required %v owner %s, want %s %s", c.path, got, Owner(c.path), c.required, c.owner)
+		}
+	}
+	if miss := NewSet(Portal).Missing("/portal/siswa/1/tagihan"); len(miss) != 1 || miss[0] != Billing {
+		t.Errorf("missing = %v", miss)
 	}
 }

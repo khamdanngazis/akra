@@ -24,6 +24,12 @@ func NotFound(rd Renderer, w http.ResponseWriter, r *http.Request, user any, mes
 	rd.Render(w, r, http.StatusNotFound, "error", ErrorView{User: user, Title: "Data tidak ditemukan", Message: message})
 }
 
+// NotFoundTitled seperti NotFound dengan judul sendiri, mis. "Modul tidak
+// aktif" (T164).
+func NotFoundTitled(rd Renderer, w http.ResponseWriter, r *http.Request, user any, title, message string) {
+	rd.Render(w, r, http.StatusNotFound, "error", ErrorView{User: user, Title: title, Message: message})
+}
+
 // ServerError mencatat err lalu merender halaman 500 tanpa detail teknis.
 func ServerError(rd Renderer, logger *slog.Logger, w http.ResponseWriter, r *http.Request, user any, op string, err error) {
 	logger.ErrorContext(r.Context(), op, "error", err)

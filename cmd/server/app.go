@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync/atomic"
 
 	"github.com/alexedwards/scs/v2"
@@ -128,6 +129,16 @@ func newApp(d appDeps) (http.Handler, error) {
 		}, func(w http.ResponseWriter, r *http.Request, err error) {
 			id, _ := auth.CurrentUser(r.Context())
 			page.ServerError(d.render, d.logger, w, r, id, "load school modules", err)
+		}),
+		// Route modul yang tidak aktif: 404 dengan pesan untuk halaman staf,
+		// 404 biasa untuk JSON dan unduhan (T164).
+		moduleGate: module.Enforce(func(w http.ResponseWriter, r *http.Request, m module.Info) {
+			if !strings.Contains(r.Header.Get("Accept"), "text/html") {
+				http.NotFound(w, r)
+				return
+			}
+			id, _ := auth.CurrentUser(r.Context())
+			page.NotFoundTitled(d.render, w, r, id, "Modul tidak aktif", module.Inactive(m))
 		}),
 		sessions:    d.sessions,
 		render:      d.render,
