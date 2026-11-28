@@ -62,8 +62,8 @@ const (
 // GroupOrder adalah urutan kelompok di menu.
 var GroupOrder = []string{GroupHome, GroupAcademic, GroupExam, GroupAdmission, GroupFinance, GroupDapodik, GroupInformation, GroupSettings}
 
-// Modul (ADR 0002). Sampai status modul per sekolah tersedia (T163), hanya
-// modul di gatedModules yang diperiksa; modul lain dianggap aktif.
+// Modul (ADR 0002), sama dengan kode di katalog internal/platform/module.
+// Item menu modul yang tidak aktif untuk sekolah disembunyikan (T163).
 const (
 	ModuleAttendance    = "attendance"
 	ModuleSchedule      = "schedule"
@@ -75,8 +75,6 @@ const (
 	ModuleAnnouncements = "announcements"
 	ModulePortal        = "portal"
 )
-
-var gatedModules = map[string]bool{ModuleExam: true}
 
 // ShortLabel mengembalikan label pendek item (untuk bottom navigation).
 func (m MenuItem) ShortLabel() string {
@@ -148,11 +146,16 @@ var SettingsItems = []MenuItem{
 	{Label: "Pengaturan Ujian", Path: "/ujian/pengaturan", Icon: "file-text", Desc: "Telaah soal dan target kisi-kisi", Module: ModuleExam, Group: "Ujian", Roles: []string{adminTU}, Duties: []string{koordinatorUjian}},
 }
 
-// MenuFor mengembalikan item menu fitur inti untuk pengguna dengan peran
-// roles, dalam urutan Items. Pengguna dengan beberapa peran mendapat
-// gabungan menu tanpa duplikat.
+// DefaultModules adalah modul bawaan sekolah (semua kecuali ujian), sama
+// dengan module.Defaults (diuji di paket module).
+var DefaultModules = []string{ModuleAttendance, ModuleSchedule, ModuleGrades, ModuleBilling, ModuleAdmission,
+	ModuleDapodik, ModuleAnnouncements, ModulePortal}
+
+// MenuFor mengembalikan item menu untuk pengguna dengan peran roles di
+// sekolah dengan modul bawaan, dalam urutan Items. Pengguna dengan beberapa
+// peran mendapat gabungan menu tanpa duplikat.
 func MenuFor(roles []string) []MenuItem {
-	return MenuForUser(roles, nil, nil)
+	return MenuForUser(roles, nil, DefaultModules)
 }
 
 // MenuForUser seperti MenuFor, ditambah item yang muncul karena tugas
@@ -168,7 +171,7 @@ func SettingsFor(roles, duties, modules []string) []Group {
 
 // moduleOn melaporkan apakah item modul m tampil untuk set modul aktif on.
 func moduleOn(m string, on map[string]bool) bool {
-	return m == "" || !gatedModules[m] || on[m]
+	return m == "" || on[m]
 }
 
 // filter memilih item list yang cocok dengan peran, tugas, dan modul aktif,

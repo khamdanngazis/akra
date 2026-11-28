@@ -21,8 +21,8 @@ import (
 	"akra/internal/auth"
 	"akra/internal/duty"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/render"
-	"akra/internal/platform/settings"
 	"akra/internal/platform/storage"
 	"akra/internal/testutil"
 	"akra/web"
@@ -129,7 +129,7 @@ func TestModuleRoutes(t *testing.T) {
 	}
 
 	// Modul nonaktif: semua route ujian 404, termasuk untuk admin.
-	if err := settings.Set(ctx, e.tx, a.ID, settings.ExamEnabled, "false"); err != nil {
+	if err := SetModule(ctx, e.tx, a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{"/ujian/", "/ujian/agenda"} {
@@ -138,9 +138,10 @@ func TestModuleRoutes(t *testing.T) {
 		}
 	}
 	// Belum pernah diatur sama dengan nonaktif.
-	if _, err := e.tx.Exec(ctx, `DELETE FROM school_settings WHERE school_id = $1 AND key LIKE 'exam.%'`, a.ID); err != nil {
+	if _, err := e.tx.Exec(ctx, `DELETE FROM school_modules WHERE school_id = $1 AND module = 'exam'`, a.ID); err != nil {
 		t.Fatal(err)
 	}
+	module.Forget(a.ID)
 	if rec := e.get("/ujian/", a.Admin); rec.Code != http.StatusNotFound {
 		t.Errorf("unset module = %d, want 404", rec.Code)
 	}
@@ -153,18 +154,19 @@ func TestLoadModule(t *testing.T) {
 	if err != nil || !m.Enabled || m.Release != R3 || !m.Has(R1) || !m.Has(R3) {
 		t.Errorf("fixture module = %+v, %v", m, err)
 	}
-	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: R1}); err != nil {
+	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: R1}, "uji", nil); err != nil {
 		t.Fatal(err)
 	}
 	if m, _ := LoadModule(ctx, e.tx, e.a.ID); !m.Has(R1) || m.Has(R2) {
 		t.Errorf("r1 module = %+v", m)
 	}
-	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: "r9"}); err == nil {
+	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: "r9"}, "uji", nil); err == nil {
 		t.Error("SetModule accepted r9")
 	}
-	if err := settings.Set(ctx, e.tx, e.a.ID, settings.ExamRelease, "r9"); err != nil {
+	if _, err := e.tx.Exec(ctx, `UPDATE school_modules SET options = '{"release": "r9"}' WHERE school_id = $1 AND module = 'exam'`, e.a.ID); err != nil {
 		t.Fatal(err)
 	}
+	module.Forget(e.a.ID)
 	if _, err := LoadModule(ctx, e.tx, e.a.ID); err == nil {
 		t.Error("LoadModule accepted stored r9")
 	}

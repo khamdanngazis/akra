@@ -13,7 +13,8 @@ func paths(items []MenuItem) string {
 	return strings.Join(s, " ")
 }
 
-var exam = []string{ModuleExam}
+// exam: modul bawaan ditambah ujian.
+var exam = append(append([]string(nil), DefaultModules...), ModuleExam)
 
 // Menu per peran (analisis menu bagian 3, T156): urutan mengikuti kelompok.
 func TestMenuFor(t *testing.T) {
@@ -186,12 +187,12 @@ func TestBottomAndShortcuts(t *testing.T) {
 		bottom  string
 	}{
 		{[]string{"admin_tu"}, exam, "/ /siswa /keuangan/tunggakan /ujian"},
-		{[]string{"admin_tu"}, nil, "/ /siswa /keuangan/tunggakan /absensi/rekap"},
+		{[]string{"admin_tu"}, DefaultModules, "/ /siswa /keuangan/tunggakan /absensi/rekap"},
 		{[]string{"kepala_sekolah"}, exam, "/ /absensi/rekap /laporan /keuangan/tunggakan"},
 		{[]string{"guru"}, exam, "/ /absensi /nilai/input /ujian"},
-		{[]string{"guru"}, nil, "/ /absensi /nilai/input /jadwal/saya"},
-		{[]string{"bendahara"}, nil, "/ /keuangan/pembayaran/baru /keuangan/tunggakan /keuangan/rekap-pembayaran"},
-		{[]string{"orang_tua"}, nil, "/portal /portal/pengumuman"},
+		{[]string{"guru"}, DefaultModules, "/ /absensi /nilai/input /jadwal/saya"},
+		{[]string{"bendahara"}, DefaultModules, "/ /keuangan/pembayaran/baru /keuangan/tunggakan /keuangan/rekap-pembayaran"},
+		{[]string{"orang_tua"}, DefaultModules, "/portal /portal/pengumuman"},
 		// Beberapa peran: peran berprioritas tertinggi didahulukan.
 		{[]string{"bendahara", "guru"}, exam, "/ /absensi /nilai/input /ujian"},
 	} {
@@ -206,7 +207,7 @@ func TestBottomAndShortcuts(t *testing.T) {
 		t.Errorf("teacher shortcuts = %s", got)
 	}
 	for _, role := range []string{"admin_tu", "kepala_sekolah", "bendahara"} {
-		sc := Shortcuts(MenuForUser([]string{role}, nil, nil), []string{role})
+		sc := Shortcuts(MenuForUser([]string{role}, nil, DefaultModules), []string{role})
 		if len(sc) != MaxShortcuts || strings.HasPrefix(paths(sc), "/ ") {
 			t.Errorf("%s shortcuts = %s", role, paths(sc))
 		}
@@ -229,13 +230,15 @@ func TestSettingsFor(t *testing.T) {
 		roles, duties, modules []string
 		want                   string
 	}{
-		{[]string{"admin_tu"}, nil, nil, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"admin_tu"}, nil, DefaultModules, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
 		{[]string{"admin_tu"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan /pengaturan/tugas | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan | Ujian:/ujian/pengaturan"},
 		{[]string{"kepala_sekolah"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
 		// Tugas koordinator hanya menambah hak guru (sama dengan matriks
 		// akses ujian): kepala sekolah koordinator tetap tanpa Pengaturan Ujian.
 		{[]string{"kepala_sekolah"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
-		{[]string{"bendahara"}, nil, nil, "Keuangan:/pengaturan/keuangan"},
+		{[]string{"bendahara"}, nil, DefaultModules, "Keuangan:/pengaturan/keuangan"},
+		// Keuangan nonaktif (T163): bagian Keuangan hilang.
+		{[]string{"bendahara"}, nil, []string{ModuleAdmission}, ""},
 		{[]string{"guru"}, nil, exam, "Sekolah:/pengaturan/penugasan"},
 		{[]string{"guru"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/penugasan | Ujian:/ujian/pengaturan"},
 		{[]string{"orang_tua"}, nil, exam, ""},
@@ -258,7 +261,7 @@ func TestMenuForUser_ModuleAndDuty(t *testing.T) {
 		return false
 	}
 	guru := []string{"guru"}
-	if m := MenuForUser(guru, []string{"koordinator_ujian"}, nil); has(m, "/ujian") || has(m, "/ujian/agenda") {
+	if m := MenuForUser(guru, []string{"koordinator_ujian"}, DefaultModules); has(m, "/ujian") || has(m, "/ujian/agenda") {
 		t.Error("exam menu shown while module is off")
 	}
 	m := MenuForUser(guru, nil, exam)
@@ -273,12 +276,13 @@ func TestMenuForUser_ModuleAndDuty(t *testing.T) {
 	if m := MenuForUser([]string{"admin_tu"}, nil, exam); !has(m, "/ujian/agenda") {
 		t.Errorf("admin with module on: %s", paths(m))
 	}
-	// Modul selain ujian belum diperiksa per sekolah (T163): selalu tampil.
-	if m := MenuFor([]string{"bendahara"}); !has(m, "/keuangan/tunggakan") {
-		t.Errorf("billing items hidden before T163: %s", paths(m))
+	// Semua modul disaring per sekolah (T163): tanpa keuangan, menu
+	// keuangan bendahara hilang; inti (beranda, laporan) tetap.
+	if m := MenuForUser([]string{"bendahara"}, nil, nil); has(m, "/keuangan/tunggakan") || !has(m, "/laporan") {
+		t.Errorf("treasurer without billing: %s", paths(m))
 	}
-	// MenuFor (tanpa modul) sama dengan MenuForUser tanpa tugas dan modul.
-	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, nil)); got != want {
+	// MenuFor sama dengan MenuForUser tanpa tugas dengan modul bawaan.
+	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, DefaultModules)); got != want {
 		t.Errorf("MenuFor = %s, want %s", got, want)
 	}
 }

@@ -16,9 +16,10 @@
 // salah, tidak ada yang berubah. -file berisi satu kode sekolah per baris;
 // baris kosong dan baris diawali # diabaikan.
 //
-// Koneksi hanya dari environment DATABASE_URL. Setiap perubahan dicatat di
-// audit sebagai aksi sistem. Pengguna sekolah melihat menu baru setelah
-// login ulang; route langsung mengikuti status baru.
+// Koneksi hanya dari environment DATABASE_URL. Status disimpan di
+// school_modules (T163) dan setiap perubahan dicatat di audit sebagai aksi
+// sistem. Pengguna sekolah melihat perubahan tanpa login ulang, paling lama
+// 30 detik per replika (cache status modul).
 package main
 
 import (
@@ -37,6 +38,7 @@ import (
 	"akra/internal/audit"
 	"akra/internal/exam"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 )
 
 func main() {
@@ -116,10 +118,11 @@ func schoolCodes(flagCodes, file string) ([]string, error) {
 // listSchools menulis status modul ujian setiap sekolah.
 func listSchools(ctx context.Context, q database.DBTX, out io.Writer) error {
 	rows, err := q.Query(ctx, `SELECT s.code, s.name,
-			coalesce((SELECT value FROM school_settings WHERE school_id = s.id AND key = 'exam.enabled'), 'false'),
-			coalesce((SELECT value FROM school_settings WHERE school_id = s.id AND key = 'exam.release'), '-'),
+			coalesce((SELECT CASE WHEN enabled THEN 'true' ELSE 'false' END FROM school_modules WHERE school_id = s.id AND module = 'exam'), 'false'),
+			coalesce((SELECT options->>'release' FROM school_modules WHERE school_id = s.id AND module = 'exam'), '-'),
 			(SELECT max(created_at) FROM audit_logs WHERE school_id = s.id AND action = 'module.exam')
 		FROM schools s ORDER BY s.code`)
+	// Status dari school_modules (T163).
 	if err != nil {
 		return err
 	}
@@ -182,13 +185,7 @@ func apply(ctx context.Context, tx pgx.Tx, code, examFlag, release string, out i
 		}
 	}
 	if after != before {
-		if err := exam.SetModule(ctx, tx, schoolID, after); err != nil {
-			return err
-		}
-		if err := audit.Record(ctx, tx, audit.Entry{
-			SchoolID: schoolID, Action: "module.exam", EntityType: "school", EntityID: schoolID,
-			Before: before, After: after,
-		}); err != nil {
+		if err := exam.SetModule(ctx, tx, schoolID, after, operator(), auditTo(tx)); err != nil {
 			return err
 		}
 	}
@@ -198,4 +195,22 @@ func apply(ctx context.Context, tx pgx.Tx, code, examFlag, release string, out i
 	}
 	_, err = fmt.Fprintf(out, "%s (%s): modul ujian %s, tahap %s\n", name, code, state, after.Release)
 	return err
+}
+
+// operator adalah pelaku perubahan di school_modules.changed_by.
+func operator() string {
+	if u := os.Getenv("USER"); u != "" {
+		return "akra-modul (" + u + ")"
+	}
+	return "akra-modul"
+}
+
+// auditTo mencatat perubahan modul di tx sebagai aksi sistem (module.<id>).
+func auditTo(tx pgx.Tx) module.Auditor {
+	return func(ctx context.Context, schoolID, action string, before, after module.State) error {
+		return audit.Record(ctx, tx, audit.Entry{
+			SchoolID: schoolID, Action: action, EntityType: "school", EntityID: schoolID,
+			Before: before, After: after,
+		})
+	}
 }

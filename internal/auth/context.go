@@ -24,11 +24,11 @@ type Identity struct {
 	// Asia/Jakarta. Pakai Location untuk konversi.
 	Timezone string
 
-	// Duties (tugas tambahan tahun ajaran aktif) dan Modules (modul aktif
-	// sekolah) diambil saat login dan hanya untuk menu. Jangan dipakai untuk
-	// otorisasi; modul ujian membaca ulang dari database (exam.LoadActor).
-	Duties  []string
-	Modules []string
+	// Duties (tugas tambahan tahun ajaran aktif) diambil saat login dan
+	// hanya untuk menu. Jangan dipakai untuk otorisasi; modul ujian membaca
+	// ulang dari database (exam.LoadActor). Modul aktif sekolah tidak di
+	// sesi: dibaca per request dari module.From (T163).
+	Duties []string
 }
 
 // Location mengembalikan zona waktu sekolah pengguna. Semua tampilan dan

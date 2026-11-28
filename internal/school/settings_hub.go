@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/module"
 	"akra/internal/platform/nav"
 )
 
@@ -39,5 +40,5 @@ type settingsHubView struct {
 
 func (h *SettingsHubHandler) show(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
-	h.render.Render(w, r, http.StatusOK, "school/settings", settingsHubView{User: id, Sections: nav.SettingsFor(id.Roles, id.Duties, id.Modules)})
+	h.render.Render(w, r, http.StatusOK, "school/settings", settingsHubView{User: id, Sections: nav.SettingsFor(id.Roles, id.Duties, module.From(r.Context()).IDs())})
 }

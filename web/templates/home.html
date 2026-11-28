@@ -1,7 +1,7 @@
 {{define "title"}}Beranda{{end}}
 {{define "header"}}{{template "app_header" .User}}{{end}}
 {{define "content"}}
-{{- $items := menu .User.Roles .User.Duties .User.Modules -}}
+{{- $items := menu .User.Roles .User.Duties modules -}}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
 <div class="min-w-0">
 <h1 class="mb-1">Selamat datang kembali, {{.User.FullName}}!</h1>

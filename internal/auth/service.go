@@ -46,8 +46,6 @@ type User struct {
 	Timezone string
 	// Duties adalah tugas tambahan di tahun ajaran aktif (T125).
 	Duties []string
-	// Modules adalah modul opsional yang aktif untuk sekolah, mis. "exam".
-	Modules []string
 }
 
 // UserCredentials adalah data pengguna yang dibutuhkan untuk login.

@@ -94,15 +94,14 @@ func TestPostgresRepository_Login(t *testing.T) {
 		}
 	})
 
-	t.Run("active-year duties and enabled modules are loaded at login", func(t *testing.T) {
+	t.Run("active-year duties are loaded at login", func(t *testing.T) {
 		if _, err := pool.Exec(ctx, `
 			WITH s AS (SELECT id FROM schools WHERE code = $1),
 			     y AS (INSERT INTO academic_years (school_id, name, start_date, end_date, is_active)
 			           SELECT id, '2026/2027', '2026-07-13', '2027-06-25', true FROM s RETURNING id, school_id),
 			     d AS (INSERT INTO staff_duties (school_id, academic_year_id, user_id, duty, created_by)
 			           SELECT y.school_id, y.id, $2, 'koordinator_ujian', $2 FROM y)
-			INSERT INTO school_settings (school_id, key, value)
-			SELECT id, 'exam.enabled', 'true' FROM s`, schoolCode, userID); err != nil {
+			SELECT 1`, schoolCode, userID); err != nil {
 			t.Fatal(err)
 		}
 		c, err := repo.FindUserForLogin(ctx, schoolCode, "budi@sekolah.id")
@@ -111,9 +110,6 @@ func TestPostgresRepository_Login(t *testing.T) {
 		}
 		if len(c.Duties) != 1 || c.Duties[0] != "koordinator_ujian" {
 			t.Errorf("Duties = %v", c.Duties)
-		}
-		if len(c.Modules) != 1 || c.Modules[0] != "exam" {
-			t.Errorf("Modules = %v", c.Modules)
 		}
 	})
 

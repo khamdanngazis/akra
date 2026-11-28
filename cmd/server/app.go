@@ -32,6 +32,8 @@ import (
 	"akra/internal/platform/jobs"
 	"akra/internal/platform/mail"
 	"akra/internal/platform/metrics"
+	"akra/internal/platform/module"
+	"akra/internal/platform/page"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/platform/storage"
@@ -119,7 +121,14 @@ func newApp(d appDeps) (http.Handler, error) {
 		hsts:     d.secure,
 		ops: &ops.Handler{DB: d.db, Metrics: reg, Render: d.render, Logger: d.logger, Notifier: d.ops.notifier,
 			Token: d.ops.token, Env: d.ops.env},
-		csrf:        csrf.Middleware(d.secure, d.logger),
+		csrf: csrf.Middleware(d.secure, d.logger),
+		modules: module.Middleware(d.db, func(r *http.Request) string {
+			id, _ := auth.CurrentUser(r.Context())
+			return id.SchoolID
+		}, func(w http.ResponseWriter, r *http.Request, err error) {
+			id, _ := auth.CurrentUser(r.Context())
+			page.ServerError(d.render, d.logger, w, r, id, "load school modules", err)
+		}),
 		sessions:    d.sessions,
 		render:      d.render,
 		static:      d.static,

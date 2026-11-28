@@ -11,12 +11,12 @@ import (
 	"akra/internal/auth"
 	"akra/internal/duty"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/page"
-	"akra/internal/platform/settings"
 )
 
-// ModuleName adalah nama modul di sesi (auth.Identity.Modules) dan menu.
-const ModuleName = "exam"
+// ModuleName adalah kode modul ujian di katalog modul dan menu.
+const ModuleName = string(module.Exam)
 
 // Release adalah tahap rilis modul ujian (indeks MVP 4 bagian 7).
 type Release string
@@ -43,20 +43,22 @@ func (m Module) Has(r Release) bool {
 	return m.Enabled && releaseRank[m.Release] >= releaseRank[r]
 }
 
-// LoadModule membaca status modul ujian sekolah. Belum diatur berarti
+// LoadModule membaca status modul ujian sekolah dari status modul sekolah
+// (T163; cache per replika, lihat module.Load). Belum diatur berarti
 // nonaktif; tahap tidak dikenal dianggap error agar salah ketik tidak
 // diam-diam membuka fitur.
 func LoadModule(ctx context.Context, q database.DBTX, schoolID string) (Module, error) {
-	on, err := settings.Bool(ctx, q, schoolID, settings.ExamEnabled, false)
+	set, err := module.Load(ctx, q, schoolID)
 	if err != nil {
 		return Module{}, err
 	}
-	rel, ok, err := settings.Get(ctx, q, schoolID, settings.ExamRelease)
-	if err != nil {
-		return Module{}, err
-	}
-	m := Module{Enabled: on, Release: R1}
-	if ok {
+	return moduleOf(set)
+}
+
+// moduleOf mengambil status modul ujian dari set modul sekolah.
+func moduleOf(set module.Set) (Module, error) {
+	m := Module{Enabled: set.Has(module.Exam), Release: R1}
+	if rel := set.Option(module.Exam, "release"); rel != "" {
 		m.Release = Release(rel)
 		if !ValidRelease(m.Release) {
 			return Module{}, fmt.Errorf("exam: invalid release %q", rel)
@@ -65,20 +67,23 @@ func LoadModule(ctx context.Context, q database.DBTX, schoolID string) (Module, 
 	return m, nil
 }
 
-// SetModule mengatur status modul ujian sekolah. Hanya dipanggil alat
-// pengelola platform (cmd/modul).
-func SetModule(ctx context.Context, q database.DBTX, schoolID string, m Module) error {
+// SetModule mengatur status modul ujian sekolah lewat module.Save (cache
+// replika ini dihapus, audit "module.exam" lewat audit bila tidak nil). Hanya
+// dipanggil alat pengelola platform (cmd/modul) dan uji.
+func SetModule(ctx context.Context, q database.DBTX, schoolID string, m Module, by string, audit module.Auditor) error {
 	if !ValidRelease(m.Release) {
 		return fmt.Errorf("exam: invalid release %q", m.Release)
 	}
-	v := "false"
-	if m.Enabled {
-		v = "true"
-	}
-	if err := settings.Set(ctx, q, schoolID, settings.ExamEnabled, v); err != nil {
+	st, _, err := module.GetState(ctx, q, schoolID, module.Exam)
+	if err != nil {
 		return err
 	}
-	return settings.Set(ctx, q, schoolID, settings.ExamRelease, string(m.Release))
+	st.Enabled = m.Enabled
+	if st.Options == nil {
+		st.Options = map[string]string{}
+	}
+	st.Options["release"] = string(m.Release)
+	return module.Save(ctx, q, schoolID, module.Exam, st, by, audit)
 }
 
 type moduleKey struct{}

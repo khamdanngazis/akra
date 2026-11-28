@@ -247,7 +247,7 @@ func TestVisual(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Modul ujian aktif (T125) agar halaman ujian ikut diperiksa.
-	exec(`INSERT INTO school_settings (school_id, key, value) VALUES ($1, 'exam.enabled', 'true'), ($1, 'exam.release', 'r3')`, sid)
+	exec(`INSERT INTO school_modules (school_id, module, enabled, options) VALUES ($1, 'exam', true, '{"release": "r3"}')`, sid)
 	rd, err := render.New(mustSub(t, "templates"), mustSub(t, "static"), logger)
 	if err != nil {
 		t.Fatal(err)

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"akra/internal/platform/settings"
 	"akra/internal/testutil"
 )
 
@@ -30,10 +29,8 @@ func TestEmptyStatesGuide(t *testing.T) {
 		return testutil.User{ID: id, Role: role}
 	}
 	admin, teacher := user("admin_tu"), user("guru")
-	for k, v := range map[string]string{settings.ExamEnabled: "true", settings.ExamRelease: "r3"} {
-		if err := settings.Set(ctx, e.tx, sid, k, v); err != nil {
-			t.Fatal(err)
-		}
+	if err := SetModule(ctx, e.tx, sid, Module{Enabled: true, Release: R3}, "uji", nil); err != nil {
+		t.Fatal(err)
 	}
 	e.schoolID = sid
 
