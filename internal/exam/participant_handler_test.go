@@ -17,7 +17,6 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/render"
-	"akra/internal/platform/settings"
 	"akra/web"
 )
 
@@ -184,7 +183,7 @@ func TestParticipantLoginGuards(t *testing.T) {
 		t.Errorf("rate limit = %d, want 429", rec.Code)
 	}
 	// Modul ujian nonaktif: halaman login 404.
-	if err := settings.Set(ctx, e.tx, e.a.ID, settings.ExamEnabled, "false"); err != nil {
+	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
 		t.Fatal(err)
 	}
 	if rec := e.do(http.MethodGet, base, nil); rec.Code != http.StatusNotFound {

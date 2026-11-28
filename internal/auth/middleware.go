@@ -39,7 +39,6 @@ func identityFromSession(r *http.Request, sm *scs.SessionManager) (Identity, boo
 	}
 	id.Roles, _ = sm.Get(ctx, sessionKeyRoles).([]string)
 	id.Duties, _ = sm.Get(ctx, sessionKeyDuties).([]string)
-	id.Modules, _ = sm.Get(ctx, sessionKeyModules).([]string)
 	if id.UserID == "" || id.SchoolID == "" {
 		return Identity{}, false
 	}

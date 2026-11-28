@@ -98,6 +98,9 @@ type routerDeps struct {
 	storage http.Handler
 	// dev berisi route khusus development (nil di staging/production).
 	dev func(chi.Router)
+	// modules memuat modul aktif sekolah ke context setiap request login
+	// (T163).
+	modules func(http.Handler) http.Handler
 }
 
 // newRouter menyusun semua route aplikasi.
@@ -184,6 +187,9 @@ func newRouter(d routerDeps) http.Handler {
 		// Wajib login.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireLogin(d.sessions))
+			if d.modules != nil { // router uji tanpa database
+				r.Use(d.modules)
+			}
 			// Peran: semua peran.
 			r.Method(http.MethodGet, "/", d.home)
 			d.academicYear.Routes(r)

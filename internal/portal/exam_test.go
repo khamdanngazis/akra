@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"akra/internal/platform/module"
 )
 
 // seedChildExam membuat ujian ulangan selesai yang hasilnya sudah dibuka,
@@ -62,9 +64,10 @@ func TestChildExams(t *testing.T) {
 	if rec := f.getPath(path, f.userSari, f.schoolA, "orang_tua"); rec.Code != http.StatusNotFound {
 		t.Fatalf("module off = %d", rec.Code)
 	}
-	if _, err := f.tx.Exec(ctx, `INSERT INTO school_settings (school_id, key, value) VALUES ($1, 'exam.enabled', 'true')`, f.schoolA); err != nil {
+	if _, err := f.tx.Exec(ctx, `INSERT INTO school_modules (school_id, module, enabled) VALUES ($1, 'exam', true)`, f.schoolA); err != nil {
 		t.Fatal(err)
 	}
+	module.Forget(f.schoolA) // diubah di luar module.Save
 	rec := f.getPath(path, f.userSari, f.schoolA, "orang_tua")
 	body := mainContent(rec.Body.String())
 	if rec.Code != http.StatusOK || !strings.Contains(body, "UH Pecahan") || !strings.Contains(body, "87,50") {

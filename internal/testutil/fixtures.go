@@ -269,7 +269,7 @@ func seedSchool(t testing.TB, tx pgx.Tx, key, hash string) *School {
 	s.DutyID = one(`INSERT INTO staff_duties (school_id, academic_year_id, user_id, duty, created_by) VALUES ($1, $2, $3, 'koordinator_ujian', $4) RETURNING id`,
 		s.ID, s.YearID, s.Principal.ID, s.Admin.ID)
 	// Modul ujian aktif sampai tahap 3 agar semua route ujian bisa diuji.
-	exec(`INSERT INTO school_settings (school_id, key, value) VALUES ($1, 'exam.enabled', 'true'), ($1, 'exam.release', 'r3')`, s.ID)
+	exec(`INSERT INTO school_modules (school_id, module, enabled, options) VALUES ($1, 'exam', true, '{"release": "r3"}')`, s.ID)
 
 	s.ExamBankID = one(`INSERT INTO exam_banks (school_id, name, subject_id, created_by) VALUES ($1, $2, $3, $4) RETURNING id`,
 		s.ID, "Bank "+marker, s.SubjectID, s.Teacher.ID)

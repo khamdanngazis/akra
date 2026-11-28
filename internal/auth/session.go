@@ -32,11 +32,10 @@ const (
 	// sessionKeyTimezone: zona waktu sekolah (T126). Sesi lama tanpa kunci
 	// ini dianggap Asia/Jakarta.
 	sessionKeyTimezone = "timezone"
-	// sessionKeyDuties dan sessionKeyModules hanya untuk menu (T125). Cek
-	// akses selalu membaca database, jadi nilai usang hanya membuat menu
-	// tertinggal sampai login berikutnya.
-	sessionKeyDuties  = "duties"
-	sessionKeyModules = "modules"
+	// sessionKeyDuties hanya untuk menu (T125). Cek akses selalu membaca
+	// database, jadi nilai usang hanya membuat menu tertinggal sampai login
+	// berikutnya. Modul aktif tidak disimpan di sesi (T163).
+	sessionKeyDuties = "duties"
 	// sessionKeySchoolCode: kode sekolah saat login, tujuan logout (/s/{kode}).
 	sessionKeySchoolCode = "school_code"
 	sessionKeyFlash      = "flash"
@@ -75,7 +74,6 @@ func startSession(ctx context.Context, sm *scs.SessionManager, u User) error {
 	sm.Put(ctx, sessionKeySchoolName, u.SchoolName)
 	sm.Put(ctx, sessionKeyTimezone, u.Timezone)
 	sm.Put(ctx, sessionKeyDuties, u.Duties)
-	sm.Put(ctx, sessionKeyModules, u.Modules)
 	return nil
 }
 
