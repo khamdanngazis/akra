@@ -141,6 +141,7 @@ var SettingsItems = []MenuItem{
 	{Label: "Mata Pelajaran", Path: "/pengaturan/mapel", Icon: "teacher", Desc: "Daftar mata pelajaran dan KKM", Group: "Sekolah", Roles: []string{adminTU}},
 	{Label: "Penugasan Guru", Path: "/pengaturan/penugasan", Icon: "user-check", Desc: "Guru pengampu mapel per kelas", Group: "Sekolah", Roles: []string{adminTU}},
 	{Label: "Mapel Saya", Path: "/pengaturan/penugasan", Icon: "user-check", Desc: "Mapel dan kelas yang Anda ampu", Group: "Sekolah", Roles: []string{guru}},
+	{Label: "Modul & Paket", Path: "/pengaturan/modul", Icon: "dashboard", Desc: "Modul yang dipakai sekolah dan isinya", Group: "Sekolah", Roles: []string{adminTU, kepala}},
 	{Label: "Tugas Tambahan", Path: "/pengaturan/tugas", Icon: "user-check", Desc: "Koordinator ujian per tahun ajaran", Module: ModuleExam, Group: "Sekolah", Roles: []string{adminTU, kepala}},
 	{Label: "Absensi per Mapel", Path: "/pengaturan/absensi", Icon: "attendance", Desc: "Izinkan guru mengisi absensi per mapel selain harian", Module: ModuleAttendance, Group: "Absensi", Roles: []string{adminTU}},
 	{Label: "Pengaturan Rapor", Path: "/pengaturan/rapor", Icon: "report", Desc: "Skala huruf, KKM, format, dan penanda tangan", Module: ModuleGrades, Group: "Nilai & Rapor", Roles: []string{adminTU}},

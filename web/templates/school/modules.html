@@ -1,0 +1,31 @@
+{{define "title"}}Modul & Paket{{end}}
+{{define "header"}}{{template "app_header" .User}}{{end}}
+{{define "content"}}
+{{template "back_nav" crumbs "Pengaturan" "/pengaturan" "Modul & Paket" ""}}
+{{template "page_header" dict "Title" "Modul & Paket" "Lead" (or (and .Package (printf "%s. Modul yang dipakai sekolah Anda dan isinya." .Package)) "Modul yang dipakai sekolah Anda dan isinya.")}}
+
+<section class="settings-section" aria-labelledby="mod-active">
+<h2 class="settings-section-title" id="mod-active">Dipakai sekolah ({{len .Active}})</h2>
+<ul class="module-list">
+{{range .Active}}<li class="tile">
+<div class="flex flex-wrap items-baseline justify-between gap-2"><strong>{{.Name}}</strong>{{if eq .ID "core"}}<span class="badge">Selalu aktif</span>{{else}}<span class="badge badge-success">Aktif{{with .Since}} sejak {{.}}{{end}}</span>{{end}}</div>
+<p class="mb-0 mt-1 text-sm text-slate-600">{{.Desc}}</p>
+{{with .Features}}<p class="mb-0 mt-1 text-sm text-slate-500">Pengaturan: {{range $i, $f := .}}{{if $i}}, {{end}}{{$f}}{{end}}.</p>{{end}}
+</li>
+{{end}}</ul>
+</section>
+
+{{with .Inactive}}
+<section class="settings-section" aria-labelledby="mod-inactive">
+<h2 class="settings-section-title" id="mod-inactive">Tidak termasuk paket ({{len .}})</h2>
+<ul class="module-list">
+{{range .}}<li class="tile">
+<div class="flex flex-wrap items-baseline justify-between gap-2"><strong>{{.Name}}</strong><span class="badge">Tidak termasuk</span></div>
+<p class="mb-0 mt-1 text-sm text-slate-600">{{.Desc}}</p>
+</li>
+{{end}}</ul>
+</section>
+{{end}}
+
+<p class="alert alert-info">Butuh modul lain? Hubungi tim implementator AKRA. Data modul yang dimatikan tidak dihapus dan muncul lagi saat modul diaktifkan kembali.</p>
+{{end}}

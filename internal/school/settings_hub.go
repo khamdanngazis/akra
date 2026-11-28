@@ -1,11 +1,13 @@
 package school
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/database"
 	"akra/internal/platform/module"
 	"akra/internal/platform/nav"
 )
@@ -18,19 +20,24 @@ const SettingsPath = "/pengaturan"
 // nav.SettingsItems: hanya halaman yang boleh dibuka peran pengguna, dan
 // hanya modul yang aktif untuk sekolah.
 type SettingsHubHandler struct {
+	db     database.DBTX
 	render Renderer
+	logger *slog.Logger
 }
 
 // NewSettingsHubHandler mengembalikan SettingsHubHandler. Route-nya harus
-// berada di dalam grup RequireLogin.
-func NewSettingsHubHandler(render Renderer) *SettingsHubHandler {
-	return &SettingsHubHandler{render: render}
+// berada di dalam grup RequireLogin. db boleh nil bila halaman Modul &
+// Paket tidak dibuka (router uji).
+func NewSettingsHubHandler(db database.DBTX, render Renderer, logger *slog.Logger) *SettingsHubHandler {
+	return &SettingsHubHandler{db: db, render: render, logger: logger}
 }
 
 // Routes mendaftarkan pusat Pengaturan ke r.
 func (h *SettingsHubHandler) Routes(r chi.Router) {
 	// Peran: admin_tu, kepala_sekolah, bendahara, guru (isi per peran).
 	r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah, auth.RoleBendahara, auth.RoleGuru)).Get(SettingsPath, h.show)
+	// Peran: admin_tu, kepala_sekolah (baca saja; modul diatur tim AKRA).
+	r.With(auth.RequireRole(auth.RoleAdminTU, auth.RoleKepalaSekolah)).Get(ModulesPath, h.modules)
 }
 
 type settingsHubView struct {
