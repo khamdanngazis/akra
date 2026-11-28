@@ -1,7 +1,8 @@
 // Command akra-demoseed membuat sekolah demo lengkap untuk presentasi dan
 // wawancara: 12 kelas, 240 siswa dan walinya, tagihan dan pembayaran sejak
-// awal tahun ajaran, absensi harian, pengumuman, serta akun aktif untuk
-// semua peran (termasuk orang tua, tanpa email aktivasi).
+// awal tahun ajaran, absensi harian, pengumuman, pendaftaran (SPMB) dengan
+// tes wawancara dan tes tertulis online yang sedang dibuka, serta akun
+// aktif untuk semua peran (termasuk orang tua, tanpa email aktivasi).
 //
 //	akra-demoseed [-code demo] [-name "SD Harapan Bangsa"] [-reset]
 //
@@ -26,8 +27,11 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/demo"
+	"akra/internal/exam/mathrender"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/pii"
+	"akra/web"
 )
 
 func main() {
@@ -75,10 +79,26 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Data pribadi pendaftar demo dienkripsi dengan kunci yang sama dengan
+	// server (PII_ENC_KEYS/PII_INDEX_KEY); di development kunci dev.
+	keys := pii.DevKeyring()
+	if os.Getenv("PII_ENC_KEYS") != "" || os.Getenv("PII_INDEX_KEY") != "" {
+		if keys, err = pii.ParseKeyring(os.Getenv("PII_ENC_KEYS"), os.Getenv("PII_INDEX_KEY")); err != nil {
+			return err
+		}
+	}
+	_, static, err := web.Load("")
+	if err != nil {
+		return err
+	}
+	math, err := mathrender.New(static)
+	if err != nil {
+		return err
+	}
 	start := time.Now()
 	var res demo.Result
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
-		res, err = demo.Seed(ctx, tx, demo.Options{Code: *code, Name: *name, Address: *address, PasswordHash: hash, Today: clock.Today(), Seed: 1, Package: *pkg})
+		res, err = demo.Seed(ctx, tx, demo.Options{Code: *code, Name: *name, Address: *address, PasswordHash: hash, Today: clock.Today(), Seed: 1, Package: *pkg, Keys: keys, Math: math})
 		return err
 	})
 	if err != nil {
@@ -98,6 +118,16 @@ func run() error {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.Role, a.Name, a.Email, a.Note)
 	}
 	_ = w.Flush()
+	if len(res.Applicants) > 0 {
+		fmt.Printf("\nPendaftaran (SPMB): cek status di /s/%s/status dengan nomor pendaftaran dan tanggal lahir.\n", *code)
+		fmt.Printf("Pendaftar terverifikasi jalur Reguler mendapat kartu tes online di halaman status; ujian di /u/%s.\n", *code)
+		w = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "PENDAFTAR\tNOMOR\tTANGGAL LAHIR\tSTATUS")
+		for _, a := range res.Applicants {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.Name, a.Number, a.BirthDate, a.Status)
+		}
+		_ = w.Flush()
+	}
 	if generated {
 		fmt.Printf("\nPassword semua akun (dibuat acak, hanya ditampilkan sekali): %s\n", password)
 	} else {

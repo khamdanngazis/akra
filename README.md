@@ -1129,7 +1129,20 @@ Data MVP 2 ([internal/demo/mvp2.go](internal/demo/mvp2.go)), juga dibuat lewat s
   - admin/TU: "Siswa alpa" (bersama);
 - mapping impor "Ekspor Dapodik" (siswa) dan "Rekap nilai guru" (nilai).
 
-Seluruh seed sekitar 30 detik di laptop development.
+Pendaftaran ([internal/demo/admission.go](internal/demo/admission.go)), juga lewat service aplikasi:
+
+- modul Ujian Online aktif (tahap `r3`) bila tanpa `-package`;
+- SPMB tahun ajaran berikutnya, gelombang 1 sedang dibuka, untuk kelas 1, dengan biaya formulir Rp150.000;
+- jalur Reguler (seleksi dengan tes, kuota 40) dan Afirmasi (urutan daftar, kuota 8);
+- 14 pendaftar: 9 diverifikasi, 4 dikirim, 1 perlu perbaikan; 6 sudah membayar biaya formulir lewat bendahara;
+- tes **Wawancara** (di kertas, bobot 40; nilai 4 pendaftar sudah diketik TU);
+- tes **Tertulis Online** (bobot 60): ujian seleksi "Tes Tertulis SPMB" berisi 10 soal (pilihan ganda, benar/salah, PG kompleks, isian, menjodohkan) dari bank "Tes Seleksi Calon Siswa Kelas 1". Sesinya dari rumah, dibuka sejak 1 jam sebelum seed selama 7 hari, untuk 7 pendaftar terverifikasi jalur Reguler.
+
+Mencoba sebagai calon siswa:
+1. Buka `/s/demo/status`, masuk dengan nomor pendaftaran dan tanggal lahir (dicetak di akhir seed). Pendaftar terverifikasi jalur Reguler melihat kartu tes online beserta kodenya.
+2. Buka `/u/demo`, masuk dengan nomor pendaftaran dan kode itu, lalu kerjakan tesnya. Nilai masuk ke peringkat pendaftaran setelah dikumpulkan.
+
+Seluruh seed sekitar 30–60 detik di laptop development.
 
 Semua akun memakai password dari `DEMO_PASSWORD`; jika kosong, password acak dicetak sekali. Email berdomain `.akra.test`, jadi tidak ada email terkirim. Perintah ini ditolak jika `APP_ENV=production`. Di staging:
 

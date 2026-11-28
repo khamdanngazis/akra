@@ -11,8 +11,10 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/billing"
+	"akra/internal/exam/mathrender"
 	"akra/internal/payments"
 	"akra/internal/platform/module"
+	"akra/internal/platform/pii"
 	"akra/internal/platform/settings"
 	"akra/internal/school"
 )
@@ -29,9 +31,13 @@ type Options struct {
 	Today time.Time
 	// Seed membuat isi acak bisa diulang.
 	Seed uint64
-	// Package adalah paket modul sekolah demo (T168); kosong = bawaan
-	// katalog (semua modul kecuali ujian), seperti sebelum ada paket.
+	// Package adalah paket modul sekolah demo (T168); kosong = semua modul,
+	// termasuk ujian (tahap r3) untuk tes seleksi online demo.
 	Package string
+	// Keys mengenkripsi data pribadi pendaftar demo (NIK); nil = kunci
+	// development. Math merender soal ujian demo; wajib untuk tes online.
+	Keys *pii.Keyring
+	Math *mathrender.Renderer
 }
 
 // Account adalah satu akun demo.
@@ -47,6 +53,8 @@ type Result struct {
 	SchoolID string
 	Accounts []Account
 	Counts   map[string]int
+	// Applicants adalah pendaftar demo (SPMB) untuk dicoba.
+	Applicants []Applicant
 }
 
 const (
@@ -102,9 +110,15 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 	if res.SchoolID, err = one(`INSERT INTO schools (name, code, address) VALUES ($1, $2, $3) RETURNING id`, o.Name, o.Code, o.Address); err != nil {
 		return res, fmt.Errorf("demo: school %s (already exists? use -reset): %w", o.Code, err)
 	}
+	ma := module.Admin{By: "akra-demoseed"}
 	if o.Package != "" {
-		if _, err := (module.Admin{By: "akra-demoseed"}).ApplyPackage(ctx, tx, res.SchoolID, o.Package, "sekolah demo", true); err != nil {
+		if _, err := ma.ApplyPackage(ctx, tx, res.SchoolID, o.Package, "sekolah demo", true); err != nil {
 			return res, fmt.Errorf("demo: package: %w", err)
+		}
+	} else if o.Math != nil {
+		// Tanpa paket: semua modul, termasuk ujian untuk tes seleksi online.
+		if _, err := ma.Enable(ctx, tx, res.SchoolID, module.Exam, map[string]string{"release": "r3"}, "sekolah demo: tes seleksi online"); err != nil {
+			return res, fmt.Errorf("demo: exam module: %w", err)
 		}
 	}
 	sid := res.SchoolID
@@ -121,7 +135,7 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 		res.Accounts = append(res.Accounts, Account{Role: role, Name: name, Email: email, Note: note})
 		return id, nil
 	}
-	admin, err := user("tu", "Rina Marlina", "admin_tu", "Admin/TU: siswa, kelas, impor, pengumuman", nil)
+	admin, err := user("tu", "Rina Marlina", "admin_tu", "Admin/TU: siswa, kelas, impor, pengumuman, pendaftaran", nil)
 	if err != nil {
 		return res, err
 	}
@@ -450,6 +464,13 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7)`, sid, year, class, a.title, a.body, o.Today.Add(-time.Duration(4*i+1)*24*time.Hour+9*time.Hour), admin); err != nil {
 			return res, err
 		}
+	}
+	keys := o.Keys
+	if keys == nil {
+		keys = pii.DevKeyring()
+	}
+	if err := seedAdmission(ctx, tx, o, rng, admissionInput{sid: sid, admin: admin, treasurer: treasurerID, year: start, math: o.Math, keys: keys}, &res); err != nil {
+		return res, err
 	}
 	return res, nil
 }

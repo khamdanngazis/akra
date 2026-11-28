@@ -8,9 +8,13 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/classes"
+	"akra/internal/exam"
+	"akra/internal/exam/mathrender"
 	"akra/internal/grades"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
+	"akra/web"
 )
 
 func TestSeed(t *testing.T) {
@@ -168,5 +172,86 @@ func TestSeed(t *testing.T) {
 
 	if len(res.Accounts) != 3+12+3+3 {
 		t.Errorf("accounts = %d", len(res.Accounts))
+	}
+}
+
+// Pendaftaran demo: periode dibuka, 14 pendaftar, tes wawancara dan tes
+// tertulis online dengan sesi dari rumah yang sedang dibuka; pendaftar
+// terverifikasi bisa langsung masuk ujian dengan kode kartu tesnya.
+func TestSeedAdmission(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := database.Connect(ctx, dsn, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback(ctx) })
+	_, static, err := web.Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	math, err := mathrender.New(static)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, _ := auth.NewHasher(auth.PasswordParams{MemoryKiB: 1024, Iterations: 1, Parallelism: 1}).HashPassword("Demo-Uji-1")
+	res, err := Seed(ctx, tx, Options{Code: "test-demo-spmb", Name: "SD Demo SPMB", PasswordHash: hash, Today: clock.Today(), Seed: 1, Math: math})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { module.Forget(res.SchoolID) })
+	count := func(sql string) int {
+		t.Helper()
+		var n int
+		if err := tx.QueryRow(ctx, sql, res.SchoolID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if n := count(`SELECT count(*) FROM admission_periods WHERE school_id = $1 AND status = 'buka'`); n != 1 {
+		t.Errorf("open periods = %d", n)
+	}
+	if len(res.Applicants) != 14 || count(`SELECT count(*) FROM applicants WHERE school_id = $1 AND status = 'diverifikasi'`) != 9 {
+		t.Errorf("applicants = %d", len(res.Applicants))
+	}
+	if n := count(`SELECT count(*) FROM admission_tests WHERE school_id = $1 AND exam_id IS NOT NULL`); n != 1 {
+		t.Errorf("online tests = %d", n)
+	}
+	if n := count(`SELECT count(*) FROM applicant_test_scores WHERE school_id = $1 AND source = 'manual' AND score IS NOT NULL`); n != 4 {
+		t.Errorf("interview scores = %d", n)
+	}
+	if n := count(`SELECT count(*) FROM exams WHERE school_id = $1 AND purpose = 'seleksi' AND status = 'terjadwal'`); n != 1 {
+		t.Errorf("scheduled admission exams = %d", n)
+	}
+	// Peserta sesi: 7 pendaftar terverifikasi jalur Reguler.
+	if n := count(`SELECT count(*) FROM exam_session_participants p JOIN exam_sessions s ON s.id = p.session_id
+		WHERE s.school_id = $1 AND s.starts_at < now() AND s.ends_at > now()`); n != 7 {
+		t.Errorf("open session participants = %d", n)
+	}
+	var appID, number string
+	for _, a := range res.Applicants {
+		if a.Status == "diverifikasi" && number == "" {
+			number = a.Number
+		}
+	}
+	if err := tx.QueryRow(ctx, `SELECT id FROM applicants WHERE school_id = $1 AND registration_number = $2`, res.SchoolID, number).Scan(&appID); err != nil {
+		t.Fatal(err)
+	}
+	card, err := exam.LoadApplicantCard(ctx, tx, exam.NewIssuer().WithCardCodes(exam.DevTokenSigner()), res.SchoolID, appID, "https://akra.test", time.Now())
+	if err != nil || card.Code == "" || len(card.Tests) == 0 {
+		t.Fatalf("card = %+v, %v", card, err)
+	}
+	p, err := exam.Login(ctx, tx, exam.LoginRequest{SchoolID: res.SchoolID, Identifier: number, Code: card.Code,
+		DeviceID: "5f0c3d1e-2a4b-4c6d-8e9f-0a1b2c3d4e5f", Now: time.Now()})
+	if err != nil || p.ApplicantID != appID {
+		t.Errorf("applicant login: %+v, %v", p, err)
 	}
 }
