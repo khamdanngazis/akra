@@ -193,6 +193,9 @@ func TestBottomAndShortcuts(t *testing.T) {
 		{[]string{"guru"}, DefaultModules, "/ /absensi /nilai/input /jadwal/saya"},
 		{[]string{"bendahara"}, DefaultModules, "/ /keuangan/pembayaran/baru /keuangan/tunggakan /keuangan/rekap-pembayaran"},
 		{[]string{"orang_tua"}, DefaultModules, "/portal /portal/pengumuman"},
+		// Modul item utama mati (T165): item berikutnya menjadi cadangan.
+		{[]string{"admin_tu"}, []string{ModuleAttendance, ModuleAnnouncements}, "/ /siswa /absensi/rekap /pengumuman"},
+		{[]string{"guru"}, []string{ModuleGrades, ModuleSchedule}, "/ /nilai/input /jadwal/saya"},
 		// Beberapa peran: peran berprioritas tertinggi didahulukan.
 		{[]string{"bendahara", "guru"}, exam, "/ /absensi /nilai/input /ujian"},
 	} {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -219,4 +220,122 @@ func slicesContains(ids []module.ID, id module.ID) bool {
 		}
 	}
 	return false
+}
+
+var linkRe = regexp.MustCompile(`(?:href|action|src|hx-get|data-[a-z-]*url)="(/[^"#?]*)`)
+
+// Halaman lintas modul (T165): untuk setiap modul yang dimatikan, beranda
+// setiap peran, portal orang tua, hub laporan, pembuat laporan, dan impor
+// dirender tanpa error dan tanpa tautan ke route modul itu.
+func TestCrossModulePagesFollowModules(t *testing.T) {
+	app, tx, a, _ := newTenantApp(t)
+	ctx := context.Background()
+	t.Cleanup(func() { module.Forget(a.ID) })
+	clients := map[string]*client{}
+	for _, u := range []testutil.User{a.Admin, a.Treasurer, a.Teacher, a.Principal, a.Parent} {
+		cl := newClient(t, app)
+		if rec := cl.login(a.Code, u.Email, testutil.Password); rec.Code != http.StatusSeeOther {
+			t.Fatalf("login %s: %d", u.Role, rec.Code)
+		}
+		clients[u.Role] = cl
+	}
+	child := a.StudentIDs[0] // anak wali Parent
+	pages := map[string][]string{
+		testutil.Admin:     {"/", "/laporan", "/laporan/bangun/", "/impor/siswa", "/impor/mapping", "/pengaturan", "/siswa/" + child},
+		testutil.Treasurer: {"/", "/laporan", "/pengaturan"},
+		testutil.Teacher:   {"/"},
+		testutil.Principal: {"/", "/laporan"},
+		testutil.Parent:    {"/portal/", "/portal/siswa/" + child},
+	}
+	for _, info := range module.Catalog {
+		m := info.ID
+		if m == module.Core {
+			continue
+		}
+		before, _, _ := module.GetState(ctx, tx, a.ID, m)
+		off := before
+		off.Enabled = false
+		if err := module.Save(ctx, tx, a.ID, m, off, "uji", nil); err != nil {
+			t.Fatal(err)
+		}
+		for role, list := range pages {
+			for _, p := range list {
+				rec := clients[role].get(p)
+				if m == module.Portal && role == testutil.Parent {
+					continue // seluruh portal tertutup (T164)
+				}
+				if rec.Code >= 400 {
+					t.Errorf("%s off: %s %s = %d", m, role, p, rec.Code)
+					continue
+				}
+				seen := map[string]bool{}
+				for _, mm := range linkRe.FindAllStringSubmatch(rec.Body.String(), -1) {
+					link := mm[1]
+					if seen[link] {
+						continue
+					}
+					seen[link] = true
+					if slicesContains(module.Required(link), m) {
+						t.Errorf("%s off: %s %s links to %s", m, role, p, link)
+					}
+				}
+			}
+		}
+		if err := module.Save(ctx, tx, a.ID, m, before, "uji", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Pembuat laporan dan impor (T165): sumber dan target modul mati
+// disembunyikan; konfigurasi lama terkunci tanpa error.
+func TestReportsAndImportFollowModules(t *testing.T) {
+	app, tx, a, _ := newTenantApp(t)
+	ctx := context.Background()
+	t.Cleanup(func() { module.Forget(a.ID) })
+	if _, err := tx.Exec(ctx, `INSERT INTO import_mappings (school_id, name, target, column_map, created_by)
+		VALUES ($1, 'Format nilai rapor lama', 'grades', '{}', $2)`, a.ID, a.Admin.ID); err != nil {
+		t.Fatal(err)
+	}
+	admin := newClient(t, app)
+	if rec := admin.login(a.Code, a.Admin.Email, testutil.Password); rec.Code != http.StatusSeeOther {
+		t.Fatal(rec.Code)
+	}
+	cfg := a.ReportConfigID // sumber kehadiran
+	if body := admin.get("/laporan/konfigurasi/").Body.String(); strings.Contains(body, "Terkunci") || !strings.Contains(body, "konfigurasi="+cfg) {
+		t.Fatal("config before: locked or not openable")
+	}
+	for _, m := range []module.ID{module.Attendance, module.Grades} {
+		if err := module.Save(ctx, tx, a.ID, m, module.State{Enabled: false}, "uji", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rec := admin.get("/laporan/konfigurasi/")
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, "Terkunci") || strings.Contains(body, "konfigurasi="+cfg) || strings.Contains(body, cfg+".xlsx") {
+		t.Errorf("locked config list = %d", rec.Code)
+	}
+	if strings.Contains(body, `value="attendance"`) || strings.Contains(body, `value="grades"`) {
+		t.Error("inactive sources offered in config form")
+	}
+	for _, p := range []string{"/laporan/bangun/?konfigurasi=" + cfg, "/laporan/konfigurasi/" + cfg + ".xlsx"} {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		for _, c := range admin.cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "terkunci") {
+			t.Errorf("%s = %d, want 404 locked", p, rec.Code)
+		}
+	}
+	if body := admin.get("/laporan/bangun/").Body.String(); strings.Contains(body, `&#34;name&#34;:&#34;attendance&#34;`) || strings.Contains(body, `"name":"attendance"`) || !strings.Contains(body, "arrears") {
+		t.Error("builder offers inactive source or lost active one")
+	}
+	if body := admin.get("/impor/mapping").Body.String(); strings.Contains(body, "Format nilai rapor lama") || strings.Contains(body, `<option value="grades">`) {
+		t.Error("import mapping shows grades target")
+	}
+	if rec := admin.do(http.MethodPost, "/impor/mapping", url.Values{"name": {"X"}, "target": {"grades"}}); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("post grades mapping = %d", rec.Code)
+	}
 }

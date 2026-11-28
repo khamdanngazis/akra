@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -90,7 +91,7 @@ type builderView struct {
 	Error      string
 }
 
-func (h *ConfigHandler) builderState(id auth.Identity, c Config) builderState {
+func (h *ConfigHandler) builderState(ctx context.Context, id auth.Identity, c Config) builderState {
 	st := builderState{Source: c.Source, Columns: nonNil(c.Columns), Sort: nonNil(c.Order),
 		Ops: map[ColumnType][]stateOp{}, MaxColumns: MaxColumns, MaxFilters: formFilterRows, MaxSort: formSortRows}
 	for t, ops := range opsByType {
@@ -99,7 +100,7 @@ func (h *ConfigHandler) builderState(id auth.Identity, c Config) builderState {
 		}
 	}
 	for _, s := range h.svc.reg.Sources() {
-		if !s.Allowed(id.Roles) {
+		if !s.Allowed(id.Roles) || !s.Active(ctx) {
 			continue
 		}
 		ss := stateSource{Name: s.Name, Label: s.Label}
@@ -123,7 +124,7 @@ func (h *ConfigHandler) builderState(id auth.Identity, c Config) builderState {
 }
 
 func (h *ConfigHandler) renderBuilder(w http.ResponseWriter, r *http.Request, id auth.Identity, status int, v builderView, c Config) {
-	st := h.builderState(id, c)
+	st := h.builderState(r.Context(), id, c)
 	b, err := json.Marshal(st)
 	if err != nil {
 		h.serverError(w, r, "builder state", err)
@@ -146,7 +147,7 @@ func (h *ConfigHandler) builder(w http.ResponseWriter, r *http.Request) {
 	if cid := r.URL.Query().Get("konfigurasi"); cid != "" {
 		saved, err := h.svc.Get(r.Context(), id, cid)
 		if errors.Is(err, ErrConfigNotFound) {
-			page.NotFound(h.render, w, r, id, msgConfigGone)
+			page.NotFound(h.render, w, r, id, goneMessage(err))
 			return
 		}
 		if err != nil {
@@ -205,7 +206,7 @@ func (h *ConfigHandler) saveFromBuilder(w http.ResponseWriter, r *http.Request) 
 	var ce *ConfigError
 	switch {
 	case errors.Is(err, ErrConfigNotFound):
-		page.NotFound(h.render, w, r, id, msgConfigGone)
+		page.NotFound(h.render, w, r, id, goneMessage(err))
 		return
 	case errors.Is(err, ErrNotOwner):
 		page.Forbidden(h.render, w, r, id, msgNotOwner)

@@ -23,6 +23,7 @@ const (
 	formFilterRows = MaxFilters
 	formSortRows   = 2
 	msgConfigGone  = "Konfigurasi laporan tidak ditemukan."
+	msgConfigLock  = "Konfigurasi laporan ini terkunci karena sumber datanya memakai modul yang tidak aktif untuk sekolah Anda."
 	msgNotOwner    = "Konfigurasi ini milik pengguna lain. Hanya pemiliknya yang bisa mengubah atau menghapusnya."
 )
 
@@ -92,7 +93,10 @@ type sourceView struct {
 type configRow struct {
 	SavedConfig
 	SourceLabel string
-	Mine        bool
+	// Locked: modul sumber tidak aktif; konfigurasi tidak bisa dibuka atau
+	// diunduh, hanya dihapus pemiliknya (T165).
+	Locked bool
+	Mine   bool
 }
 
 type filterRow struct {
@@ -129,7 +133,7 @@ func (h *ConfigHandler) page(w http.ResponseWriter, r *http.Request) {
 	if editID != "" {
 		c, err := h.svc.Get(r.Context(), id, editID)
 		if errors.Is(err, ErrConfigNotFound) {
-			page.NotFound(h.render, w, r, id, msgConfigGone)
+			page.NotFound(h.render, w, r, id, goneMessage(err))
 			return
 		}
 		if err != nil {
@@ -158,7 +162,7 @@ func (h *ConfigHandler) show(w http.ResponseWriter, r *http.Request, id auth.Ide
 		v.Error = "Konfigurasi belum disimpan. Periksa isian yang ditandai."
 	}
 	for _, s := range h.svc.reg.Sources() {
-		if s.Allowed(id.Roles) {
+		if s.Allowed(id.Roles) && s.Active(r.Context()) {
 			v.Sources = append(v.Sources, sourceView{Source: s, Ops: opsByType})
 		}
 	}
@@ -170,7 +174,8 @@ func (h *ConfigHandler) show(w http.ResponseWriter, r *http.Request, id auth.Ide
 		if src, ok := h.svc.reg.Source(c.Config.Source); ok {
 			label = src.Label
 		}
-		v.Configs = append(v.Configs, configRow{SavedConfig: c, SourceLabel: label, Mine: c.OwnerID == id.UserID})
+		v.Configs = append(v.Configs, configRow{SavedConfig: c, SourceLabel: label, Mine: c.OwnerID == id.UserID,
+			Locked: h.svc.Locked(r.Context(), c.Config)})
 	}
 	for i := range formFilterRows {
 		row := filterRow{Index: i}
@@ -272,7 +277,7 @@ func (h *ConfigHandler) update(w http.ResponseWriter, r *http.Request) {
 	var ce *ConfigError
 	switch {
 	case errors.Is(err, ErrConfigNotFound):
-		page.NotFound(h.render, w, r, id, msgConfigGone)
+		page.NotFound(h.render, w, r, id, goneMessage(err))
 		return
 	case errors.Is(err, ErrNotOwner):
 		page.Forbidden(h.render, w, r, id, msgNotOwner)
@@ -293,7 +298,7 @@ func (h *ConfigHandler) delete(w http.ResponseWriter, r *http.Request) {
 	before, err := h.svc.Delete(r.Context(), actorOf(r, id), chi.URLParam(r, "id"))
 	switch {
 	case errors.Is(err, ErrConfigNotFound):
-		page.NotFound(h.render, w, r, id, msgConfigGone)
+		page.NotFound(h.render, w, r, id, goneMessage(err))
 		return
 	case errors.Is(err, ErrNotOwner):
 		page.Forbidden(h.render, w, r, id, msgNotOwner)
@@ -340,14 +345,14 @@ func (h *ConfigHandler) export(w http.ResponseWriter, r *http.Request, format st
 	}
 	saved, err := h.svc.Get(r.Context(), id, chi.URLParam(r, "id"))
 	if errors.Is(err, ErrConfigNotFound) {
-		page.NotFound(h.render, w, r, id, msgConfigGone)
+		page.NotFound(h.render, w, r, id, goneMessage(err))
 		return
 	}
 	if err != nil {
 		h.serverError(w, r, "get report config", err)
 		return
 	}
-	if fields := h.svc.configFields(id, saved.Config); len(fields) > 0 {
+	if fields := h.svc.configFields(r.Context(), id, saved.Config); len(fields) > 0 {
 		if _, bad := fields["source"]; bad {
 			page.Forbidden(h.render, w, r, id, "Sumber data konfigurasi ini tidak lagi diizinkan untuk peran Anda.")
 			return
@@ -357,4 +362,13 @@ func (h *ConfigHandler) export(w http.ResponseWriter, r *http.Request, format st
 		return
 	}
 	h.exporter.ExportCustom(w, r, saved.Name, saved.Config, format)
+}
+
+// goneMessage memilih pesan 404 konfigurasi: terkunci (modul sumber tidak
+// aktif) atau tidak ditemukan.
+func goneMessage(err error) string {
+	if errors.Is(err, ErrSourceInactive) {
+		return msgConfigLock
+	}
+	return msgConfigGone
 }

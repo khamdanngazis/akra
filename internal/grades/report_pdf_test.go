@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"akra/internal/attendance"
+	"akra/internal/platform/module"
 	"akra/internal/platform/settings"
 	"akra/internal/school"
 )
@@ -248,5 +249,31 @@ func TestReportCardHandler(t *testing.T) {
 	}
 	if body := e.do(http.MethodGet, classPath, f.actor.UserID, "kepala_sekolah", nil).Body.String(); strings.Contains(body, "Cetak rapor") {
 		t.Error("principal sees print list")
+	}
+}
+
+// Rapor tanpa modul absensi (T165): tetap terbentuk, tanpa bagian
+// ketidakhadiran dan tanpa menghitung absensi.
+func TestReportCardWithoutAttendanceModule(t *testing.T) {
+	f := newCardFixture(t)
+	e, err := GetCardEnrollment(context.Background(), f.tx, f.schoolA, f.enrollments[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := module.With(context.Background(), module.NewSet(module.Grades))
+	card, err := BuildReportCard(ctx, f.tx, f.schoolA, e, 1, day("2026-12-19"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !card.NoAttendance || card.Attendance.Total() != 0 || len(card.Subjects) != 2 {
+		t.Errorf("card = %+v", card)
+	}
+	var out bytes.Buffer
+	if err := WriteReportCardPDF(&out, card, false); err != nil {
+		t.Fatal(err)
+	}
+	pdf := out.String()
+	if !strings.HasPrefix(pdf, "%PDF-") || strings.Contains(pdf, "Ketidakhadiran") || strings.Contains(pdf, "Tanpa keterangan") || !strings.Contains(pdf, "(79)") {
+		t.Error("report card without attendance module")
 	}
 }

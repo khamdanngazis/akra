@@ -20,14 +20,15 @@
 {{range .Configs}}
 <tr>
 <td>
-<strong>{{.Name}}</strong>{{if .Shared}} <span class="badge badge-info">Bersama</span>{{end}}
+<strong>{{.Name}}</strong>{{if .Shared}} <span class="badge badge-info">Bersama</span>{{end}}{{if .Locked}} <span class="badge">Terkunci</span>{{end}}
 <span class="block text-sm text-slate-500 sm:hidden">{{.SourceLabel}} · {{if .Mine}}Saya{{else}}{{.OwnerName}}{{end}}</span>
+{{if .Locked}}<span class="block text-sm text-slate-500">Sumber datanya memakai modul yang tidak aktif untuk sekolah Anda. Konfigurasi tetap tersimpan dan bisa dibuka lagi bila modul itu diaktifkan.</span>{{end}}
 <div class="config-actions">
-<a class="btn btn-ghost btn-sm" href="/laporan/bangun?konfigurasi={{.ID}}">Buka</a>
+{{if not .Locked}}<a class="btn btn-ghost btn-sm" href="/laporan/bangun?konfigurasi={{.ID}}">Buka</a>
 <a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi/{{.ID}}.xlsx">Excel</a>
-<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi/{{.ID}}.pdf">PDF</a>
+<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi/{{.ID}}.pdf">PDF</a>{{end}}
 {{if .Mine}}
-<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi?ubah={{.ID}}">Ubah</a>
+{{if not .Locked}}<a class="btn btn-ghost btn-sm" href="/laporan/konfigurasi?ubah={{.ID}}">Ubah</a>{{end}}
 <form method="post" action="/laporan/konfigurasi/{{.ID}}/hapus" x-data @submit="if (!confirm('Hapus konfigurasi ini?')) $event.preventDefault()">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>
 {{end}}
 </div>

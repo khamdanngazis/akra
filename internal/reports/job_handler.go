@@ -9,8 +9,10 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/clock"
+	"akra/internal/platform/module"
 	"akra/internal/platform/page"
 	"akra/internal/platform/storage"
+	"akra/internal/reports/builder"
 )
 
 const (
@@ -33,11 +35,35 @@ type jobView struct {
 	Flash     string
 }
 
+// jobModule mengembalikan modul pemilik data job: kehadiran → absensi,
+// tunggakan → keuangan, laporan kustom → modul sumbernya (T165).
+func jobModule(j ReportJob) string {
+	switch j.Type {
+	case TypeAttendance:
+		return string(module.Attendance)
+	case TypeArrears:
+		return string(module.Billing)
+	case TypeCustom:
+		if j.Params.Config != nil {
+			if src, ok := builder.Default.Source(j.Params.Config.Source); ok {
+				return src.Module
+			}
+		}
+	}
+	return ""
+}
+
 func (h *Handler) loadJob(w http.ResponseWriter, r *http.Request) (auth.Identity, ReportJob, bool) {
 	id, _ := auth.CurrentUser(r.Context())
 	j, err := GetJob(r.Context(), h.db, id.SchoolID, id.UserID, id.HasRole(auth.RoleKepalaSekolah), chi.URLParam(r, "id"))
 	if errors.Is(err, ErrJobNotFound) {
 		page.NotFound(h.render, w, r, id, "Laporan tidak ditemukan.")
+		return id, j, false
+	}
+	// Hasil ekspor modul yang tidak aktif tidak bisa dibuka atau diunduh.
+	if err == nil && !module.From(r.Context()).HasName(jobModule(j)) {
+		info, _ := module.Get(module.ID(jobModule(j)))
+		page.NotFoundTitled(h.render, w, r, id, "Modul tidak aktif", module.Inactive(info))
 		return id, j, false
 	}
 	if err != nil {

@@ -72,9 +72,10 @@ func mustRegistry() *Registry {
 // tanggal di dalam masa enrollment siswa, sama dengan aturan rekap.
 func attendanceSource() Source {
 	return Source{
-		Name:  "attendance",
-		Label: "Absensi",
-		Roles: schoolDataRoles,
+		Name:   "attendance",
+		Module: "attendance",
+		Label:  "Absensi",
+		Roles:  schoolDataRoles,
 		From: `attendance_records ar
  JOIN attendance_sessions asn ON asn.school_id = ar.school_id AND asn.id = ar.session_id
  JOIN enrollments e ON e.school_id = ar.school_id AND e.id = ar.enrollment_id
@@ -100,9 +101,10 @@ func attendanceSource() Source {
 // billing.FeeNamesSQL, sehingga angkanya sama dengan /keuangan/tunggakan.
 func arrearsSource() Source {
 	return Source{
-		Name:  "arrears",
-		Label: "Tunggakan",
-		Roles: financeRoles,
+		Name:   "arrears",
+		Module: "billing",
+		Label:  "Tunggakan",
+		Roles:  financeRoles,
 		From: `invoices i
  JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
  JOIN students st ON st.school_id = e.school_id AND st.id = e.student_id
@@ -128,9 +130,10 @@ func arrearsSource() Source {
 // sengaja tidak tersedia.
 func paymentsSource() Source {
 	return Source{
-		Name:  "payments",
-		Label: "Pembayaran",
-		Roles: financeRoles,
+		Name:   "payments",
+		Module: "billing",
+		Label:  "Pembayaran",
+		Roles:  financeRoles,
 		From: `payments p
  JOIN invoices i ON i.school_id = p.school_id AND i.id = p.invoice_id
  JOIN enrollments e ON e.school_id = i.school_id AND e.id = i.enrollment_id
@@ -154,9 +157,10 @@ func paymentsSource() Source {
 // (belum dinilai) tidak ikut. Nilai dalam perseratus.
 func gradesSource() Source {
 	return Source{
-		Name:  "grades",
-		Label: "Nilai",
-		Roles: schoolDataRoles,
+		Name:   "grades",
+		Module: "grades",
+		Label:  "Nilai",
+		Roles:  schoolDataRoles,
 		From: `grades g
  JOIN grade_components gc ON gc.school_id = g.school_id AND gc.id = g.component_id
  JOIN subjects sub ON sub.school_id = gc.school_id AND sub.id = gc.subject_id

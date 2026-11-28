@@ -17,6 +17,7 @@ import (
 
 	"akra/internal/audit"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/school"
 )
 
@@ -55,13 +56,16 @@ var GradeColumns = [NumGradeColumns]Column{
 type Target struct {
 	Key, Label string
 	Columns    []Column
+	// Module adalah modul pemilik target (T165); kosong = inti. Target
+	// modul yang tidak aktif tidak ditawarkan dan mapping-nya tidak tampil.
+	Module string
 }
 
 // Targets adalah target yang bisa dipetakan, urut tampil. Jenis tagihan
 // (fee_types) belum punya kolom baku dan impor, jadi belum didukung.
 var Targets = []Target{
 	{Key: TargetStudents, Label: "Siswa", Columns: StudentColumns[:]},
-	{Key: TargetGrades, Label: "Nilai", Columns: GradeColumns[:]},
+	{Key: TargetGrades, Label: "Nilai", Columns: GradeColumns[:], Module: string(module.Grades)},
 }
 
 // TargetByKey mengembalikan target dengan kunci key.
@@ -72,6 +76,23 @@ func TargetByKey(key string) (Target, bool) {
 		}
 	}
 	return Target{}, false
+}
+
+// TargetsFor mengembalikan target yang modulnya aktif di mods.
+func TargetsFor(mods module.Set) []Target {
+	var out []Target
+	for _, t := range Targets {
+		if mods.HasName(t.Module) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// activeTarget mengembalikan target key bila modulnya aktif di mods.
+func activeTarget(mods module.Set, key string) (Target, bool) {
+	t, ok := TargetByKey(key)
+	return t, ok && mods.HasName(t.Module)
 }
 
 // ColumnMap memetakan judul kolom baku ke judul kolom di file sekolah.

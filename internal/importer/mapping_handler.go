@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/module"
 	"akra/internal/platform/page"
 	"akra/internal/school"
 )
@@ -90,8 +91,12 @@ func (h *MappingHandler) show(w http.ResponseWriter, r *http.Request, id auth.Id
 		page.ServerError(h.render, h.logger, w, r, id, "list import mappings", err)
 		return
 	}
-	v.User, v.Targets = id, Targets
+	mods := module.From(r.Context())
+	v.User, v.Targets = id, TargetsFor(mods)
 	for _, m := range list {
+		if t, ok := TargetByKey(m.Target); ok && !mods.HasName(t.Module) {
+			continue // mapping target modul yang tidak aktif (T165)
+		}
 		row := mappingRow{Mapping: m, TargetLabel: m.Target}
 		if t, ok := TargetByKey(m.Target); ok {
 			row.TargetLabel = t.Label
@@ -130,7 +135,7 @@ func (h *MappingHandler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.FormValue("name")
-	t, ok := TargetByKey(r.FormValue("target"))
+	t, ok := activeTarget(module.From(r.Context()), r.FormValue("target"))
 	if !ok {
 		h.show(w, r, id, http.StatusUnprocessableEntity, mappingView{Name: name, Errors: map[string]string{"target": "Pilih jenis data dari daftar."}, Error: "Pilih jenis data."})
 		return
