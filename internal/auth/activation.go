@@ -113,7 +113,10 @@ FROM activation_tokens t
 JOIN users u ON u.id = t.user_id
 JOIN schools s ON s.id = u.school_id
 WHERE t.token_hash = $1 AND t.used_at IS NULL AND t.expires_at > now()
-  AND NOT u.is_active AND u.password_hash = ''`
+  AND NOT u.is_active AND u.password_hash = ''
+  -- Modul portal orang tua nonaktif: link aktivasi tidak berlaku (T164).
+  -- Tanpa baris status, modul portal aktif (bawaan katalog).
+  AND NOT EXISTS (SELECT 1 FROM school_modules m WHERE m.school_id = u.school_id AND m.module = 'portal' AND NOT m.enabled)`
 
 // CheckToken mengembalikan akun pemilik token, atau ErrInvalidActivationToken.
 func (s *ActivationService) CheckToken(ctx context.Context, token string) (ActivationTarget, error) {

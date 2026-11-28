@@ -221,6 +221,18 @@ func TestGuardianAccount_EndToEnd(t *testing.T) {
 		}
 	}
 
+	// Modul portal nonaktif (T164): link aktivasi tidak berlaku; aktif lagi:
+	// berlaku kembali.
+	if _, err := tx.Exec(ctx, `INSERT INTO school_modules (school_id, module, enabled) VALUES ($1, 'portal', false)`, schoolID); err != nil {
+		t.Fatal(err)
+	}
+	if rec := parent.get(activationPath); rec.Code != http.StatusBadRequest || strings.Contains(rec.Body.String(), "sari@contoh.id") {
+		t.Errorf("activation with portal off: status = %d", rec.Code)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE school_modules SET enabled = true WHERE school_id = $1 AND module = 'portal'`, schoolID); err != nil {
+		t.Fatal(err)
+	}
+
 	// Aktivasi.
 	page := parent.get(activationPath)
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "test-portal") || page.Header().Get("Referrer-Policy") != "no-referrer" {

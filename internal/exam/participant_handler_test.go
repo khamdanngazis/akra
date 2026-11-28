@@ -115,6 +115,17 @@ func TestParticipantLoginFlow(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Belum ada ujian untuk Anda") {
 		t.Errorf("home = %d\n%s", rec.Code, rec.Body.String())
 	}
+	// Modul ujian dimatikan saat peserta sudah masuk: 404 (T164); aktif
+	// lagi: terbuka.
+	if err := SetModule(context.Background(), e.tx, e.a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.do(http.MethodGet, "/u/beranda", nil); rec.Code != http.StatusNotFound {
+		t.Errorf("home with module off = %d", rec.Code)
+	}
+	if err := SetModule(context.Background(), e.tx, e.a.ID, Module{Enabled: true, Release: R3}, "uji", nil); err != nil {
+		t.Fatal(err)
+	}
 
 	// Keluar: beranda dialihkan ke login sekolah.
 	rec = e.do(http.MethodPost, "/u/keluar", url.Values{})

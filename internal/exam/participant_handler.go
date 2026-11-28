@@ -96,6 +96,8 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 	r.Route("/u", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireParticipant(h.sessions, participantLoginPath))
+			// Modul ujian dimatikan saat peserta sudah masuk: 404 (T164).
+			r.Use(h.requireModule)
 			// Peserta: siswa dan pendaftar.
 			r.Get("/beranda", h.home)
 			// Peserta: konfirmasi, mengerjakan, dan mengumpulkan ujian (T138).
@@ -118,6 +120,24 @@ func (h *ParticipantHandler) Routes(r chi.Router) {
 		r.Get("/{code}", h.loginForm)
 		// Publik: login peserta per sekolah.
 		r.Post("/{code}", h.track(EndpointLogin, h.login))
+	})
+}
+
+// requireModule menjawab 404 bila modul ujian sekolah peserta tidak aktif.
+func (h *ParticipantHandler) requireModule(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, _ := auth.CurrentParticipant(r.Context())
+		m, err := LoadModule(r.Context(), h.db, p.SchoolID)
+		if err != nil {
+			h.logger.ErrorContext(r.Context(), "load exam module", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if !m.Has(R1) {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

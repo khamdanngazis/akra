@@ -15,6 +15,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/money"
 	"akra/internal/platform/page"
 	"akra/internal/students"
@@ -51,6 +52,7 @@ func NewPublicHandler(db database.DB, periods *Service, applicants *ApplicantSer
 // Routes mendaftarkan route publik pendaftaran ke r.
 func (h *PublicHandler) Routes(r chi.Router) {
 	r.Route("/s/{code}/daftar", func(r chi.Router) {
+		r.Use(h.requireModule)
 		// Publik: halaman awal dan pembuatan draf.
 		r.Get("/", h.start(KindNew))
 		r.Post("/", h.createDraft(KindNew))
@@ -66,12 +68,14 @@ func (h *PublicHandler) Routes(r chi.Router) {
 		r.Get("/selesai", h.done)
 	})
 	r.Route("/s/{code}/pindah", func(r chi.Router) {
+		r.Use(h.requireModule)
 		// Publik: halaman awal dan pembuatan draf siswa pindahan (T109).
 		// Langkah berikutnya memakai /s/{kode}/daftar/isi/... yang sama.
 		r.Get("/", h.start(KindTransfer))
 		r.Post("/", h.createDraft(KindTransfer))
 	})
 	r.Route("/s/{code}/status", func(r chi.Router) {
+		r.Use(h.requireModule)
 		// Publik: cek status dengan nomor pendaftaran + tanggal lahir (T95).
 		r.Get("/", h.statusPage)
 		r.Post("/", h.checkStatus)
@@ -81,6 +85,31 @@ func (h *PublicHandler) Routes(r chi.Router) {
 	})
 	// Publik: logo sekolah untuk kepala halaman pendaftaran (T111).
 	r.Get("/s/{code}/logo", h.logo)
+}
+
+// requireModule menjawab 404 biasa (seperti sekolah tidak ada) bila modul
+// pendaftaran tidak aktif untuk sekolah di URL (T164).
+func (h *PublicHandler) requireModule(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s, ok, err := h.school(r.Context(), chi.URLParam(r, "code"))
+		if err != nil {
+			h.serverError(w, r, "find school", err)
+			return
+		}
+		if ok {
+			set, err := module.Load(r.Context(), h.db, s.ID)
+			if err != nil {
+				h.serverError(w, r, "load school modules", err)
+				return
+			}
+			ok = set.Has(module.Admission)
+		}
+		if !ok {
+			page.NotFound(h.render, w, r, auth.Identity{}, msgSchoolMissing)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // schoolInfo adalah identitas sekolah di kepala halaman publik.

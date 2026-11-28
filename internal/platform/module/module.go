@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,8 +45,10 @@ type Info struct {
 	// Requires: modul yang wajib aktif agar modul ini bisa diaktifkan.
 	// Optional: modul yang menambah fitur bila aktif (tidak menghalangi).
 	Requires, Optional []ID
-	// Prefixes adalah awalan route milik modul (untuk penegakan route T164).
-	Prefixes []string
+	// Routes adalah pola path milik modul, dicocokkan per segmen (lihat
+	// Required): "*" cocok dengan satu segmen apa pun, dan segmen terakhir
+	// juga cocok dengan nama berakhiran ".ext" (mis. "kehadiran.pdf").
+	Routes []string
 	// Features adalah fitur di dalam modul (pengaturan sekolah, ADR 0002
 	// bagian 3).
 	Features []string
@@ -56,30 +59,30 @@ type Info struct {
 // Catalog adalah semua modul AKRA dalam urutan tampil.
 var Catalog = []Info{
 	{ID: Core, Name: "Inti", Desc: "Profil sekolah, tahun ajaran, kelas, siswa dan wali, mapel, penugasan guru, pengguna, impor siswa, dan pengaturan.",
-		Prefixes: []string{"/siswa", "/kelas", "/pengaturan", "/impor/siswa", "/laporan"}, Default: true},
+		Routes: []string{"/siswa", "/kelas", "/pengaturan", "/impor/siswa", "/laporan"}, Default: true},
 	{ID: Attendance, Name: "Absensi", Desc: "Absensi harian dan per mapel, rekap, dan laporan kehadiran.",
-		Requires: []ID{Core}, Prefixes: []string{"/absensi", "/laporan/kehadiran"}, Features: []string{"Absensi per mapel"}, Default: true},
+		Requires: []ID{Core}, Routes: []string{"/absensi", "/laporan/kehadiran", "/pengaturan/absensi"}, Features: []string{"Absensi per mapel"}, Default: true},
 	{ID: Schedule, Name: "Jadwal", Desc: "Jadwal pelajaran dan jadwal mengajar guru.",
-		Requires: []ID{Core}, Prefixes: []string{"/jadwal"}, Default: true},
+		Requires: []ID{Core}, Routes: []string{"/jadwal", "/portal/siswa/*/jadwal"}, Default: true},
 	{ID: Grades, Name: "Nilai & Rapor", Desc: "Komponen nilai, input dan rekap nilai, rapor PDF, dan impor nilai.",
-		Requires: []ID{Core}, Optional: []ID{Attendance}, Prefixes: []string{"/nilai", "/pengaturan/rapor", "/impor/nilai"},
+		Requires: []ID{Core}, Optional: []ID{Attendance}, Routes: []string{"/nilai", "/pengaturan/rapor", "/impor/nilai", "/portal/siswa/*/nilai", "/portal/siswa/*/rapor"},
 		Features: []string{"Skala dan KKM", "Format rapor", "Kebijakan remedial", "Nilai per komponen di portal"}, Default: true},
 	{ID: Billing, Name: "Keuangan", Desc: "Jenis tagihan, tagihan massal, pembayaran dan kuitansi, tunggakan, dan audit keuangan.",
-		Requires: []ID{Core}, Prefixes: []string{"/keuangan", "/pengaturan/keuangan", "/laporan/tunggakan"},
+		Requires: []ID{Core}, Routes: []string{"/keuangan", "/pengaturan/keuangan", "/laporan/tunggakan", "/portal/siswa/*/tagihan", "/portal/pembayaran"},
 		Features: []string{"Ambang persetujuan pembatalan"}, Default: true},
 	{ID: Admission, Name: "Pendaftaran", Desc: "Periode dan gelombang pendaftaran, formulir publik, pendaftar, tes, daftar ulang, dan jadikan siswa.",
-		Requires: []ID{Core}, Optional: []ID{Billing, Exam}, Prefixes: []string{"/pendaftaran", "/s/"},
+		Requires: []ID{Core}, Optional: []ID{Billing, Exam}, Routes: []string{"/pendaftaran", "/s/*/daftar", "/s/*/pindah", "/s/*/status"},
 		Features: []string{"Format NIS", "Daftar ulang"}, Default: true},
 	{ID: Dapodik, Name: "Bantu Dapodik", Desc: "Lembar salin, cek kesiapan, F-PD, impor dan ekspor, serta nilai ke Dapodik.",
-		Requires: []ID{Core}, Optional: []ID{Grades}, Prefixes: []string{"/dapodik"}, Default: true},
+		Requires: []ID{Core}, Optional: []ID{Grades}, Routes: []string{"/dapodik"}, Default: true},
 	{ID: Exam, Name: "Ujian Online", Desc: "Bank soal, ujian, sesi dan pengawasan, sampai hasil dan analisis.",
-		Requires: []ID{Core}, Optional: []ID{Grades, Admission}, Prefixes: []string{"/ujian", "/u/"},
+		Requires: []ID{Core}, Optional: []ID{Grades, Admission}, Routes: []string{"/ujian", "/u", "/portal/siswa/*/ujian"},
 		Features: []string{"Tahap rilis r1–r3", "Telaah soal", "Target kisi-kisi"}},
 	{ID: Announcements, Name: "Pengumuman", Desc: "Pengumuman untuk staf dan orang tua.",
-		Requires: []ID{Core}, Prefixes: []string{"/pengumuman", "/portal/pengumuman"}, Default: true},
+		Requires: []ID{Core}, Routes: []string{"/pengumuman", "/portal/pengumuman"}, Default: true},
 	{ID: Portal, Name: "Portal Orang Tua", Desc: "Akun wali, aktivasi, dan halaman anak untuk orang tua.",
 		Requires: []ID{Core}, Optional: []ID{Attendance, Schedule, Grades, Billing, Exam, Announcements},
-		Prefixes: []string{"/portal", "/aktivasi"}, Default: true},
+		Routes: []string{"/portal", "/aktivasi", "/siswa/*/wali/*/akun"}, Default: true},
 }
 
 // Get mengembalikan info modul id.
@@ -96,6 +99,80 @@ func Get(id ID) (Info, bool) {
 func Known(id ID) bool {
 	_, ok := Get(id)
 	return ok
+}
+
+// Required mengembalikan modul opsional yang wajib aktif untuk membuka path
+// (tanpa core), dalam urutan katalog. Satu path bisa milik beberapa modul,
+// mis. "/portal/siswa/{id}/tagihan" butuh portal dan billing. Path juga
+// boleh berupa pola route chi ("/portal/siswa/{id}/tagihan"): segmen
+// "{...}" diperlakukan sebagai nilai apa pun.
+func Required(path string) []ID {
+	segs := splitPath(path)
+	var out []ID
+	for _, m := range Catalog {
+		if m.ID == Core {
+			continue
+		}
+		for _, pat := range m.Routes {
+			if routeMatch(splitPath(pat), segs) {
+				out = append(out, m.ID)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// Owner mengembalikan modul paling spesifik untuk path (pola terpanjang),
+// atau Core bila path bukan milik modul opsional.
+func Owner(path string) ID {
+	segs := splitPath(path)
+	best, bestLen := Core, 0
+	for _, m := range Catalog {
+		if m.ID == Core {
+			continue
+		}
+		for _, pat := range m.Routes {
+			p := splitPath(pat)
+			if len(p) > bestLen && routeMatch(p, segs) {
+				best, bestLen = m.ID, len(p)
+			}
+		}
+	}
+	return best
+}
+
+func splitPath(p string) []string {
+	return strings.FieldsFunc(p, func(r rune) bool { return r == '/' })
+}
+
+// routeMatch melaporkan apakah pola pat cocok dengan awal path segs.
+func routeMatch(pat, segs []string) bool {
+	if len(pat) > len(segs) {
+		return false
+	}
+	for i, p := range pat {
+		s := segs[i]
+		switch {
+		case p == "*" || p == s:
+		case i == len(pat)-1 && strings.HasPrefix(s, p+"."):
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// Missing mengembalikan modul yang dibutuhkan path tetapi tidak aktif di s
+// (kosong bila path boleh dibuka).
+func (s Set) Missing(path string) []ID {
+	var out []ID
+	for _, id := range Required(path) {
+		if !s.Has(id) {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // Set adalah modul yang aktif untuk satu sekolah beserta pilihannya. Nilai
@@ -334,4 +411,26 @@ func Middleware(q database.DBTX, schoolOf func(*http.Request) string, fail func(
 			next.ServeHTTP(w, r.WithContext(With(r.Context(), s)))
 		})
 	}
+}
+
+// Enforce mengembalikan middleware yang menolak request ke route modul yang
+// tidak aktif untuk sekolah (T164), memakai set modul dari Middleware.
+// deny dipanggil dengan modul pertama yang tidak aktif dan harus menjawab
+// 404 tanpa data modul itu.
+func Enforce(deny func(http.ResponseWriter, *http.Request, Info)) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if miss := From(r.Context()).Missing(r.URL.Path); len(miss) > 0 {
+				info, _ := Get(miss[0])
+				deny(w, r, info)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// Inactive adalah pesan halaman staf untuk modul m yang tidak aktif.
+func Inactive(m Info) string {
+	return "Modul " + m.Name + " tidak aktif untuk sekolah Anda. Hubungi admin TU atau tim AKRA."
 }
