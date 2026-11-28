@@ -21,6 +21,7 @@ import (
 	"akra/internal/payments"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/money"
 	"akra/internal/platform/render"
 	"akra/internal/reports"
@@ -221,7 +222,7 @@ func TestAdminAndPrincipalHome(t *testing.T) {
 	if !strings.Contains(body, `<span class="kpi-value">3</span><span class="kpi-hint">Semua tingkat</span>`) || !strings.Contains(body, "2026/2027") {
 		t.Error("admin summary: 3 active students and the active year")
 	}
-	sum, err := SchoolSummaryFor(ctx, f.tx, f.schoolA)
+	sum, err := SchoolSummaryFor(ctx, f.tx, f.schoolA, module.Defaults())
 	if err != nil || sum != (AdminSummary{ActiveStudents: 3, Teachers: 1, Classes: 2, Announcements: 1, DapodikIncomplete: 3}) {
 		t.Errorf("school summary = %+v, %v", sum, err)
 	}

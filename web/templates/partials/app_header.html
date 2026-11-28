@@ -28,7 +28,7 @@
 <a class="brand desktop:hidden" href="{{$home}}">{{template "brand"}}</a>
 {{if or (.HasRole "admin_tu") (.HasRole "kepala_sekolah")}}
 <form method="get" action="/siswa" role="search" class="header-search">{{template "icon" "search"}}<label for="header-q" class="visually-hidden">Cari siswa</label><input id="header-q" type="search" name="q" placeholder="Cari siswa (nama atau NIS)…" autocomplete="off"></form>
-{{else if .HasRole "bendahara"}}
+{{else if and (.HasRole "bendahara") (hasModule "billing")}}
 <form method="get" action="/keuangan/pembayaran/baru" role="search" class="header-search">{{template "icon" "search"}}<label for="header-q" class="visually-hidden">Cari siswa untuk pembayaran</label><input id="header-q" type="search" name="q" placeholder="Cari siswa untuk pembayaran…" autocomplete="off"></form>
 {{end}}
 <div class="relative ml-auto" x-data="{ menu: false }" @click.outside="menu = false" @keydown.escape="menu = false">

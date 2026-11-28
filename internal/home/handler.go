@@ -20,6 +20,7 @@ import (
 	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/money"
 	"akra/internal/platform/page"
 	"akra/internal/reports"
@@ -113,8 +114,11 @@ type view struct {
 	// Essay adalah koreksi esai yang menunggu dan nilai yang siap dikirim
 	// ke rapor (T147).
 	Essay []exam.EssayWork
-	Flash string
-	Error string
+	// Modules adalah modul aktif sekolah (T165): bagian modul yang mati
+	// tidak dihitung dan tidak ditampilkan.
+	Modules module.Set
+	Flash   string
+	Error   string
 }
 
 // ServeHTTP merender beranda. Peran: semua staf; orang tua dialihkan ke
@@ -147,15 +151,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.AcademicYear, noYear bool, today time.Time, v *view) error {
-	// Pengawas ujian bisa guru atau staf TU.
+	mods := module.From(ctx)
+	v.Modules = mods
 	now := time.Now()
-	from, to := exam.DayBounds(now, id.Location())
-	ps, err := exam.MyProctorSessions(ctx, h.db, id.SchoolID, id.UserID, from, to)
-	if err != nil {
-		return err
+	var err error
+	// Pengawas ujian bisa guru atau staf TU.
+	if mods.Has(module.Exam) {
+		from, to := exam.DayBounds(now, id.Location())
+		ps, err := exam.MyProctorSessions(ctx, h.db, id.SchoolID, id.UserID, from, to)
+		if err != nil {
+			return err
+		}
+		v.Proctor = exam.MySessionCards(ps, id.Location(), now)
 	}
-	v.Proctor = exam.MySessionCards(ps, id.Location(), now)
-	if id.HasRole(auth.RoleBendahara) {
+	if id.HasRole(auth.RoleBendahara) && mods.Has(module.Billing) {
 		s, err := TreasurerFor(ctx, h.db, id.SchoolID, today)
 		if err != nil {
 			return err
@@ -163,12 +172,13 @@ func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.Academ
 		v.Treasurer = &s
 	}
 	// Pemegang ujian bisa guru atau admin TU; korektor yang ditugaskan guru.
-	if id.HasRole(auth.RoleGuru) || id.HasRole(auth.RoleAdminTU) {
+	if (id.HasRole(auth.RoleGuru) || id.HasRole(auth.RoleAdminTU)) && mods.Has(module.Exam) {
 		if v.Essay, err = exam.MyEssayWork(ctx, h.db, id.SchoolID, id.UserID, now); err != nil {
 			return err
 		}
 	}
-	if id.HasRole(auth.RoleGuru) {
+	// Kartu guru berisi absensi hari ini (modul absensi).
+	if id.HasRole(auth.RoleGuru) && mods.Has(module.Attendance) {
 		v.IsTeacher = true
 		classes, err := TeacherClassesFor(ctx, h.db, id.SchoolID, id.UserID, today)
 		if err != nil {
@@ -177,29 +187,31 @@ func (h *Handler) fill(ctx context.Context, id auth.Identity, year school.Academ
 		v.Teacher = classes
 	}
 	if auth.HasAnyRole(id, auth.RoleAdminTU, auth.RoleKepalaSekolah) {
-		s, err := SchoolSummaryFor(ctx, h.db, id.SchoolID)
+		s, err := SchoolSummaryFor(ctx, h.db, id.SchoolID, mods)
 		if err != nil {
 			return err
 		}
 		v.Admin = &s
 	}
-	if auth.HasAnyRole(id, auth.RoleKepalaSekolah, auth.RoleAdminTU) && !noYear {
+	if auth.HasAnyRole(id, auth.RoleKepalaSekolah, auth.RoleAdminTU) && !noYear && mods.Has(module.Attendance) {
 		s, err := PrincipalFor(ctx, h.db, id.SchoolID, year, today)
 		if err != nil {
 			return err
 		}
 		v.Principal = s
 	}
-	if id.HasRole(auth.RoleBendahara) {
+	if id.HasRole(auth.RoleBendahara) && mods.Has(module.Billing) {
 		list, err := RecentPaymentsFor(ctx, h.db, id.SchoolID, id.Location(), today, 5)
 		if err != nil {
 			return err
 		}
 		v.Payments = list
 	}
-	news, err := announcements.NewService(h.db).List(ctx, id.SchoolID, 4)
-	if err != nil {
-		return err
+	var news []announcements.Announcement
+	if mods.Has(module.Announcements) {
+		if news, err = announcements.NewService(h.db).List(ctx, id.SchoolID, 4); err != nil {
+			return err
+		}
 	}
 	for _, a := range news {
 		aud := "Semua kelas"
@@ -225,9 +237,13 @@ func kpis(v *view) []KPI {
 			KPI{Icon: "users", Value: strconv.Itoa(a.ActiveStudents), Label: "Siswa aktif", Hint: "Semua tingkat", Tone: "blue", Href: "/siswa"},
 			KPI{Icon: "teacher", Value: strconv.Itoa(a.Teachers), Label: "Guru", Hint: "Akun guru aktif", Tone: "teal"},
 			KPI{Icon: "school", Value: strconv.Itoa(a.Classes), Label: "Kelas", Hint: year, Tone: "navy", Href: "/kelas"},
-			KPI{Icon: "megaphone", Value: strconv.Itoa(a.Announcements), Label: "Pengumuman", Hint: "Di tahun ajaran aktif", Tone: "amber", Href: "/pengumuman"},
-			KPI{Icon: "spreadsheet", Value: strconv.Itoa(a.DapodikIncomplete), Label: "Belum siap Dapodik", Hint: "Siswa aktif dengan data wajib kosong", Tone: "amber", Href: "/dapodik/cek"},
 		)
+		if v.Modules.Has(module.Announcements) {
+			out = append(out, KPI{Icon: "megaphone", Value: strconv.Itoa(a.Announcements), Label: "Pengumuman", Hint: "Di tahun ajaran aktif", Tone: "amber", Href: "/pengumuman"})
+		}
+		if v.Modules.Has(module.Dapodik) {
+			out = append(out, KPI{Icon: "spreadsheet", Value: strconv.Itoa(a.DapodikIncomplete), Label: "Belum siap Dapodik", Hint: "Siswa aktif dengan data wajib kosong", Tone: "amber", Href: "/dapodik/cek"})
+		}
 	}
 	if t := v.Treasurer; t != nil {
 		out = append(out,
@@ -253,8 +269,9 @@ func kpis(v *view) []KPI {
 }
 
 // SchoolSummaryFor menghitung jumlah siswa aktif, guru aktif, kelas dan
-// pengumuman tahun ajaran aktif.
-func SchoolSummaryFor(ctx context.Context, q database.DBTX, schoolID string) (AdminSummary, error) {
+// pengumuman tahun ajaran aktif. Jumlah pengumuman dan kesiapan Dapodik
+// hanya dihitung bila modulnya aktif di mods (T165).
+func SchoolSummaryFor(ctx context.Context, q database.DBTX, schoolID string, mods module.Set) (AdminSummary, error) {
 	var s AdminSummary
 	err := q.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM students WHERE school_id = $1 AND status = 'aktif'),
@@ -262,10 +279,11 @@ func SchoolSummaryFor(ctx context.Context, q database.DBTX, schoolID string) (Ad
 		  WHERE u.school_id = $1 AND u.is_active AND r.code = 'guru'),
 		(SELECT count(*) FROM classes c JOIN academic_years y ON y.school_id = c.school_id AND y.id = c.academic_year_id
 		  WHERE c.school_id = $1 AND y.is_active),
-		(SELECT count(*) FROM announcements a JOIN academic_years y ON y.school_id = a.school_id AND y.id = a.academic_year_id
-		  WHERE a.school_id = $1 AND y.is_active),
-		(SELECT count(*) FROM students s LEFT JOIN student_profiles p ON p.school_id = s.school_id AND p.student_id = s.id
-		  WHERE s.school_id = $1 AND s.status = 'aktif' AND `+students.ReadinessPercentSQL()+` < 100)`, schoolID).
+		CASE WHEN $2 THEN (SELECT count(*) FROM announcements a JOIN academic_years y ON y.school_id = a.school_id AND y.id = a.academic_year_id
+		  WHERE a.school_id = $1 AND y.is_active) ELSE 0 END,
+		CASE WHEN $3 THEN (SELECT count(*) FROM students s LEFT JOIN student_profiles p ON p.school_id = s.school_id AND p.student_id = s.id
+		  WHERE s.school_id = $1 AND s.status = 'aktif' AND `+students.ReadinessPercentSQL()+` < 100) ELSE 0 END`,
+		schoolID, mods.Has(module.Announcements), mods.Has(module.Dapodik)).
 		Scan(&s.ActiveStudents, &s.Teachers, &s.Classes, &s.Announcements, &s.DapodikIncomplete)
 	if err != nil {
 		return AdminSummary{}, fmt.Errorf("home: school summary: %w", err)

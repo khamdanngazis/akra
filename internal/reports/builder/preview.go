@@ -32,7 +32,7 @@ type Preview struct {
 // dan hak peran; sama dengan saat menyimpan) lalu menjalankannya dengan
 // batas PreviewRows di transaksi baca-saja dengan batas waktu.
 func (s *ConfigService) Preview(ctx context.Context, id auth.Identity, c Config) (Preview, error) {
-	if fields := s.configFields(id, c); len(fields) > 0 {
+	if fields := s.configFields(ctx, id, c); len(fields) > 0 {
 		return Preview{}, &ConfigError{Fields: fields}
 	}
 	q, err := Compile(s.reg, id.SchoolID, c, Options{Limit: PreviewRows + 1})

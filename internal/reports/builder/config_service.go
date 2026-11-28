@@ -70,10 +70,22 @@ func NewConfigService(db database.DB, reg *Registry) *ConfigService {
 // Registry mengembalikan registry yang dipakai service.
 func (s *ConfigService) Registry() *Registry { return s.reg }
 
-// canUse melaporkan apakah id boleh memakai sumber konfigurasi c.
+// canUse melaporkan apakah id boleh memakai sumber konfigurasi c menurut
+// perannya (modul sumber tidak diperiksa; lihat Get).
 func (s *ConfigService) canUse(id auth.Identity, c Config) bool {
 	src, ok := s.reg.Source(c.Source)
 	return ok && src.Allowed(id.Roles)
+}
+
+// ErrSourceInactive: konfigurasi terkunci karena modul sumbernya tidak
+// aktif untuk sekolah (T165). Termasuk ErrConfigNotFound.
+var ErrSourceInactive = fmt.Errorf("%w: source module inactive", ErrConfigNotFound)
+
+// Locked melaporkan apakah konfigurasi c terkunci karena modul sumbernya
+// tidak aktif untuk sekolah request ctx.
+func (s *ConfigService) Locked(ctx context.Context, c Config) bool {
+	src, ok := s.reg.Source(c.Source)
+	return ok && !src.Active(ctx)
 }
 
 // Visible mengembalikan konfigurasi milik id dan konfigurasi bersama di
@@ -102,6 +114,9 @@ func (s *ConfigService) Get(ctx context.Context, id auth.Identity, configID stri
 	if c.OwnerID != id.UserID && (!c.Shared || !s.canUse(id, c.Config)) {
 		return SavedConfig{}, ErrConfigNotFound
 	}
+	if s.Locked(ctx, c.Config) {
+		return SavedConfig{}, ErrSourceInactive
+	}
 	return c, nil
 }
 
@@ -109,7 +124,7 @@ func (s *ConfigService) Get(ctx context.Context, id auth.Identity, configID stri
 // terdaftar, operator sesuai tipe, nilai filter valid, batas jumlah, dan
 // sumber boleh dipakai peran pengguna. Konfigurasi yang tidak valid tidak
 // pernah disimpan.
-func (s *ConfigService) Validate(id auth.Identity, in ConfigInput) (ConfigInput, error) {
+func (s *ConfigService) Validate(ctx context.Context, id auth.Identity, in ConfigInput) (ConfigInput, error) {
 	fields := map[string]string{}
 	in.Name = strings.Join(strings.Fields(in.Name), " ")
 	switch n := utf8.RuneCountInString(in.Name); {
@@ -118,7 +133,7 @@ func (s *ConfigService) Validate(id auth.Identity, in ConfigInput) (ConfigInput,
 	case n > MaxConfigNameLen:
 		fields["name"] = fmt.Sprintf("Nama maksimal %d karakter.", MaxConfigNameLen)
 	}
-	for k, v := range s.configFields(id, in.Config) {
+	for k, v := range s.configFields(ctx, id, in.Config) {
 		fields[k] = v
 	}
 	if len(fields) > 0 {
@@ -129,13 +144,15 @@ func (s *ConfigService) Validate(id auth.Identity, in ConfigInput) (ConfigInput,
 
 // configFields memeriksa konfigurasi (tanpa nama): sumber terdaftar dan
 // boleh dipakai peran id, lalu aturan Compile. Hasilnya pesan per field.
-func (s *ConfigService) configFields(id auth.Identity, c Config) map[string]string {
+func (s *ConfigService) configFields(ctx context.Context, id auth.Identity, c Config) map[string]string {
 	src, ok := s.reg.Source(c.Source)
 	switch {
 	case !ok:
 		return map[string]string{"source": "Pilih sumber data dari daftar."}
 	case !src.Allowed(id.Roles):
 		return map[string]string{"source": "Anda tidak punya akses ke sumber data ini."}
+	case !src.Active(ctx):
+		return map[string]string{"source": "Sumber data ini memakai modul yang tidak aktif untuk sekolah Anda."}
 	}
 	if _, err := Compile(s.reg, id.SchoolID, c, Options{}); err != nil {
 		field, msg := compileMessage(err)
@@ -170,7 +187,7 @@ func compileMessage(err error) (string, string) {
 // Create menyimpan konfigurasi baru milik actor beserta audit
 // report_config.create (dan report_config.share jika langsung dibagikan).
 func (s *ConfigService) Create(ctx context.Context, actor school.Actor, id auth.Identity, in ConfigInput) (SavedConfig, error) {
-	in, err := s.Validate(id, in)
+	in, err := s.Validate(ctx, id, in)
 	if err != nil {
 		return SavedConfig{}, err
 	}
@@ -211,7 +228,7 @@ func (s *ConfigService) Update(ctx context.Context, actor school.Actor, id auth.
 		if before.OwnerID != actor.UserID {
 			return ErrNotOwner
 		}
-		if in, err = s.Validate(id, in); err != nil {
+		if in, err = s.Validate(ctx, id, in); err != nil {
 			return err
 		}
 		contentChanged := in.Name != before.Name || !sameConfig(in.Config, before.Config)

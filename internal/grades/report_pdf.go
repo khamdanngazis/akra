@@ -15,6 +15,7 @@ import (
 	"akra/internal/classes"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 )
 
 // Rapor PDF (T74). Data rapor diambil dari ClassSummary (angka sama dengan
@@ -58,13 +59,16 @@ type ReportCard struct {
 	Semester                  int // 1 = Ganjil, 2 = Genap
 	KKMLabel                  string
 	Subjects                  []CardSubject
-	Attendance                attendance.Counts
-	AttendanceFrom            time.Time
-	AttendanceTo              time.Time
-	HomeroomName              string
-	PrincipalName             string
-	SignerTitle               string
-	PrintedAt                 time.Time // tanggal cetak (Asia/Jakarta)
+	// NoAttendance: modul absensi tidak aktif untuk sekolah (T165); rapor
+	// tanpa bagian ketidakhadiran.
+	NoAttendance   bool
+	Attendance     attendance.Counts
+	AttendanceFrom time.Time
+	AttendanceTo   time.Time
+	HomeroomName   string
+	PrincipalName  string
+	SignerTitle    string
+	PrintedAt      time.Time // tanggal cetak (Asia/Jakarta)
 }
 
 // SemesterLabel mengembalikan "1 (Ganjil)" atau "2 (Genap)".
@@ -197,6 +201,10 @@ func BuildReportCard(ctx context.Context, q database.DBTX, schoolID string, e Ca
 		return ReportCard{}, fmt.Errorf("grades: report card identity: %w", err)
 	}
 	card.AttendanceFrom, card.AttendanceTo = semesterRange(semester, yearStart, yearEnd)
+	if !module.From(ctx).Has(module.Attendance) {
+		card.NoAttendance = true
+		return card, nil
+	}
 	// Kehadiran harian (T27) dari setiap kelas yang ditempati siswa di tahun
 	// ajaran ini, dijumlahkan, sama seperti detail anak di portal.
 	rows, err := q.Query(ctx, `SELECT DISTINCT class_id FROM enrollments WHERE school_id = $1 AND student_id = $2 AND academic_year_id = $3`,
@@ -327,23 +335,27 @@ func WriteReportCardPDF(w io.Writer, c ReportCard, compress bool) error {
 	}
 	pdf.Ln(6)
 
-	// Kehadiran.
-	pdf.SetFont("Helvetica", "B", 10)
-	pdf.CellFormat(width, 6, "Ketidakhadiran", "", 1, "L", false, 0, "")
-	pdf.SetFont("Helvetica", "", 10)
-	for _, row := range [][2]string{
-		{"Sakit", fmt.Sprintf("%d hari", c.Attendance.Sakit)},
-		{"Izin", fmt.Sprintf("%d hari", c.Attendance.Izin)},
-		{"Tanpa keterangan", fmt.Sprintf("%d hari", c.Attendance.Alpa)},
-	} {
-		pdf.CellFormat(50, 6, tr(row[0]), "1", 0, "L", false, 0, "")
-		pdf.CellFormat(30, 6, tr(row[1]), "1", 1, "C", false, 0, "")
+	// Kehadiran (bila modul absensi aktif).
+	if c.NoAttendance {
+		pdf.Ln(4)
+	} else {
+		pdf.SetFont("Helvetica", "B", 10)
+		pdf.CellFormat(width, 6, "Ketidakhadiran", "", 1, "L", false, 0, "")
+		pdf.SetFont("Helvetica", "", 10)
+		for _, row := range [][2]string{
+			{"Sakit", fmt.Sprintf("%d hari", c.Attendance.Sakit)},
+			{"Izin", fmt.Sprintf("%d hari", c.Attendance.Izin)},
+			{"Tanpa keterangan", fmt.Sprintf("%d hari", c.Attendance.Alpa)},
+		} {
+			pdf.CellFormat(50, 6, tr(row[0]), "1", 0, "L", false, 0, "")
+			pdf.CellFormat(30, 6, tr(row[1]), "1", 1, "C", false, 0, "")
+		}
+		pdf.SetFont("Helvetica", "", 8)
+		pdf.SetTextColor(100, 116, 139)
+		pdf.CellFormat(width, 5, tr("Periode "+clock.FormatDateID(c.AttendanceFrom)+" – "+clock.FormatDateID(c.AttendanceTo)+"."), "", 1, "L", false, 0, "")
+		pdf.SetTextColor(0, 0, 0)
+		pdf.Ln(10)
 	}
-	pdf.SetFont("Helvetica", "", 8)
-	pdf.SetTextColor(100, 116, 139)
-	pdf.CellFormat(width, 5, tr("Periode "+clock.FormatDateID(c.AttendanceFrom)+" – "+clock.FormatDateID(c.AttendanceTo)+"."), "", 1, "L", false, 0, "")
-	pdf.SetTextColor(0, 0, 0)
-	pdf.Ln(10)
 
 	// Tanda tangan: wali kelas di kiri, kepala sekolah di kanan.
 	const sigW = 70

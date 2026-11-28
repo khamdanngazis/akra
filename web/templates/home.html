@@ -88,7 +88,7 @@
 </div>
 
 <aside class="home-side">
-<section class="card">
+{{if .Modules.HasName "announcements"}}<section class="card">
 <div class="card-head"><h2 class="card-title">Pengumuman terbaru</h2><a class="link-more" href="/pengumuman">Lihat semua{{template "icon" "arrow-right"}}</a></div>
 {{if .News}}
 <ul class="activity-list">
@@ -97,7 +97,7 @@
 {{else}}
 <p class="muted m-0">Belum ada pengumuman untuk ditampilkan.</p>
 {{end}}
-</section>
+</section>{{end}}
 </aside>
 </div>
 

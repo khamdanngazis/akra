@@ -7,6 +7,8 @@
 package builder
 
 import (
+	"akra/internal/platform/module"
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -73,6 +75,9 @@ type Source struct {
 	// DefaultOrder adalah urutan tetap yang dipakai setelah urutan pilihan
 	// pengguna, agar hasil deterministik. Wajib.
 	DefaultOrder string
+	// Module adalah modul pemilik data sumber (T165): sumber disembunyikan
+	// dan konfigurasinya terkunci bila modul ini tidak aktif untuk sekolah.
+	Module string
 	// Roles adalah peran yang boleh memakai sumber ini (membangun, menyimpan,
 	// dan membaca konfigurasi bersama). Wajib.
 	Roles   []string
@@ -87,6 +92,11 @@ func (s *Source) Allowed(roles []string) bool {
 		}
 	}
 	return false
+}
+
+// Active melaporkan apakah modul sumber aktif untuk sekolah request ctx.
+func (s *Source) Active(ctx context.Context) bool {
+	return module.From(ctx).HasName(s.Module)
 }
 
 // Column mengembalikan kolom dengan kunci tertentu.

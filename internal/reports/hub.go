@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/auth"
+	"akra/internal/platform/module"
 	"akra/internal/platform/page"
 )
 
@@ -27,9 +28,10 @@ type hubView struct {
 func (h *Handler) hub(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
 	v := hubView{
-		User:          id,
-		CanAttendance: auth.HasAnyRole(id, auth.RoleAdminTU, auth.RoleKepalaSekolah),
-		CanArrears:    auth.HasAnyRole(id, auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah),
+		User: id,
+		// Laporan hanya untuk modul yang aktif di sekolah (T165).
+		CanAttendance: auth.HasAnyRole(id, auth.RoleAdminTU, auth.RoleKepalaSekolah) && module.From(r.Context()).Has(module.Attendance),
+		CanArrears:    auth.HasAnyRole(id, auth.RoleBendahara, auth.RoleAdminTU, auth.RoleKepalaSekolah) && module.From(r.Context()).Has(module.Billing),
 	}
 	rows, err := h.db.Query(r.Context(), `SELECT `+jobColumns+` FROM report_jobs
 		WHERE school_id = $1 AND (requested_by = $2 OR $3) ORDER BY created_at DESC LIMIT 10`,
@@ -43,7 +45,11 @@ func (h *Handler) hub(w http.ResponseWriter, r *http.Request) {
 		page.ServerError(h.render, h.logger, w, r, id, "list report jobs", err)
 		return
 	}
+	mods := module.From(r.Context())
 	for _, j := range jobs {
+		if !mods.HasName(jobModule(j)) {
+			continue // ekspor modul yang tidak aktif disembunyikan (T165)
+		}
 		format := "PDF"
 		if j.Format == "xlsx" {
 			format = "Excel"
