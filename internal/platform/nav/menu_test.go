@@ -233,12 +233,12 @@ func TestSettingsFor(t *testing.T) {
 		roles, duties, modules []string
 		want                   string
 	}{
-		{[]string{"admin_tu"}, nil, DefaultModules, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
-		{[]string{"admin_tu"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan /pengaturan/tugas | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan | Ujian:/ujian/pengaturan"},
-		{[]string{"kepala_sekolah"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"admin_tu"}, nil, DefaultModules, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan /pengaturan/modul | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"admin_tu"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/mapel /pengaturan/penugasan /pengaturan/modul /pengaturan/tugas | Absensi:/pengaturan/absensi | Nilai & Rapor:/pengaturan/rapor | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan | Ujian:/ujian/pengaturan"},
+		{[]string{"kepala_sekolah"}, nil, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/modul /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
 		// Tugas koordinator hanya menambah hak guru (sama dengan matriks
 		// akses ujian): kepala sekolah koordinator tetap tanpa Pengaturan Ujian.
-		{[]string{"kepala_sekolah"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
+		{[]string{"kepala_sekolah"}, []string{"koordinator_ujian"}, exam, "Sekolah:/pengaturan/sekolah /pengaturan/tahun-ajaran /pengaturan/modul /pengaturan/tugas | Keuangan:/pengaturan/keuangan | Pendaftaran:/pendaftaran/pengaturan"},
 		{[]string{"bendahara"}, nil, DefaultModules, "Keuangan:/pengaturan/keuangan"},
 		// Keuangan nonaktif (T163): bagian Keuangan hilang.
 		{[]string{"bendahara"}, nil, []string{ModuleAdmission}, ""},

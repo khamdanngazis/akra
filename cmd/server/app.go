@@ -156,7 +156,7 @@ func newApp(d appDeps) (http.Handler, error) {
 			WithMetrics(reg).WithSaveFault(d.saveFault).WithBaseURL(d.baseURL),
 		participantSessions: participantSessions,
 		schoolProfile:       school.NewProfileHandler(school.NewProfileService(d.db), d.sessions, d.render, d.logger),
-		settingsHub:         school.NewSettingsHubHandler(d.render),
+		settingsHub:         school.NewSettingsHubHandler(d.db, d.render, d.logger),
 		academicYear:        school.NewAcademicYearHandler(school.NewAcademicYearService(d.db), d.sessions, d.render, d.logger),
 		classes:             classes.NewHandler(classes.NewService(d.db), d.db, d.sessions, d.render, d.logger),
 		subjects:            academic.NewSubjectHandler(academic.NewSubjectService(d.db), d.sessions, d.render, d.logger),

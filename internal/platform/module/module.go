@@ -446,3 +446,38 @@ func Enforce(deny func(http.ResponseWriter, *http.Request, Info)) func(http.Hand
 func Inactive(m Info) string {
 	return "Modul " + m.Name + " tidak aktif untuk sekolah Anda. Hubungi admin TU atau tim AKRA."
 }
+
+// Row adalah status tersimpan satu modul (untuk halaman Modul & paket).
+type Row struct {
+	Enabled   bool
+	ChangedAt time.Time
+}
+
+// Rows mengembalikan status tersimpan semua modul sekolah tanpa cache.
+// Modul tanpa baris memakai bawaan katalog (tidak ada di map).
+func Rows(ctx context.Context, q database.DBTX, schoolID string) (map[ID]Row, error) {
+	rows, err := q.Query(ctx, `SELECT module, enabled, changed_at FROM school_modules WHERE school_id = $1`, schoolID)
+	if err != nil {
+		return nil, fmt.Errorf("module: rows: %w", err)
+	}
+	defer rows.Close()
+	out := map[ID]Row{}
+	for rows.Next() {
+		var id ID
+		var r Row
+		if err := rows.Scan(&id, &r.Enabled, &r.ChangedAt); err != nil {
+			return nil, fmt.Errorf("module: rows: %w", err)
+		}
+		out[id] = r
+	}
+	return out, rows.Err()
+}
+
+// PackageLabels adalah nama paket untuk tampilan (ADR 0002 bagian 5).
+// schools.package kosong berarti paket kustom atau belum diberi label.
+var PackageLabels = map[string]string{
+	"dasar":    "Paket Dasar",
+	"akademik": "Paket Akademik",
+	"keuangan": "Paket Keuangan",
+	"lengkap":  "Paket Lengkap",
+}

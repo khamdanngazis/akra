@@ -796,6 +796,8 @@ var Routes = []Route{
 	// Profil sekolah dan zona waktu (T126).
 	// Pusat Pengaturan (T156): semua staf; isinya per peran dan modul.
 	{Method: "GET", Pattern: "/pengaturan", Kind: KindPage, Roles: staff},
+	// Modul & Paket (T167): baca saja untuk admin TU dan kepala sekolah.
+	{Method: "GET", Pattern: "/pengaturan/modul", Kind: KindPage, Roles: []string{Admin, Principal}},
 	{Method: "GET", Pattern: "/pengaturan/sekolah/", Kind: KindPage, Roles: schoolData},
 	{Method: "POST", Pattern: "/pengaturan/sekolah/", Kind: KindOwn, Roles: adminTU,
 		Requests: post(func(*School) string { return "/pengaturan/sekolah/" }, func(*School) url.Values {

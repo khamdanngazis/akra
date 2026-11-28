@@ -339,3 +339,58 @@ func TestReportsAndImportFollowModules(t *testing.T) {
 		t.Errorf("post grades mapping = %d", rec.Code)
 	}
 }
+
+// Halaman Modul & Paket (T167): modul aktif dan tidak aktif sesuai
+// school_modules, baca saja untuk admin TU dan kepala sekolah; pusat
+// Pengaturan hanya menampilkan bagian modul aktif.
+func TestModulesPage(t *testing.T) {
+	app, tx, a, _ := newTenantApp(t)
+	ctx := context.Background()
+	t.Cleanup(func() { module.Forget(a.ID) })
+	if _, err := tx.Exec(ctx, `UPDATE schools SET package = 'lengkap' WHERE id = $1`, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := module.Save(ctx, tx, a.ID, module.Billing, module.State{Enabled: false}, "uji", nil); err != nil {
+		t.Fatal(err)
+	}
+	clients := map[string]*client{}
+	for _, u := range []testutil.User{a.Admin, a.Principal, a.Treasurer, a.Teacher} {
+		cl := newClient(t, app)
+		if rec := cl.login(a.Code, u.Email, testutil.Password); rec.Code != http.StatusSeeOther {
+			t.Fatalf("login %s: %d", u.Role, rec.Code)
+		}
+		clients[u.Role] = cl
+	}
+	for _, role := range []string{testutil.Admin, testutil.Principal} {
+		rec := clients[role].get("/pengaturan/modul")
+		body := rec.Body.String()
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s modules page = %d", role, rec.Code)
+		}
+		active := between(body, `id="mod-active"`, "</section>")
+		inactive := between(body, `id="mod-inactive"`, "</section>")
+		for _, name := range []string{"Inti", "Absensi", "Ujian Online", "Portal Orang Tua"} {
+			if !strings.Contains(active, "<strong>"+name+"</strong>") {
+				t.Errorf("%s: %s not listed as active", role, name)
+			}
+		}
+		if !strings.Contains(inactive, "<strong>Keuangan</strong>") || strings.Contains(active, "<strong>Keuangan</strong>") {
+			t.Errorf("%s: Keuangan not listed as not included", role)
+		}
+		// Baca saja: tidak ada form di isi halaman.
+		if !strings.Contains(body, "Paket Lengkap") || !strings.Contains(body, "Hubungi tim implementator AKRA") || strings.Contains(between(body, "<main", "</main>"), "<form") {
+			t.Errorf("%s: package label, contact note, or a form on a read-only page", role)
+		}
+	}
+	for _, role := range []string{testutil.Treasurer, testutil.Teacher} {
+		if rec := clients[role].get("/pengaturan/modul"); rec.Code != http.StatusForbidden {
+			t.Errorf("%s modules page = %d, want 403", role, rec.Code)
+		}
+	}
+	// Pusat Pengaturan: tautan Modul & Paket untuk admin; bagian Keuangan
+	// hilang karena modulnya mati.
+	hub := clients[testutil.Admin].get("/pengaturan").Body.String()
+	if !strings.Contains(hub, `href="/pengaturan/modul"`) || strings.Contains(hub, `href="/pengaturan/keuangan"`) || !strings.Contains(hub, `href="/pengaturan/rapor"`) {
+		t.Error("settings hub does not follow modules")
+	}
+}
