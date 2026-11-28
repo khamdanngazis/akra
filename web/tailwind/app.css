@@ -945,6 +945,14 @@
     @apply grid min-w-0 grid-cols-1 gap-4 desktop:gap-6;
   }
 
+  .home-grid-single {
+    @apply desktop:grid-cols-1;
+  }
+
+  .home-grid-single .home-main {
+    @apply hidden;
+  }
+
   .home-side {
     @apply grid min-w-0 grid-cols-1 gap-4;
   }

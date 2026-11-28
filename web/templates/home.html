@@ -44,7 +44,8 @@
 {{end}}</section>
 {{end}}
 
-<div class="home-grid">
+{{- /* Tanpa kartu utama (mis. guru di paket tanpa modul akademik, T169): satu kolom. */ -}}
+<div class="home-grid{{if not (or .Treasurer .IsTeacher .Principal)}} home-grid-single{{end}}">
 <div class="home-main">
 {{if .Treasurer}}
 <section class="card">

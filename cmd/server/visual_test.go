@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"akra/internal/payments"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/school"
@@ -31,7 +33,8 @@ import (
 
 // TestVisual menyimpan halaman utama dengan data demo sebagai HTML ke
 // VISUAL_OUT untuk pemeriksaan tampilan (T162). scripts/visual.sh (make
-// visual) lalu memotretnya di desktop 1280 px dan HP 360 px. Halaman staf
+// visual) lalu memotretnya di desktop 1280 px dan HP 360 px. Dengan
+// VISUAL_MODULES, menu dan beranda paket Dasar dan Keuangan ikut disimpan. Halaman staf
 // modul ujian juga diperiksa dengan aturan tata letak (pageLint). Hanya
 // berjalan bila VISUAL_OUT diisi, jadi tidak membebani CI.
 func TestVisual(t *testing.T) {
@@ -370,13 +373,36 @@ func TestVisual(t *testing.T) {
 		save("ujian-soal-ubah", ab, "/ujian/soal/"+vq+"/ubah")
 	}
 
+	clients := map[string]*client{}
 	for email, list := range pages {
 		b := newClient(t, app)
 		if rec := b.login("test-visual", email, "Rahasia-Visual-1"); rec.Code != http.StatusSeeOther {
 			t.Fatalf("login %s: %d", email, rec.Code)
 		}
+		clients[email] = b
 		for _, p := range list {
 			save(p[0], b, p[1])
 		}
+	}
+
+	// Paket modul (T169, scripts/visual.sh --modules): menu dan beranda
+	// setiap peran untuk paket Dasar dan Keuangan.
+	if os.Getenv("VISUAL_MODULES") != "" {
+		for _, code := range []string{"dasar", "keuangan"} {
+			p, _ := module.GetPackage(code)
+			for _, m := range module.Catalog {
+				if m.ID != module.Core {
+					exec(`INSERT INTO school_modules (school_id, module, enabled) VALUES ($1, $2, $3)
+						ON CONFLICT (school_id, module) DO UPDATE SET enabled = EXCLUDED.enabled`, sid, m.ID, slices.Contains(p.Modules, m.ID))
+				}
+			}
+			exec(`UPDATE schools SET package = $2 WHERE id = $1`, sid, code)
+			module.Forget(sid)
+			for _, v := range [][3]string{{"admin@v.id", "admin", "/"}, {"admin@v.id", "admin-pengaturan", "/pengaturan"}, {"admin@v.id", "admin-modul", "/pengaturan/modul"},
+				{"bendahara@v.id", "bendahara", "/"}, {"guru@v.id", "guru", "/"}, {"kepala@v.id", "kepala", "/"}, {"dewi@v.id", "orangtua", "/portal"}} {
+				save("pkg-"+code+"-"+v[1], clients[v[0]], v[2])
+			}
+		}
+		module.Forget(sid)
 	}
 }

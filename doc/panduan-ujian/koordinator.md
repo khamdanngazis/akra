@@ -48,7 +48,7 @@ Gangguan lebih dari ± 5 menit: **jeda** ruang yang terdampak. Lama jeda dikemba
 
 ## Tes seleksi calon siswa (admin TU)
 
-Ujian → Daftar Ujian → **Buat ujian**, pilih **Tes seleksi**. Nilai masuk ke peringkat pendaftaran. Calon siswa tidak melihat nilai maupun pembahasan. Kartu tes tampil di halaman status pendaftaran, lengkap dengan tautan **Cek perangkat** dan **Panduan orang tua**. Ujian latihan untuk calon siswa bisa dibuka dari halaman tes di menu Pendaftaran.
+Hanya bila sekolah memakai modul **Pendaftaran**. Ujian → Daftar Ujian → **Buat ujian**, pilih **Tes seleksi**. Nilai masuk ke peringkat pendaftaran. Calon siswa tidak melihat nilai maupun pembahasan. Kartu tes tampil di halaman status pendaftaran, lengkap dengan tautan **Cek perangkat** dan **Panduan orang tua**. Ujian latihan untuk calon siswa bisa dibuka dari halaman tes di menu Pendaftaran.
 
 ## Bila ada masalah
 
