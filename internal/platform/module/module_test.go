@@ -2,7 +2,9 @@ package module
 
 import (
 	"context"
+	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -149,30 +151,17 @@ func TestLoadCacheAndSave(t *testing.T) {
 	if s, _ := Load(ctx, tx, sid); s.Has(Attendance) {
 		t.Error("change not visible after CacheTTL")
 	}
-	// Save: langsung terlihat, pilihan tersimpan, audit dipanggil.
-	var audited []string
-	audit := func(_ context.Context, school, action string, before, after State) error {
-		audited = append(audited, action)
-		if before.Enabled || !after.Enabled {
-			t.Errorf("audit before %+v after %+v", before, after)
-		}
-		return nil
-	}
-	if err := Save(ctx, tx, sid, Exam, State{Enabled: true, Options: map[string]string{"release": "r2"}, Note: "pilot"}, "uji", audit); err != nil {
+	// Lewat Admin (T168): langsung terlihat di replika ini, pilihan dan
+	// catatan tersimpan.
+	if _, err := (Admin{By: "uji"}).Enable(ctx, tx, sid, Exam, map[string]string{"release": "r2"}, "pilot"); err != nil {
 		t.Fatal(err)
 	}
 	s, _ = Load(ctx, tx, sid)
-	if !s.Has(Exam) || s.Option(Exam, "release") != "r2" || !s.HasOption(Exam, "release") || len(audited) != 1 || audited[0] != "module.exam" {
-		t.Errorf("after save = %v %q, audit %v", s.IDs(), s.Option(Exam, "release"), audited)
+	if !s.Has(Exam) || s.Option(Exam, "release") != "r2" || !s.HasOption(Exam, "release") {
+		t.Errorf("after enable = %v %q", s.IDs(), s.Option(Exam, "release"))
 	}
 	if st, ok, _ := GetState(ctx, tx, sid, Exam); !ok || st.Note != "pilot" {
 		t.Errorf("state = %+v", st)
-	}
-	if err := Save(ctx, tx, sid, Core, State{}, "uji", nil); err != ErrCore {
-		t.Errorf("save core = %v", err)
-	}
-	if err := Save(ctx, tx, sid, "keuangan", State{}, "uji", nil); err == nil {
-		t.Error("save unknown module accepted")
 	}
 }
 
@@ -263,5 +252,38 @@ func TestRequiredAndOwner(t *testing.T) {
 	}
 	if miss := NewSet(Portal).Missing("/portal/siswa/1/tagihan"); len(miss) != 1 || miss[0] != Billing {
 		t.Errorf("missing = %v", miss)
+	}
+}
+
+// Ketergantungan wajib (T168): katalog sekarang hanya bergantung pada inti,
+// jadi diuji dengan katalog sementara (Bantu Dapodik butuh Nilai).
+func TestAdminDependencies(t *testing.T) {
+	tx := testTx(t)
+	ctx := context.Background()
+	saved := slices.Clone(Catalog)
+	t.Cleanup(func() { Catalog = saved })
+	for i := range Catalog {
+		if Catalog[i].ID == Dapodik {
+			Catalog[i].Requires = []ID{Core, Grades}
+		}
+	}
+	var sid string
+	if err := tx.QueryRow(ctx, `INSERT INTO schools (name, code) VALUES ('SD Dep', 'test-modul-dep') RETURNING id`).Scan(&sid); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { Forget(sid) })
+	admin := Admin{By: "uji"}
+	var de *DependencyError
+	if _, err := admin.Disable(ctx, tx, sid, Grades, "uji", false); !errors.As(err, &de) || de.Enabling || de.Other != Dapodik {
+		t.Errorf("disable grades while dapodik needs it: %v", err)
+	}
+	if _, err := admin.Disable(ctx, tx, sid, Dapodik, "uji", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Disable(ctx, tx, sid, Grades, "uji", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Enable(ctx, tx, sid, Dapodik, nil, "uji"); !errors.As(err, &de) || !de.Enabling || de.Other != Grades {
+		t.Errorf("enable dapodik without grades: %v", err)
 	}
 }

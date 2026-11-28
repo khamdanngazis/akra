@@ -40,9 +40,9 @@ func (h *SettingsHubHandler) modules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	set := module.From(ctx)
-	v := modulesView{User: id, Package: module.PackageLabels[pkg]}
-	if v.Package == "" && pkg != "" {
-		v.Package = pkg
+	v := modulesView{User: id}
+	if p, ok := module.GetPackage(pkg); ok {
+		v.Package = p.Name
 	}
 	for _, m := range module.Catalog {
 		row := moduleRow{Info: m}

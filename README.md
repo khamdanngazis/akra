@@ -257,12 +257,13 @@ Kolom `schools.timezone` (migrasi 000060): `Asia/Jakarta` (WIB, bawaan), `Asia/M
 
 - Tabel `staff_duties` (migrasi 000061): tugas tambahan per tahun ajaran, mis. `koordinator_ujian`. Diatur `admin_tu` di `/pengaturan/tugas`; hanya untuk akun berperan guru. Tahun ajaran baru tidak mewarisi tugas. Haknya dibaca dari database di setiap request modul ujian; menu baru muncul setelah login ulang.
 - Matriks akses modul ujian ada di [internal/exam/access.go](internal/exam/access.go) dan diuji per sel.
-- Modul ujian aktif per sekolah lewat pengaturan `exam.enabled` dan `exam.release` (`r1`, `r2`, `r3`). Modul nonaktif: menu tidak tampil dan semua route `/ujian/...` menjawab `404`. Diatur pengelola platform, bukan sekolah:
+- Modul per sekolah (T163–T168, [ADR 0002](doc/adr/0002-modul-per-sekolah.md)): status di tabel `school_modules`, ujian dengan pilihan tahap rilis `release` (`r1`, `r2`, `r3`). Modul nonaktif: menu dan tautannya tidak tampil, dan route-nya menjawab `404`. Diatur tim implementator AKRA lewat `akra-modul`, bukan oleh sekolah. Panduan lengkap: [doc/implementator-modul.md](doc/implementator-modul.md).
 
 ```sh
-railway ssh --service akra -- akra-modul -school <kode>                  # lihat status
-railway ssh --service akra -- akra-modul -school <kode> -exam on -release r1
-railway ssh --service akra -- akra-modul -school <kode> -exam off
+railway ssh --service akra -- akra-modul -school <kode>                                   # lihat status
+railway ssh --service akra -- akra-modul -school <kode> -module exam -on -option release=r1 -note "pilot tes seleksi"
+railway ssh --service akra -- akra-modul -school <kode> -package lengkap -note "kontrak 2027"
+railway ssh --service akra -- akra-modul -list
 ```
 
 ## Bank Soal (MVP 4, T127–T132)

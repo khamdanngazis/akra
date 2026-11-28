@@ -214,7 +214,7 @@ Status: **belum dimulai.** Alat ukur dan prosedur sudah siap. Pilot dijalankan b
 Aktivasi per sekolah pilot (dicatat di audit sebagai `module.exam`):
 
 ```sh
-akra-modul -school <kode> -exam on -release r1
+akra-modul -school <kode> -module exam -on -option release=r1 -note "pilot R1"
 ```
 
 ### Pendampingan setiap sekolah pilot
@@ -274,11 +274,11 @@ Bila satu kriteria belum terpenuhi, rollout rilis itu ditunda. Masalahnya dicata
 
 | Gelombang | Sekolah | Syarat masuk | Perintah |
 |---|---|---|---|
-| 1 | 5 sekolah | Kriteria lanjut rilis terpenuhi | `akra-modul -file gelombang-1.txt -exam on -release <r>` |
-| 2 | 20 sekolah | Gelombang 1 berjalan 2 minggu tanpa insiden tinggi; tiket ≤ 1 per 100 peserta | `akra-modul -file gelombang-2.txt -exam on -release <r>` |
+| 1 | 5 sekolah | Kriteria lanjut rilis terpenuhi | `akra-modul -file gelombang-1.txt -module exam -on -option release=<r> -note "gelombang 1"` |
+| 2 | 20 sekolah | Gelombang 1 berjalan 2 minggu tanpa insiden tinggi; tiket ≤ 1 per 100 peserta | `akra-modul -file gelombang-2.txt -module exam -on -option release=<r> -note "gelombang 2"` |
 | 3 | Semua sekolah | Gelombang 2 lulus ukuran yang sama | per berkas daftar sekolah |
 
-- Satu berkas gelombang diterapkan dalam satu transaksi: bila satu kode salah, tidak ada yang berubah. Status semua sekolah dicek dengan `akra-modul -list`.
+- Satu berkas gelombang diterapkan dalam satu transaksi: bila satu kode salah, tidak ada yang berubah. Status semua sekolah dicek dengan `akra-modul -list -module exam`. Panduan pengelola modul: [implementator-modul.md](implementator-modul.md).
 - Setiap gelombang: pengumuman ke admin TU, webinar singkat 30 menit (isi [doc/panduan-ujian/](panduan-ujian/README.md)), dan tautan panduan cetak.
 - **Musim PAS pertama** dipantau khusus:
   - `SUPPORT_HOURS_PEAK` diisi; jam layanan diperluas tampil otomatis di halaman bantuan sekolah yang punya agenda;

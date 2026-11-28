@@ -34,6 +34,9 @@ import (
 type options struct {
 	schoolCode, schoolName string
 	email, fullName, role  string
+	// pkg adalah paket modul sekolah baru (T168); diabaikan untuk sekolah
+	// yang sudah ada.
+	pkg string
 }
 
 func main() {
@@ -105,6 +108,7 @@ func parseFlags(args []string) (options, error) {
 	fs.StringVar(&o.email, "email", "", "user email (required)")
 	fs.StringVar(&o.fullName, "name", "", "user full name (required)")
 	fs.StringVar(&o.role, "role", auth.RoleAdminTU, "role code: "+strings.Join(auth.AllRoles, ", "))
+	fs.StringVar(&o.pkg, "package", module.DefaultPackage, "module package for a new school (dasar, akademik, keuangan, lengkap)")
 	if err := fs.Parse(args); err != nil {
 		return options{}, err
 	}
@@ -123,6 +127,9 @@ func parseFlags(args []string) (options, error) {
 	if len(missing) > 0 {
 		slices.Sort(missing)
 		return options{}, fmt.Errorf("missing required flags: %s", strings.Join(missing, ", "))
+	}
+	if _, ok := module.GetPackage(o.pkg); !ok {
+		return options{}, fmt.Errorf("unknown package %q", o.pkg)
 	}
 	if !slices.Contains(auth.AllRoles, o.role) {
 		return options{}, fmt.Errorf("unknown role %q (allowed: %s)", o.role, strings.Join(auth.AllRoles, ", "))
@@ -145,6 +152,12 @@ func seed(ctx context.Context, db *pgxpool.Pool, o options, passwordHash string)
 		}
 		if err != nil {
 			return fmt.Errorf("find or create school: %w", err)
+		}
+		// Sekolah baru mendapat paket modul (T168, bawaan Dasar).
+		if schoolCreated {
+			if _, err := (module.Admin{By: "akra-seed"}).ApplyPackage(ctx, tx, schoolID, o.pkg, "sekolah baru", false); err != nil {
+				return fmt.Errorf("apply package: %w", err)
+			}
 		}
 
 		if err := checkRoleModules(ctx, tx, schoolID, o.role); err != nil {
