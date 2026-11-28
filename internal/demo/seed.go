@@ -12,6 +12,7 @@ import (
 
 	"akra/internal/billing"
 	"akra/internal/payments"
+	"akra/internal/platform/module"
 	"akra/internal/platform/settings"
 	"akra/internal/school"
 )
@@ -28,6 +29,9 @@ type Options struct {
 	Today time.Time
 	// Seed membuat isi acak bisa diulang.
 	Seed uint64
+	// Package adalah paket modul sekolah demo (T168); kosong = bawaan
+	// katalog (semua modul kecuali ujian), seperti sebelum ada paket.
+	Package string
 }
 
 // Account adalah satu akun demo.
@@ -97,6 +101,11 @@ func Seed(ctx context.Context, tx pgx.Tx, o Options) (Result, error) {
 	var err error
 	if res.SchoolID, err = one(`INSERT INTO schools (name, code, address) VALUES ($1, $2, $3) RETURNING id`, o.Name, o.Code, o.Address); err != nil {
 		return res, fmt.Errorf("demo: school %s (already exists? use -reset): %w", o.Code, err)
+	}
+	if o.Package != "" {
+		if _, err := (module.Admin{By: "akra-demoseed"}).ApplyPackage(ctx, tx, res.SchoolID, o.Package, "sekolah demo", true); err != nil {
+			return res, fmt.Errorf("demo: package: %w", err)
+		}
 	}
 	sid := res.SchoolID
 	user := func(local, name, role, note string, guardianID any) (string, error) {

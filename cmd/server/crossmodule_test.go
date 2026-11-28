@@ -19,9 +19,7 @@ func TestCrossModuleFeatures(t *testing.T) {
 	t.Cleanup(func() { module.Forget(a.ID) })
 	set := func(m module.ID, on bool) {
 		t.Helper()
-		if err := module.Save(ctx, tx, a.ID, m, module.State{Enabled: on, Options: map[string]string{"release": "r3"}}, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, module.State{Enabled: on, Options: map[string]string{"release": "r3"}})
 	}
 	login := func(u testutil.User) *client {
 		cl := newClient(t, app)

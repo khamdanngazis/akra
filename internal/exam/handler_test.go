@@ -3,6 +3,7 @@ package exam
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -129,9 +130,7 @@ func TestModuleRoutes(t *testing.T) {
 	}
 
 	// Modul nonaktif: semua route ujian 404, termasuk untuk admin.
-	if err := SetModule(ctx, e.tx, a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, a.ID, Module{Enabled: false, Release: R3})
 	for _, p := range []string{"/ujian/", "/ujian/agenda"} {
 		if rec := e.get(p, a.Admin); rec.Code != http.StatusNotFound {
 			t.Errorf("disabled module %s = %d, want 404", p, rec.Code)
@@ -154,14 +153,13 @@ func TestLoadModule(t *testing.T) {
 	if err != nil || !m.Enabled || m.Release != R3 || !m.Has(R1) || !m.Has(R3) {
 		t.Errorf("fixture module = %+v, %v", m, err)
 	}
-	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: R1}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, e.a.ID, Module{Enabled: true, Release: R1})
 	if m, _ := LoadModule(ctx, e.tx, e.a.ID); !m.Has(R1) || m.Has(R2) {
 		t.Errorf("r1 module = %+v", m)
 	}
-	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: true, Release: "r9"}, "uji", nil); err == nil {
-		t.Error("SetModule accepted r9")
+	// Pengelola modul menolak tahap rilis yang tidak dikenal (T168).
+	if _, err := (module.Admin{By: "uji"}).Enable(ctx, e.tx, e.a.ID, module.Exam, map[string]string{"release": "r9"}, "uji"); !errors.Is(err, module.ErrBadOption) {
+		t.Errorf("admin accepted r9: %v", err)
 	}
 	if _, err := e.tx.Exec(ctx, `UPDATE school_modules SET options = '{"release": "r9"}' WHERE school_id = $1 AND module = 'exam'`, e.a.ID); err != nil {
 		t.Fatal(err)

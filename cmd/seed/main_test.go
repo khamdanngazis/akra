@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"akra/internal/demo"
 	"akra/internal/platform/database"
 	"akra/internal/platform/module"
 )
@@ -46,11 +47,14 @@ func TestRun_Postgres(t *testing.T) {
 
 	ctx := context.Background()
 	args := []string{"-school-code", "test-seed", "-school-name", "Sekolah Seed", "-email", "admin@seed.id", "-name", "Admin Seed"}
+	// Sekolah baru kini punya audit paket modul (append-only), jadi
+	// dibersihkan seperti akra-demoseed -reset.
 	cleanup := func() {
 		pool := mustPool(t, dsn)
 		defer pool.Close()
-		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE school_id IN (SELECT id FROM schools WHERE code = 'test-seed')`)
-		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE code = 'test-seed'`)
+		if err := demo.DeleteSchool(ctx, pool, "test-seed"); err != nil {
+			t.Error(err)
+		}
 	}
 	cleanup()
 	t.Cleanup(cleanup)
@@ -127,10 +131,9 @@ func TestRun_TreasurerNeedsModule(t *testing.T) {
 	cleanup := func() {
 		pool := mustPool(t, dsn)
 		defer pool.Close()
-		_, _ = pool.Exec(ctx, `DELETE FROM user_roles WHERE user_id IN (SELECT u.id FROM users u JOIN schools s ON s.id = u.school_id WHERE s.code = 'test-seed-role')`)
-		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE school_id IN (SELECT id FROM schools WHERE code = 'test-seed-role')`)
-		_, _ = pool.Exec(ctx, `DELETE FROM school_modules WHERE school_id IN (SELECT id FROM schools WHERE code = 'test-seed-role')`)
-		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE code = 'test-seed-role'`)
+		if err := demo.DeleteSchool(ctx, pool, "test-seed-role"); err != nil {
+			t.Error(err)
+		}
 	}
 	cleanup()
 	t.Cleanup(cleanup)
@@ -141,9 +144,12 @@ func TestRun_TreasurerNeedsModule(t *testing.T) {
 	}
 	pool := mustPool(t, dsn)
 	defer pool.Close()
-	if _, err := pool.Exec(ctx, `INSERT INTO school_modules (school_id, module, enabled)
-		SELECT id, m, false FROM schools, unnest(ARRAY['billing', 'admission']) m WHERE code = 'test-seed-role'`); err != nil {
-		t.Fatal(err)
+	// Sekolah baru memakai paket Dasar (T168): tanpa keuangan dan pendaftaran.
+	var pkg string
+	var billing bool
+	if err := pool.QueryRow(ctx, `SELECT s.package, m.enabled FROM schools s JOIN school_modules m ON m.school_id = s.id AND m.module = 'billing'
+		WHERE s.code = 'test-seed-role'`).Scan(&pkg, &billing); err != nil || pkg != "dasar" || billing {
+		t.Fatalf("new school package = %q billing %v (%v)", pkg, billing, err)
 	}
 	treasurer := []string{"-school-code", "test-seed-role", "-email", "bendahara@peran.id", "-name", "Bendahara", "-role", "bendahara"}
 	if err := run(ctx, treasurer, env, &out); err == nil || !strings.Contains(err.Error(), "needs module") {

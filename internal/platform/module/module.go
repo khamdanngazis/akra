@@ -346,25 +346,9 @@ var ErrUnknown = errors.New("module: unknown module")
 // ErrCore berarti modul core tidak bisa diubah.
 var ErrCore = errors.New("module: core is always enabled")
 
-// Auditor mencatat perubahan modul ke audit, dalam transaksi yang sama
-// dengan Save; dipasok pemanggil agar paket ini tidak bergantung pada paket
-// audit.
-type Auditor func(ctx context.Context, schoolID, action string, before, after State) error
-
-// Save menulis status modul id sekolah, menghapus cache replika ini, dan
-// mencatat audit "module.<id>" lewat audit (boleh nil di uji). by adalah
-// pelaku (mis. "akra-modul (budi)").
-func Save(ctx context.Context, q database.DBTX, schoolID string, id ID, st State, by string, audit Auditor) error {
-	if id == Core {
-		return ErrCore
-	}
-	if !Known(id) {
-		return fmt.Errorf("%w: %q", ErrUnknown, id)
-	}
-	before, _, err := GetState(ctx, q, schoolID, id)
-	if err != nil {
-		return err
-	}
+// save menulis status modul id sekolah dan menghapus cache replika ini.
+// Hanya dipanggil Admin (T168), yang memeriksa aturan dan mencatat audit.
+func save(ctx context.Context, q database.DBTX, schoolID string, id ID, st State, by string) error {
 	opts := st.Options
 	if opts == nil {
 		opts = map[string]string{}
@@ -382,9 +366,6 @@ func Save(ctx context.Context, q database.DBTX, schoolID string, id ID, st State
 		return fmt.Errorf("module: save %s: %w", id, err)
 	}
 	Forget(schoolID)
-	if audit != nil {
-		return audit(ctx, schoolID, "module."+string(id), before, st)
-	}
 	return nil
 }
 
@@ -471,13 +452,4 @@ func Rows(ctx context.Context, q database.DBTX, schoolID string) (map[ID]Row, er
 		out[id] = r
 	}
 	return out, rows.Err()
-}
-
-// PackageLabels adalah nama paket untuk tampilan (ADR 0002 bagian 5).
-// schools.package kosong berarti paket kustom atau belum diberi label.
-var PackageLabels = map[string]string{
-	"dasar":    "Paket Dasar",
-	"akademik": "Paket Akademik",
-	"keuangan": "Paket Keuangan",
-	"lengkap":  "Paket Lengkap",
 }

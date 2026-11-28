@@ -2,7 +2,6 @@ package exam
 
 import (
 	"bytes"
-	"context"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -117,15 +116,11 @@ func TestParticipantLoginFlow(t *testing.T) {
 	}
 	// Modul ujian dimatikan saat peserta sudah masuk: 404 (T164); aktif
 	// lagi: terbuka.
-	if err := SetModule(context.Background(), e.tx, e.a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, e.a.ID, Module{Enabled: false, Release: R3})
 	if rec := e.do(http.MethodGet, "/u/beranda", nil); rec.Code != http.StatusNotFound {
 		t.Errorf("home with module off = %d", rec.Code)
 	}
-	if err := SetModule(context.Background(), e.tx, e.a.ID, Module{Enabled: true, Release: R3}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, e.a.ID, Module{Enabled: true, Release: R3})
 
 	// Keluar: beranda dialihkan ke login sekolah.
 	rec = e.do(http.MethodPost, "/u/keluar", url.Values{})
@@ -180,7 +175,6 @@ func TestParticipantLoginMessages(t *testing.T) {
 
 func TestParticipantLoginGuards(t *testing.T) {
 	e := newPEnv(t)
-	ctx := context.Background()
 	base := "/u/" + e.a.Code
 
 	if rec := e.do(http.MethodGet, "/u/tidak-ada", nil); rec.Code != http.StatusNotFound {
@@ -194,9 +188,7 @@ func TestParticipantLoginGuards(t *testing.T) {
 		t.Errorf("rate limit = %d, want 429", rec.Code)
 	}
 	// Modul ujian nonaktif: halaman login 404.
-	if err := SetModule(ctx, e.tx, e.a.ID, Module{Enabled: false, Release: R3}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, e.a.ID, Module{Enabled: false, Release: R3})
 	if rec := e.do(http.MethodGet, base, nil); rec.Code != http.StatusNotFound {
 		t.Errorf("disabled module = %d", rec.Code)
 	}

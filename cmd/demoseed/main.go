@@ -42,6 +42,7 @@ func run() error {
 	name := flag.String("name", "SD Harapan Bangsa", "nama sekolah")
 	address := flag.String("address", "Jl. Pendidikan No. 12, Bandung", "alamat sekolah (tampil di kuitansi)")
 	reset := flag.Bool("reset", false, "hapus sekolah berkode sama lebih dulu")
+	pkg := flag.String("package", "", "paket modul: dasar, akademik, keuangan, lengkap (kosong = semua modul kecuali ujian)")
 	flag.Parse()
 	if os.Getenv("APP_ENV") == "production" {
 		return fmt.Errorf("refusing to seed demo data when APP_ENV=production")
@@ -77,7 +78,7 @@ func run() error {
 	start := time.Now()
 	var res demo.Result
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
-		res, err = demo.Seed(ctx, tx, demo.Options{Code: *code, Name: *name, Address: *address, PasswordHash: hash, Today: clock.Today(), Seed: 1})
+		res, err = demo.Seed(ctx, tx, demo.Options{Code: *code, Name: *name, Address: *address, PasswordHash: hash, Today: clock.Today(), Seed: 1, Package: *pkg})
 		return err
 	})
 	if err != nil {

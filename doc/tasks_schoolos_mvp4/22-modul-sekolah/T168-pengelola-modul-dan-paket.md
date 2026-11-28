@@ -35,8 +35,33 @@ Sesuai keputusan 1 ADR 0002, **UI implementator belum dibuat**: untuk sekarang s
 ## Menyusul (di luar task ini)
 Dasbor atau UI implementator: tabel sekolah × modul, ubah modul/paket dengan catatan, dan antrean permintaan sekolah. UI ini memakai `module.Admin`.
 
+## Catatan implementasi
+- **`module.Admin{By}`:**
+  - metode `Set`, `Enable`, `Disable`, `ApplyPackage`, semuanya dalam transaksi pemanggil (`pgx.Tx`);
+  - semua pemeriksaan (catatan, pilihan, ketergantungan, penjaga) selesai sebelum ada yang ditulis;
+  - setiap modul yang berubah dicatat `module.<kode>` dan paket `module.package` di audit, dengan `note` dan `by`; tanpa perubahan nyata tidak ada tulis maupun audit.
+- **Pilihan modul divalidasi:** saat ini hanya `exam.release` ∈ r1/r2/r3.
+- **Penjaga** memakai SQL langsung (tanpa impor paket ujian atau pendaftaran):
+  - ujian: sesi tidak dibatalkan yang belum berakhir dan mulai sebelum 24 jam lagi;
+  - pendaftaran: periode berstatus `buka`;
+  - keuangan: tagihan tidak dibatalkan yang belum lunas (`GuardError.Forceable`, lolos dengan `force` sebagai peringatan).
+- **Ketergantungan wajib:** katalog sekarang hanya bergantung pada inti, jadi `DependencyError` diuji dengan katalog sementara.
+- **Paket** ada di `module.Packages` (Dasar, Akademik, Keuangan, Lengkap). `ApplyPackage` mempertahankan pilihan modul yang ada, mis. tahap rilis ujian.
+- **`module.Save` dan `exam.SetModule` dihapus.** Uji yang perlu mengatur modul tanpa penjaga (mis. mematikan ujian saat sesi berjalan) memakai helper uji yang menulis langsung. `TestOnlyAdminWritesModules` memeriksa bahwa tidak ada kode aplikasi lain yang menulis `school_modules` atau `schools.package`; uji, `internal/testutil`, dan migrasi dikecualikan.
+- **CLI `akra-modul`:**
+  - flag `-module`, `-on`/`-off`, `-option k=v` (berulang), `-package`, `-note` (wajib untuk perubahan), `-force`, `-list [-module]`;
+  - `-option` tanpa `-on`/`-off` hanya mengubah pilihan;
+  - bentuk lama `-exam`/`-release` tetap diterima;
+  - `-list` menampilkan sekolah × modul (✓/·) dan paket; `-list -module` menampilkan satu modul dengan pilihan dan tanggal perubahan terakhir.
+- **Sekolah baru:**
+  - `akra-seed -package` (bawaan `dasar`) memasang paket saat sekolah dibuat;
+  - `akra-demoseed -package` bawaannya kosong (semua modul kecuali ujian, seperti sebelumnya), supaya demo tetap lengkap;
+  - tidak ada onboarding lain di aplikasi.
+- **Uji `akra-seed`** kini membersihkan sekolahnya dengan `demo.DeleteSchool`, karena paket menulis audit yang append-only.
+- **Panduan:** [doc/implementator-modul.md](../../implementator-modul.md). Contoh perintah di README dan `doc/uji-mvp4.md` diperbarui (kini dengan `-note`).
+
 ## Kriteria selesai
-- [ ] Uji layanan: ketergantungan ditolak, penjaga menolak atau memperingatkan sesuai aturan, audit tercatat dengan catatan, paket diterapkan dalam satu transaksi
-- [ ] Uji CLI: `-module`, `-package`, `-option`, `-list`, berkas gelombang, dan `-force`
-- [ ] Tidak ada jalan lain mengubah `school_modules` selain `module.Admin` (dicek di uji/grep)
-- [ ] Panduan implementator tersedia
+- [x] Uji layanan: ketergantungan ditolak, penjaga menolak atau memperingatkan sesuai aturan, audit tercatat dengan catatan, paket diterapkan dalam satu transaksi
+- [x] Uji CLI: `-module`, `-package`, `-option`, `-list`, berkas gelombang, dan `-force`
+- [x] Tidak ada jalan lain mengubah `school_modules` selain `module.Admin` (dicek di uji/grep)
+- [x] Panduan implementator tersedia

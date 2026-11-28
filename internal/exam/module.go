@@ -77,25 +77,6 @@ func moduleOf(set module.Set) (Module, error) {
 	return m, nil
 }
 
-// SetModule mengatur status modul ujian sekolah lewat module.Save (cache
-// replika ini dihapus, audit "module.exam" lewat audit bila tidak nil). Hanya
-// dipanggil alat pengelola platform (cmd/modul) dan uji.
-func SetModule(ctx context.Context, q database.DBTX, schoolID string, m Module, by string, audit module.Auditor) error {
-	if !ValidRelease(m.Release) {
-		return fmt.Errorf("exam: invalid release %q", m.Release)
-	}
-	st, _, err := module.GetState(ctx, q, schoolID, module.Exam)
-	if err != nil {
-		return err
-	}
-	st.Enabled = m.Enabled
-	if st.Options == nil {
-		st.Options = map[string]string{}
-	}
-	st.Options["release"] = string(m.Release)
-	return module.Save(ctx, q, schoolID, module.Exam, st, by, audit)
-}
-
 type moduleKey struct{}
 
 // ModuleFrom mengembalikan status modul yang disimpan RequireModule.

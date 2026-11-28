@@ -29,9 +29,7 @@ func TestEmptyStatesGuide(t *testing.T) {
 		return testutil.User{ID: id, Role: role}
 	}
 	admin, teacher := user("admin_tu"), user("guru")
-	if err := SetModule(ctx, e.tx, sid, Module{Enabled: true, Release: R3}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	setExamModule(t, e.tx, sid, Module{Enabled: true, Release: R3})
 	e.schoolID = sid
 
 	cases := []struct {

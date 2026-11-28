@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"html"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"akra/internal/platform/module"
 	"akra/internal/testutil"
@@ -50,9 +53,7 @@ func TestModuleChangeWithoutRelogin(t *testing.T) {
 		t.Errorf("menu lost core or billing:\n%s", m)
 	}
 	// Diaktifkan lagi lewat module.Save di replika ini: langsung terlihat.
-	if err := module.Save(ctx, tx, a.ID, module.Attendance, module.State{Enabled: true}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	saveModule(t, tx, a.ID, module.Attendance, module.State{Enabled: true})
 	if m := menu(); !strings.Contains(m, `href="/absensi/rekap"`) {
 		t.Errorf("menu after re-enable:\n%s", m)
 	}
@@ -130,9 +131,7 @@ func TestModuleGate(t *testing.T) {
 		}
 		off := before
 		off.Enabled = false
-		if err := module.Save(ctx, tx, a.ID, m, off, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, off)
 		checked := 0
 		for _, r := range testutil.Routes {
 			if !slicesContains(module.Required(r.Pattern), m) {
@@ -204,9 +203,7 @@ func TestModuleGate(t *testing.T) {
 			}
 		}
 		t.Logf("%s: %d requests closed", m, checked)
-		if err := module.Save(ctx, tx, a.ID, m, before, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, before)
 	}
 }
 
@@ -255,9 +252,7 @@ func TestCrossModulePagesFollowModules(t *testing.T) {
 		before, _, _ := module.GetState(ctx, tx, a.ID, m)
 		off := before
 		off.Enabled = false
-		if err := module.Save(ctx, tx, a.ID, m, off, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, off)
 		for role, list := range pages {
 			for _, p := range list {
 				rec := clients[role].get(p)
@@ -281,9 +276,7 @@ func TestCrossModulePagesFollowModules(t *testing.T) {
 				}
 			}
 		}
-		if err := module.Save(ctx, tx, a.ID, m, before, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, before)
 	}
 }
 
@@ -306,9 +299,7 @@ func TestReportsAndImportFollowModules(t *testing.T) {
 		t.Fatal("config before: locked or not openable")
 	}
 	for _, m := range []module.ID{module.Attendance, module.Grades} {
-		if err := module.Save(ctx, tx, a.ID, m, module.State{Enabled: false}, "uji", nil); err != nil {
-			t.Fatal(err)
-		}
+		saveModule(t, tx, a.ID, m, module.State{Enabled: false})
 	}
 	rec := admin.get("/laporan/konfigurasi/")
 	body := rec.Body.String()
@@ -350,9 +341,7 @@ func TestModulesPage(t *testing.T) {
 	if _, err := tx.Exec(ctx, `UPDATE schools SET package = 'lengkap' WHERE id = $1`, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := module.Save(ctx, tx, a.ID, module.Billing, module.State{Enabled: false}, "uji", nil); err != nil {
-		t.Fatal(err)
-	}
+	saveModule(t, tx, a.ID, module.Billing, module.State{Enabled: false})
 	clients := map[string]*client{}
 	for _, u := range []testutil.User{a.Admin, a.Principal, a.Treasurer, a.Teacher} {
 		cl := newClient(t, app)
@@ -393,4 +382,19 @@ func TestModulesPage(t *testing.T) {
 	if !strings.Contains(hub, `href="/pengaturan/modul"`) || strings.Contains(hub, `href="/pengaturan/keuangan"`) || !strings.Contains(hub, `href="/pengaturan/rapor"`) {
 		t.Error("settings hub does not follow modules")
 	}
+}
+
+// saveModule mengatur status modul sekolah langsung di database untuk uji
+// (tanpa penjaga module.Admin), lalu membuang cache status modul.
+func saveModule(t testing.TB, tx pgx.Tx, schoolID string, id module.ID, st module.State) {
+	t.Helper()
+	opts, err := json.Marshal(st.Options)
+	if err != nil || st.Options == nil {
+		opts = []byte("{}")
+	}
+	if _, err := tx.Exec(context.Background(), `INSERT INTO school_modules (school_id, module, enabled, options) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (school_id, module) DO UPDATE SET enabled = EXCLUDED.enabled, options = EXCLUDED.options`, schoolID, id, st.Enabled, opts); err != nil {
+		t.Fatal(err)
+	}
+	module.Forget(schoolID)
 }
