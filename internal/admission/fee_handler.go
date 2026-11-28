@@ -11,6 +11,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/payments"
 	"akra/internal/platform/clock"
+	"akra/internal/platform/module"
 	"akra/internal/platform/money"
 	"akra/internal/platform/page"
 )
@@ -37,6 +38,15 @@ type feesView struct {
 
 func (h *Handler) fees() *FeeService { return NewFeeService(h.db) }
 
+// canRecordFee: bendahara mencatat biaya formulir; tanpa modul keuangan
+// (sekolah tanpa bendahara keuangan) admin TU yang mencatat, dengan nomor
+// dan kuitansi payments yang sama (T166, keputusan 4 ADR 0002).
+func canRecordFee(r *http.Request, id auth.Identity) bool {
+	return id.HasRole(auth.RoleBendahara) || (id.HasRole(auth.RoleAdminTU) && !module.From(r.Context()).Has(module.Billing))
+}
+
+const msgFeeRecorder = "Biaya formulir dicatat bendahara. Admin TU mencatatnya bila sekolah tidak memakai modul Keuangan."
+
 // listFees menampilkan biaya formulir pendaftar. Peran: bendahara (catat),
 // admin_tu dan kepala_sekolah (baca).
 func (h *Handler) listFees(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +61,7 @@ func (h *Handler) renderFees(w http.ResponseWriter, r *http.Request, id auth.Ide
 		h.serverError(w, r, "list fees", err)
 		return
 	}
-	view := feesView{User: id, CanRecord: id.HasRole(auth.RoleBendahara), UnpaidOnly: unpaid, Today: id.Today().Format(dateLayout),
+	view := feesView{User: id, CanRecord: canRecordFee(r, id), UnpaidOnly: unpaid, Today: id.Today().Format(dateLayout),
 		FailedID: failedID, Form: f, Errors: errs, Error: msg, Flash: auth.PopFlash(r.Context(), h.sessions)}
 	for _, x := range rows {
 		v := feeRowView{FeeRow: x, AmountText: money.FormatRupiah(x.Amount)}
@@ -66,6 +76,10 @@ func (h *Handler) renderFees(w http.ResponseWriter, r *http.Request, id auth.Ide
 // recordFee mencatat pembayaran biaya formulir. Peran: bendahara.
 func (h *Handler) recordFee(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
+	if !canRecordFee(r, id) {
+		page.Forbidden(h.render, w, r, id, msgFeeRecorder)
+		return
+	}
 	applicantID := chi.URLParam(r, "id")
 	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
 	if err := r.ParseForm(); err != nil {
@@ -96,6 +110,10 @@ func (h *Handler) recordFee(w http.ResponseWriter, r *http.Request) {
 // bendahara.
 func (h *Handler) voidFee(w http.ResponseWriter, r *http.Request) {
 	id, _ := auth.CurrentUser(r.Context())
+	if !canRecordFee(r, id) {
+		page.Forbidden(h.render, w, r, id, msgFeeRecorder)
+		return
+	}
 	applicantID := chi.URLParam(r, "id")
 	r.Body = http.MaxBytesReader(w, r.Body, maxPeriodForm)
 	if err := r.ParseForm(); err != nil {

@@ -13,7 +13,7 @@
 <div class="tool-menu" x-show="open" x-cloak>
 <a href="/dapodik/cek">Cek kesiapan data</a>
 {{if .CanEdit}}<a href="/dapodik/impor">Impor dari ekspor Dapodik</a>
-<a href="/dapodik/nilai">Nilai ke Dapodik</a>{{end}}
+{{if hasModule "grades"}}<a href="/dapodik/nilai">Nilai ke Dapodik</a>{{end}}{{end}}
 <a href="/dapodik/ekspor-pd.xlsx{{with .ClassID}}?kelas={{.}}{{end}}">Ekspor format Daftar PD (Excel)</a>
 {{with .ClassID}}<a href="/dapodik/kelas/{{.}}/fpd.pdf">F-PD terisi kelas ini (PDF)</a>{{end}}
 <a href="/dapodik/fpd-kosong.pdf">F-PD kosong (PDF)</a>

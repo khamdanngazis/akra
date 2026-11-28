@@ -63,6 +63,11 @@ func TestMenuModulesInCatalog(t *testing.T) {
 		if it.Module != "" && !Known(ID(it.Module)) {
 			t.Errorf("menu %s: unknown module %q", it.Path, it.Module)
 		}
+		for _, n := range it.Needs {
+			if !Known(ID(n)) {
+				t.Errorf("menu %s: unknown needed module %q", it.Path, n)
+			}
+		}
 	}
 	want := Defaults().IDs()[1:] // tanpa core
 	if strings.Join(nav.DefaultModules, ",") != strings.Join(want, ",") {

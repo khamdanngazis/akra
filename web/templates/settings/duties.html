@@ -55,7 +55,8 @@
 </section>
 {{end}}
 
-{{if .CanEdit}}
+{{if and .CanEdit (not .Duties)}}<p class="alert alert-info mt-4">Tidak ada tugas tambahan yang bisa diberikan. Tugas koordinator ujian tersedia bila sekolah memakai modul Ujian Online.</p>{{end}}
+{{if and .CanEdit .Duties}}
 <form method="post" action="/pengaturan/tugas" class="card form-card stack mt-4" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
 <input type="hidden" name="academic_year_id" value="{{.Year.ID}}">

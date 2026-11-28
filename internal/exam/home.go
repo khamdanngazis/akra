@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 )
 
 // Beranda modul ujian (T158): apa yang terjadi hari ini dan apa yang perlu
@@ -77,7 +78,11 @@ func MyToDo(ctx context.Context, q database.DBTX, sa StaffActor, review bool, no
 	if err != nil {
 		return nil, fmt.Errorf("exam: my to-do: %w", err)
 	}
+	grades := module.From(ctx).Has(module.Grades)
 	for _, x := range list {
+		if (x.kind == "rapor" || x.kind == "kirim_ulang") && !grades {
+			continue // kirim ke rapor butuh modul nilai (T166)
+		}
 		base := examPath(x.id)
 		switch x.kind {
 		case "draf":

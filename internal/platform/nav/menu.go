@@ -41,6 +41,9 @@ type MenuItem struct {
 	// Module adalah modul pemilik item (ADR 0002). Item modul yang
 	// tidak aktif untuk sekolah tidak tampil. Kosong berarti inti.
 	Module string
+	// Needs adalah modul lain yang juga wajib aktif (fitur lintas modul,
+	// T166), mis. "Nilai ke Dapodik" butuh modul nilai.
+	Needs []string
 	// Group adalah kelompok menu (T156); item dalam satu kelompok
 	// bersebelahan di Items, kelompok berurutan sesuai GroupOrder.
 	Group string
@@ -119,7 +122,7 @@ var Items = []MenuItem{
 	{Label: "Audit Keuangan", Path: "/keuangan/audit", Icon: "shield", Short: "Audit", Desc: "Jejak setiap aksi keuangan", Module: ModuleBilling, Group: GroupFinance, Roles: []string{kepala, adminTU}},
 
 	{Label: "Dapodik", Path: "/dapodik", Icon: "spreadsheet", Desc: "Lembar salin dan status data Dapodik", Module: ModuleDapodik, Group: GroupDapodik, Roles: []string{adminTU, kepala}},
-	{Label: "Nilai ke Dapodik", Path: "/dapodik/nilai", Icon: "upload", Short: "Dapodik", Desc: "Isi format import nilai Dapodik", Module: ModuleDapodik, Group: GroupDapodik, Roles: []string{guru}},
+	{Label: "Nilai ke Dapodik", Path: "/dapodik/nilai", Icon: "upload", Short: "Dapodik", Desc: "Isi format import nilai Dapodik", Module: ModuleDapodik, Needs: []string{ModuleGrades}, Group: GroupDapodik, Roles: []string{guru}},
 
 	{Label: "Pengumuman", Path: "/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Pengumuman untuk orang tua", Module: ModuleAnnouncements, Group: GroupInformation, Roles: []string{adminTU, kepala, bendahara, guru}},
 	{Label: "Pengumuman", Path: "/portal/pengumuman", Icon: "megaphone", Short: "Info", Desc: "Informasi dari sekolah", Module: ModuleAnnouncements, Group: GroupInformation, Roles: []string{orangTua}},
@@ -161,7 +164,42 @@ func MenuFor(roles []string) []MenuItem {
 // MenuForUser seperti MenuFor, ditambah item yang muncul karena tugas
 // tambahan (duties) dan item modul opsional yang aktif (modules).
 func MenuForUser(roles, duties, modules []string) []MenuItem {
-	return filter(Items, roles, duties, modules)
+	items := filter(Items, roles, duties, modules)
+	// Hub yang kosong untuk pengguna ini tidak ditampilkan (T166), mis.
+	// bendahara di sekolah tanpa modul keuangan: tanpa Laporan dan
+	// Pengaturan.
+	out := make([]MenuItem, 0, len(items))
+	for _, it := range items {
+		switch it.Path {
+		case "/pengaturan":
+			if len(filter(SettingsItems, roles, duties, modules)) == 0 {
+				continue
+			}
+		case "/laporan":
+			if !hasReports(roles, modules) {
+				continue
+			}
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+// hasReports melaporkan apakah hub Laporan berisi sesuatu untuk pengguna:
+// admin/TU dan kepala sekolah selalu (laporan kustom data inti); bendahara
+// hanya bila modul keuangan aktif (tunggakan dan pembayaran).
+func hasReports(roles, modules []string) bool {
+	for _, r := range roles {
+		if r == adminTU || r == kepala {
+			return true
+		}
+	}
+	for _, m := range modules {
+		if m == ModuleBilling {
+			return true
+		}
+	}
+	return false
 }
 
 // SettingsFor mengembalikan isi pusat Pengaturan untuk pengguna, per bagian.
@@ -172,6 +210,16 @@ func SettingsFor(roles, duties, modules []string) []Group {
 // moduleOn melaporkan apakah item modul m tampil untuk set modul aktif on.
 func moduleOn(m string, on map[string]bool) bool {
 	return m == "" || on[m]
+}
+
+// allOn melaporkan apakah semua modul ms aktif di on.
+func allOn(ms []string, on map[string]bool) bool {
+	for _, m := range ms {
+		if !on[m] {
+			return false
+		}
+	}
+	return true
 }
 
 // filter memilih item list yang cocok dengan peran, tugas, dan modul aktif,
@@ -191,7 +239,7 @@ func filter(list []MenuItem, roles, duties, modules []string) []MenuItem {
 	var out []MenuItem
 	seen := map[string]bool{}
 	for _, it := range list {
-		if seen[it.Path] || !moduleOn(it.Module, on) {
+		if seen[it.Path] || !moduleOn(it.Module, on) || !allOn(it.Needs, on) {
 			continue
 		}
 		match := false

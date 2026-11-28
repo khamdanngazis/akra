@@ -32,11 +32,11 @@
 <button type="submit" class="btn btn-primary btn-sm">Masukkan</button></form>
 {{else if $.CanEdit}}<p class="mb-0 text-sm">Semua sesi sudah berakhir. <a href="/ujian/paket/{{$o.ExamID}}/atur/jadwal">Buat sesi susulan di ujiannya</a>.</p>{{end}}</div>{{end}}
 </div>
-{{else}}{{with .Rubric}}<p class="rubric">{{.}}</p>{{else}}{{if $.CanEdit}}<p class="hint mb-0">Belum ada acuan penilaian. Klik Ubah untuk menambahkannya.</p>{{end}}{{end}}{{end}}
+{{else}}{{if .ExamID}}<p class="hint mb-0"><span class="badge">Ujian online</span> Modul Ujian Online tidak aktif untuk sekolah ini; nilai yang sudah masuk tetap tersimpan.</p>{{end}}{{with .Rubric}}<p class="rubric">{{.}}</p>{{else}}{{if $.CanEdit}}<p class="hint mb-0">Belum ada acuan penilaian. Klik Ubah untuk menambahkannya.</p>{{end}}{{end}}{{end}}
 <div class="action-row">
-<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if and $.CanEdit (not .Online)}}Isi nilai{{else}}Lihat nilai{{end}}</a>
+<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/nilai">{{if and $.CanEdit (not .ExamID)}}Isi nilai{{else}}Lihat nilai{{end}}</a>
 {{if .Online}}<a class="btn btn-ghost btn-sm" href="/ujian/paket/{{.ExamID}}/hasil">Hasil ujian</a>{{end}}
-{{if not .Online}}<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/lembar.pdf">{{template "icon" "download"}}Lembar penilaian (PDF)</a>{{end}}
+{{if not .ExamID}}<a class="btn btn-ghost btn-sm" href="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/lembar.pdf">{{template "icon" "download"}}Lembar penilaian (PDF)</a>{{end}}
 {{if $.CanEdit}}
 <button type="button" class="btn btn-ghost btn-sm" @click="editing = true">Ubah</button>
 <form method="post" action="/pendaftaran/periode/{{$.Period.ID}}/tes/{{.ID}}/hapus">{{ csrfField }}<button type="submit" class="btn btn-ghost btn-sm">Hapus</button></form>

@@ -13,6 +13,9 @@
 </div>
 </div>
 {{template "flash" .}}
+{{if and (.User.HasRole "bendahara") (not (hasModule "billing"))}}
+<div class="alert alert-info" role="note">Sekolah Anda tidak memakai modul Keuangan, jadi tagihan, pembayaran, dan tunggakan tidak tampil.{{if hasModule "admission"}} Biaya formulir pendaftaran tetap dicatat di <a href="/pendaftaran/biaya">Biaya Pendaftaran</a>.{{end}} Hubungi admin TU atau tim AKRA bila sekolah membutuhkannya.</div>
+{{end}}
 
 {{if .NoYear}}
 <div class="alert alert-info" role="note">Belum ada tahun ajaran aktif. Kelas, absensi, dan tagihan memakai tahun ajaran aktif.{{if .CanSetYear}} <a href="/pengaturan/tahun-ajaran">Atur tahun ajaran</a>.{{else}} Hubungi admin/TU.{{end}}</div>

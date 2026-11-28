@@ -36,6 +36,16 @@ func ValidRelease(r Release) bool { return releaseRank[r] > 0 }
 type Module struct {
 	Enabled bool
 	Release Release
+	// Admission dan Grades: modul pendaftaran dan nilai aktif untuk sekolah
+	// (T166). Tujuan "Tes seleksi" butuh pendaftaran; kirim nilai ke rapor
+	// butuh nilai.
+	Admission, Grades bool
+}
+
+// Offers melaporkan apakah ujian bertujuan p bisa dibuat di sekolah ini:
+// tahap rilisnya sudah dibuka dan modul pasangannya aktif.
+func (m Module) Offers(p Purpose) bool {
+	return m.Has(p.Release()) && (p != PurposeAdmission || m.Admission)
 }
 
 // Has melaporkan apakah modul aktif dan tahap r sudah dibuka.
@@ -57,7 +67,7 @@ func LoadModule(ctx context.Context, q database.DBTX, schoolID string) (Module, 
 
 // moduleOf mengambil status modul ujian dari set modul sekolah.
 func moduleOf(set module.Set) (Module, error) {
-	m := Module{Enabled: set.Has(module.Exam), Release: R1}
+	m := Module{Enabled: set.Has(module.Exam), Release: R1, Admission: set.Has(module.Admission), Grades: set.Has(module.Grades)}
 	if rel := set.Option(module.Exam, "release"); rel != "" {
 		m.Release = Release(rel)
 		if !ValidRelease(m.Release) {

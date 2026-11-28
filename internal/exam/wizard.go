@@ -243,10 +243,10 @@ func purposeOffered(a Actor, p Purpose, now time.Time) bool {
 func (h *Handler) examNew(w http.ResponseWriter, r *http.Request) {
 	id, sa := h.staff(r)
 	p := Purpose(r.URL.Query().Get("tujuan"))
-	if !p.Valid() || !ModuleFrom(r.Context()).Has(p.Release()) || !purposeOffered(sa.Actor, p, time.Now()) {
+	if !p.Valid() || !ModuleFrom(r.Context()).Offers(p) || !purposeOffered(sa.Actor, p, time.Now()) {
 		p = ""
 		for _, c := range Purposes {
-			if ModuleFrom(r.Context()).Has(c.Release()) && purposeOffered(sa.Actor, c, time.Now()) {
+			if ModuleFrom(r.Context()).Offers(c) && purposeOffered(sa.Actor, c, time.Now()) {
 				p = c
 				break
 			}
@@ -280,7 +280,7 @@ func (h *Handler) examCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	id, sa := h.staff(r)
 	f := basicsFormFrom(r)
-	if p := Purpose(f.Purpose); p.Valid() && !ModuleFrom(r.Context()).Has(p.Release()) {
+	if p := Purpose(f.Purpose); p.Valid() && !ModuleFrom(r.Context()).Offers(p) {
 		page.NotFound(h.render, w, r, id, "Jenis ujian ini belum dibuka untuk sekolah Anda.")
 		return
 	}
@@ -382,7 +382,8 @@ func (h *Handler) renderExamWizard(w http.ResponseWriter, r *http.Request, statu
 		v.Steps = append(v.Steps, l)
 	}
 	fail := func(op string, err error) { h.fail(w, r, op, err) }
-	if v.Step == stepRules && !v.IsNew {
+	// Komponen nilai rapor hanya bila modul nilai aktif (T166).
+	if v.Step == stepRules && !v.IsNew && ModuleFrom(ctx).Grades {
 		comps, err := GradeComponentOptions(ctx, h.db, v.Exam)
 		if err != nil {
 			fail("grade components", err)
@@ -393,7 +394,7 @@ func (h *Handler) renderExamWizard(w http.ResponseWriter, r *http.Request, statu
 	switch v.Step {
 	case stepBasics:
 		for _, p := range Purposes {
-			if v.IsNew && (!purposeOffered(sa.Actor, p, now) || !ModuleFrom(ctx).Has(p.Release())) {
+			if v.IsNew && (!purposeOffered(sa.Actor, p, now) || !ModuleFrom(ctx).Offers(p)) {
 				continue
 			}
 			v.Purposes = append(v.Purposes, purposeOption{Value: p, Label: p.Label(), Hint: purposeHints[p], Selected: string(p) == v.Form.Purpose})
@@ -689,6 +690,11 @@ func (h *Handler) examSaveRules(w http.ResponseWriter, r *http.Request) {
 		ShuffleInStimulus: pf.Get("shuffle_in_stimulus") != "", ResultsMode: pf.Get("results_mode"), ResultsAfterAll: pf.Get("results_after_all") != "",
 		MaxAttempts: pf.Get("max_attempts"), PassScore: pf.Get("pass_score"), IntegrityMode: pf.Get("integrity_mode"),
 		IntegrityLimit: pf.Get("integrity_limit"), AllowBack: pf.Get("allow_back") != "", GradeComponentID: pf.Get("grade_component_id")}
+	if !ModuleFrom(r.Context()).Grades {
+		// Tanpa modul nilai, pilihan komponen tidak ditampilkan; komponen
+		// yang sudah tersimpan tidak dihapus (T166).
+		f.GradeComponentID = e.GradeComponentID
+	}
 	err := UpdateRules(r.Context(), h.db, sa, e.ID, f, time.Now())
 	var fe *FieldError
 	if errors.As(err, &fe) {

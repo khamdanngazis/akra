@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 )
 
 func TestParseFlags(t *testing.T) {
@@ -108,4 +109,55 @@ func mustPool(t *testing.T, dsn string) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	return pool
+}
+
+// Peran bendahara hanya bila modul keuangan atau pendaftaran aktif (T166).
+func TestRun_TreasurerNeedsModule(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	t.Setenv("DATABASE_URL", dsn)
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("WEB_DIR", "")
+	t.Setenv("MAIL_DRIVER", "")
+	t.Setenv("ARGON2_MEMORY_KIB", "1024")
+	t.Setenv("ARGON2_ITERATIONS", "1")
+	ctx := context.Background()
+	cleanup := func() {
+		pool := mustPool(t, dsn)
+		defer pool.Close()
+		_, _ = pool.Exec(ctx, `DELETE FROM user_roles WHERE user_id IN (SELECT u.id FROM users u JOIN schools s ON s.id = u.school_id WHERE s.code = 'test-seed-role')`)
+		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE school_id IN (SELECT id FROM schools WHERE code = 'test-seed-role')`)
+		_, _ = pool.Exec(ctx, `DELETE FROM school_modules WHERE school_id IN (SELECT id FROM schools WHERE code = 'test-seed-role')`)
+		_, _ = pool.Exec(ctx, `DELETE FROM schools WHERE code = 'test-seed-role'`)
+	}
+	cleanup()
+	t.Cleanup(cleanup)
+	env := func(string) string { return "" }
+	var out bytes.Buffer
+	if err := run(ctx, []string{"-school-code", "test-seed-role", "-school-name", "Sekolah Peran", "-email", "admin@peran.id", "-name", "Admin"}, env, &out); err != nil {
+		t.Fatal(err)
+	}
+	pool := mustPool(t, dsn)
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `INSERT INTO school_modules (school_id, module, enabled)
+		SELECT id, m, false FROM schools, unnest(ARRAY['billing', 'admission']) m WHERE code = 'test-seed-role'`); err != nil {
+		t.Fatal(err)
+	}
+	treasurer := []string{"-school-code", "test-seed-role", "-email", "bendahara@peran.id", "-name", "Bendahara", "-role", "bendahara"}
+	if err := run(ctx, treasurer, env, &out); err == nil || !strings.Contains(err.Error(), "needs module") {
+		t.Errorf("treasurer without billing and admission: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE school_modules SET enabled = true WHERE module = 'admission' AND school_id = (SELECT id FROM schools WHERE code = 'test-seed-role')`); err != nil {
+		t.Fatal(err)
+	}
+	var sid string
+	if err := pool.QueryRow(ctx, `SELECT id FROM schools WHERE code = 'test-seed-role'`).Scan(&sid); err != nil {
+		t.Fatal(err)
+	}
+	module.Forget(sid) // diubah langsung di database, di luar module.Save
+	if err := run(ctx, treasurer, env, &out); err != nil {
+		t.Errorf("treasurer with admission: %v", err)
+	}
 }

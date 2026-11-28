@@ -12,6 +12,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/classes"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/page"
 	"akra/internal/school"
 )
@@ -72,8 +73,11 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) show(w http.ResponseWriter, r *http.Request, status int, errMsg string) {
 	id, _ := auth.CurrentUser(r.Context())
 	ctx := r.Context()
-	v := listView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Error: errMsg,
-		Duties: []dutyOption{{ExamCoordinator, Labels[ExamCoordinator], Hints[ExamCoordinator]}}}
+	v := listView{User: id, CanEdit: id.HasRole(auth.RoleAdminTU), Error: errMsg}
+	// Hanya tugas yang modulnya aktif (T166).
+	if Offered(ExamCoordinator, module.From(ctx)) {
+		v.Duties = append(v.Duties, dutyOption{ExamCoordinator, Labels[ExamCoordinator], Hints[ExamCoordinator]})
+	}
 	if errMsg == "" {
 		v.Flash = auth.PopFlash(ctx, h.sessions)
 	}
@@ -122,6 +126,10 @@ func (h *Handler) assign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	yearID := r.PostForm.Get("academic_year_id")
+	if d := r.PostForm.Get("duty"); !Offered(d, module.From(r.Context())) {
+		h.show(w, r, http.StatusUnprocessableEntity, "Tugas "+Labels[d]+" hanya bisa diberikan bila modulnya dipakai sekolah.")
+		return
+	}
 	_, err := Assign(r.Context(), h.db, h.actor(r, id), yearID, r.PostForm.Get("user_id"), r.PostForm.Get("duty"))
 	switch {
 	case errors.Is(err, ErrNotFound):

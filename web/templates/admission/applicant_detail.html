@@ -56,7 +56,7 @@
 {{if .TestResults}}
 <table class="score-table">
 <tbody>
-{{range $tr := .TestResults}}<tr><td>{{.Name}}{{if .PassScore}}<span class="block text-xs text-slate-500">minimal {{.PassScore}}</span>{{end}}{{if .Online}}<span class="block text-xs text-slate-500">Sumber: ujian online{{with .Attempt}} · {{.Status}}{{with .Duration}} · {{.}}{{end}} · {{with .Integrity}}{{.}}{{else}}tanpa catatan integritas{{end}} · <a href="/ujian/paket/{{$tr.ExamID}}/hasil/peserta/{{.AttemptID}}">detail</a>{{else}} · belum mengerjakan{{end}}</span>{{else}}<span class="block text-xs text-slate-500">Sumber: diketik TU</span>{{end}}</td><td class="text-right nowrap">{{if .Score}}<strong>{{.Score}}</strong> <span class="muted">/ {{.MaxScore}}</span>{{if .Failed}}<span class="mt-1 block"><span class="badge badge-danger">Di bawah minimal</span></span>{{end}}{{else}}<span class="badge badge-warning">Belum dinilai</span>{{end}}</td></tr>{{end}}
+{{range $tr := .TestResults}}<tr><td>{{.Name}}{{if .PassScore}}<span class="block text-xs text-slate-500">minimal {{.PassScore}}</span>{{end}}{{if .Online}}<span class="block text-xs text-slate-500">Sumber: ujian online{{with .Attempt}} · {{.Status}}{{with .Duration}} · {{.}}{{end}} · {{with .Integrity}}{{.}}{{else}}tanpa catatan integritas{{end}}{{if hasModule "exam"}} · <a href="/ujian/paket/{{$tr.ExamID}}/hasil/peserta/{{.AttemptID}}">detail</a>{{end}}{{else}} · belum mengerjakan{{end}}</span>{{else}}<span class="block text-xs text-slate-500">Sumber: diketik TU</span>{{end}}</td><td class="text-right nowrap">{{if .Score}}<strong>{{.Score}}</strong> <span class="muted">/ {{.MaxScore}}</span>{{if .Failed}}<span class="mt-1 block"><span class="badge badge-danger">Di bawah minimal</span></span>{{end}}{{else}}<span class="badge badge-warning">Belum dinilai</span>{{end}}</td></tr>{{end}}
 {{with .FinalScore}}<tr><td><strong>Skor akhir</strong> <span class="block text-xs text-slate-500">dari 100{{if not $.TestsDone}}, belum semua tes dinilai{{end}}</span></td><td class="text-right"><strong>{{.}}</strong></td></tr>{{end}}
 </tbody>
 </table>
@@ -96,7 +96,7 @@
 <h2>Biaya formulir</h2>
 <p>{{.}} · {{if $.FeePaid}}<span class="badge badge-success">Lunas</span>{{else}}<span class="badge badge-warning">Belum lunas</span>{{end}}{{if $.Period.FeeRequiredBeforeVerify}} <span class="muted small">(wajib lunas sebelum verifikasi)</span>{{end}}</p>
 {{range $.FeePayments}}<p class="muted small"><a href="/pendaftaran/{{$.Applicant.ID}}/biaya/{{.ID}}/kuitansi">Kuitansi {{.ReceiptNumber}}</a>{{if .VoidedAt}} · dibatalkan: {{.VoidReason}}{{end}}</p>{{end}}
-<p class="hint">Pembayaran dicatat bendahara di menu Biaya Pendaftaran.</p>
+{{if and (not (hasModule "billing")) ($.User.HasRole "admin_tu")}}<p class="hint">Sekolah tidak memakai modul Keuangan, jadi admin TU yang mencatat pembayaran: <a href="/pendaftaran/biaya">Biaya Pendaftaran</a>.</p>{{else}}<p class="hint">Pembayaran dicatat bendahara di menu Biaya Pendaftaran.</p>{{end}}
 </section>
 {{end}}
 {{if or .RetentionDue .Erasable}}

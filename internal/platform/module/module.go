@@ -65,7 +65,9 @@ var Catalog = []Info{
 	{ID: Schedule, Name: "Jadwal", Desc: "Jadwal pelajaran dan jadwal mengajar guru.",
 		Requires: []ID{Core}, Routes: []string{"/jadwal", "/portal/siswa/*/jadwal"}, Default: true},
 	{ID: Grades, Name: "Nilai & Rapor", Desc: "Komponen nilai, input dan rekap nilai, rapor PDF, dan impor nilai.",
-		Requires: []ID{Core}, Optional: []ID{Attendance}, Routes: []string{"/nilai", "/pengaturan/rapor", "/impor/nilai", "/portal/siswa/*/nilai", "/portal/siswa/*/rapor"},
+		Requires: []ID{Core}, Optional: []ID{Attendance}, Routes: []string{"/nilai", "/pengaturan/rapor", "/impor/nilai", "/portal/siswa/*/nilai", "/portal/siswa/*/rapor",
+			// Fitur modul lain yang menulis atau membaca nilai (T166).
+			"/ujian/paket/*/rapor", "/dapodik/nilai"},
 		Features: []string{"Skala dan KKM", "Format rapor", "Kebijakan remedial", "Nilai per komponen di portal"}, Default: true},
 	{ID: Billing, Name: "Keuangan", Desc: "Jenis tagihan, tagihan massal, pembayaran dan kuitansi, tunggakan, dan audit keuangan.",
 		Requires: []ID{Core}, Routes: []string{"/keuangan", "/pengaturan/keuangan", "/laporan/tunggakan", "/portal/siswa/*/tagihan", "/portal/pembayaran"},
@@ -187,6 +189,16 @@ func NewSet(ids ...ID) Set {
 	s := Set{on: map[ID]bool{}, opts: map[ID]map[string]string{}}
 	for _, id := range ids {
 		s.on[id] = true
+	}
+	return s
+}
+
+// All mengembalikan set berisi semua modul katalog (untuk uji paket yang
+// memasang router tanpa Middleware).
+func All() Set {
+	s := NewSet()
+	for _, m := range Catalog {
+		s.on[m.ID] = true
 	}
 	return s
 }
