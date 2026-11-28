@@ -15,6 +15,7 @@ import (
 	"akra/internal/audit"
 	"akra/internal/classes"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/school"
 )
 
@@ -22,6 +23,17 @@ import (
 const (
 	ExamCoordinator = "koordinator_ujian"
 )
+
+// Modules adalah modul yang wajib aktif agar tugas bisa diberikan (T166).
+// Tugas yang sudah ada tidak dicabut saat modulnya dimatikan.
+var Modules = map[string]module.ID{ExamCoordinator: module.Exam}
+
+// Offered melaporkan apakah tugas d bisa diberikan di sekolah dengan modul
+// aktif mods.
+func Offered(d string, mods module.Set) bool {
+	m, ok := Modules[d]
+	return !ok || mods.Has(m)
+}
 
 // Labels adalah nama tugas untuk tampilan.
 var Labels = map[string]string{

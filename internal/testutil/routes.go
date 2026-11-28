@@ -633,9 +633,9 @@ var Routes = []Route{
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/esai/tugas/0/hapus" }, nil)},
 	// Kirim nilai ke rapor (T150): pemegang ujian; fixture tanpa komponen
 	// tujuan sehingga pratinjau menampilkan pemilih komponen.
-	{Method: "GET", Pattern: "/ujian/paket/{id}/rapor", Module: "exam", Kind: KindByID, Roles: examWriters,
+	{Method: "GET", Pattern: "/ujian/paket/{id}/rapor", Module: "grades", Kind: KindByID, Roles: examWriters,
 		Requests: paths(func(o *School) []string { return []string{"/ujian/paket/" + o.ExamID + "/rapor"} })},
-	{Method: "POST", Pattern: "/ujian/paket/{id}/rapor", Module: "exam", Kind: KindByID, Roles: examWriters,
+	{Method: "POST", Pattern: "/ujian/paket/{id}/rapor", Module: "grades", Kind: KindByID, Roles: examWriters,
 		Requests: post(func(o *School) string { return "/ujian/paket/" + o.ExamID + "/rapor" }, func(*School) url.Values {
 			return url.Values{"aksi": {"kirim"}}
 		})},
@@ -1021,12 +1021,12 @@ var Routes = []Route{
 	{Method: "GET", Pattern: "/dapodik/siswa/{id}", Module: "dapodik", Kind: KindByID, Roles: adminTU,
 		Requests: paths(func(o *School) []string { return []string{"/dapodik/siswa/" + o.StudentIDs[0]} })},
 	// Isi format import nilai (T102): kelas/mapel sekolah lain ditolak.
-	{Method: "GET", Pattern: "/dapodik/nilai", Module: "dapodik", Kind: KindPage, Roles: []string{Admin, Teacher}},
-	{Method: "POST", Pattern: "/dapodik/nilai", Module: "dapodik", Kind: KindFormRef, Roles: []string{Admin, Teacher},
+	{Method: "GET", Pattern: "/dapodik/nilai", Module: "grades", Kind: KindPage, Roles: []string{Admin, Teacher}},
+	{Method: "POST", Pattern: "/dapodik/nilai", Module: "grades", Kind: KindFormRef, Roles: []string{Admin, Teacher},
 		Requests: post(func(*School) string { return "/dapodik/nilai" }, func(o *School) url.Values {
 			return url.Values{"class_id": {o.ClassID}, "subject_id": {o.SubjectID}}
 		})},
-	{Method: "GET", Pattern: "/dapodik/nilai/unduh", Module: "dapodik", Kind: KindPage, Roles: []string{Admin, Teacher}},
+	{Method: "GET", Pattern: "/dapodik/nilai/unduh", Module: "grades", Kind: KindPage, Roles: []string{Admin, Teacher}},
 	// Impor ekspor Dapodik (T101): hanya data sekolah sendiri (file + sesi).
 	{Method: "GET", Pattern: "/dapodik/impor", Module: "dapodik", Kind: KindPage, Roles: adminTU},
 	{Method: "POST", Pattern: "/dapodik/impor", Module: "dapodik", Kind: KindOwn, Roles: adminTU,

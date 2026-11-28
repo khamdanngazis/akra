@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"akra/internal/exam"
+	"akra/internal/platform/module"
 	"akra/internal/platform/pii"
 )
 
@@ -43,6 +44,14 @@ func TestOnlineAdmissionTest(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Tes seleksi online butuh modul ujian aktif (T166); halaman status
+	// publik membacanya dari database.
+	if _, err := e.tx.Exec(ctx, `INSERT INTO school_modules (school_id, module, enabled, options) VALUES ($1, 'exam', true, '{"release": "r1"}')
+		ON CONFLICT (school_id, module) DO UPDATE SET enabled = true`, e.schoolA); err != nil {
+		t.Fatal(err)
+	}
+	module.Forget(e.schoolA)
+	t.Cleanup(func() { module.Forget(e.schoolA) })
 	examID, variantID := e.seedAdmissionExam(t, e.schoolA, userA, "TPA Online")
 	const userB = "88888888-8888-8888-8888-888888888888"
 	if _, err := e.tx.Exec(ctx, `INSERT INTO users (id, school_id, email, password_hash, full_name) VALUES ($1, $2, 'tu@b.test', 'x', 'TU B')`, userB, e.schoolB); err != nil {

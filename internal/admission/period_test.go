@@ -21,6 +21,7 @@ import (
 
 	"akra/internal/auth"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/platform/pii"
 	"akra/internal/platform/render"
 	"akra/internal/school"
@@ -95,7 +96,8 @@ func (e *env) routerWith(t *testing.T, apps *ApplicantService, docs *DocumentSer
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id := auth.Identity{UserID: userA, SchoolID: e.schoolA, Roles: strings.Split(r.Header.Get("X-Role"), ","), FullName: "Uji", SchoolName: "Sekolah A"}
-			next.ServeHTTP(w, r.WithContext(auth.ContextWithIdentity(r.Context(), id)))
+			// Semua modul aktif, seperti module.Middleware di aplikasi (T166).
+			next.ServeHTTP(w, r.WithContext(module.With(auth.ContextWithIdentity(r.Context(), id), module.All())))
 		})
 	})
 	h.Routes(r)

@@ -72,15 +72,20 @@ func (h *Handler) renderTests(w http.ResponseWriter, r *http.Request, id auth.Id
 	for _, t := range p.Tracks {
 		view.UsesTest = view.UsesTest || t.UsesTest
 	}
-	if view.Exams, err = exam.AdmissionExams(r.Context(), h.db, id.SchoolID); err != nil {
-		h.serverError(w, r, "admission exams", err)
-		return
+	examOn := examActive(r.Context())
+	if examOn {
+		if view.Exams, err = exam.AdmissionExams(r.Context(), h.db, id.SchoolID); err != nil {
+			h.serverError(w, r, "admission exams", err)
+			return
+		}
 	}
 	for _, t := range tests {
 		row := testRow{SelectionTest: t, Form: TestForm{Name: t.Name, Weight: strconv.Itoa(t.Weight), MaxScore: strconv.Itoa(t.MaxScore), Location: t.Location, Rubric: t.Rubric,
 			Method: TestMethodPaper, ExamID: t.ExamID}}
 		if t.Online() {
 			row.Form.Method = TestMethodOnline
+		}
+		if t.Online() && examOn {
 			if row.Online, err = h.loadOnlineTest(r.Context(), id.SchoolID, t.ExamID, p.ID, id.Location()); err != nil {
 				h.serverError(w, r, "online test", err)
 				return

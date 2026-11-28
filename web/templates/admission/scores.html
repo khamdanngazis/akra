@@ -5,12 +5,12 @@
 <div class="page-header">
 <div>
 <h1>Nilai {{.Test.Name}}</h1>
-{{if .Test.Online}}<p class="muted">{{.Period.Name}} · Nilai 0–{{.Test.MaxScore}} dari ujian online <a href="/ujian/paket/{{.Test.ExamID}}/hasil">{{.Test.ExamName}}</a>.</p>
+{{if .Test.Online}}<p class="muted">{{.Period.Name}} · Nilai 0–{{.Test.MaxScore}} dari ujian online {{if hasModule "exam"}}<a href="/ujian/paket/{{.Test.ExamID}}/hasil">{{.Test.ExamName}}</a>{{else}}{{.Test.ExamName}}{{end}}.</p>
 {{else}}<p class="muted">{{.Period.Name}} · Nilai 0–{{.Test.MaxScore}}. Kosongkan jika belum dinilai atau tidak hadir.</p>{{end}}
 </div>
 </div>
 {{template "flash" .}}
-{{if .Test.Online}}<div class="alert alert-info" role="status"><p class="mb-0">Nilai masuk otomatis setelah ujian dinilai final (dinilai ulang ikut berubah). Kosong = belum mengerjakan, tidak hadir, atau menunggu koreksi esai. Koreksi lewat <a href="/ujian/paket/{{.Test.ExamID}}/hasil">hasil ujian</a>, bukan di sini.</p></div>{{end}}
+{{if .Test.Online}}<div class="alert alert-info" role="status"><p class="mb-0">Nilai masuk otomatis setelah ujian dinilai final (dinilai ulang ikut berubah). Kosong = belum mengerjakan, tidak hadir, atau menunggu koreksi esai. {{if hasModule "exam"}}Koreksi lewat <a href="/ujian/paket/{{.Test.ExamID}}/hasil">hasil ujian</a>, bukan di sini.{{else}}Modul Ujian Online tidak aktif; nilai yang sudah masuk tetap tersimpan.{{end}}</p></div>{{end}}
 {{if .Rows}}
 <form method="post" action="/pendaftaran/periode/{{.Period.ID}}/tes/{{.Test.ID}}/nilai" novalidate x-data="{ submitting: false }" @submit="submitting = true">
 {{ csrfField }}
@@ -25,7 +25,7 @@
 <td class="nowrap">{{.RegistrationNumber}}</td>
 <td>{{.FullName}}</td>
 <td>{{.TrackName}}</td>
-{{if $.Test.Online}}<td class="nowrap">{{if .Score}}<strong>{{.Score}}</strong>{{else}}<span class="muted">—</span>{{end}}{{if .AttemptID}} <a class="online-score-link" href="/ujian/paket/{{$.Test.ExamID}}/hasil/peserta/{{.AttemptID}}" title="Dari ujian online: lihat detail hasil">{{template "icon" "eye"}}<span class="visually-hidden">Detail hasil ujian online {{.FullName}}</span></a>{{end}}</td>
+{{if $.Test.Online}}<td class="nowrap">{{if .Score}}<strong>{{.Score}}</strong>{{else}}<span class="muted">—</span>{{end}}{{if and .AttemptID (hasModule "exam")}} <a class="online-score-link" href="/ujian/paket/{{$.Test.ExamID}}/hasil/peserta/{{.AttemptID}}" title="Dari ujian online: lihat detail hasil">{{template "icon" "eye"}}<span class="visually-hidden">Detail hasil ujian online {{.FullName}}</span></a>{{end}}</td>
 {{else}}<td><input name="score_{{.ApplicantID}}" value="{{.Score}}" inputmode="decimal" aria-label="Nilai {{.FullName}}"{{if not $.CanEdit}} disabled{{end}}{{if $err}} aria-invalid="true"{{end}}>{{with $err}}<p class="field-error">{{.}}</p>{{end}}</td>{{end}}
 </tr>
 {{end}}

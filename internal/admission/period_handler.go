@@ -56,10 +56,12 @@ func (h *Handler) Routes(r chi.Router) {
 			r.Get("/{id}/biaya/{paymentID}/kuitansi", h.feeReceipt)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireRole(auth.RoleBendahara))
-			// Peran: bendahara.
+			// Bendahara; admin_tu bila modul keuangan tidak aktif (T166,
+			// keputusan 4 ADR 0002), dicek di handler.
+			r.Use(auth.RequireRole(auth.RoleBendahara, auth.RoleAdminTU))
+			// Peran: bendahara; admin_tu tanpa modul keuangan.
 			r.Post("/{id}/biaya", h.recordFee)
-			// Peran: bendahara.
+			// Peran: bendahara; admin_tu tanpa modul keuangan.
 			r.Post("/{id}/biaya/batal", h.voidFee)
 		})
 		r.Group(func(r chi.Router) {

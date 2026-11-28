@@ -17,6 +17,7 @@ import (
 	"akra/internal/exam"
 	"akra/internal/platform/clock"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 	"akra/internal/school"
 )
 
@@ -205,6 +206,14 @@ func validateTest(f TestForm, loc *time.Location) (testInput, error) {
 // ujian seleksi sekolah ini; tes yang sudah punya nilai ketikan tidak bisa
 // diubah menjadi online. Nilai online lama dihapus lalu ditulis ulang dari
 // ujian yang ditautkan (juga saat nilai maksimal berubah).
+// examActive melaporkan apakah modul ujian aktif untuk sekolah request
+// staf ini (T166). Tanpa modul ujian, tes baru hanya "di kertas" dan nilainya
+// diketik TU; tes online yang sudah ada tetap tertaut.
+func examActive(ctx context.Context) bool { return module.From(ctx).Has(module.Exam) }
+
+// errExamInactive: ujian online dipilih padahal modul ujian tidak aktif.
+var errExamInactive = fieldErr("method", "Ujian online aktif bila modul Ujian Online dipakai. Pilih tes di kertas atau wawancara.")
+
 func linkExam(ctx context.Context, tx pgx.Tx, schoolID, testID string, examID *string) error {
 	if examID != nil {
 		if err := exam.CheckAdmissionExam(ctx, tx, schoolID, *examID); errors.Is(err, exam.ErrNotFound) {
@@ -256,6 +265,9 @@ func (s *SelectionService) AddTest(ctx context.Context, actor school.Actor, peri
 			return mapError("add test", err)
 		}
 		t = SelectionTest{ID: t.ID, PeriodID: periodID, Name: in.Name, Weight: in.Weight, MaxScore: in.MaxScore, ScheduledAt: in.ScheduledAt}
+		if in.ExamID != nil && !examActive(ctx) {
+			return errExamInactive
+		}
 		if in.ExamID != nil {
 			if err := linkExam(ctx, tx, actor.SchoolID, t.ID, in.ExamID); err != nil {
 				return err
@@ -305,7 +317,17 @@ func (s *SelectionService) UpdateTest(ctx context.Context, actor school.Actor, p
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		if err := linkExam(ctx, tx, actor.SchoolID, testID, in.ExamID); err != nil {
+		// Tanpa modul ujian (T166): tautan ujian yang sudah ada dibiarkan
+		// (nilai online tetap), tautan baru ditolak; beralih ke kertas boleh.
+		if !examActive(ctx) && in.ExamID != nil {
+			var cur string
+			if err := tx.QueryRow(ctx, `SELECT coalesce(exam_id::text, '') FROM admission_tests WHERE school_id = $1 AND id = $2`, actor.SchoolID, testID).Scan(&cur); err != nil {
+				return mapError("current exam", err)
+			}
+			if cur != *in.ExamID {
+				return errExamInactive
+			}
+		} else if err := linkExam(ctx, tx, actor.SchoolID, testID, in.ExamID); err != nil {
 			return err
 		}
 		return audit.Record(ctx, tx, periodAudit(actor, ActionTestUpdate, periodID, nil, map[string]any{"test_id": testID, "name": in.Name, "weight": in.Weight,

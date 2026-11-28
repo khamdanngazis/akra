@@ -250,7 +250,7 @@ func (h *Handler) renderApplicant(w http.ResponseWriter, r *http.Request, id aut
 				return
 			}
 		}
-		if a.Status == ApplicantVerified {
+		if a.Status == ApplicantVerified && examActive(ctx) {
 			if in.MissingOnline, err = exam.ApplicantMissingSessions(ctx, h.db, id.SchoolID, a.ID); err != nil {
 				h.serverError(w, r, "missing online sessions", err)
 				return
@@ -636,7 +636,7 @@ func (h *Handler) fillTestResults(ctx context.Context, schoolID string, a Applic
 	}
 	for _, t := range tests {
 		r := testResult{Name: t.Name, MaxScore: t.MaxScore, PassScore: t.PassScore, Online: t.Online(), ExamID: t.ExamID}
-		if aid, ok := attempts[t.ID]; ok && t.Online() {
+		if aid, ok := attempts[t.ID]; ok && t.Online() && examActive(ctx) {
 			s, err := exam.ApplicantAttempt(ctx, h.db, schoolID, t.ExamID, aid)
 			if err != nil && !errors.Is(err, exam.ErrNotFound) {
 				return err

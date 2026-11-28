@@ -279,10 +279,18 @@ func TestMenuForUser_ModuleAndDuty(t *testing.T) {
 	if m := MenuForUser([]string{"admin_tu"}, nil, exam); !has(m, "/ujian/agenda") {
 		t.Errorf("admin with module on: %s", paths(m))
 	}
-	// Semua modul disaring per sekolah (T163): tanpa keuangan, menu
-	// keuangan bendahara hilang; inti (beranda, laporan) tetap.
-	if m := MenuForUser([]string{"bendahara"}, nil, nil); has(m, "/keuangan/tunggakan") || !has(m, "/laporan") {
+	// Semua modul disaring per sekolah (T163). Bendahara tanpa keuangan dan
+	// pendaftaran (T166): hanya Beranda dan Pengumuman; hub Laporan dan
+	// Pengaturan yang kosong ikut hilang.
+	if m := MenuForUser([]string{"bendahara"}, nil, []string{ModuleAnnouncements}); paths(m) != "/ /pengumuman" {
 		t.Errorf("treasurer without billing: %s", paths(m))
+	}
+	if m := MenuForUser([]string{"bendahara"}, nil, []string{ModuleAdmission, ModuleAnnouncements}); paths(m) != "/ /pendaftaran/biaya /pengumuman" {
+		t.Errorf("treasurer with admission only: %s", paths(m))
+	}
+	// Nilai ke Dapodik butuh modul nilai (T166).
+	if m := MenuForUser(guru, nil, []string{ModuleDapodik}); has(m, "/dapodik/nilai") {
+		t.Errorf("Nilai ke Dapodik without grades: %s", paths(m))
 	}
 	// MenuFor sama dengan MenuForUser tanpa tugas dengan modul bawaan.
 	if got, want := paths(MenuFor(guru)), paths(MenuForUser(guru, nil, DefaultModules)); got != want {

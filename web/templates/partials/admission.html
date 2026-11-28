@@ -92,16 +92,18 @@
 <legend>Cara tes</legend>
 <div class="option-cards">
 <label class="option-card"><input type="radio" name="method" value="kertas" x-model="method"{{if ne .Form.Method "online"}} checked{{end}}><span><strong>Di kertas / wawancara</strong><span class="block text-sm text-slate-600">Nilai diketik TU di Isi nilai.</span></span></label>
-<label class="option-card"><input type="radio" name="method" value="online" x-model="method"{{if eq .Form.Method "online"}} checked{{end}}><span><strong>Ujian online</strong><span class="block text-sm text-slate-600">Dikerjakan calon siswa di HP/komputer; nilai masuk otomatis.</span></span></label>
+{{if hasModule "exam"}}<label class="option-card"><input type="radio" name="method" value="online" x-model="method"{{if eq .Form.Method "online"}} checked{{end}}><span><strong>Ujian online</strong><span class="block text-sm text-slate-600">Dikerjakan calon siswa di HP/komputer; nilai masuk otomatis.</span></span></label>
+{{else if eq .Form.Method "online"}}<label class="option-card"><input type="radio" name="method" value="online" x-model="method" checked><span><strong>Ujian online (tetap)</strong><span class="block text-sm text-slate-600">Modul Ujian Online tidak aktif; tautan dan nilai yang sudah masuk tetap.</span></span></label>{{end}}
 </div>
+{{if not (hasModule "exam")}}<p class="hint">Ujian online aktif bila modul Ujian Online dipakai.</p>{{end}}
 {{with .Errors.method}}<p class="field-error">{{.}}</p>{{end}}
-<div class="field mt-2" x-show="method === 'online'" x-cloak>
+{{if not (hasModule "exam")}}{{if eq .Form.Method "online"}}<input type="hidden" name="exam_id" value="{{.Form.ExamID}}">{{end}}{{else}}<div class="field mt-2" x-show="method === 'online'" x-cloak>
 <label for="exam_id-{{.ID}}">Ujian seleksi</label>
 <select id="exam_id-{{.ID}}" name="exam_id"{{if .Errors.exam_id}} aria-invalid="true"{{end}}><option value="">Pilih ujian</option>
 {{range .Exams}}{{if or (eq .TestID "") (eq .TestID $f.ID) (eq .ID $f.Form.ExamID)}}<option value="{{.ID}}"{{if eq .ID $f.Form.ExamID}} selected{{end}}>{{.Name}} ({{.StatusLabel}})</option>{{end}}{{end}}</select>
 {{with .Errors.exam_id}}<p class="field-error">{{.}}</p>{{end}}
 <p class="hint">Belum ada? {{if eq .ID "baru"}}Simpan tes ini sebagai "di kertas" dulu, lalu klik Ubah → Buat ujian seleksi baru agar ujian langsung tertaut ke tes dan gelombangnya.{{else}}<a href="/ujian/paket/baru?tujuan=seleksi&amp;tes={{.ID}}">Buat ujian seleksi baru</a>; ujian langsung tertaut ke tes ini dan gelombangnya terisi saat menjadwalkan.{{end}}</p>
-</div>
+</div>{{end}}
 </fieldset>
 <div class="field-grid">
 <div class="field{{if .Errors.test_name}} has-error{{end}}">

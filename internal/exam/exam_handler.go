@@ -115,10 +115,10 @@ func (h *Handler) examList(w http.ResponseWriter, r *http.Request) {
 	}
 	v.Years = selectOpts(yearOpts, shown)
 	for _, p := range Purposes {
-		if ModuleFrom(r.Context()).Has(p.Release()) {
+		if ModuleFrom(r.Context()).Offers(p) {
 			v.Purposes = append(v.Purposes, optionItem{Value: string(p), Label: p.Label(), Selected: p == f.Purpose})
 		}
-		if purposeOffered(sa.Actor, p, now) && ModuleFrom(r.Context()).Has(p.Release()) {
+		if purposeOffered(sa.Actor, p, now) && ModuleFrom(r.Context()).Offers(p) {
 			v.CanCreate = true
 		}
 	}
@@ -332,7 +332,7 @@ func (h *Handler) examDetail(w http.ResponseWriter, r *http.Request) {
 		v.Sections[s.ID] = s
 	}
 	v.Next = examNextStep(e, v.Readiness, sessions, v.CanWrite, now)
-	if v.CanWrite && e.Locked() && (e.FeedsGrades() || e.FollowUp != "") {
+	if v.CanWrite && e.Locked() && (e.FeedsGrades() || e.FollowUp != "") && ModuleFrom(ctx).Grades {
 		v.ToReport = true
 		if v.GradesStale, err = GradesStale(ctx, h.db, sa.SchoolID, e.ID); err != nil {
 			h.fail(w, r, "grades stale", err)

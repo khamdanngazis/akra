@@ -195,6 +195,10 @@ type testCardTest struct {
 // loadTestCard menyusun kartu tes online pendaftar; nil bila tidak ada
 // sesi online. Kode diterbitkan otomatis saat pertama kali tersedia.
 func loadTestCard(ctx context.Context, db database.DB, l examLink, schoolID, applicantID string, loc *time.Location) (*testCardView, error) {
+	// Halaman publik: status modul dibaca per sekolah (tanpa middleware).
+	if m, err := exam.LoadModule(ctx, db, schoolID); err != nil || !m.Enabled {
+		return nil, err
+	}
 	c, err := exam.LoadApplicantCard(ctx, db, l.cards, schoolID, applicantID, l.baseURL, time.Now())
 	if err != nil {
 		return nil, err

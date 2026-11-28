@@ -76,7 +76,8 @@ type examFrame struct {
 func (h *Handler) frame(ctx context.Context, sa StaffActor, e Exam, tab, sub, subLabel, query string) (examFrame, error) {
 	now := time.Now()
 	f := examFrame{Exam: e, Tab: tab, Sub: sub, SubLabel: subLabel, Query: query, CanWrite: e.Access(sa.Actor, now) >= Write}
-	f.ToReport = f.CanWrite && (e.FeedsGrades() || e.FollowUp != "")
+	// Kirim ke rapor butuh modul nilai (T166).
+	f.ToReport = f.CanWrite && (e.FeedsGrades() || e.FollowUp != "") && ModuleFrom(ctx).Grades
 	var sent bool
 	if err := h.db.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM exam_attempts t WHERE t.exam_id = $1 AND t.status = 'dikumpulkan' AND t.score_status = 'menunggu_esai'),

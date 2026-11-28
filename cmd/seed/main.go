@@ -28,6 +28,7 @@ import (
 	"akra/internal/auth"
 	"akra/internal/platform/config"
 	"akra/internal/platform/database"
+	"akra/internal/platform/module"
 )
 
 type options struct {
@@ -146,6 +147,10 @@ func seed(ctx context.Context, db *pgxpool.Pool, o options, passwordHash string)
 			return fmt.Errorf("find or create school: %w", err)
 		}
 
+		if err := checkRoleModules(ctx, tx, schoolID, o.role); err != nil {
+			return err
+		}
+
 		var userID string
 		err = tx.QueryRow(ctx, `
 			INSERT INTO users (school_id, email, password_hash, full_name)
@@ -163,6 +168,31 @@ func seed(ctx context.Context, db *pgxpool.Pool, o options, passwordHash string)
 		return err
 	})
 	return schoolCreated, err
+}
+
+// roleModules adalah modul yang membuat suatu peran berarti (T166): peran
+// hanya bisa diberikan bila salah satu modulnya aktif. Pengguna yang sudah
+// punya peran itu tidak diubah saat modulnya dimatikan.
+var roleModules = map[string][]module.ID{
+	auth.RoleBendahara: {module.Billing, module.Admission},
+}
+
+// checkRoleModules menolak peran yang modulnya tidak aktif di sekolah.
+func checkRoleModules(ctx context.Context, q database.DBTX, schoolID, role string) error {
+	need, ok := roleModules[role]
+	if !ok {
+		return nil
+	}
+	set, err := module.Load(ctx, q, schoolID)
+	if err != nil {
+		return err
+	}
+	for _, m := range need {
+		if set.Has(m) {
+			return nil
+		}
+	}
+	return fmt.Errorf("role %s needs module %v to be enabled for the school (akra-modul)", role, need)
 }
 
 // randomPassword membuat password acak 18 karakter dari crypto/rand.
